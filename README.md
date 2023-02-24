@@ -1,4 +1,4 @@
-# vocode-sdk
+# vocode-python-sdk
 
 ```bash
 # set up environment
