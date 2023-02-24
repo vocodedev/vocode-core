@@ -13,8 +13,7 @@ from .models.agent import AgentConfig
 from .models.synthesizer import SynthesizerConfig
 from .models.websocket import ReadyMessage, AudioMessage, StartMessage, StopMessage
 
-BASE_URL = os.environ.get('BASE_URL')
-VOCODE_WEBSOCKET_URL = f'wss://{BASE_URL}/conversation'
+VOCODE_WEBSOCKET_URL = f'wss://api.vocode.dev/conversation'
 
 class Conversation:
 
