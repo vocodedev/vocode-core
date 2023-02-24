@@ -1,0 +1,5 @@
+PyAudio==0.2.13
+pydantic==1.10.5
+python-dotenv==0.21.1
+typing_extensions==4.5.0
+websockets==10.4
