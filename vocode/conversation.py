@@ -12,6 +12,7 @@ from .models.transcriber import TranscriberConfig
 from .models.agent import AgentConfig
 from .models.synthesizer import SynthesizerConfig
 from .models.websocket import ReadyMessage, AudioMessage, StartMessage, StopMessage
+from . import api_key
 
 VOCODE_WEBSOCKET_URL = f'wss://api.vocode.dev/conversation'
 
@@ -19,14 +20,12 @@ class Conversation:
 
     def __init__(
         self,
-        key: str,
         input_device: BaseInputDevice, 
         output_device: BaseOutputDevice, 
         transcriber_config: TranscriberConfig, 
         agent_config: AgentConfig,
         synthesizer_config: SynthesizerConfig
     ):
-        self.key = key
         self.input_device = input_device
         self.output_device = output_device
         self.transcriber_config = transcriber_config
@@ -45,7 +44,7 @@ class Conversation:
         self.active = False
     
     async def start(self):
-        async with websockets.connect(f"{VOCODE_WEBSOCKET_URL}?key={self.key}") as ws:
+        async with websockets.connect(f"{VOCODE_WEBSOCKET_URL}?key={api_key}") as ws:
             async def sender(ws):
                 start_message = StartMessage(
                     transcriber_config=self.transcriber_config, 
