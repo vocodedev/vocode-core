@@ -16,7 +16,6 @@ if __name__ == "__main__":
     microphone_input, speaker_output = create_microphone_input_and_speaker_output(use_first_available_device=True)
 
     conversation = Conversation(
-        key=os.environ.get("VOCODE_API_KEY"),
         input_device=microphone_input,
         output_device=speaker_output,
         transcriber_config=DeepgramTranscriberConfig.from_input_device(microphone_input),
