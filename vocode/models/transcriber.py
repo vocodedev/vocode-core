@@ -8,6 +8,7 @@ class TranscriberType(str, Enum):
     BASE = "base"
     DEEPGRAM = "deepgram"
     GOOGLE = "google"
+    ASSEMBLY_AI = "assembly_ai"
 
 class TranscriberConfig(TypedModel, type=TranscriberType.BASE):
     sampling_rate: int
@@ -28,4 +29,7 @@ class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM
 
 class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE):
     model: Optional[str] = None
+    should_warmup_model: bool = False
+
+class AssemblyAITranscriberConfig(TranscriberConfig, type=TranscriberType.ASSEMBLY_AI):
     should_warmup_model: bool = False
