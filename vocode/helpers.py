@@ -11,7 +11,7 @@ def _get_device_prompt(device_infos: list[dict]) -> str:
 Choice: """.format(
         "\n".join(f"{index}: {device['name']}" for index, device in enumerate(device_infos)))
 
-def create_microphone_input_and_speaker_output(use_first_available_device=False, mic_sampling_rate=None) -> tuple[MicrophoneInput, SpeakerOutput]:
+def create_microphone_input_and_speaker_output(use_first_available_device=False, mic_sampling_rate=None, speaker_sampling_rate=None) -> tuple[MicrophoneInput, SpeakerOutput]:
     pa = pyaudio.PyAudio()
     num_devices = pa.get_device_count()
     devices = list(map(pa.get_device_info_by_index, range(num_devices)))
@@ -26,5 +26,5 @@ def create_microphone_input_and_speaker_output(use_first_available_device=False,
     logger.info("Using microphone input device: %s", input_device_info['name'])
     microphone_input = MicrophoneInput(pa, input_device_info, sampling_rate=mic_sampling_rate)
     logger.info("Using speaker output device: %s", output_device_info['name'])
-    speaker_output = SpeakerOutput(pa, output_device_info) 
+    speaker_output = SpeakerOutput(pa, output_device_info, sampling_rate=speaker_sampling_rate) 
     return microphone_input, speaker_output
