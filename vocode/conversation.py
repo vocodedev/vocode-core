@@ -3,6 +3,8 @@ import asyncio
 from dotenv import load_dotenv
 import os
 import logging
+import threading
+import queue
 
 load_dotenv()
 
@@ -34,6 +36,8 @@ class Conversation:
         self.logger = logging.getLogger(__name__)
         self.receiver_ready = False
         self.active = True
+        self.output_loop = asyncio.new_event_loop()
+        self.output_audio_queue = queue.Queue()
 
     async def wait_for_ready(self):
         while not self.receiver_ready:
@@ -42,6 +46,14 @@ class Conversation:
     
     def deactivate(self):
         self.active = False
+
+    def play_audio(self):
+        async def run():
+            while self.active:
+                audio = self.output_audio_queue.get()
+                await self.output_device.send_async(audio)
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(run())
     
     async def start(self):
         async with websockets.connect(f"{VOCODE_WEBSOCKET_URL}?key={api_key}") as ws:
@@ -66,8 +78,10 @@ class Conversation:
                 self.receiver_ready = True
                 async for msg in ws:
                     audio_message = AudioMessage.parse_raw(msg)
-                    await self.output_device.send_async(audio_message.get_bytes())
+                    self.output_audio_queue.put_nowait(audio_message.get_bytes())
 
 
+            output_thread = threading.Thread(target=self.play_audio)
+            output_thread.start()
             return await asyncio.gather(sender(ws), receiver(ws))
 

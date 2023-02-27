@@ -12,7 +12,7 @@ logging.basicConfig()
 logging.root.setLevel(logging.INFO)
 
 if __name__ == "__main__":
-    microphone_input, speaker_output = create_microphone_input_and_speaker_output(use_first_available_device=True)
+    microphone_input, speaker_output = create_microphone_input_and_speaker_output(use_first_available_device=False)
 
     conversation = Conversation(
         input_device=microphone_input,
