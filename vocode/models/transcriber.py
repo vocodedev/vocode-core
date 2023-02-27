@@ -32,6 +32,4 @@ class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE):
     should_warmup_model: bool = False
 
 class AssemblyAITranscriberConfig(TranscriberConfig, type=TranscriberType.ASSEMBLY_AI):
-    model: Optional[str] = None
     should_warmup_model: bool = False
-    version: Optional[str] = None    
