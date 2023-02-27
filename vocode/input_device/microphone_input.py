@@ -10,10 +10,10 @@ class MicrophoneInput(BaseInputDevice):
     DEFAULT_SAMPLING_RATE = 44100
     DEFAULT_CHUNK_SIZE = 2048
 
-    def __init__(self, pa: pyaudio.PyAudio, device_info: dict, chunk_size: int = DEFAULT_CHUNK_SIZE):
+    def __init__(self, pa: pyaudio.PyAudio, device_info: dict, sampling_rate: int = None, chunk_size: int = DEFAULT_CHUNK_SIZE):
         self.device_info = device_info
-        sampling_rate = int(self.device_info.get('defaultSampleRate', self.DEFAULT_SAMPLING_RATE))
-        super().__init__(sampling_rate, AudioEncoding.LINEAR16, chunk_size)
+        sampling_rate = sampling_rate or (self.device_info.get('defaultSampleRate', self.DEFAULT_SAMPLING_RATE))
+        super().__init__(int(sampling_rate), AudioEncoding.LINEAR16, chunk_size)
         self.pa = pa
         self.stream = pa.open(
             format=pyaudio.paInt16,
