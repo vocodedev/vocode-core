@@ -50,8 +50,11 @@ class Conversation:
     def play_audio(self):
         async def run():
             while self.active:
-                audio = self.output_audio_queue.get()
-                await self.output_device.send_async(audio)
+                try:
+                    audio = self.output_audio_queue.get(timeout=5)
+                    await self.output_device.send_async(audio)
+                except queue.Empty:
+                    continue
         loop = asyncio.new_event_loop()
         loop.run_until_complete(run())
     
