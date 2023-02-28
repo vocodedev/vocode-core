@@ -19,9 +19,11 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
 
+
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
+
 
 class InformationRetrievalAgentConfig(
     AgentConfig, type=AgentType.INFORMATION_RETRIEVAL
