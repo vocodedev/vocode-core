@@ -16,7 +16,7 @@ from .models.synthesizer import SynthesizerConfig
 from .models.websocket import ReadyMessage, AudioMessage, StartMessage, StopMessage
 from . import api_key
 
-VOCODE_WEBSOCKET_URL = f'wss://api.vocode.dev/conversation'
+VOCODE_WEBSOCKET_URL = f'wss://a6eb64f4a9b7.ngrok.io/conversation'
 
 class Conversation:
 
