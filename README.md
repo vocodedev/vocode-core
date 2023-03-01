@@ -1,5 +1,9 @@
 # vocode Python SDK
 
+```
+pip install vocode
+```
+
 ```python
 import asyncio
 import signal
