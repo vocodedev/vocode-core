@@ -6,6 +6,7 @@ from .model import TypedModel, BaseModel
 class AgentType(str, Enum):
     BASE = "base"
     LLM = "llm"
+    CHAT_GPT_ALPHA = "chat_gpt_alpha"
     CHAT_GPT = "chat_gpt"
     ECHO = "echo"
     INFORMATION_RETRIEVAL = "information_retrieval"
@@ -21,9 +22,14 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
 
+class ChatGPTAlphaAgentConfig(AgentConfig, type=AgentType.CHAT_GPT_ALPHA):
+    prompt_preamble: str
+    expected_first_prompt: Optional[str] = None
+
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
+    generate_responses: bool = False
 
 class InformationRetrievalAgentConfig(
     AgentConfig, type=AgentType.INFORMATION_RETRIEVAL
