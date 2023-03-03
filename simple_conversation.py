@@ -20,11 +20,9 @@ if __name__ == "__main__":
         input_device=microphone_input,
         output_device=speaker_output,
         transcriber_config=DeepgramTranscriberConfig.from_input_device(microphone_input),
-        agent_config=WebSocketUserImplementedAgentConfig(
+        agent_config=ChatGPTAgentConfig(
             initial_message="Hello!",
-            respond=WebSocketUserImplementedAgentConfig.RouteConfig(
-                url="wss://a8ea877c9548.ngrok.io/respond"
-            )
+            prompt_preamble="Vocode is an SDK that allows developers to create voice bots like this one in less than 10 lines of code. The AI is explaining to the human what Vocode is."
         ),
         synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output)
     )
