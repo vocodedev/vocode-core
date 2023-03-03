@@ -44,8 +44,9 @@ class RESTfulUserImplementedAgentConfig(AgentConfig, type=AgentType.RESTFUL_USER
         method: str = "POST"
 
     respond: EndpointConfig
-    generate_response: Optional[EndpointConfig]
-    update_last_bot_message_on_cut_off: Optional[EndpointConfig]
+    generate_responses: bool = False
+    # generate_response: Optional[EndpointConfig]
+    # update_last_bot_message_on_cut_off: Optional[EndpointConfig]
 
 class RESTfulAgentInput(BaseModel):
     human_input: str
@@ -58,8 +59,9 @@ class WebSocketUserImplementedAgentConfig(AgentConfig, type=AgentType.WEBSOCKET_
         url: str
 
     respond: RouteConfig
-    generate_response: Optional[RouteConfig]
-    send_message_on_cut_off: bool = False
+    generate_responses: bool = False
+    # generate_response: Optional[RouteConfig]
+    # send_message_on_cut_off: bool = False
 
 class WebSocketAgentMessageType(str, Enum):
     AGENT_BASE = 'agent_base'
