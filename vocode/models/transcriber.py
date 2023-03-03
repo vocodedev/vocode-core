@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
 from .audio_encoding import AudioEncoding
-from .model import TypedModel
+from .model import BaseModel, TypedModel
 from ..input_device.base_input_device import BaseInputDevice
 
 
@@ -12,8 +12,8 @@ class TranscriberType(str, Enum):
     ASSEMBLY_AI = "assembly_ai"
 
 
-class EndpointingConfig(TypedModel):
-    time_cutoff_seconds: float
+class EndpointingConfig(BaseModel):
+    time_cutoff_seconds: Optional[float] = None
 
 
 class TranscriberConfig(TypedModel, type=TranscriberType.BASE):
