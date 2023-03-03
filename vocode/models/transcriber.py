@@ -12,17 +12,31 @@ class TranscriberType(str, Enum):
     ASSEMBLY_AI = "assembly_ai"
 
 
+class EndpointingType(str, Enum):
+    BASE = "base"
+
+
+class EndpointingConfig(TypedModel, type=EndpointingType.BASE):
+    time_cutoff: int
+
+
 class TranscriberConfig(TypedModel, type=TranscriberType.BASE):
     sampling_rate: int
     audio_encoding: AudioEncoding
     chunk_size: int
+    endpointing_config: Optional[EndpointingConfig] = None
 
     @classmethod
-    def from_input_device(cls, input_device: BaseInputDevice):
+    def from_input_device(
+        cls,
+        input_device: BaseInputDevice,
+        endpointing_config: Optional[EndpointingConfig] = None,
+    ):
         return cls(
             sampling_rate=input_device.sampling_rate,
             audio_encoding=input_device.audio_encoding,
             chunk_size=input_device.chunk_size,
+            endpointing_config=endpointing_config,
         )
 
 
