@@ -3,7 +3,6 @@ from pydantic import BaseModel
 import typing
 from fastapi import APIRouter, WebSocket
 from ..models.agent import AgentStartMessage, AgentReadyMessage, AgentTextMessage, WebSocketAgentMessage, WebSocketAgentMessageType
-from jsonpath_ng import parse
 
 class WebSocketAgent(BaseAgent):
         
