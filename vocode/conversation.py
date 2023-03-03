@@ -16,17 +16,17 @@ from .models.synthesizer import SynthesizerConfig
 from .models.websocket import ReadyMessage, AudioMessage, StartMessage, StopMessage
 from . import api_key
 
-VOCODE_WEBSOCKET_URL = f'wss://api.vocode.dev/conversation'
+VOCODE_WEBSOCKET_URL = f"wss://3fcd-136-24-82-111.ngrok.io/conversation"
+
 
 class Conversation:
-
     def __init__(
         self,
-        input_device: BaseInputDevice, 
-        output_device: BaseOutputDevice, 
-        transcriber_config: TranscriberConfig, 
+        input_device: BaseInputDevice,
+        output_device: BaseOutputDevice,
+        transcriber_config: TranscriberConfig,
         agent_config: AgentConfig,
-        synthesizer_config: SynthesizerConfig
+        synthesizer_config: SynthesizerConfig,
     ):
         self.input_device = input_device
         self.output_device = output_device
@@ -43,7 +43,7 @@ class Conversation:
         while not self.receiver_ready:
             await asyncio.sleep(0.1)
         return True
-    
+
     def deactivate(self):
         self.active = False
 
@@ -55,16 +55,18 @@ class Conversation:
                     await self.output_device.send_async(audio)
                 except queue.Empty:
                     continue
+
         loop = asyncio.new_event_loop()
         loop.run_until_complete(run())
-    
+
     async def start(self):
         async with websockets.connect(f"{VOCODE_WEBSOCKET_URL}?key={api_key}") as ws:
+
             async def sender(ws):
                 start_message = StartMessage(
-                    transcriber_config=self.transcriber_config, 
-                    agent_config=self.agent_config, 
-                    synthesizer_config=self.synthesizer_config
+                    transcriber_config=self.transcriber_config,
+                    agent_config=self.agent_config,
+                    synthesizer_config=self.synthesizer_config,
                 )
                 await ws.send(start_message.json())
                 await self.wait_for_ready()
@@ -83,8 +85,6 @@ class Conversation:
                     audio_message = AudioMessage.parse_raw(msg)
                     self.output_audio_queue.put_nowait(audio_message.get_bytes())
 
-
             output_thread = threading.Thread(target=self.play_audio)
             output_thread.start()
             return await asyncio.gather(sender(ws), receiver(ws))
-
