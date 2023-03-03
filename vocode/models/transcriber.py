@@ -12,12 +12,8 @@ class TranscriberType(str, Enum):
     ASSEMBLY_AI = "assembly_ai"
 
 
-class EndpointingType(str, Enum):
-    BASE = "base"
-
-
-class EndpointingConfig(TypedModel, type=EndpointingType.BASE):
-    time_cutoff: int
+class EndpointingConfig(TypedModel):
+    time_cutoff_seconds: float
 
 
 class TranscriberConfig(TypedModel, type=TranscriberType.BASE):
