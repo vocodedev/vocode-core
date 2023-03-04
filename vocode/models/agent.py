@@ -4,14 +4,14 @@ from .model import TypedModel, BaseModel
 
 
 class AgentType(str, Enum):
-    BASE = "base"
-    LLM = "llm"
-    CHAT_GPT_ALPHA = "chat_gpt_alpha"
-    CHAT_GPT = "chat_gpt"
-    ECHO = "echo"
-    INFORMATION_RETRIEVAL = "information_retrieval"
-    RESTFUL_USER_IMPLEMENTED = "restful_user_implemented"
-    WEBSOCKET_USER_IMPLEMENTED = "websocket_user_implemented"
+    BASE = "agent_base"
+    LLM = "agent_llm"
+    CHAT_GPT_ALPHA = "agent_chat_gpt_alpha"
+    CHAT_GPT = "agent_chat_gpt"
+    ECHO = "agent_echo"
+    INFORMATION_RETRIEVAL = "agent_information_retrieval"
+    RESTFUL_USER_IMPLEMENTED = "agent_restful_user_implemented"
+    WEBSOCKET_USER_IMPLEMENTED = "agent_websocket_user_implemented"
 
 
 class AgentConfig(TypedModel, type=AgentType.BASE):
@@ -57,8 +57,19 @@ class RESTfulUserImplementedAgentConfig(AgentConfig, type=AgentType.RESTFUL_USER
 class RESTfulAgentInput(BaseModel):
     human_input: str
 
-class RESTfulAgentOutput(BaseModel):
+class RESTfulAgentOutputType(str, Enum):
+    BASE = "restful_agent_base"
+    TEXT = "restful_agent_text"
+    END = "restful_agent_end"
+
+class RESTfulAgentOutput(TypedModel, type=RESTfulAgentOutputType.BASE):
+    pass
+
+class RESTfulAgentText(RESTfulAgentOutput, type=RESTfulAgentOutputType.TEXT):
     response: str
+
+class RESTfulAgentEnd(RESTfulAgentOutput, type=RESTfulAgentOutputType.END):
+    pass
 
 class WebSocketUserImplementedAgentConfig(AgentConfig, type=AgentType.WEBSOCKET_USER_IMPLEMENTED):
     class RouteConfig(BaseModel):
@@ -70,15 +81,15 @@ class WebSocketUserImplementedAgentConfig(AgentConfig, type=AgentType.WEBSOCKET_
     # send_message_on_cut_off: bool = False
 
 class WebSocketAgentMessageType(str, Enum):
-    AGENT_BASE = 'agent_base'
-    AGENT_START = 'agent_start'
-    AGENT_TEXT = 'agent_text'
-    AGENT_READY = 'agent_ready'
-    AGENT_STOP = 'agent_stop'
+    BASE = 'websocket_agent_base'
+    START = 'websocket_agent_start'
+    TEXT = 'websocket_agent_text'
+    READY = 'websocket_agent_ready'
+    STOP = 'websocket_agent_stop'
 
-class WebSocketAgentMessage(TypedModel, type=WebSocketAgentMessageType.AGENT_BASE): pass
+class WebSocketAgentMessage(TypedModel, type=WebSocketAgentMessageType.BASE): pass
 
-class AgentTextMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.AGENT_TEXT):
+class WebSocketAgentTextMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.TEXT):
     class Payload(BaseModel):
         text: str
 
@@ -89,11 +100,11 @@ class AgentTextMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.AGE
         return cls(data=cls.Payload(text=text))
 
 
-class AgentStartMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.AGENT_START):
+class WebSocketAgentStartMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.START):
     pass
 
-class AgentReadyMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.AGENT_READY):
+class WebSocketAgentReadyMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.READY):
     pass
 
-class AgentStopMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.AGENT_STOP):
+class WebSocketAgentStopMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.STOP):
     pass

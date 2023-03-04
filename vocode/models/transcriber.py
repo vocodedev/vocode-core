@@ -6,10 +6,10 @@ from ..input_device.base_input_device import BaseInputDevice
 
 
 class TranscriberType(str, Enum):
-    BASE = "base"
-    DEEPGRAM = "deepgram"
-    GOOGLE = "google"
-    ASSEMBLY_AI = "assembly_ai"
+    BASE = "transcriber_base"
+    DEEPGRAM = "transcriber_deepgram"
+    GOOGLE = "transcriber_google"
+    ASSEMBLY_AI = "transcriber_assembly_ai"
 
 
 class EndpointingConfig(BaseModel):

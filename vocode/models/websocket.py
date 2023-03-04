@@ -6,11 +6,11 @@ from .agent import AgentConfig
 from .synthesizer import SynthesizerConfig
 
 class WebSocketMessageType(str, Enum):
-    BASE = 'base'
-    START = 'start'
-    AUDIO = 'audio'
-    READY = 'ready'
-    STOP = 'stop'
+    BASE = 'websocket_base'
+    START = 'websocket_start'
+    AUDIO = 'websocket_audio'
+    READY = 'websocket_ready'
+    STOP = 'websocket_stop'
 
 class WebSocketMessage(TypedModel, type=WebSocketMessageType.BASE): pass
 
