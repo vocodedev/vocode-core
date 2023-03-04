@@ -4,10 +4,10 @@ from .audio_encoding import AudioEncoding
 from ..output_device.base_output_device import BaseOutputDevice
 
 class SynthesizerType(str, Enum):
-    BASE = "base"
-    AZURE = "azure"
-    GOOGLE = "google"
-    ELEVEN_LABS = "eleven_labs"
+    BASE = "synthesizer_base"
+    AZURE = "synthesizer_azure"
+    GOOGLE = "synthesizer_google"
+    ELEVEN_LABS = "synthesizer_eleven_labs"
 
 class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE):
     sampling_rate: int

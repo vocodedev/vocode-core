@@ -1,4 +1,6 @@
 import websockets
+from websockets.exceptions import ConnectionClosedOK
+from websockets.client import WebSocketClientProtocol
 import asyncio
 from dotenv import load_dotenv
 import os
@@ -14,10 +16,9 @@ from .models.transcriber import TranscriberConfig
 from .models.agent import AgentConfig
 from .models.synthesizer import SynthesizerConfig
 from .models.websocket import ReadyMessage, AudioMessage, StartMessage, StopMessage
-from . import api_key
+from . import api_key, BASE_URL
 
-VOCODE_WEBSOCKET_URL = f"wss://api.vocode.dev/conversation"
-
+VOCODE_WEBSOCKET_URL = f"wss://{BASE_URL}/conversation"
 
 class Conversation:
     def __init__(
@@ -62,7 +63,7 @@ class Conversation:
     async def start(self):
         async with websockets.connect(f"{VOCODE_WEBSOCKET_URL}?key={api_key}") as ws:
 
-            async def sender(ws):
+            async def sender(ws: WebSocketClientProtocol):
                 start_message = StartMessage(
                     transcriber_config=self.transcriber_config,
                     agent_config=self.agent_config,
@@ -74,11 +75,15 @@ class Conversation:
                 while self.active:
                     data = self.input_device.get_audio()
                     if data:
-                        await ws.send(AudioMessage.from_bytes(data).json())
+                        try:
+                            await ws.send(AudioMessage.from_bytes(data).json())
+                        except ConnectionClosedOK:
+                            self.deactivate()
+                            return
                         await asyncio.sleep(0)
                 await ws.send(StopMessage().json())
 
-            async def receiver(ws):
+            async def receiver(ws: WebSocketClientProtocol):
                 ReadyMessage.parse_raw(await ws.recv())
                 self.receiver_ready = True
                 async for msg in ws:

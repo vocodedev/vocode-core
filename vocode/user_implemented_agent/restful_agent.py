@@ -1,6 +1,7 @@
 from .base_agent import BaseAgent
-from ..models.agent import RESTfulAgentInput, RESTfulAgentOutput
+from ..models.agent import RESTfulAgentInput, RESTfulAgentOutput, RESTfulAgentText, RESTfulAgentEnd
 from pydantic import BaseModel
+from typing import Union
 from fastapi import APIRouter
 
 class RESTfulAgent(BaseAgent):
@@ -9,7 +10,10 @@ class RESTfulAgent(BaseAgent):
         super().__init__()
         self.app.post("/respond")(self.respond_rest)
 
-    async def respond_rest(self, request: RESTfulAgentInput) -> RESTfulAgentOutput:
+    async def respond(self, human_input) -> RESTfulAgentOutput:
+        raise NotImplementedError
+
+    async def respond_rest(self, request: RESTfulAgentInput) -> Union[RESTfulAgentText, RESTfulAgentEnd]:
         response = await self.respond(request.human_input)
-        return RESTfulAgentOutput(response=response)
+        return response
 
