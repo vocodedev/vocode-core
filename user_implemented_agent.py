@@ -24,4 +24,4 @@ class TestWebSocketAgent(WebSocketAgent):
         
 if __name__ == "__main__":
     agent = TestWebSocketAgent()
-    agent.run(port=3001)
+    agent.run(port=3000)

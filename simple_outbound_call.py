@@ -1,4 +1,4 @@
-from vocode.outbound_call import OutboundCall
+from vocode.telephony.outbound_call import OutboundCall
 from vocode.models.telephony import CallEntity
 from vocode.models.agent import EchoAgentConfig, WebSocketUserImplementedAgentConfig
 
@@ -10,10 +10,6 @@ if __name__ == '__main__':
         caller=CallEntity(
             phone_number="+14086600744",
         ),
-        agent_config=WebSocketUserImplementedAgentConfig(
-            respond=WebSocketUserImplementedAgentConfig.RouteConfig(
-                url="ws://localhost:3001/respond"
-            )
-        )
+        agent_config=EchoAgentConfig(initial_message="Hello!")
     )
     call.start()

@@ -1,6 +1,6 @@
-from .models.telephony import CallEntity, CreateCallRequest
+from ..models.telephony import CallEntity, CreateOutboundCall
 import requests
-from . import api_key, BASE_URL
+from .. import api_key, BASE_URL
 
 VOCODE_OUTBOUND_CALL_URL = f"https://{BASE_URL}/create_outbound_call"
 
@@ -17,7 +17,7 @@ class OutboundCall:
             headers={
                 "Authorization": f"Bearer {api_key}"
             },
-            json=CreateCallRequest(
+            json=CreateOutboundCall(
                 recipient=self.recipient,
                 caller=self.caller,
                 agent_config=self.agent_config
