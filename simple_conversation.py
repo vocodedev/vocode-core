@@ -20,12 +20,7 @@ if __name__ == "__main__":
         input_device=microphone_input,
         output_device=speaker_output,
         transcriber_config=DeepgramTranscriberConfig.from_input_device(microphone_input),
-        agent_config=WebSocketUserImplementedAgentConfig(
-            initial_message="Hello!",
-            respond=WebSocketUserImplementedAgentConfig.RouteConfig(
-                url="ws://localhost:3001/respond"
-            )
-        ),
+        agent_config=EchoAgentConfig(initial_message="Hello!"),
         synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output)
     )
     signal.signal(signal.SIGINT, lambda _0, _1: conversation.deactivate())
