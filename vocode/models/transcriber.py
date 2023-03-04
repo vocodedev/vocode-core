@@ -12,8 +12,24 @@ class TranscriberType(str, Enum):
     ASSEMBLY_AI = "assembly_ai"
 
 
-class EndpointingConfig(BaseModel):
-    time_cutoff_seconds: Optional[float] = None
+class EndpointingType(str, Enum):
+    BASE = "base"
+    TIME_BASED = "time_based"
+    PUNCTUATION_BASED = "punctuation_based"
+
+
+class EndpointingConfig(TypedModel, type=EndpointingType.BASE):
+    pass
+
+
+class TimeEndpointingConfig(EndpointingConfig, type=EndpointingType.TIME_BASED):
+    time_cutoff_seconds: float = 0.4
+
+
+class PunctuationEndpointingConfig(
+    EndpointingConfig, type=EndpointingType.PUNCTUATION_BASED
+):
+    time_cutoff_seconds: float = 0.4
 
 
 class TranscriberConfig(TypedModel, type=TranscriberType.BASE):
