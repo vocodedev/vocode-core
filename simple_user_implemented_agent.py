@@ -14,8 +14,8 @@ class TestRESTfulAgent(RESTfulAgent):
     
 class TestWebSocketAgent(WebSocketAgent):
 
-    async def respond(self, input: str) -> WebSocketAgentMessage:
-        print(input)
+    async def respond(self, input: str, conversation_id: str) -> WebSocketAgentMessage:
+        print(input, conversation_id)
         if "bye" in input:
             return WebSocketAgentStopMessage()
         else:
