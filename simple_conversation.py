@@ -4,7 +4,7 @@ import signal
 
 from vocode.conversation import Conversation
 from vocode.helpers import create_microphone_input_and_speaker_output
-from vocode.models.transcriber import DeepgramTranscriberConfig
+from vocode.models.transcriber import DeepgramTranscriberConfig, PunctuationEndpointingConfig
 from vocode.models.agent import ChatGPTAgentConfig, RESTfulUserImplementedAgentConfig, WebSocketUserImplementedAgentConfig, EchoAgentConfig, ChatGPTAlphaAgentConfig, ChatGPTAgentConfig
 from vocode.models.synthesizer import AzureSynthesizerConfig
 from vocode.user_implemented_agent.restful_agent import RESTfulAgent
@@ -19,8 +19,16 @@ if __name__ == "__main__":
     conversation = Conversation(
         input_device=microphone_input,
         output_device=speaker_output,
-        transcriber_config=DeepgramTranscriberConfig.from_input_device(microphone_input),
-        agent_config=EchoAgentConfig(initial_message="Hello!"),
+        transcriber_config=DeepgramTranscriberConfig.from_input_device(
+            microphone_input, 
+            endpointing_config=PunctuationEndpointingConfig()
+        ),
+        agent_config=WebSocketUserImplementedAgentConfig(
+            initial_message="Hello!",
+            respond=WebSocketUserImplementedAgentConfig.RouteConfig(
+                url="wss://1d7e6ab7b588.ngrok.io/respond",
+            )
+        ),
         synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output)
     )
     signal.signal(signal.SIGINT, lambda _0, _1: conversation.deactivate())
