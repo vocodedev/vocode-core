@@ -17,6 +17,7 @@ class AgentType(str, Enum):
 class AgentConfig(TypedModel, type=AgentType.BASE):
     initial_message: Optional[str] = None
     generate_responses: bool = True
+    allowed_idle_time_seconds: Optional[float] = None
 
 class LLMAgentConfig(AgentConfig, type=AgentType.LLM):
     prompt_preamble: str
