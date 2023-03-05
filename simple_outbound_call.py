@@ -5,10 +5,10 @@ from vocode.models.agent import EchoAgentConfig, WebSocketUserImplementedAgentCo
 if __name__ == '__main__':
     call = OutboundCall(
         recipient=CallEntity(
-            phone_number="+14088926228",
+            phone_number="+11234567890",
         ),
         caller=CallEntity(
-            phone_number="+14086600744",
+            phone_number="+11234567890",
         ),
         agent_config=EchoAgentConfig(initial_message="Hello!")
     )
