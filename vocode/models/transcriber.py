@@ -13,9 +13,9 @@ class TranscriberType(str, Enum):
 
 
 class EndpointingType(str, Enum):
-    BASE = "base"
-    TIME_BASED = "time_based"
-    PUNCTUATION_BASED = "punctuation_based"
+    BASE = "endpointing_base"
+    TIME_BASED = "endpointing_time_based"
+    PUNCTUATION_BASED = "endpointing_punctuation_based"
 
 
 class EndpointingConfig(TypedModel, type=EndpointingType.BASE):
