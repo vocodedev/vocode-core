@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 from .model import TypedModel
 from .audio_encoding import AudioEncoding
 from ..output_device.base_output_device import BaseOutputDevice
@@ -18,10 +19,26 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE):
         return cls(sampling_rate=output_device.sampling_rate, audio_encoding=output_device.audio_encoding)
 
 class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE):
+    voice_name: Optional[str] = None
+    pitch: Optional[int] = None
+    rate: Optional[int] = None
+
+    @classmethod
+    def from_output_device(
+        cls, 
+        output_device: BaseOutputDevice, 
+        voice_name: Optional[str] = None,
+        pitch: Optional[int] = None,
+        rate: Optional[int] = None,
+    ):
+        return cls(
+            sampling_rate=output_device.sampling_rate, 
+            audio_encoding=output_device.audio_encoding,
+            voice_name=voice_name,
+            pitch=pitch,
+            rate=rate,
+        )
     pass
 
 class GoogleSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GOOGLE):
-    pass
-
-class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN_LABS):
     pass
