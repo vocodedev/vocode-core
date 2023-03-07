@@ -33,4 +33,4 @@ class InboundCallServer():
         )
     
     def run(self, host="localhost", port=3000):
-        uvicorn.run(self.app, host=host, port=port)
+        uvicorn.run(self.app, host=host, port=port, reload=True)
