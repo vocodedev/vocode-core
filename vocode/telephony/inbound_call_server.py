@@ -26,6 +26,7 @@ class InboundCallServer():
                 twilio_sid=twilio_sid
             ).dict()
         )
+        assert response.ok
         return Response(
             response.text,
             media_type="application/xml",
