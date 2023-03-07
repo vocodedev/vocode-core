@@ -16,7 +16,6 @@ class InboundCallServer():
         self.app.post("/vocode")(self.handle_call)
 
     async def handle_call(self, twilio_sid: str = Form(alias='CallSid')):
-        print(api_key, VOCODE_INBOUND_CALL_URL)
         response = requests.post(
             VOCODE_INBOUND_CALL_URL,
             headers={
