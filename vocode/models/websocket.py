@@ -1,5 +1,6 @@
 import base64
 from enum import Enum
+from typing import Optional
 from .model import TypedModel
 from .transcriber import TranscriberConfig
 from .agent import AgentConfig
@@ -28,6 +29,7 @@ class StartMessage(WebSocketMessage, type=WebSocketMessageType.START):
     transcriber_config: TranscriberConfig
     agent_config: AgentConfig
     synthesizer_config: SynthesizerConfig
+    conversation_id: Optional[str] = None
 
 class ReadyMessage(WebSocketMessage, type=WebSocketMessageType.READY):
     pass

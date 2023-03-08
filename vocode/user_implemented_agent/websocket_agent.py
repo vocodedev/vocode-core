@@ -23,7 +23,6 @@ class WebSocketAgent(BaseAgent):
 
     async def respond_websocket(self, websocket: WebSocket):
         await websocket.accept()
-        conversation_id = str(uuid.uuid4())
         WebSocketAgentStartMessage.parse_obj(await websocket.receive_json())
         await websocket.send_text(WebSocketAgentReadyMessage().json())
         while True:
@@ -31,7 +30,8 @@ class WebSocketAgent(BaseAgent):
             if input_message.type == WebSocketAgentMessageType.STOP:
                 break
             text_message = typing.cast(WebSocketAgentTextMessage, input_message)
-            output_response = await self.respond(text_message.data.text, conversation_id=conversation_id)
+            print(text_message)
+            output_response = await self.respond(text_message.data.text, text_message.conversation_id)
             await websocket.send_text(output_response.json())
         await websocket.close()
 
