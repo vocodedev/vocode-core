@@ -28,7 +28,9 @@ class Conversation:
         transcriber_config: TranscriberConfig,
         agent_config: AgentConfig,
         synthesizer_config: SynthesizerConfig,
+        id: str = None,
     ):
+        self.id = id
         self.input_device = input_device
         self.output_device = output_device
         self.transcriber_config = transcriber_config
@@ -68,6 +70,7 @@ class Conversation:
                     transcriber_config=self.transcriber_config,
                     agent_config=self.agent_config,
                     synthesizer_config=self.synthesizer_config,
+                    conversation_id=self.id
                 )
                 await ws.send(start_message.json())
                 await self.wait_for_ready()

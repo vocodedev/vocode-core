@@ -56,6 +56,7 @@ class RESTfulUserImplementedAgentConfig(AgentConfig, type=AgentType.RESTFUL_USER
     # update_last_bot_message_on_cut_off: Optional[EndpointConfig]
 
 class RESTfulAgentInput(BaseModel):
+    conversation_id: str
     human_input: str
 
 class RESTfulAgentOutputType(str, Enum):
@@ -88,7 +89,8 @@ class WebSocketAgentMessageType(str, Enum):
     READY = 'websocket_agent_ready'
     STOP = 'websocket_agent_stop'
 
-class WebSocketAgentMessage(TypedModel, type=WebSocketAgentMessageType.BASE): pass
+class WebSocketAgentMessage(TypedModel, type=WebSocketAgentMessageType.BASE):
+    conversation_id: Optional[str] = None
 
 class WebSocketAgentTextMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.TEXT):
     class Payload(BaseModel):
@@ -97,8 +99,8 @@ class WebSocketAgentTextMessage(WebSocketAgentMessage, type=WebSocketAgentMessag
     data: Payload
 
     @classmethod
-    def from_text(cls, text: str):
-        return cls(data=cls.Payload(text=text))
+    def from_text(cls, text: str, conversation_id: Optional[str] = None):
+        return cls(data=cls.Payload(text=text), conversation_id=conversation_id)
 
 
 class WebSocketAgentStartMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.START):

@@ -11,6 +11,7 @@ class CallEntity(BaseModel):
 class CreateInboundCall(BaseModel):
     agent_config: AgentConfig
     twilio_sid: str
+    conversation_id: Optional[str] = None
 
 
 class CreateOutboundCall(BaseModel):
@@ -18,4 +19,5 @@ class CreateOutboundCall(BaseModel):
     caller: CallEntity
     agent_config: AgentConfig
     synthesizer_config: Optional[SynthesizerConfig] = None
+    conversation_id: Optional[str] = None
     # TODO add IVR/etc.

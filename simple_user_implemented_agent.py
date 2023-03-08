@@ -4,8 +4,8 @@ from vocode.user_implemented_agent.websocket_agent import WebSocketAgent
 
 class TestRESTfulAgent(RESTfulAgent):
 
-    async def respond(self, input: str) -> RESTfulAgentOutput:
-        print(input)
+    async def respond(self, input: str, conversation_id: str) -> RESTfulAgentOutput:
+        print(input, conversation_id)
         if "bye" in input:
             return RESTfulAgentEnd()
         else:
@@ -24,4 +24,4 @@ class TestWebSocketAgent(WebSocketAgent):
         
 if __name__ == "__main__":
     agent = TestWebSocketAgent()
-    agent.run(port=3000)
+    agent.run(port=3001)
