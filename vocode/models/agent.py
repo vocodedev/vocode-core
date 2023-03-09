@@ -18,19 +18,24 @@ class AgentConfig(TypedModel, type=AgentType.BASE):
     initial_message: Optional[str] = None
     generate_responses: bool = True
     allowed_idle_time_seconds: Optional[float] = None
+    end_conversation_on_goodbye: bool = False
+
 
 class LLMAgentConfig(AgentConfig, type=AgentType.LLM):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
 
+
 class ChatGPTAlphaAgentConfig(AgentConfig, type=AgentType.CHAT_GPT_ALPHA):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
+
 
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
     generate_responses: bool = False
+
 
 class InformationRetrievalAgentConfig(
     AgentConfig, type=AgentType.INFORMATION_RETRIEVAL
@@ -45,7 +50,10 @@ class InformationRetrievalAgentConfig(
 class EchoAgentConfig(AgentConfig, type=AgentType.ECHO):
     pass
 
-class RESTfulUserImplementedAgentConfig(AgentConfig, type=AgentType.RESTFUL_USER_IMPLEMENTED):
+
+class RESTfulUserImplementedAgentConfig(
+    AgentConfig, type=AgentType.RESTFUL_USER_IMPLEMENTED
+):
     class EndpointConfig(BaseModel):
         url: str
         method: str = "POST"
@@ -55,25 +63,33 @@ class RESTfulUserImplementedAgentConfig(AgentConfig, type=AgentType.RESTFUL_USER
     # generate_response: Optional[EndpointConfig]
     # update_last_bot_message_on_cut_off: Optional[EndpointConfig]
 
+
 class RESTfulAgentInput(BaseModel):
     conversation_id: str
     human_input: str
+
 
 class RESTfulAgentOutputType(str, Enum):
     BASE = "restful_agent_base"
     TEXT = "restful_agent_text"
     END = "restful_agent_end"
 
+
 class RESTfulAgentOutput(TypedModel, type=RESTfulAgentOutputType.BASE):
     pass
+
 
 class RESTfulAgentText(RESTfulAgentOutput, type=RESTfulAgentOutputType.TEXT):
     response: str
 
+
 class RESTfulAgentEnd(RESTfulAgentOutput, type=RESTfulAgentOutputType.END):
     pass
 
-class WebSocketUserImplementedAgentConfig(AgentConfig, type=AgentType.WEBSOCKET_USER_IMPLEMENTED):
+
+class WebSocketUserImplementedAgentConfig(
+    AgentConfig, type=AgentType.WEBSOCKET_USER_IMPLEMENTED
+):
     class RouteConfig(BaseModel):
         url: str
 
@@ -82,17 +98,22 @@ class WebSocketUserImplementedAgentConfig(AgentConfig, type=AgentType.WEBSOCKET_
     # generate_response: Optional[RouteConfig]
     # send_message_on_cut_off: bool = False
 
+
 class WebSocketAgentMessageType(str, Enum):
-    BASE = 'websocket_agent_base'
-    START = 'websocket_agent_start'
-    TEXT = 'websocket_agent_text'
-    READY = 'websocket_agent_ready'
-    STOP = 'websocket_agent_stop'
+    BASE = "websocket_agent_base"
+    START = "websocket_agent_start"
+    TEXT = "websocket_agent_text"
+    READY = "websocket_agent_ready"
+    STOP = "websocket_agent_stop"
+
 
 class WebSocketAgentMessage(TypedModel, type=WebSocketAgentMessageType.BASE):
     conversation_id: Optional[str] = None
 
-class WebSocketAgentTextMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.TEXT):
+
+class WebSocketAgentTextMessage(
+    WebSocketAgentMessage, type=WebSocketAgentMessageType.TEXT
+):
     class Payload(BaseModel):
         text: str
 
@@ -103,11 +124,19 @@ class WebSocketAgentTextMessage(WebSocketAgentMessage, type=WebSocketAgentMessag
         return cls(data=cls.Payload(text=text), conversation_id=conversation_id)
 
 
-class WebSocketAgentStartMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.START):
+class WebSocketAgentStartMessage(
+    WebSocketAgentMessage, type=WebSocketAgentMessageType.START
+):
     pass
 
-class WebSocketAgentReadyMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.READY):
+
+class WebSocketAgentReadyMessage(
+    WebSocketAgentMessage, type=WebSocketAgentMessageType.READY
+):
     pass
 
-class WebSocketAgentStopMessage(WebSocketAgentMessage, type=WebSocketAgentMessageType.STOP):
+
+class WebSocketAgentStopMessage(
+    WebSocketAgentMessage, type=WebSocketAgentMessageType.STOP
+):
     pass
