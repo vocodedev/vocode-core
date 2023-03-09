@@ -1,5 +1,7 @@
 from typing import Optional
 from enum import Enum
+
+from vocode.models.message import BaseMessage
 from .model import TypedModel, BaseModel
 
 
@@ -15,7 +17,7 @@ class AgentType(str, Enum):
 
 
 class AgentConfig(TypedModel, type=AgentType.BASE):
-    initial_message: Optional[str] = None
+    initial_message: Optional[BaseMessage] = None
     generate_responses: bool = True
     allowed_idle_time_seconds: Optional[float] = None
     end_conversation_on_goodbye: bool = False
