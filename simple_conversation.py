@@ -1,6 +1,14 @@
 import asyncio
 import logging
 import signal
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+import vocode
+
+vocode.api_key = os.getenv("VOCODE_API_KEY")
 
 from vocode.conversation import Conversation
 from vocode.helpers import create_microphone_input_and_speaker_output
@@ -18,6 +26,7 @@ from vocode.models.agent import (
     LLMAgentConfig,
     ChatGPTAgentConfig,
 )
+from vocode.models.message import BaseMessage
 from vocode.models.synthesizer import AzureSynthesizerConfig
 from vocode.user_implemented_agent.restful_agent import RESTfulAgent
 
@@ -36,18 +45,10 @@ if __name__ == "__main__":
         transcriber_config=DeepgramTranscriberConfig.from_input_device(
             microphone_input, endpointing_config=PunctuationEndpointingConfig()
         ),
-        # agent_config=WebSocketUserImplementedAgentConfig(
-        #     initial_message="Hello!",
-        #     respond=WebSocketUserImplementedAgentConfig.RouteConfig(
-        #         url="wss://8b7425d5b2ab.ngrok.io/respond",
-        #     )
-        # ),
-        # id="ajay",
         agent_config=ChatGPTAgentConfig(
-            initial_message="goodbye",
-            prompt_preamble="you are an expert on the NBA",
+            initial_message=BaseMessage(text="Hello!"),
+            prompt_preamble="The AI is having a pleasant conversation about life.",
             generate_responses=True,
-            end_conversation_on_goodbye=True,
         ),
         synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
     )
