@@ -1,8 +1,10 @@
-from typing import Optional
+from typing import Optional, Union
 from enum import Enum
 
 from vocode.models.message import BaseMessage
 from .model import TypedModel, BaseModel
+
+FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
 
 
 class AgentType(str, Enum):
@@ -16,11 +18,16 @@ class AgentType(str, Enum):
     WEBSOCKET_USER_IMPLEMENTED = "agent_websocket_user_implemented"
 
 
+class FillerAudioConfig(BaseModel):
+    silence_threshold_seconds: float = FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
+
+
 class AgentConfig(TypedModel, type=AgentType.BASE):
     initial_message: Optional[BaseMessage] = None
     generate_responses: bool = True
     allowed_idle_time_seconds: Optional[float] = None
     end_conversation_on_goodbye: bool = False
+    send_filler_audio: Union[bool, FillerAudioConfig] = False
 
 
 class LLMAgentConfig(AgentConfig, type=AgentType.LLM):

@@ -2,6 +2,9 @@ from fastapi import FastAPI, Response, Form
 from typing import Optional
 import requests
 import uvicorn
+from vocode.models.synthesizer import SynthesizerConfig
+
+from vocode.models.transcriber import TranscriberConfig
 from .. import api_key, BASE_URL
 
 from ..models.agent import AgentConfig
@@ -12,9 +15,15 @@ VOCODE_INBOUND_CALL_URL = f"https://{BASE_URL}/create_inbound_call"
 
 class InboundCallServer:
     def __init__(
-        self, agent_config: AgentConfig, response_on_rate_limit: Optional[str] = None
+        self,
+        agent_config: AgentConfig,
+        transcriber_config: Optional[TranscriberConfig] = None,
+        synthesizer_config: Optional[SynthesizerConfig] = None,
+        response_on_rate_limit: Optional[str] = None,
     ):
         self.agent_config = agent_config
+        self.transcriber_config = transcriber_config
+        self.synthesizer_config = synthesizer_config
         self.app = FastAPI()
         self.app.post("/vocode")(self.handle_call)
         self.response_on_rate_limit = (
@@ -27,7 +36,10 @@ class InboundCallServer:
             VOCODE_INBOUND_CALL_URL,
             headers={"Authorization": f"Bearer {api_key}"},
             json=CreateInboundCall(
-                agent_config=self.agent_config, twilio_sid=twilio_sid
+                agent_config=self.agent_config,
+                twilio_sid=twilio_sid,
+                transcriber_config=self.transcriber_config,
+                synthesizer_config=self.synthesizer_config,
             ).dict(),
         )
         if response.status_code == 429:
