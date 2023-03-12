@@ -5,6 +5,9 @@ from vocode.models.message import BaseMessage
 from .model import TypedModel, BaseModel
 
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
+LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
+LLM_AGENT_DEFAULT_MAX_TOKENS = 256
+LLM_AGENT_DEFAULT_MODEL_NAME = "text-curie-001"
 
 
 class AgentType(str, Enum):
@@ -33,17 +36,24 @@ class AgentConfig(TypedModel, type=AgentType.BASE):
 class LLMAgentConfig(AgentConfig, type=AgentType.LLM):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
+    model_name: str = LLM_AGENT_DEFAULT_MODEL_NAME
+    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
+    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
 
 
 class ChatGPTAlphaAgentConfig(AgentConfig, type=AgentType.CHAT_GPT_ALPHA):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
+    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
+    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
 
 
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
     generate_responses: bool = False
+    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
+    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
 
 
 class InformationRetrievalAgentConfig(
