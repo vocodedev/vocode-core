@@ -1,6 +1,8 @@
 from typing import Optional, Union
 from enum import Enum
 
+from pydantic import validator
+
 from vocode.models.message import BaseMessage
 from .model import TypedModel, BaseModel
 
@@ -23,6 +25,16 @@ class AgentType(str, Enum):
 
 class FillerAudioConfig(BaseModel):
     silence_threshold_seconds: float = FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
+    use_phrases: bool = True
+    use_typing_noise: bool = False
+
+    @validator("use_typing_noise")
+    def typing_noise_excludes_phrases(cls, v, values):
+        if v and values.get("use_phrases"):
+            values["use_phrases"] = False
+        if not v and not values.get("use_phrases"):
+            raise ValueError("must use either typing noise or phrases for filler audio")
+        return v
 
 
 class AgentConfig(TypedModel, type=AgentType.BASE):
