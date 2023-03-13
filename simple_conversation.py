@@ -19,6 +19,7 @@ from vocode.models.transcriber import (
 )
 from vocode.models.agent import (
     ChatGPTAgentConfig,
+    FillerAudioConfig,
     RESTfulUserImplementedAgentConfig,
     WebSocketUserImplementedAgentConfig,
     EchoAgentConfig,
@@ -43,12 +44,14 @@ if __name__ == "__main__":
         input_device=microphone_input,
         output_device=speaker_output,
         transcriber_config=DeepgramTranscriberConfig.from_input_device(
-            microphone_input, endpointing_config=PunctuationEndpointingConfig()
+            microphone_input
         ),
         agent_config=ChatGPTAgentConfig(
             initial_message=BaseMessage(text="Hello!"),
             prompt_preamble="The AI is having a pleasant conversation about life.",
-            generate_responses=True,
+            generate_responses=False,
+            end_conversation_on_goodbye=True,
+            send_filler_audio=FillerAudioConfig(use_typing_noise=True),
         ),
         synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
     )
