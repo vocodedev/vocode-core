@@ -46,12 +46,12 @@ if __name__ == "__main__":
         transcriber_config=DeepgramTranscriberConfig.from_input_device(
             microphone_input
         ),
-        agent_config=ChatGPTAgentConfig(
+        agent_config=WebSocketUserImplementedAgentConfig(
             initial_message=BaseMessage(text="Hello!"),
-            prompt_preamble="The AI is having a pleasant conversation about life.",
-            generate_responses=False,
-            end_conversation_on_goodbye=True,
-            send_filler_audio=FillerAudioConfig(use_typing_noise=True),
+            generate_responses=True,
+            respond=WebSocketUserImplementedAgentConfig.RouteConfig(
+                url="wss://9b1ff0eee874.ngrok.app/respond",
+            ),
         ),
         synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
     )
