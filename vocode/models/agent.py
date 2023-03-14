@@ -134,6 +134,7 @@ class WebSocketAgentMessageType(str, Enum):
     BASE = "websocket_agent_base"
     START = "websocket_agent_start"
     TEXT = "websocket_agent_text"
+    TEXT_END = "websocket_agent_text_end"
     READY = "websocket_agent_ready"
     STOP = "websocket_agent_stop"
 
@@ -169,5 +170,11 @@ class WebSocketAgentReadyMessage(
 
 class WebSocketAgentStopMessage(
     WebSocketAgentMessage, type=WebSocketAgentMessageType.STOP
+):
+    pass
+
+
+class WebSocketAgentTextEndMessage(
+    WebSocketAgentMessage, type=WebSocketAgentMessageType.TEXT_END
 ):
     pass
