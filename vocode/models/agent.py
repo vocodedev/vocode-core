@@ -58,13 +58,6 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM):
     cut_off_response: Optional[CutOffResponse] = None
 
 
-class ChatGPTAlphaAgentConfig(AgentConfig, type=AgentType.CHAT_GPT_ALPHA):
-    prompt_preamble: str
-    expected_first_prompt: Optional[str] = None
-    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
-    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
-
-
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
