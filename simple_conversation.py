@@ -19,6 +19,7 @@ from vocode.models.transcriber import (
 )
 from vocode.models.agent import (
     ChatGPTAgentConfig,
+    CutOffResponse,
     FillerAudioConfig,
     RESTfulUserImplementedAgentConfig,
     WebSocketUserImplementedAgentConfig,
@@ -46,12 +47,11 @@ if __name__ == "__main__":
         transcriber_config=DeepgramTranscriberConfig.from_input_device(
             microphone_input
         ),
-        agent_config=WebSocketUserImplementedAgentConfig(
+        agent_config=ChatGPTAgentConfig(
             initial_message=BaseMessage(text="Hello!"),
+            prompt_preamble="The AI is having a pleasant conversation about life",
             generate_responses=True,
-            respond=WebSocketUserImplementedAgentConfig.RouteConfig(
-                url="wss://9b1ff0eee874.ngrok.app/respond",
-            ),
+            cut_off_response=CutOffResponse(),
         ),
         synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
     )
