@@ -24,7 +24,6 @@ from vocode.models.agent import (
     RESTfulUserImplementedAgentConfig,
     WebSocketUserImplementedAgentConfig,
     EchoAgentConfig,
-    ChatGPTAlphaAgentConfig,
     LLMAgentConfig,
     ChatGPTAgentConfig,
 )
