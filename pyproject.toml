@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vocode"
-version = "0.1.42"
+version = "0.1.43"
 description = "The all-in-one voice SDK"
 authors = ["Ajay Raj <ajay@vocode.dev>"]
 license = "MIT License"
@@ -27,7 +27,7 @@ pycparser = "2.21"
 requests = "2.28.2"
 six = "1.16.0"
 sniffio = "1.3.0"
-sounddevice = "0.4.6"
+sounddevice = { version = "0.4.6", optional = true }
 starlette = "0.25.0"
 urllib3 = "1.26.14"
 uvicorn = "0.20.0"
@@ -38,7 +38,7 @@ mypy-extensions = "1.0.0"
 packaging = "23.0"
 pathspec = "0.11.0"
 platformdirs = "3.1.0"
-pyaudio = "0.2.13"
+pyaudio = { version = "0.2.13", optional = true }
 pycodestyle = "2.10.0"
 pyflakes = "3.0.1"
 pyjwt = "2.6.0"
@@ -46,6 +46,9 @@ python-multipart = "0.0.6"
 pytz = "2022.7.1"
 tomli = "2.0.1"
 twilio = "7.16.5"
+
+[tool.poetry.extras]
+io = ["pyaudio", "sounddevice"]
 
 [build-system]
 requires = ["poetry-core"]
