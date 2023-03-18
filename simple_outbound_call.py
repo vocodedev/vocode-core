@@ -8,15 +8,16 @@ from vocode.models.agent import (
     WebSocketUserImplementedAgentConfig,
 )
 from vocode.models.message import BaseMessage
+from vocode.telephony.zoom_dial_in import ZoomDialIn
 
 if __name__ == "__main__":
-    call = OutboundCall(
-        recipient=CallEntity(
-            phone_number="+11234567890",
-        ),
+    call = ZoomDialIn(
+        recipient=CallEntity(phone_number="<zoom_phone_number>"),
         caller=CallEntity(
-            phone_number="+11234567890",
+            phone_number="<your_phone_number>",
         ),
+        zoom_meeting_id="<zoom_meeting_id>",
+        zoom_meeting_password="<zoom_meeting_password>",
         agent_config=ChatGPTAgentConfig(
             initial_message=BaseMessage(text="the quick fox jumped over the lazy dog "),
             prompt_preamble="respond two sentences at a time",
@@ -29,3 +30,5 @@ if __name__ == "__main__":
         ),
     )
     call.start()
+    input("Press enter to end the call...")
+    call.end()
