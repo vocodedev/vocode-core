@@ -6,7 +6,6 @@ from vocode.telephony.outbound_call import OutboundCall
 from ..models.telephony import (
     CallEntity,
     DialIntoZoomCall,
-    InternalTwilioConfig,
     TwilioConfig,
 )
 import requests
@@ -26,7 +25,7 @@ class ZoomDialIn(OutboundCall):
         transcriber_config: Optional[TranscriberConfig] = None,
         synthesizer_config: Optional[SynthesizerConfig] = None,
         conversation_id: Optional[str] = None,
-        internal_twilio_config: Optional[InternalTwilioConfig] = None,
+        twilio_config: Optional[TwilioConfig] = None,
     ):
         super().__init__(
             recipient=recipient,
@@ -35,7 +34,7 @@ class ZoomDialIn(OutboundCall):
             transcriber_config=transcriber_config,
             synthesizer_config=synthesizer_config,
             conversation_id=conversation_id,
-            internal_twilio_config=internal_twilio_config,
+            twilio_config=twilio_config,
         )
         self.zoom_meeting_id = zoom_meeting_id
         self.zoom_meeting_password = zoom_meeting_password
@@ -53,9 +52,7 @@ class ZoomDialIn(OutboundCall):
                 transcriber_config=self.transcriber_config,
                 synthesizer_config=self.synthesizer_config,
                 conversation_id=self.conversation_id,
-                twilio_config=self.create_twilio_config()
-                if self.internal_twilio_config
-                else None,
+                twilio_config=self.twilio_config,
             ).dict(),
         )
         assert response.ok, response.text

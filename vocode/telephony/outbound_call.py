@@ -2,12 +2,10 @@ from typing import Optional
 from vocode.models.agent import AgentConfig
 from vocode.models.synthesizer import SynthesizerConfig
 from vocode.models.transcriber import TranscriberConfig
-from vocode.telephony.utils import create_access_token
 from ..models.telephony import (
     CallEntity,
     CreateOutboundCall,
     EndOutboundCall,
-    InternalTwilioConfig,
     TwilioConfig,
 )
 import requests
@@ -29,7 +27,7 @@ class OutboundCall:
         transcriber_config: Optional[TranscriberConfig] = None,
         synthesizer_config: Optional[SynthesizerConfig] = None,
         conversation_id: Optional[str] = None,
-        internal_twilio_config: Optional[InternalTwilioConfig] = None,
+        twilio_config: Optional[TwilioConfig] = None,
     ):
         self.recipient = recipient
         self.caller = caller
@@ -37,19 +35,7 @@ class OutboundCall:
         self.transcriber_config = transcriber_config
         self.synthesizer_config = synthesizer_config
         self.conversation_id = conversation_id
-        self.internal_twilio_config = internal_twilio_config
-
-    def create_twilio_config(self) -> TwilioConfig:
-        access_token = create_access_token(self.internal_twilio_config)
-        access_token.add_grant(
-            VoiceGrant(
-                outgoing_application_sid=self.internal_twilio_config.outgoing_application_sid
-            )
-        )
-        return TwilioConfig(
-            account_sid=self.internal_twilio_config.account_sid,
-            access_token=access_token.to_jwt(),
-        )
+        self.twilio_config = twilio_config
 
     def start(self) -> str:
         response = requests.post(
@@ -62,9 +48,7 @@ class OutboundCall:
                 transcriber_config=self.transcriber_config,
                 synthesizer_config=self.synthesizer_config,
                 conversation_id=self.conversation_id,
-                twilio_config=self.create_twilio_config()
-                if self.internal_twilio_config
-                else None,
+                twilio_config=self.twilio_config,
             ).dict(),
         )
         assert response.ok, response.text
@@ -77,6 +61,7 @@ class OutboundCall:
             headers={"Authorization": f"Bearer {api_key}"},
             json=EndOutboundCall(
                 call_id=self.conversation_id,
+                twilio_config=self.twilio_config,
             ).dict(),
         )
-        assert response.ok, response.text
+        assert response.ok or response.status_code == 404, response.text
