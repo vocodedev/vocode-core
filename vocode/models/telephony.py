@@ -5,6 +5,18 @@ from vocode.models.synthesizer import SynthesizerConfig
 from vocode.models.transcriber import TranscriberConfig
 
 
+class TwilioConfig(BaseModel):
+    account_sid: str
+    auth_token: str
+
+
+class InternalTwilioConfig(BaseModel):
+    account_sid: str
+    api_key: str
+    api_secret: str
+    outgoing_application_sid: str
+
+
 class CallEntity(BaseModel):
     phone_number: str
 
@@ -14,6 +26,7 @@ class CreateInboundCall(BaseModel):
     agent_config: AgentConfig
     synthesizer_config: Optional[SynthesizerConfig] = None
     twilio_sid: str
+    twilio_config: Optional[TwilioConfig] = None
 
 
 class EndOutboundCall(BaseModel):
@@ -27,6 +40,7 @@ class CreateOutboundCall(BaseModel):
     agent_config: AgentConfig
     synthesizer_config: Optional[SynthesizerConfig] = None
     conversation_id: Optional[str] = None
+    twilio_config: Optional[TwilioConfig] = None
     # TODO add IVR/etc.
 
 
@@ -39,3 +53,4 @@ class DialIntoZoomCall(BaseModel):
     agent_config: AgentConfig
     synthesizer_config: Optional[SynthesizerConfig] = None
     conversation_id: Optional[str] = None
+    twilio_config: Optional[TwilioConfig] = None
