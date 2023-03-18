@@ -14,7 +14,10 @@ class CreateInboundCall(BaseModel):
     agent_config: AgentConfig
     synthesizer_config: Optional[SynthesizerConfig] = None
     twilio_sid: str
-    conversation_id: Optional[str] = None
+
+
+class EndOutboundCall(BaseModel):
+    call_id: str
 
 
 class CreateOutboundCall(BaseModel):
@@ -25,3 +28,14 @@ class CreateOutboundCall(BaseModel):
     synthesizer_config: Optional[SynthesizerConfig] = None
     conversation_id: Optional[str] = None
     # TODO add IVR/etc.
+
+
+class DialIntoZoomCall(BaseModel):
+    recipient: CallEntity
+    caller: CallEntity
+    zoom_meeting_id: str
+    zoom_meeting_password: Optional[str]
+    transcriber_config: Optional[TranscriberConfig] = None
+    agent_config: AgentConfig
+    synthesizer_config: Optional[SynthesizerConfig] = None
+    conversation_id: Optional[str] = None
