@@ -10,13 +10,6 @@ class TwilioConfig(BaseModel):
     auth_token: str
 
 
-class InternalTwilioConfig(BaseModel):
-    account_sid: str
-    api_key: str
-    api_secret: str
-    outgoing_application_sid: str
-
-
 class CallEntity(BaseModel):
     phone_number: str
 
@@ -31,6 +24,7 @@ class CreateInboundCall(BaseModel):
 
 class EndOutboundCall(BaseModel):
     call_id: str
+    twilio_config: Optional[TwilioConfig] = None
 
 
 class CreateOutboundCall(BaseModel):
