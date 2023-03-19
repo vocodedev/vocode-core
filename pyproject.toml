@@ -40,7 +40,7 @@ pathspec = "0.11.0"
 platformdirs = "3.1.0"
 pyaudio = { version = "0.2.13", optional = true }
 pycodestyle = "2.10.0"
-pyflakes = "3.0.1"
+pyflakes = ">=2.5.0"
 pyjwt = "2.6.0"
 python-multipart = "0.0.6"
 pytz = "2022.7.1"

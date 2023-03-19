@@ -895,4 +895,4 @@ io = ["pyaudio", "sounddevice"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "c28f710ab3d027e3f6914a10d111b5cbae74d29d0fd1f3e264f1350e754f5e41"
+content-hash = "47b9c0199f0de52c11648fa6c036dc30d04f1cbfbd4db480bea4e7de516dbf28"
