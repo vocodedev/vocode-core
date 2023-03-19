@@ -32,7 +32,7 @@ sounddevice==0.4.6
 starlette==0.25.0
 tomli==2.0.1
 twilio==7.16.5
-typing_extensions>=4.0.0
+typing_extensions>=3.10.0.2
 urllib3==1.26.14
 uvicorn==0.20.0
 websockets==10.4
