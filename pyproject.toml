@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vocode"
-version = "0.1.43"
+version = "0.1.44"
 description = "The all-in-one voice SDK"
 authors = ["Ajay Raj <ajay@vocode.dev>"]
 license = "MIT License"
@@ -8,9 +8,9 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-pydantic = "1.10.5"
+pydantic = ">=1.9.0"
 python-dotenv = "0.21.1"
-typing-extensions = "4.5.0"
+typing-extensions = ">=4.0.0"
 websockets = "10.4"
 anyio = "3.6.2"
 certifi = "2022.12.7"
