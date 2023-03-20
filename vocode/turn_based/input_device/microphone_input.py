@@ -25,9 +25,7 @@ class MicrophoneInput(BaseInputDevice):
         self.chunk_size = chunk_size
         self.buffer: Optional[io.BytesIO] = None
         self.wave_writer: Optional[wave.Wave_write] = None
-
-    def create_stream(self):
-        return sd.InputStream(
+        self.stream = sd.InputStream(
             dtype=np.int16,
             channels=1,
             samplerate=self.sampling_rate,
@@ -35,10 +33,12 @@ class MicrophoneInput(BaseInputDevice):
             device=int(self.device_info["index"]),
             callback=self._stream_callback,
         )
+        self.active = False
 
     def _stream_callback(self, in_data: np.ndarray[np.int16], *_args):
-        audio_bytes = in_data.tobytes()
-        self.wave_writer.writeframes(audio_bytes)
+        if self.active:
+            audio_bytes = in_data.tobytes()
+            self.wave_writer.writeframes(audio_bytes)
 
     def create_buffer(self):
         in_memory_wav = io.BytesIO()
@@ -50,10 +50,11 @@ class MicrophoneInput(BaseInputDevice):
 
     def start_listening(self):
         self.buffer, self.wave_writer = self.create_buffer()
-        self.stream = self.create_stream()
+        self.active = True
         self.stream.start()
 
     def end_listening(self) -> AudioSegment:
         self.stream.stop()
+        self.active = False
         self.buffer.seek(0)
         return AudioSegment.from_wav(self.buffer)
