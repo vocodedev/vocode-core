@@ -1,4 +1,7 @@
 from typing import Optional
+import requests
+
+import vocode
 from vocode.models.agent import AgentConfig
 from vocode.models.synthesizer import SynthesizerConfig
 from vocode.models.transcriber import TranscriberConfig
@@ -8,14 +11,6 @@ from ..models.telephony import (
     EndOutboundCall,
     TwilioConfig,
 )
-import requests
-from .. import api_key, BASE_URL
-
-from twilio.jwt.access_token.grants import VoiceGrant
-
-
-VOCODE_CREATE_OUTBOUND_CALL_URL = f"https://{BASE_URL}/create_outbound_call"
-VOCODE_END_OUTBOUND_CALL_URL = f"https://{BASE_URL}/end_outbound_call"
 
 
 class OutboundCall:
@@ -36,11 +31,13 @@ class OutboundCall:
         self.synthesizer_config = synthesizer_config
         self.conversation_id = conversation_id
         self.twilio_config = twilio_config
+        self.vocode_create_outbound_call_url = f"https://{vocode.base_url}/create_outbound_call"
+        self.vocode_end_outbound_call_url = f"https://{vocode.base_url}/end_outbound_call"
 
     def start(self) -> str:
         response = requests.post(
-            VOCODE_CREATE_OUTBOUND_CALL_URL,
-            headers={"Authorization": f"Bearer {api_key}"},
+            self.vocode_create_outbound_call_url,
+            headers={"Authorization": f"Bearer {vocode.api_key}"},
             json=CreateOutboundCall(
                 recipient=self.recipient,
                 caller=self.caller,
@@ -57,8 +54,8 @@ class OutboundCall:
 
     def end(self) -> str:
         response = requests.post(
-            VOCODE_END_OUTBOUND_CALL_URL,
-            headers={"Authorization": f"Bearer {api_key}"},
+            self.vocode_end_outbound_call_url,
+            headers={"Authorization": f"Bearer {vocode.api_key}"},
             json=EndOutboundCall(
                 call_id=self.conversation_id,
                 twilio_config=self.twilio_config,

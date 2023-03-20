@@ -7,18 +7,15 @@ import os
 import logging
 import threading
 import queue
+import vocode
+from vocode.input_device.base_input_device import BaseInputDevice
+from vocode.output_device.base_output_device import BaseOutputDevice
+from vocode.models.transcriber import TranscriberConfig
+from vocode.models.agent import AgentConfig
+from vocode.models.synthesizer import SynthesizerConfig
+from vocode.models.websocket import ReadyMessage, AudioMessage, StartMessage, StopMessage
 
 load_dotenv()
-
-from .input_device.base_input_device import BaseInputDevice
-from .output_device.base_output_device import BaseOutputDevice
-from .models.transcriber import TranscriberConfig
-from .models.agent import AgentConfig
-from .models.synthesizer import SynthesizerConfig
-from .models.websocket import ReadyMessage, AudioMessage, StartMessage, StopMessage
-from . import api_key, BASE_URL
-
-VOCODE_WEBSOCKET_URL = f"wss://{BASE_URL}/conversation"
 
 class Conversation:
     def __init__(
@@ -41,6 +38,7 @@ class Conversation:
         self.active = True
         self.output_loop = asyncio.new_event_loop()
         self.output_audio_queue = queue.Queue()
+        self.vocode_websocket_url = f"wss://{vocode.base_url}/conversation"
 
     async def wait_for_ready(self):
         while not self.receiver_ready:
@@ -63,7 +61,7 @@ class Conversation:
         loop.run_until_complete(run())
 
     async def start(self):
-        async with websockets.connect(f"{VOCODE_WEBSOCKET_URL}?key={api_key}") as ws:
+        async with websockets.connect(f"{self.vocode_websocket_url}?key={vocode.api_key}") as ws:
 
             async def sender(ws: WebSocketClientProtocol):
                 start_message = StartMessage(
