@@ -8,16 +8,24 @@ import logging
 import threading
 import queue
 import vocode
-from vocode.input_device.base_input_device import BaseInputDevice
-from vocode.output_device.base_output_device import BaseOutputDevice
-from vocode.models.transcriber import TranscriberConfig
-from vocode.models.agent import AgentConfig
-from vocode.models.synthesizer import SynthesizerConfig
-from vocode.models.websocket import ReadyMessage, AudioMessage, StartMessage, StopMessage
+from vocode.streaming.input_device.base_input_device import (
+    BaseInputDevice,
+)
+from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.models.transcriber import TranscriberConfig
+from vocode.streaming.models.agent import AgentConfig
+from vocode.streaming.models.synthesizer import SynthesizerConfig
+from vocode.streaming.models.websocket import (
+    ReadyMessage,
+    AudioMessage,
+    StartMessage,
+    StopMessage,
+)
 
 load_dotenv()
 
-class Conversation:
+
+class StreamingConversation:
     def __init__(
         self,
         input_device: BaseInputDevice,
@@ -61,14 +69,16 @@ class Conversation:
         loop.run_until_complete(run())
 
     async def start(self):
-        async with websockets.connect(f"{self.vocode_websocket_url}?key={vocode.api_key}") as ws:
+        async with websockets.connect(
+            f"{self.vocode_websocket_url}?key={vocode.api_key}"
+        ) as ws:
 
             async def sender(ws: WebSocketClientProtocol):
                 start_message = StartMessage(
                     transcriber_config=self.transcriber_config,
                     agent_config=self.agent_config,
                     synthesizer_config=self.synthesizer_config,
-                    conversation_id=self.id
+                    conversation_id=self.id,
                 )
                 await ws.send(start_message.json())
                 await self.wait_for_ready()

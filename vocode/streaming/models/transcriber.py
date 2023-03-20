@@ -1,8 +1,11 @@
 from enum import Enum
 from typing import Optional
+
+from vocode.streaming.input_device.base_input_device import (
+    BaseInputDevice,
+)
 from .audio_encoding import AudioEncoding
 from .model import BaseModel, TypedModel
-from ..input_device.base_input_device import BaseInputDevice
 
 
 class TranscriberType(str, Enum):

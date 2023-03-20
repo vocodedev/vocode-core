@@ -1,14 +1,14 @@
-from vocode.models.synthesizer import AzureSynthesizerConfig
-from vocode.output_device.telephone_output import TelephoneOutput
-from vocode.telephony.outbound_call import OutboundCall
-from vocode.models.telephony import CallEntity
-from vocode.models.agent import (
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.output_device.telephone_output import TelephoneOutput
+from vocode.streaming.telephony.outbound_call import OutboundCall
+from vocode.streaming.models.telephony import CallEntity
+from vocode.streaming.models.agent import (
     EchoAgentConfig,
     ChatGPTAgentConfig,
     WebSocketUserImplementedAgentConfig,
 )
-from vocode.models.message import BaseMessage
-from vocode.telephony.zoom_dial_in import ZoomDialIn
+from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.telephony.zoom_dial_in import ZoomDialIn
 
 if __name__ == "__main__":
     call = ZoomDialIn(
@@ -24,7 +24,7 @@ if __name__ == "__main__":
             generate_responses=True,
             end_conversation_on_goodbye=True,
             send_filler_audio=True,
-            allowed_idle_time_seconds=30
+            allowed_idle_time_seconds=30,
         ),
         synthesizer_config=AzureSynthesizerConfig.from_output_device(
             output_device=TelephoneOutput(), voice_name="en-US-JennyNeural"

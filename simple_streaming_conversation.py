@@ -3,14 +3,14 @@ import logging
 import signal
 from dotenv import load_dotenv
 import os
-from vocode.conversation import Conversation
+from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.helpers import create_microphone_input_and_speaker_output
-from vocode.models.transcriber import (
+from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
     GoogleTranscriberConfig,
 )
-from vocode.models.agent import (
+from vocode.streaming.models.agent import (
     ChatGPTAgentConfig,
     CutOffResponse,
     FillerAudioConfig,
@@ -20,9 +20,9 @@ from vocode.models.agent import (
     LLMAgentConfig,
     ChatGPTAgentConfig,
 )
-from vocode.models.message import BaseMessage
-from vocode.models.synthesizer import AzureSynthesizerConfig
-from vocode.user_implemented_agent.restful_agent import RESTfulAgent
+from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.user_implemented_agent.restful_agent import RESTfulAgent
 import vocode
 
 load_dotenv()
@@ -34,10 +34,10 @@ logging.root.setLevel(logging.INFO)
 
 if __name__ == "__main__":
     microphone_input, speaker_output = create_microphone_input_and_speaker_output(
-        use_default_devices=False
+        streaming=True, use_default_devices=False
     )
 
-    conversation = Conversation(
+    conversation = StreamingConversation(
         input_device=microphone_input,
         output_device=speaker_output,
         transcriber_config=DeepgramTranscriberConfig.from_input_device(

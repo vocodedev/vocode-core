@@ -1,6 +1,6 @@
 from typing import AsyncGenerator
-from vocode.user_implemented_agent.restful_agent import RESTfulAgent
-from vocode.models.agent import (
+from vocode.streaming.user_implemented_agent.restful_agent import RESTfulAgent
+from vocode.streaming.models.agent import (
     RESTfulAgentOutput,
     RESTfulAgentText,
     RESTfulAgentEnd,
@@ -9,7 +9,7 @@ from vocode.models.agent import (
     WebSocketAgentTextMessage,
     WebSocketAgentStopMessage,
 )
-from vocode.user_implemented_agent.websocket_agent import WebSocketAgent
+from vocode.streaming.user_implemented_agent.websocket_agent import WebSocketAgent
 
 
 class TestRESTfulAgent(RESTfulAgent):

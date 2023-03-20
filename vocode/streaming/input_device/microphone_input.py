@@ -4,25 +4,33 @@ from typing import Optional
 import queue
 import wave
 
-from .base_input_device import BaseInputDevice
-from ..models.audio_encoding import AudioEncoding
+from vocode.streaming.input_device.base_input_device import BaseInputDevice
+from vocode.streaming.models.audio_encoding import AudioEncoding
+
 
 class MicrophoneInput(BaseInputDevice):
-
     DEFAULT_SAMPLING_RATE = 44100
     DEFAULT_CHUNK_SIZE = 2048
 
-    def __init__(self, device_info: dict, sampling_rate: int = None, chunk_size: int = DEFAULT_CHUNK_SIZE, microphone_gain: int = 1):
+    def __init__(
+        self,
+        device_info: dict,
+        sampling_rate: int = None,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
+        microphone_gain: int = 1,
+    ):
         self.device_info = device_info
-        sampling_rate = sampling_rate or (self.device_info.get('default_samplerate', self.DEFAULT_SAMPLING_RATE))
+        sampling_rate = sampling_rate or (
+            self.device_info.get("default_samplerate", self.DEFAULT_SAMPLING_RATE)
+        )
         super().__init__(int(sampling_rate), AudioEncoding.LINEAR16, chunk_size)
         self.stream = sd.InputStream(
             dtype=np.int16,
             channels=1,
-             samplerate=self.sampling_rate,
+            samplerate=self.sampling_rate,
             blocksize=self.chunk_size,
-            device=int(self.device_info['index']),
-            callback=self._stream_callback
+            device=int(self.device_info["index"]),
+            callback=self._stream_callback,
         )
         self.stream.start()
         self.queue = queue.Queue()
