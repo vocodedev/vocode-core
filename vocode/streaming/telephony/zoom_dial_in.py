@@ -2,11 +2,11 @@ from typing import Optional
 import requests
 
 import vocode
-from vocode.models.agent import AgentConfig
-from vocode.models.synthesizer import SynthesizerConfig
-from vocode.models.transcriber import TranscriberConfig
-from vocode.telephony.outbound_call import OutboundCall
-from vocode.models.telephony import (
+from vocode.streaming.models.agent import AgentConfig
+from vocode.streaming.models.synthesizer import SynthesizerConfig
+from vocode.streaming.models.transcriber import TranscriberConfig
+from vocode.streaming.telephony.outbound_call import OutboundCall
+from vocode.streaming.models.telephony import (
     CallEntity,
     DialIntoZoomCall,
     TwilioConfig,

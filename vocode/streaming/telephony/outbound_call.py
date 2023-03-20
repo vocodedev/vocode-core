@@ -2,9 +2,9 @@ from typing import Optional
 import requests
 
 import vocode
-from vocode.models.agent import AgentConfig
-from vocode.models.synthesizer import SynthesizerConfig
-from vocode.models.transcriber import TranscriberConfig
+from vocode.streaming.models.agent import AgentConfig
+from vocode.streaming.models.synthesizer import SynthesizerConfig
+from vocode.streaming.models.transcriber import TranscriberConfig
 from ..models.telephony import (
     CallEntity,
     CreateOutboundCall,
@@ -31,8 +31,12 @@ class OutboundCall:
         self.synthesizer_config = synthesizer_config
         self.conversation_id = conversation_id
         self.twilio_config = twilio_config
-        self.vocode_create_outbound_call_url = f"https://{vocode.base_url}/create_outbound_call"
-        self.vocode_end_outbound_call_url = f"https://{vocode.base_url}/end_outbound_call"
+        self.vocode_create_outbound_call_url = (
+            f"https://{vocode.base_url}/create_outbound_call"
+        )
+        self.vocode_end_outbound_call_url = (
+            f"https://{vocode.base_url}/end_outbound_call"
+        )
 
     def start(self) -> str:
         response = requests.post(

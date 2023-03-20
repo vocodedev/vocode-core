@@ -3,7 +3,7 @@ from enum import Enum
 
 from pydantic import validator
 
-from vocode.models.message import BaseMessage
+from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
 
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5

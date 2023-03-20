@@ -4,10 +4,15 @@ import requests
 import uvicorn
 
 import vocode
-from vocode.models.transcriber import TranscriberConfig
-from vocode.models.synthesizer import SynthesizerConfig
-from vocode.models.agent import AgentConfig
-from vocode.models.telephony import CreateInboundCall, TwilioConfig, TwilioConfig
+from vocode.streaming.models.transcriber import TranscriberConfig
+from vocode.streaming.models.synthesizer import SynthesizerConfig
+from vocode.streaming.models.agent import AgentConfig
+from vocode.streaming.models.telephony import (
+    CreateInboundCall,
+    TwilioConfig,
+    TwilioConfig,
+)
+
 
 class InboundCallServer:
     def __init__(

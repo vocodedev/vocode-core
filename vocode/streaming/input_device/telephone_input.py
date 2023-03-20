@@ -1,5 +1,7 @@
-from vocode.input_device.base_input_device import BaseInputDevice
-from vocode.models.audio_encoding import AudioEncoding
+from vocode.streaming.input_device.base_input_device import (
+    BaseInputDevice,
+)
+from vocode.streaming.models.audio_encoding import AudioEncoding
 
 
 class TelephoneInput(BaseInputDevice):

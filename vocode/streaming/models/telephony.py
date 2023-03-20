@@ -1,8 +1,8 @@
 from typing import Optional
-from vocode.models.model import BaseModel
-from vocode.models.agent import AgentConfig
-from vocode.models.synthesizer import SynthesizerConfig
-from vocode.models.transcriber import TranscriberConfig
+from vocode.streaming.models.model import BaseModel
+from vocode.streaming.models.agent import AgentConfig
+from vocode.streaming.models.synthesizer import SynthesizerConfig
+from vocode.streaming.models.transcriber import TranscriberConfig
 
 
 class TwilioConfig(BaseModel):
