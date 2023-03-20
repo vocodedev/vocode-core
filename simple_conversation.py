@@ -3,13 +3,6 @@ import logging
 import signal
 from dotenv import load_dotenv
 import os
-
-load_dotenv()
-
-import vocode
-
-vocode.api_key = os.getenv("VOCODE_API_KEY")
-
 from vocode.conversation import Conversation
 from vocode.helpers import create_microphone_input_and_speaker_output
 from vocode.models.transcriber import (
@@ -30,6 +23,10 @@ from vocode.models.agent import (
 from vocode.models.message import BaseMessage
 from vocode.models.synthesizer import AzureSynthesizerConfig
 from vocode.user_implemented_agent.restful_agent import RESTfulAgent
+import vocode
+
+load_dotenv()
+vocode.api_key = os.getenv("VOCODE_API_KEY")
 
 logging.basicConfig()
 logging.root.setLevel(logging.INFO)

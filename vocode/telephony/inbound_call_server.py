@@ -2,17 +2,12 @@ from fastapi import FastAPI, Response, Form
 from typing import Optional
 import requests
 import uvicorn
-from vocode.models.synthesizer import SynthesizerConfig
-from twilio.jwt.access_token.grants import VoiceGrant
 
+import vocode
 from vocode.models.transcriber import TranscriberConfig
-from .. import api_key, BASE_URL
-
-from ..models.agent import AgentConfig
-from ..models.telephony import CreateInboundCall, TwilioConfig, TwilioConfig
-
-VOCODE_INBOUND_CALL_URL = f"https://{BASE_URL}/create_inbound_call"
-
+from vocode.models.synthesizer import SynthesizerConfig
+from vocode.models.agent import AgentConfig
+from vocode.models.telephony import CreateInboundCall, TwilioConfig, TwilioConfig
 
 class InboundCallServer:
     def __init__(
@@ -33,11 +28,12 @@ class InboundCallServer:
             or "The line is really busy right now, check back later!"
         )
         self.twilio_config = twilio_config
+        self.vocode_inbound_call_url = f"https://{vocode.base_url}/create_inbound_call"
 
     async def handle_call(self, twilio_sid: str = Form(alias="CallSid")):
         response = requests.post(
-            VOCODE_INBOUND_CALL_URL,
-            headers={"Authorization": f"Bearer {api_key}"},
+            self.vocode_inbound_call_url,
+            headers={"Authorization": f"Bearer {vocode.api_key}"},
             json=CreateInboundCall(
                 agent_config=self.agent_config,
                 twilio_sid=twilio_sid,

@@ -1,17 +1,16 @@
 from typing import Optional
+import requests
+
+import vocode
 from vocode.models.agent import AgentConfig
 from vocode.models.synthesizer import SynthesizerConfig
 from vocode.models.transcriber import TranscriberConfig
 from vocode.telephony.outbound_call import OutboundCall
-from ..models.telephony import (
+from vocode.models.telephony import (
     CallEntity,
     DialIntoZoomCall,
     TwilioConfig,
 )
-import requests
-from .. import api_key, BASE_URL
-
-VOCODE_ZOOM_DIAL_IN_URL = f"https://{BASE_URL}/dial_into_zoom_call"
 
 
 class ZoomDialIn(OutboundCall):
@@ -38,11 +37,12 @@ class ZoomDialIn(OutboundCall):
         )
         self.zoom_meeting_id = zoom_meeting_id
         self.zoom_meeting_password = zoom_meeting_password
+        self.vocode_zoom_dial_in_url = f"https://{vocode.base_url}/dial_into_zoom_call"
 
     def start(self) -> str:
         response = requests.post(
-            VOCODE_ZOOM_DIAL_IN_URL,
-            headers={"Authorization": f"Bearer {api_key}"},
+            self.vocode_zoom_dial_in_url,
+            headers={"Authorization": f"Bearer {vocode.api_key}"},
             json=DialIntoZoomCall(
                 recipient=self.recipient,
                 caller=self.caller,
