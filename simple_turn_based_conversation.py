@@ -8,9 +8,11 @@ from vocode.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.turn_based.transcriber.whisper_transcriber import WhisperTranscriber
 from vocode.turn_based.turn_based_conversation import TurnBasedConversation
 
-load_dotenv()
-vocode.api_key = os.getenv("VOCODE_API_KEY")
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
+load_dotenv()
 
 if __name__ == "__main__":
     microphone_input, speaker_output = create_microphone_input_and_speaker_output(
@@ -26,8 +28,14 @@ if __name__ == "__main__":
             initial_message="Hello!",
         ),
         synthesizer=AzureSynthesizer(sampling_rate=speaker_output.sampling_rate),
+        logger=logger,
     )
+    print("Starting conversation. Press Ctrl+C to exit.")
     while True:
-        conversation.start_speech()
-        input("Press enter to end speech")
-        conversation.end_speech_and_respond()
+        try:
+            input("Press enter to start recording...")
+            conversation.start_speech()
+            input("Press enter to end recording...")
+            conversation.end_speech_and_respond()
+        except KeyboardInterrupt:
+            break
