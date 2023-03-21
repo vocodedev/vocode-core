@@ -1,19 +1,22 @@
 import os
-from dotenv import load_dotenv
+from typing import Optional
 import azure.cognitiveservices.speech as speechsdk
 from pydub import AudioSegment
 
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
-load_dotenv()
-
 
 class AzureSynthesizer(BaseSynthesizer):
-    def __init__(self, sampling_rate: int):
+    def __init__(
+        self,
+        sampling_rate: int,
+        api_key: Optional[str] = None,
+        region: Optional[str] = None,
+    ):
         self.sampling_rate = sampling_rate
         speech_config = speechsdk.SpeechConfig(
-            subscription=os.environ.get("AZURE_SPEECH_KEY"),
-            region=os.environ.get("AZURE_SPEECH_REGION"),
+            subscription=os.getenv("AZURE_SPEECH_KEY", api_key),
+            region=os.getenv("AZURE_SPEECH_REGION", region),
         )
         if self.sampling_rate == 44100:
             speech_config.set_speech_synthesis_output_format(

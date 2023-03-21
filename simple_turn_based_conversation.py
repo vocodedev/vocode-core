@@ -2,7 +2,6 @@ import logging
 from dotenv import load_dotenv
 import os
 from vocode.helpers import create_microphone_input_and_speaker_output
-import vocode
 from vocode.turn_based.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.turn_based.transcriber.whisper_transcriber import WhisperTranscriber
@@ -22,12 +21,17 @@ if __name__ == "__main__":
     conversation = TurnBasedConversation(
         input_device=microphone_input,
         output_device=speaker_output,
-        transcriber=WhisperTranscriber(),
+        transcriber=WhisperTranscriber(api_key=os.getenv("OPENAI_API_KEY")),
         agent=ChatGPTAgent(
             system_prompt="The AI is having a pleasant conversation about life",
             initial_message="Hello!",
+            api_key=os.getenv("OPENAI_API_KEY"),
         ),
-        synthesizer=AzureSynthesizer(sampling_rate=speaker_output.sampling_rate),
+        synthesizer=AzureSynthesizer(
+            sampling_rate=speaker_output.sampling_rate,
+            api_key=os.getenv("AZURE_SPEECH_KEY"),
+            region=os.getenv("AZURE_SPEECH_REGION"),
+        ),
         logger=logger,
     )
     print("Starting conversation. Press Ctrl+C to exit.")

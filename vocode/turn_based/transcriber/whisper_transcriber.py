@@ -1,17 +1,18 @@
+from typing import Optional
 from pydub import AudioSegment
 import io
 import os
-from dotenv import load_dotenv
 import openai
 
 from vocode.turn_based.transcriber.base_transcriber import BaseTranscriber
 
-load_dotenv()
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
 
 class WhisperTranscriber(BaseTranscriber):
+    def __init__(self, api_key: Optional[str] = None):
+        openai.api_key = os.getenv("OPENAI_API_KEY", api_key)
+        if not openai.api_key:
+            raise ValueError("OpenAI API key not provided")
+
     def transcribe(self, audio_segment: AudioSegment) -> str:
         in_memory_wav = io.BytesIO()
         audio_segment.export(in_memory_wav, format="wav")
