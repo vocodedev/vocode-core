@@ -4,6 +4,7 @@ import os
 from vocode.helpers import create_microphone_input_and_speaker_output
 from vocode.turn_based.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
+from vocode.turn_based.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 from vocode.turn_based.transcriber.whisper_transcriber import WhisperTranscriber
 from vocode.turn_based.turn_based_conversation import TurnBasedConversation
 
@@ -12,6 +13,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 load_dotenv()
+
+# See https://api.elevenlabs.io/v1/voices
+ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
 if __name__ == "__main__":
     microphone_input, speaker_output = create_microphone_input_and_speaker_output(
@@ -27,10 +31,9 @@ if __name__ == "__main__":
             initial_message="Hello!",
             api_key=os.getenv("OPENAI_API_KEY"),
         ),
-        synthesizer=AzureSynthesizer(
-            sampling_rate=speaker_output.sampling_rate,
-            api_key=os.getenv("AZURE_SPEECH_KEY"),
-            region=os.getenv("AZURE_SPEECH_REGION"),
+        synthesizer=ElevenLabsSynthesizer(
+            voice_id=ADAM_VOICE_ID,
+            api_key=os.getenv("ELEVEN_LABS_API_KEY"),
         ),
         logger=logger,
     )
