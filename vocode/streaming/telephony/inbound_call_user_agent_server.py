@@ -13,7 +13,7 @@ from vocode.streaming.models.transcriber import (
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 
 
-class InboundCallAndAgentServer(InboundCallServer):
+class InboundCallUserAgentServer(InboundCallServer):
     def __init__(
         self,
         agent_config: RESTfulUserImplementedAgentConfig,
