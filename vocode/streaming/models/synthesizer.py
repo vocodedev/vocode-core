@@ -12,6 +12,7 @@ class SynthesizerType(str, Enum):
     AZURE = "synthesizer_azure"
     GOOGLE = "synthesizer_google"
     ELEVEN_LABS = "synthesizer_eleven_labs"
+    RIME = "synthesizer_rime"
 
 
 class TrackBotSentimentConfig(BaseModel):
@@ -71,3 +72,19 @@ class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE):
 
 class GoogleSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GOOGLE):
     pass
+
+
+class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME):
+    speaker: str
+
+    @classmethod
+    def from_output_device(
+        cls,
+        output_device: BaseOutputDevice,
+        speaker: str,
+    ):
+        return cls(
+            sampling_rate=output_device.sampling_rate,
+            audio_encoding=output_device.audio_encoding,
+            speaker=speaker,
+        )
