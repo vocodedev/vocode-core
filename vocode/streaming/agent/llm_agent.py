@@ -5,6 +5,7 @@ from langchain import OpenAI
 from langchain.llms import OpenAIChat
 from typing import Generator
 import logging
+from vocode import getenv
 
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.utils import stream_llm_response
@@ -43,6 +44,7 @@ class LLMAgent(BaseAgent):
             model_name=self.agent_config.model_name,
             temperature=self.agent_config.temperature,
             max_tokens=self.agent_config.max_tokens,
+            openai_api_key=getenv("OPENAI_API_KEY"),
         )
         self.stop_tokens = [f"{recipient}:"]
         self.first_response = (

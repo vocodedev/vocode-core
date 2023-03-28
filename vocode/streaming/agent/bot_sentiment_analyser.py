@@ -3,6 +3,8 @@ from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
 from pydantic import BaseModel
 
+from vocode import getenv
+
 TEMPLATE = """
 Read the following conversation classify the final emotion of the Bot as one of [{emotions}].
 Output the degree of emotion as a value between 0 and 1 in the format EMOTION,DEGREE: ex. {example_emotion},0.5
@@ -22,7 +24,7 @@ class BotSentimentAnalyser:
     def __init__(self, emotions: list[str], model_name: str = "text-davinci-003"):
         self.model_name = model_name
         self.llm = OpenAI(
-            model_name=self.model_name,
+            model_name=self.model_name, openai_api_key=getenv("OPENAI_API_KEY")
         )
         assert len(emotions) > 0
         self.emotions = [e.lower() for e in emotions]
