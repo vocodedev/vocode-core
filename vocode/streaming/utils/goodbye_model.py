@@ -1,3 +1,4 @@
+import os
 import asyncio
 import openai
 import numpy as np
