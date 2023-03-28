@@ -1,0 +1,143 @@
+import logging
+from typing import Optional
+from fastapi import APIRouter, Form, Response
+from pydantic import BaseModel
+from vocode.streaming.agent.base_agent import BaseAgent
+from vocode.streaming.models.agent import AgentConfig
+from vocode.streaming.models.synthesizer import (
+    AzureSynthesizerConfig,
+    SynthesizerConfig,
+)
+from vocode.streaming.models.transcriber import (
+    DeepgramTranscriberConfig,
+    PunctuationEndpointingConfig,
+    TranscriberConfig,
+)
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.telephony.config_manager.base_config_manager import (
+    BaseConfigManager,
+)
+from vocode.streaming.telephony.constants import (
+    DEFAULT_AUDIO_ENCODING,
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_SAMPLING_RATE,
+)
+
+from vocode.streaming.telephony.server.router.calls import CallsRouter
+from vocode.streaming.telephony.server.router.twiml import TwiMLRouter
+from vocode.streaming.models.telephony import (
+    CallConfig,
+    CallEntity,
+    CreateOutboundCall,
+    CreateInboundCall,
+    DialIntoZoomCall,
+    EndOutboundCall,
+    TwilioConfig,
+)
+from twilio.rest import Client
+
+from vocode.streaming.telephony.conversation.call import Call
+from vocode.streaming.telephony.templates import Templater
+from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
+from vocode.streaming.utils import create_conversation_id
+
+
+class InboundCallConfig(BaseModel):
+    url: str
+    agent_config: AgentConfig
+    twilio_config: TwilioConfig
+    transcriber_config: Optional[TranscriberConfig] = None
+    synthesizer_config: Optional[SynthesizerConfig] = None
+
+
+class TelephonyServer:
+    def __init__(
+        self,
+        base_url: str,
+        config_manager: BaseConfigManager,
+        inbound_call_configs: list[InboundCallConfig] = [],
+        logger: Optional[logging.Logger] = None,
+    ):
+        self.base_url = base_url
+        self.logger = logger or logging.getLogger(__name__)
+        self.router = APIRouter()
+        self.config_manager = config_manager
+        self.templater = Templater()
+        self.router.include_router(
+            CallsRouter(
+                base_url=base_url,
+                templater=self.templater,
+                config_manager=self.config_manager,
+                logger=self.logger,
+            ).get_router()
+        )
+        self.router.include_router(
+            TwiMLRouter(
+                base_url=base_url, templater=self.templater, logger=self.logger
+            ).get_router()
+        )
+        for config in inbound_call_configs:
+            self.router.add_api_route(
+                config.url,
+                self.create_inbound_route(
+                    agent_config=config.agent_config,
+                    twilio_config=config.twilio_config,
+                    transcriber_config=config.transcriber_config,
+                    synthesizer_config=config.synthesizer_config,
+                ),
+                methods=["POST"],
+            )
+            logger.info(f"Set up inbound call TwiML at https://{base_url}{config.url}")
+
+    def create_inbound_route(
+        self,
+        agent_config: AgentConfig,
+        twilio_config: TwilioConfig,
+        transcriber_config: Optional[TranscriberConfig] = None,
+        synthesizer_config: Optional[SynthesizerConfig] = None,
+    ):
+        def route(twilio_sid: str = Form(alias="CallSid")) -> Response:
+            call_config = CallConfig(
+                transcriber_config=transcriber_config
+                or DeepgramTranscriberConfig(
+                    sampling_rate=DEFAULT_SAMPLING_RATE,
+                    audio_encoding=DEFAULT_AUDIO_ENCODING,
+                    chunk_size=DEFAULT_CHUNK_SIZE,
+                    model="voicemail",
+                    endpointing_config=PunctuationEndpointingConfig(),
+                ),
+                agent_config=agent_config,
+                synthesizer_config=synthesizer_config
+                or AzureSynthesizerConfig(
+                    sampling_rate=DEFAULT_SAMPLING_RATE,
+                    audio_encoding=DEFAULT_AUDIO_ENCODING,
+                ),
+                twilio_config=twilio_config,
+                twilio_sid=twilio_sid,
+            )
+
+            conversation_id = create_conversation_id()
+            self.config_manager.save_config(conversation_id, call_config)
+            return self.templater.get_connection_twiml(
+                base_url=self.base_url, call_id=conversation_id
+            )
+
+        return route
+
+    async def end_outbound_call(self, conversation_id: str):
+        # TODO validation via twilio_client
+        call_config = self.config_manager.get_config(conversation_id)
+        if not call_config:
+            raise ValueError("Call not found")
+        call = Call.from_call_config(
+            self.base_url,
+            call_config,
+            self.config_manager,
+            conversation_id,
+            self.logger,
+        )
+        call.end_twilio_call()
+        return {"id": call.id}
+
+    def get_router(self) -> APIRouter:
+        return self.router

@@ -42,6 +42,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE):
     initial_message: Optional[BaseMessage] = None
     generate_responses: bool = True
     allowed_idle_time_seconds: Optional[float] = None
+    allow_agent_to_be_cut_off: bool = True
     end_conversation_on_goodbye: bool = False
     send_filler_audio: Union[bool, FillerAudioConfig] = False
 
@@ -57,6 +58,13 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM):
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     cut_off_response: Optional[CutOffResponse] = None
+
+
+class ChatGPTAlphaAgentConfig(AgentConfig, type=AgentType.CHAT_GPT_ALPHA):
+    prompt_preamble: str
+    expected_first_prompt: Optional[str] = None
+    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
+    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
 
 
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT):

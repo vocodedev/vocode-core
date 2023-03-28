@@ -1,4 +1,5 @@
 from typing import Optional
+from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.model import BaseModel
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.synthesizer import SynthesizerConfig
@@ -19,6 +20,7 @@ class CreateInboundCall(BaseModel):
     agent_config: AgentConfig
     synthesizer_config: Optional[SynthesizerConfig] = None
     twilio_sid: str
+    conversation_id: Optional[str] = None
     twilio_config: Optional[TwilioConfig] = None
 
 
@@ -48,3 +50,11 @@ class DialIntoZoomCall(BaseModel):
     synthesizer_config: Optional[SynthesizerConfig] = None
     conversation_id: Optional[str] = None
     twilio_config: Optional[TwilioConfig] = None
+
+
+class CallConfig(BaseModel):
+    transcriber_config: TranscriberConfig
+    agent_config: AgentConfig
+    synthesizer_config: SynthesizerConfig
+    twilio_config: Optional[TwilioConfig]
+    twilio_sid: str
