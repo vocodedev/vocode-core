@@ -5,3 +5,4 @@ __pycache__/
 dist/
 credentials.json
 *.npy
+*.bytes
