@@ -1,8 +1,11 @@
 from enum import Enum
 from typing import Optional
 
-from vocode.streaming.input_device.base_input_device import (
-    BaseInputDevice,
+from vocode.streaming.input_device.base_input_device import BaseInputDevice
+from vocode.streaming.telephony.constants import (
+    DEFAULT_AUDIO_ENCODING,
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_SAMPLING_RATE,
 )
 from .audio_encoding import AudioEncoding
 from .model import BaseModel, TypedModel
@@ -54,11 +57,25 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE):
             endpointing_config=endpointing_config,
         )
 
+    @classmethod
+    def from_telephone_input_device(
+        cls,
+        endpointing_config: Optional[EndpointingConfig] = None,
+    ):
+        return cls(
+            sampling_rate=DEFAULT_SAMPLING_RATE,
+            audio_encoding=DEFAULT_AUDIO_ENCODING,
+            chunk_size=DEFAULT_CHUNK_SIZE,
+            endpointing_config=endpointing_config,
+        )
+
 
 class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM):
     model: Optional[str] = None
+    tier: Optional[str] = None
     should_warmup_model: bool = False
     version: Optional[str] = None
+    downsampling: Optional[int] = None
 
 
 class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE):

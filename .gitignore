@@ -3,3 +3,5 @@ __pycache__/
 .env
 .DS_Store
 dist/
+credentials.json
+*.npy

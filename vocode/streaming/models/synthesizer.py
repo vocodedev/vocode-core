@@ -2,9 +2,14 @@ from enum import Enum
 from typing import Optional, Union
 
 from pydantic import BaseModel, validator
+
+from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.telephony.constants import (
+    DEFAULT_AUDIO_ENCODING,
+    DEFAULT_SAMPLING_RATE,
+)
 from .model import TypedModel
 from .audio_encoding import AudioEncoding
-from ..output_device.base_output_device import BaseOutputDevice
 
 
 class SynthesizerType(str, Enum):
@@ -38,6 +43,13 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE):
             audio_encoding=output_device.audio_encoding,
         )
 
+    @classmethod
+    def from_telephone_output_device(cls):
+        return cls(
+            sampling_rate=DEFAULT_SAMPLING_RATE,
+            audio_encoding=DEFAULT_AUDIO_ENCODING,
+        )
+
 
 AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME = "en-US-AriaNeural"
 AZURE_SYNTHESIZER_DEFAULT_PITCH = 0
@@ -45,18 +57,32 @@ AZURE_SYNTHESIZER_DEFAULT_RATE = 15
 
 
 class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE):
-    voice_name: str = AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME
-    pitch: int = AZURE_SYNTHESIZER_DEFAULT_PITCH
-    rate: int = AZURE_SYNTHESIZER_DEFAULT_RATE
+    voice_name: Optional[str] = AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME
+    pitch: Optional[int] = AZURE_SYNTHESIZER_DEFAULT_PITCH
+    rate: Optional[int] = AZURE_SYNTHESIZER_DEFAULT_RATE
+
+    class Config:
+        validate_assignment = True
+
+    @validator("voice_name")
+    def set_name(cls, voice_name):
+        return voice_name or AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME
+
+    @validator("pitch")
+    def set_pitch(cls, pitch):
+        return pitch or AZURE_SYNTHESIZER_DEFAULT_PITCH
+
+    @validator("rate")
+    def set_rate(cls, rate):
+        return rate or AZURE_SYNTHESIZER_DEFAULT_RATE
 
     @classmethod
     def from_output_device(
         cls,
         output_device: BaseOutputDevice,
-        voice_name: str = AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME,
-        pitch: int = AZURE_SYNTHESIZER_DEFAULT_PITCH,
-        rate: int = AZURE_SYNTHESIZER_DEFAULT_RATE,
-        track_bot_sentiment_in_voice: Union[bool, TrackBotSentimentConfig] = False,
+        voice_name: Optional[str] = None,
+        pitch: Optional[int] = None,
+        rate: Optional[int] = None,
     ):
         return cls(
             sampling_rate=output_device.sampling_rate,
@@ -64,14 +90,31 @@ class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE):
             voice_name=voice_name,
             pitch=pitch,
             rate=rate,
-            track_bot_sentiment_in_voice=track_bot_sentiment_in_voice,
         )
 
-    pass
+    @classmethod
+    def from_telephone_output_device(
+        cls,
+        voice_name: Optional[str] = None,
+        pitch: Optional[int] = None,
+        rate: Optional[int] = None,
+    ):
+        return cls(
+            sampling_rate=DEFAULT_SAMPLING_RATE,
+            audio_encoding=DEFAULT_AUDIO_ENCODING,
+            voice_name=voice_name,
+            pitch=pitch,
+            rate=rate,
+        )
 
 
 class GoogleSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GOOGLE):
     pass
+
+
+class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN_LABS):
+    api_key: str
+    voice_id: Optional[str] = None
 
 
 class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME):
@@ -86,5 +129,16 @@ class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME):
         return cls(
             sampling_rate=output_device.sampling_rate,
             audio_encoding=output_device.audio_encoding,
+            speaker=speaker,
+        )
+
+    @classmethod
+    def from_telephone_output_device(
+        cls,
+        speaker: str,
+    ):
+        return cls(
+            sampling_rate=DEFAULT_SAMPLING_RATE,
+            audio_encoding=DEFAULT_AUDIO_ENCODING,
             speaker=speaker,
         )
