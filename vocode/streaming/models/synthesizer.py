@@ -112,9 +112,43 @@ class GoogleSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GOOGLE):
     pass
 
 
+ELEVEN_LABS_ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
+
+
 class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN_LABS):
     api_key: str
-    voice_id: Optional[str] = None
+    voice_id: Optional[str] = ELEVEN_LABS_ADAM_VOICE_ID
+
+    @validator("voice_id")
+    def set_name(cls, voice_id):
+        return voice_id or ELEVEN_LABS_ADAM_VOICE_ID
+
+    @classmethod
+    def from_output_device(
+        cls,
+        output_device: BaseOutputDevice,
+        api_key: str,
+        voice_id: Optional[str] = None,
+    ):
+        return cls(
+            sampling_rate=output_device.sampling_rate,
+            audio_encoding=output_device.audio_encoding,
+            api_key=api_key,
+            voice_id=voice_id,
+        )
+
+    @classmethod
+    def from_telephone_output_device(
+        cls,
+        api_key: str,
+        voice_id: Optional[str] = None,
+    ):
+        return cls(
+            sampling_rate=DEFAULT_SAMPLING_RATE,
+            audio_encoding=DEFAULT_AUDIO_ENCODING,
+            api_key=api_key,
+            voice_id=voice_id,
+        )
 
 
 class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME):
