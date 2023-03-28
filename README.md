@@ -36,55 +36,6 @@ Vocode is an open source library that makes it easy to build voice-based LLM app
 
 Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)! 
 
-# ☁️ Quickstart (Hosted)
-
-First, get a *free* API key from our [dashboard](https://app.vocode.dev).
-
-```bash
-pip install 'vocode[io]'
-```
-
-```python
-import asyncio
-import signal
-
-import vocode
-from vocode.streaming.hosted_streaming_conversation import HostedStreamingConversation
-from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.helpers import create_microphone_input_and_speaker_output
-from vocode.streaming.models.transcriber import (
-    DeepgramTranscriberConfig,
-    PunctuationEndpointingConfig,
-)
-from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-
-vocode.api_key = "<your API key>"
-
-
-if __name__ == "__main__":
-    microphone_input, speaker_output = create_microphone_input_and_speaker_output(
-        streaming=True, use_default_devices=False
-    )
-
-    conversation = HostedStreamingConversation(
-        input_device=microphone_input,
-        output_device=speaker_output,
-        transcriber_config=DeepgramTranscriberConfig.from_input_device(
-            microphone_input,
-            endpointing_config=PunctuationEndpointingConfig(),
-        ),
-        agent_config=ChatGPTAgentConfig(
-            initial_message=BaseMessage(text="Hello!"),
-            prompt_preamble="Have a pleasant conversation about life",
-        ),
-        synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
-    )
-    signal.signal(signal.SIGINT, lambda _0, _1: conversation.deactivate())
-    asyncio.run(conversation.start())
-```
-
 # 🚀 Quickstart (Self-hosted)
 
 ```bash
@@ -143,6 +94,55 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+```
+
+# ☁️ Quickstart (Hosted)
+
+First, get a *free* API key from our [dashboard](https://app.vocode.dev).
+
+```bash
+pip install 'vocode[io]'
+```
+
+```python
+import asyncio
+import signal
+
+import vocode
+from vocode.streaming.hosted_streaming_conversation import HostedStreamingConversation
+from vocode.streaming.streaming_conversation import StreamingConversation
+from vocode.helpers import create_microphone_input_and_speaker_output
+from vocode.streaming.models.transcriber import (
+    DeepgramTranscriberConfig,
+    PunctuationEndpointingConfig,
+)
+from vocode.streaming.models.agent import ChatGPTAgentConfig
+from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+
+vocode.api_key = "<your API key>"
+
+
+if __name__ == "__main__":
+    microphone_input, speaker_output = create_microphone_input_and_speaker_output(
+        streaming=True, use_default_devices=False
+    )
+
+    conversation = HostedStreamingConversation(
+        input_device=microphone_input,
+        output_device=speaker_output,
+        transcriber_config=DeepgramTranscriberConfig.from_input_device(
+            microphone_input,
+            endpointing_config=PunctuationEndpointingConfig(),
+        ),
+        agent_config=ChatGPTAgentConfig(
+            initial_message=BaseMessage(text="Hello!"),
+            prompt_preamble="Have a pleasant conversation about life",
+        ),
+        synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
+    )
+    signal.signal(signal.SIGINT, lambda _0, _1: conversation.deactivate())
+    asyncio.run(conversation.start())
 ```
 
 # 📞 Phone call quickstarts
