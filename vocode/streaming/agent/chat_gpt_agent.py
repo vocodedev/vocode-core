@@ -142,14 +142,17 @@ class ChatGPTAgent(BaseAgent):
 
 
 if __name__ == "__main__":
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
     agent = ChatGPTAgent(
         ChatGPTAgentConfig(
-            model_name="gpt-4",
             prompt_preamble="The assistant is having a pleasant conversation about life. If the user hasn't completed their thought, the assistant responds with 'PASS'",
         )
     )
     while True:
-        # response = agent.respond(input("Human: "))[0]
-        # print(f"AI: {response}")
-        for response in agent.generate_response(input("Human: ")):
-            print(f"AI: {response}")
+        response = agent.respond(input("Human: "))[0]
+        print(f"AI: {response}")
+        # for response in agent.generate_response(input("Human: ")):
+        #     print(f"AI: {response}")

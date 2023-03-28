@@ -11,22 +11,26 @@ from vocode.streaming.factory import (
     create_synthesizer,
     create_transcriber,
 )
+from vocode.streaming.models.agent import AgentConfig
 
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.models.telephony import CallConfig, TwilioConfig
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
+    SynthesizerConfig,
 )
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
+    TranscriberConfig,
 )
 from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 from vocode.streaming.telephony.config_manager.base_config_manager import (
     BaseConfigManager,
 )
+from vocode.streaming.telephony.constants import DEFAULT_SAMPLING_RATE
 from vocode.streaming.telephony.twilio import create_twilio_client
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.streaming_conversation import StreamingConversation
@@ -43,9 +47,9 @@ class Call(StreamingConversation):
         self,
         base_url: str,
         config_manager: BaseConfigManager,
-        agent_config: BaseAgent,
-        transcriber_config: Optional[BaseTranscriber] = None,
-        synthesizer_config: Optional[BaseSynthesizer] = None,
+        agent_config: AgentConfig,
+        transcriber_config: TranscriberConfig,
+        synthesizer_config: SynthesizerConfig,
         twilio_config: Optional[TwilioConfig] = None,
         twilio_sid: Optional[str] = None,
         conversation_id: Optional[str] = None,
@@ -61,19 +65,9 @@ class Call(StreamingConversation):
         self.twilio_client = create_twilio_client(twilio_config)
         super().__init__(
             self.output_device,
-            transcriber_config
-            or DeepgramTranscriberConfig(
-                sampling_rate=8000,
-                audio_encoding=AudioEncoding.MULAW,
-                chunk_size=self.CHUNK_SIZE,
-                model="voicemail",
-                endpointing_config=PunctuationEndpointingConfig(),
-            ),
-            agent_config,
-            synthesizer_config
-            or AzureSynthesizerConfig(
-                sampling_rate=8000, audio_encoding=AudioEncoding.MULAW
-            ),
+            create_transcriber(transcriber_config),
+            create_agent(agent_config),
+            create_synthesizer(synthesizer_config),
             conversation_id=conversation_id,
             per_chunk_allowance_seconds=0.01,
             logger=logger,
