@@ -1,10 +1,9 @@
 import asyncio
 import json
 import logging
-import os
-from dotenv import load_dotenv
 import websockets
 from urllib.parse import urlencode
+from vocode import getenv
 
 from vocode.streaming.models.transcriber import AssemblyAITranscriberConfig
 from vocode.streaming.models.websocket import AudioMessage
@@ -14,9 +13,7 @@ from vocode.streaming.transcriber.base_transcriber import (
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
 
-load_dotenv()
 
-ASSEMBLY_AI_API_KEY = os.environ.get("ASSEMBLY_AI_API_KEY")
 ASSEMBLY_AI_URL = "wss://api.assemblyai.com/v2/realtime/ws"
 
 
@@ -27,6 +24,7 @@ class AssemblyAITranscriber(BaseTranscriber):
         logger: logging.Logger = None,
     ):
         super().__init__(transcriber_config)
+        self.api_key = getenv("ASSEMBLY_AI_API_KEY")
         self._ended = False
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
@@ -61,7 +59,7 @@ class AssemblyAITranscriber(BaseTranscriber):
 
         async with websockets.connect(
             URL,
-            extra_headers=(("Authorization", ASSEMBLY_AI_API_KEY),),
+            extra_headers=(("Authorization", self.api_key),),
             ping_interval=5,
             ping_timeout=20,
         ) as ws:

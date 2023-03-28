@@ -1,7 +1,7 @@
 import logging
 from fastapi import FastAPI
-import os
 from dotenv import load_dotenv
+from vocode import getenv
 
 load_dotenv()
 
@@ -34,13 +34,12 @@ telephony_server = TelephonyServer(
             url="/inbound_call",
             agent_config=ChatGPTAgentConfig(
                 initial_message=BaseMessage(text="What up"),
-                prompt_preamble="""You are a helpful gen Z AI assistant. You use slang like um, but, and like a LOT. All of your responses are 10 words or less. Be super chill, use slang like
-hella, down,     fire, totally, but like, slay, vibing, queen, go off, bet, sus, simp, cap, big yikes, main character, dank""",
+                prompt_preamble="Have a pleasant conversation about life",
                 generate_responses=True,
             ),
             twilio_config=TwilioConfig(
-                account_sid=os.getenv("TWILIO_ACCOUNT_SID"),
-                auth_token=os.getenv("TWILIO_AUTH_TOKEN"),
+                account_sid=getenv("TWILIO_ACCOUNT_SID"),
+                auth_token=getenv("TWILIO_AUTH_TOKEN"),
             ),
         )
     ],
@@ -49,21 +48,22 @@ hella, down,     fire, totally, but like, slay, vibing, queen, go off, bet, sus,
 
 app.include_router(telephony_server.get_router())
 
-# outbound_call = OutboundCall(
-#     base_url=BASE_URL,
-#     to_phone="+14088926228",
-#     from_phone="+14086600744",
-#     config_manager=config_manager,
-#     agent_config=ChatGPTAgentConfig(
-#         initial_message=BaseMessage(text="What up"),
-#         prompt_preamble="""You are a helpful gen Z AI assistant. You use slang like um, but, and like a LOT. All of your responses are 10 words or less. Be super chill, use slang like
-# hella, down,     fire, totally, but like, slay, vibing, queen, go off, bet, sus, simp, cap, big yikes, main character, dank""",
-#         generate_responses=True,
-#     ),
-#     twilio_config=TwilioConfig(
-#         account_sid=os.getenv("TWILIO_ACCOUNT_SID"),
-#         auth_token=os.getenv("TWILIO_AUTH_TOKEN"),
-#     ),
-#     logger=logger,
-# )
-# outbound_call.start()
+outbound_call = OutboundCall(
+    base_url=BASE_URL,
+    to_phone="+14088926228",
+    from_phone="+14086600744",
+    config_manager=config_manager,
+    agent_config=ChatGPTAgentConfig(
+        initial_message=BaseMessage(text="What up"),
+        prompt_preamble="Have a pleasant conversation about life",
+        generate_responses=True,
+    ),
+    twilio_config=TwilioConfig(
+        account_sid=getenv("TWILIO_ACCOUNT_SID"),
+        auth_token=getenv("TWILIO_AUTH_TOKEN"),
+    ),
+    logger=logger,
+)
+
+input("Press enter to start call...")
+outbound_call.start()

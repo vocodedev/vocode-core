@@ -8,15 +8,18 @@ import time
 import secrets
 import random
 
-from dotenv import load_dotenv
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentiment,
     BotSentimentAnalyser,
 )
 from vocode.streaming.agent.information_retrieval_agent import InformationRetrievalAgent
+from vocode.streaming.factory import (
+    create_agent,
+    create_synthesizer,
+    create_transcriber,
+)
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
 from vocode.streaming.transcriber.assembly_ai_transcriber import AssemblyAITranscriber
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.utils.transcript import Transcript
@@ -48,9 +51,6 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     SynthesisResult,
     FillerAudio,
 )
-from vocode.streaming.synthesizer.google_synthesizer import GoogleSynthesizer
-from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 from vocode.streaming.utils import (
     create_conversation_id,
     create_loop_in_thread,
@@ -60,19 +60,15 @@ from vocode.streaming.transcriber.base_transcriber import (
     Transcription,
     BaseTranscriber,
 )
-from vocode.streaming.transcriber.google_transcriber import GoogleTranscriber
-from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
-
-load_dotenv()
 
 
 class StreamingConversation:
     def __init__(
         self,
         output_device: BaseOutputDevice,
-        transcriber: BaseTranscriber,
-        agent: BaseAgent,
-        synthesizer: BaseSynthesizer,
+        transcriber_config: TranscriberConfig,
+        agent_config: AgentConfig,
+        synthesizer_config: SynthesizerConfig,
         conversation_id: str = None,
         per_chunk_allowance_seconds: int = PER_CHUNK_ALLOWANCE_SECONDS,
         logger: Optional[logging.Logger] = None,
@@ -80,11 +76,11 @@ class StreamingConversation:
         self.id = conversation_id or create_conversation_id()
         self.logger = logger or logging.getLogger(__name__)
         self.output_device = output_device
-        self.transcriber = transcriber
+        self.transcriber = create_transcriber(transcriber_config)
         self.transcriber.set_on_response(self.on_transcription_response)
         self.transcriber_task = None
-        self.agent = agent
-        self.synthesizer = synthesizer
+        self.agent = create_agent(agent_config)
+        self.synthesizer = create_synthesizer(synthesizer_config)
         self.synthesizer_event_loop = asyncio.new_event_loop()
         self.synthesizer_thread = threading.Thread(
             name="synthesizer",

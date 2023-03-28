@@ -2,14 +2,15 @@ import asyncio
 import logging
 import signal
 from dotenv import load_dotenv
-import os
+
+load_dotenv()
+
 from vocode.streaming.hosted_streaming_conversation import HostedStreamingConversation
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.helpers import create_microphone_input_and_speaker_output
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
-    GoogleTranscriberConfig,
 )
 from vocode.streaming.models.agent import (
     ChatGPTAgentConfig,
@@ -23,10 +24,6 @@ from vocode.streaming.models.agent import (
 )
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-import vocode
-
-load_dotenv()
-vocode.api_key = os.getenv("VOCODE_API_KEY")
 
 logging.basicConfig()
 logging.root.setLevel(logging.INFO)
@@ -41,7 +38,8 @@ if __name__ == "__main__":
         input_device=microphone_input,
         output_device=speaker_output,
         transcriber_config=DeepgramTranscriberConfig.from_input_device(
-            microphone_input
+            microphone_input,
+            endpointing_config=PunctuationEndpointingConfig(),
         ),
         agent_config=ChatGPTAgentConfig(
             initial_message=BaseMessage(text="Hello!"),

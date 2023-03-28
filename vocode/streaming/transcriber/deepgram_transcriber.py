@@ -1,12 +1,11 @@
 import asyncio
 import json
 import logging
-import os
-from dotenv import load_dotenv
 import websockets
 from websockets.client import WebSocketClientProtocol
 import audioop
 from urllib.parse import urlencode
+from vocode import getenv
 
 from vocode.streaming.transcriber.base_transcriber import (
     BaseTranscriber,
@@ -19,9 +18,7 @@ from vocode.streaming.models.transcriber import (
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
 
-load_dotenv()
 
-DEEPGRAM_API_KEY = os.environ.get("DEEPGRAM_API_KEY")
 PUNCTUATION_TERMINATORS = [".", "!", "?"]
 NUM_RESTARTS = 5
 
@@ -33,6 +30,7 @@ class DeepgramTranscriber(BaseTranscriber):
         logger: logging.Logger = None,
     ):
         super().__init__(transcriber_config)
+        self.api_key = getenv("DEEPGRAM_API_KEY")
         self.transcriber_config = transcriber_config
         self._ended = False
         self.warmed_up = False
@@ -155,7 +153,7 @@ class DeepgramTranscriber(BaseTranscriber):
         return data["duration"]
 
     async def process(self, warmup=True):
-        extra_headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
+        extra_headers = {"Authorization": f"Token {self.api_key}"}
         self.audio_queue = asyncio.Queue()
 
         async with websockets.connect(
