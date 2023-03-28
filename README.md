@@ -15,9 +15,10 @@
 Vocode is an open source library that makes it easy to build voice-based LLM apps. Using Vocode, you can build real-time streaming conversations with LLMs and deploy them to phone calls, Zoom meetings, and more. You can also build personal assistants or apps like voice-based chess. Vocode provides easy abstractions and integrations so that everything you need is in a single library.
 
 # ⭐️ Features
-- 🗣 Spin up a conversation with your system audio in minutes
-- ➡️ 📞 Set up a phone number that responds with a LLM-based agent
-- 📞 ➡️ Send out phone calls from your phone number managed by an LLM-based agent
+- 🗣 [Spin up a conversation with your system audio](https://docs.vocode.dev/python-quickstart)
+- ➡️ 📞 [Set up a phone number that responds with a LLM-based agent](https://docs.vocode.dev/telephony#inbound-calls)
+- 📞 ➡️ [Send out phone calls from your phone number managed by an LLM-based agent](https://docs.vocode.dev/telephony#outbound-calls)
+- 🧑‍💻 [Dial into a Zoom call](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/telephony/hosted/zoom_dial_in.py)
 - Out of the box integrations with:
   - Transcription services, including:
     - [Deepgram](https://deepgram.com/)
