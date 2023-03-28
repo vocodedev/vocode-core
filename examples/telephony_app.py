@@ -6,7 +6,7 @@ from vocode import getenv
 load_dotenv()
 
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.streaming.models.agent import ChatGPTAgentConfig
+from vocode.streaming.models.agent import ChatGPTAgentConfig, EchoAgentConfig
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.telephony import TwilioConfig
 from vocode.streaming.telephony.config_manager.redis_config_manager import (

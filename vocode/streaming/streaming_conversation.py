@@ -1,5 +1,6 @@
 import asyncio
 from asyncio import Future
+from ctypes import Union
 import queue
 from typing import Callable, Awaitable, Optional, Any
 import logging
@@ -66,9 +67,9 @@ class StreamingConversation:
     def __init__(
         self,
         output_device: BaseOutputDevice,
-        transcriber_config: TranscriberConfig,
-        agent_config: AgentConfig,
-        synthesizer_config: SynthesizerConfig,
+        transcriber: BaseTranscriber,
+        agent: BaseAgent,
+        synthesizer: BaseSynthesizer,
         conversation_id: str = None,
         per_chunk_allowance_seconds: int = PER_CHUNK_ALLOWANCE_SECONDS,
         logger: Optional[logging.Logger] = None,
@@ -76,11 +77,11 @@ class StreamingConversation:
         self.id = conversation_id or create_conversation_id()
         self.logger = logger or logging.getLogger(__name__)
         self.output_device = output_device
-        self.transcriber = create_transcriber(transcriber_config)
+        self.transcriber = transcriber
         self.transcriber.set_on_response(self.on_transcription_response)
         self.transcriber_task = None
-        self.agent = create_agent(agent_config)
-        self.synthesizer = create_synthesizer(synthesizer_config)
+        self.agent = agent
+        self.synthesizer = synthesizer
         self.synthesizer_event_loop = asyncio.new_event_loop()
         self.synthesizer_thread = threading.Thread(
             name="synthesizer",
