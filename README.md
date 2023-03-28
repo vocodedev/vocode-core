@@ -27,6 +27,7 @@ Vocode is an open source library that makes it easy to build voice-based LLM app
   - LLMs, including:
     - [ChatGPT](https://openai.com/blog/chatgpt)
     - [GPT-4](https://platform.openai.com/docs/models/gpt-4)
+    - [Anthropic](https://www.anthropic.com/) - coming soon!
   - Synthesis services, including:
     - [Microsoft Azure](https://azure.microsoft.com/en-us/products/cognitive-services/text-to-speech/)
     - [Google Cloud](https://cloud.google.com/text-to-speech)
