@@ -46,17 +46,17 @@ async def main():
 
     conversation = StreamingConversation(
         output_device=speaker_output,
-        transcriber=DeepgramTranscriberConfig.from_input_device(
+        transcriber_config=DeepgramTranscriberConfig.from_input_device(
             microphone_input, endpointing_config=PunctuationEndpointingConfig()
         ),
-        agent=ChatGPTAgentConfig(
+        agent_config=ChatGPTAgentConfig(
             initial_message=BaseMessage(text="What up"),
             prompt_preamble="""You are a helpful gen Z AI assistant. You use slang like um, but, and like a LOT. All of your responses are 10 words or less. Be super chill, use slang like
 hella, down,     fire, totally, but like, slay, vibing, queen, go off, bet, sus, simp, cap, big yikes, main character, dank""",
             generate_responses=True,
             cut_off_response=CutOffResponse(),
         ),
-        synthesizer=AzureSynthesizerConfig.from_output_device(speaker_output),
+        synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
         logger=logger,
     )
     await conversation.start()

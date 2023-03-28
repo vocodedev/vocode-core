@@ -57,6 +57,7 @@ class ChatGPTAgent(BaseAgent):
             model_name=self.agent_config.model_name,
             temperature=self.agent_config.temperature,
             max_tokens=self.agent_config.max_tokens,
+            openai_api_key=openai.api_key,
         )
         self.conversation = ConversationChain(
             memory=self.memory, prompt=self.prompt, llm=self.llm
