@@ -3,6 +3,8 @@ import logging
 import signal
 from dotenv import load_dotenv
 
+from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
+
 load_dotenv()
 
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
@@ -26,6 +28,7 @@ from vocode.streaming.models.agent import (
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
+    ElevenLabsSynthesizerConfig,
     GoogleSynthesizerConfig,
     RimeSynthesizerConfig,
 )
@@ -60,8 +63,10 @@ hella, down,     fire, totally, but like, slay, vibing, queen, go off, bet, sus,
                 cut_off_response=CutOffResponse(),
             )
         ),
-        synthesizer=AzureSynthesizer(
-            AzureSynthesizerConfig.from_output_device(speaker_output)
+        synthesizer=ElevenLabsSynthesizer(
+            ElevenLabsSynthesizerConfig.from_output_device(
+                speaker_output, api_key=vocode.getenv("ELEVEN_LABS_API_KEY")
+            )
         ),
         logger=logger,
     )
