@@ -14,7 +14,7 @@
 
 Vocode is an open source library that makes it easy to build voice-based LLM apps. Using Vocode, you can build real-time streaming conversations with LLMs and deploy them to phone calls, Zoom meetings, and more. You can also build personal assistants or apps like voice-based chess. Vocode provides easy abstractions and integrations so that everything you need is in a single library.
 
-# **⭐️ Features**
+# ⭐️ Features
 - 🗣 Spin up a conversation with your system audio in minutes
 - ➡️ 📞 Set up a phone number that responds with a LLM-based agent
 - 📞 ➡️ Send out phone calls from your phone number managed by an LLM-based agent
@@ -34,7 +34,7 @@ Vocode is an open source library that makes it easy to build voice-based LLM app
 
 Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)! 
 
-# **☁️ Quickstart (Hosted)**
+# ☁️ Quickstart (Hosted)
 
 First, get a *free* API key from our [dashboard](https://app.vocode.dev).
 
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     asyncio.run(conversation.start())
 ```
 
-# **🚀 Quickstart (Self-hosted)**
+# 🚀 Quickstart (Self-hosted)
 
 ```bash
 pip install 'vocode[io]'
@@ -143,13 +143,14 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-# **📞 Phone call quickstarts **#
+# 📞 Phone call quickstarts
+
 - [Inbound calls - Hosted](https://docs.vocode.dev/telephony#inbound-calls)
 - [Outbound calls - Hosted](https://docs.vocode.dev/telephony#outbound-calls)
-- [Telephony Server - self-hosted](https://github.com/vocodedev/vocode-python/blob/main/examples/telephony_app.py)
+- [Telephony Server - Self-hosted](https://github.com/vocodedev/vocode-python/blob/main/examples/telephony_app.py)
 
 
 
-# **🌱 Documentation**
+# 🌱 Documentation
 
 [docs.vocode.dev](https://docs.vocode.dev/)
