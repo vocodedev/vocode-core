@@ -1,10 +1,7 @@
-from dotenv import load_dotenv
 from typing import Callable, Optional, Awaitable
 
 from vocode.streaming.utils import convert_wav
 from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
-
-load_dotenv()
 
 
 class Transcription:

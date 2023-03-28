@@ -10,7 +10,6 @@ from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 from vocode.streaming.synthesizer.google_synthesizer import GoogleSynthesizer
-from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
 from vocode.streaming.transcriber.assembly_ai_transcriber import AssemblyAITranscriber
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
@@ -48,11 +47,6 @@ def create_synthesizer(synthesizer_config: SynthesizerConfig) -> BaseSynthesizer
     elif synthesizer_config.type == SynthesizerType.AZURE:
         return AzureSynthesizer(synthesizer_config)
     elif synthesizer_config.type == SynthesizerType.ELEVEN_LABS:
-        kwargs = {}
-        if synthesizer_config.voice_id:
-            kwargs["voice_id"] = synthesizer_config.voice_id
-        return ElevenLabsSynthesizer(synthesizer_config, **kwargs)
-    elif synthesizer_config.type == SynthesizerType.RIME:
-        return RimeSynthesizer(synthesizer_config)
+        return ElevenLabsSynthesizer(synthesizer_config)
     else:
         raise Exception("Invalid synthesizer config")

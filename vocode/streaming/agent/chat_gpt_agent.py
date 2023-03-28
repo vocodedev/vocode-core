@@ -1,4 +1,3 @@
-import os
 import random
 import time
 from langchain.prompts import (
@@ -16,23 +15,20 @@ import openai
 import json
 from typing import Generator, Optional
 
-from dotenv import load_dotenv
 from typing import Generator
 import logging
+from vocode import getenv
 
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.utils.sse_client import SSEClient
 from vocode.streaming.agent.utils import stream_llm_response
 
-load_dotenv()
-
-openai.api_key = os.environ.get("OPENAI_API_KEY")
-
 
 class ChatGPTAgent(BaseAgent):
     def __init__(self, agent_config: ChatGPTAgentConfig, logger: logging.Logger = None):
         super().__init__(agent_config)
+        openai.api_key = getenv("OPENAI_API_KEY")
         self.agent_config = agent_config
         self.logger = logger or logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -112,7 +108,7 @@ class ChatGPTAgent(BaseAgent):
             "https://api.openai.com/v1/chat/completions",
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {os.environ.get('OPENAI_API_KEY')}",
+                "Authorization": f"Bearer {getenv('OPENAI_API_KEY')}",
             },
             json={
                 "model": self.agent_config.model_name,

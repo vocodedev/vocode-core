@@ -1,11 +1,7 @@
-import os
 from typing import Optional
-from dotenv import load_dotenv
 from twilio.rest import Client
 
 from vocode.streaming.models.telephony import TwilioConfig
-
-load_dotenv()
 
 
 def create_twilio_client(twilio_config: TwilioConfig):

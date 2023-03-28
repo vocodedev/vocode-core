@@ -1,7 +1,6 @@
 import re
 from typing import Optional
 
-from dotenv import load_dotenv
 from langchain import OpenAI
 from langchain.llms import OpenAIChat
 from typing import Generator
@@ -10,8 +9,6 @@ import logging
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.utils import stream_llm_response
 from vocode.streaming.models.agent import LLMAgentConfig
-
-load_dotenv()
 
 
 class LLMAgent(BaseAgent):

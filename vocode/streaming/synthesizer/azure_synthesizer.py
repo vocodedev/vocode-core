@@ -4,7 +4,7 @@ import re
 from typing import Any, Optional
 from xml.etree import ElementTree
 import azure.cognitiveservices.speech as speechsdk
-from dotenv import load_dotenv
+from vocode import getenv
 
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage, SSMLMessage
@@ -20,7 +20,6 @@ from vocode.streaming.synthesizer.base_synthesizer import (
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 from vocode.streaming.models.audio_encoding import AudioEncoding
 
-load_dotenv()
 
 NAMESPACES = {
     "mstts": "https://www.w3.org/2001/mstts",
@@ -59,8 +58,8 @@ class AzureSynthesizer(BaseSynthesizer):
         self.synthesizer_config = synthesizer_config
         # Instantiates a client
         speech_config = speechsdk.SpeechConfig(
-            subscription=os.environ.get("AZURE_SPEECH_KEY"),
-            region=os.environ.get("AZURE_SPEECH_REGION"),
+            subscription=getenv("AZURE_SPEECH_KEY"),
+            region=getenv("AZURE_SPEECH_REGION"),
         )
         if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
             if self.synthesizer_config.sampling_rate == 44100:

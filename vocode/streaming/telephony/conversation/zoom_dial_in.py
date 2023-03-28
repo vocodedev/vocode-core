@@ -24,10 +24,10 @@ class ZoomDialIn(OutboundCall):
         zoom_meeting_password: Optional[str],
         from_phone: str,
         config_manager: BaseConfigManager,
-        twilio_config: TwilioConfig,
         agent_config: AgentConfig,
         transcriber_config: TranscriberConfig,
         synthesizer_config: SynthesizerConfig,
+        twilio_config: Optional[TwilioConfig] = None,
         conversation_id: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
     ):

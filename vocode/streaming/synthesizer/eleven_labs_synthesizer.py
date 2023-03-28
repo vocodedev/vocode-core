@@ -1,7 +1,6 @@
 from typing import Any, Optional
-import os
-from dotenv import load_dotenv
 import requests
+from vocode import getenv
 
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
@@ -11,9 +10,7 @@ from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
 
-load_dotenv()
 
-ELEVEN_LABS_API_KEY = os.environ.get("ELEVEN_LABS_API_KEY")
 ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 OBAMA_VOICE_ID = "vLITIS0SH2an5iQGxw5C"
@@ -22,7 +19,7 @@ OBAMA_VOICE_ID = "vLITIS0SH2an5iQGxw5C"
 class ElevenLabsSynthesizer(BaseSynthesizer):
     def __init__(self, config: ElevenLabsSynthesizerConfig):
         super().__init__(config)
-        self.api_key = config.api_key
+        self.api_key = getenv("ELEVEN_LABS_API_KEY")
         self.voice_id = config.voice_id or ADAM_VOICE_ID
         self.words_per_minute = 150
 

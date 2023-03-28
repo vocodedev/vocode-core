@@ -1,6 +1,6 @@
 import logging
 from typing import Optional
-from twilio.rest import Client
+from vocode import getenv
 
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.synthesizer import (
@@ -33,7 +33,7 @@ class OutboundCall:
         from_phone: str,
         config_manager: BaseConfigManager,
         agent_config: AgentConfig,
-        twilio_config: TwilioConfig,
+        twilio_config: Optional[TwilioConfig] = None,
         transcriber_config: Optional[TranscriberConfig] = None,
         synthesizer_config: Optional[SynthesizerConfig] = None,
         conversation_id: Optional[str] = None,
@@ -56,7 +56,10 @@ class OutboundCall:
         )
         self.conversation_id = conversation_id or create_conversation_id()
         self.logger = logger
-        self.twilio_config = twilio_config
+        self.twilio_config = twilio_config or TwilioConfig(
+            account_sid=getenv("TWILIO_ACCOUNT_SID"),
+            auth_token=getenv("TWILIO_AUTH_TOKEN"),
+        )
         self.twilio_client = create_twilio_client(twilio_config)
         self.twilio_sid = None
 

@@ -34,7 +34,6 @@ from vocode.streaming.models.telephony import (
     EndOutboundCall,
     TwilioConfig,
 )
-from twilio.rest import Client
 
 from vocode.streaming.telephony.conversation.call import Call
 from vocode.streaming.telephony.templates import Templater
@@ -45,7 +44,7 @@ from vocode.streaming.utils import create_conversation_id
 class InboundCallConfig(BaseModel):
     url: str
     agent_config: AgentConfig
-    twilio_config: TwilioConfig
+    twilio_config: Optional[TwilioConfig] = None
     transcriber_config: Optional[TranscriberConfig] = None
     synthesizer_config: Optional[SynthesizerConfig] = None
 
@@ -92,7 +91,7 @@ class TelephonyServer:
     def create_inbound_route(
         self,
         agent_config: AgentConfig,
-        twilio_config: TwilioConfig,
+        twilio_config: Optional[TwilioConfig] = None,
         transcriber_config: Optional[TranscriberConfig] = None,
         synthesizer_config: Optional[SynthesizerConfig] = None,
     ):

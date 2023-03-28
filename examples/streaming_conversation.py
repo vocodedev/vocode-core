@@ -2,7 +2,9 @@ import asyncio
 import logging
 import signal
 from dotenv import load_dotenv
-import os
+
+load_dotenv()
+
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.helpers import create_microphone_input_and_speaker_output
@@ -31,8 +33,6 @@ import vocode
 from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 
-load_dotenv()
-vocode.api_key = os.getenv("VOCODE_API_KEY")
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -46,23 +46,17 @@ async def main():
 
     conversation = StreamingConversation(
         output_device=speaker_output,
-        transcriber=DeepgramTranscriber(
-            DeepgramTranscriberConfig.from_input_device(
-                microphone_input, endpointing_config=PunctuationEndpointingConfig()
-            )
+        transcriber=DeepgramTranscriberConfig.from_input_device(
+            microphone_input, endpointing_config=PunctuationEndpointingConfig()
         ),
-        agent=ChatGPTAgent(
-            ChatGPTAgentConfig(
-                initial_message=BaseMessage(text="What up"),
-                prompt_preamble="""You are a helpful gen Z AI assistant. You use slang like um, but, and like a LOT. All of your responses are 10 words or less. Be super chill, use slang like
+        agent=ChatGPTAgentConfig(
+            initial_message=BaseMessage(text="What up"),
+            prompt_preamble="""You are a helpful gen Z AI assistant. You use slang like um, but, and like a LOT. All of your responses are 10 words or less. Be super chill, use slang like
 hella, down,     fire, totally, but like, slay, vibing, queen, go off, bet, sus, simp, cap, big yikes, main character, dank""",
-                generate_responses=True,
-                cut_off_response=CutOffResponse(),
-            )
+            generate_responses=True,
+            cut_off_response=CutOffResponse(),
         ),
-        synthesizer=AzureSynthesizer(
-            AzureSynthesizerConfig.from_output_device(speaker_output),
-        ),
+        synthesizer=AzureSynthesizerConfig.from_output_device(speaker_output),
         logger=logger,
     )
     await conversation.start()

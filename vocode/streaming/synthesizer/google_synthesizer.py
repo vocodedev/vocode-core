@@ -2,7 +2,6 @@ import io
 import wave
 from typing import Any, Optional
 
-from dotenv import load_dotenv
 from google.cloud import texttospeech_v1beta1 as tts
 
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
@@ -15,8 +14,6 @@ from vocode.streaming.synthesizer.base_synthesizer import (
 from vocode.streaming.models.synthesizer import GoogleSynthesizerConfig
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.utils import convert_wav
-
-load_dotenv()
 
 
 class GoogleSynthesizer(BaseSynthesizer):

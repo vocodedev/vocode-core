@@ -4,6 +4,7 @@ from enum import Enum
 import json
 import logging
 from typing import Optional
+from vocode import getenv
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.factory import (
     create_agent,
@@ -42,38 +43,36 @@ class Call(StreamingConversation):
         self,
         base_url: str,
         config_manager: BaseConfigManager,
-        agent: BaseAgent,
-        twilio_config: TwilioConfig,
-        transcriber: Optional[BaseTranscriber] = None,
-        synthesizer: Optional[BaseSynthesizer] = None,
-        twilio_sid=None,
+        agent_config: BaseAgent,
+        transcriber_config: Optional[BaseTranscriber] = None,
+        synthesizer_config: Optional[BaseSynthesizer] = None,
+        twilio_config: Optional[TwilioConfig] = None,
+        twilio_sid: Optional[str] = None,
         conversation_id: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
     ):
         self.base_url = base_url
         self.config_manager = config_manager
         self.output_device = TwilioOutputDevice()
-        self.twilio_config = twilio_config
+        self.twilio_config = twilio_config or TwilioConfig(
+            account_sid=getenv("TWILIO_ACCOUNT_SID"),
+            auth_token=getenv("TWILIO_AUTH_TOKEN"),
+        )
         self.twilio_client = create_twilio_client(twilio_config)
         super().__init__(
             self.output_device,
-            transcriber
-            or DeepgramTranscriber(
-                DeepgramTranscriberConfig(
-                    sampling_rate=8000,
-                    audio_encoding=AudioEncoding.MULAW,
-                    chunk_size=self.CHUNK_SIZE,
-                    model="voicemail",
-                    endpointing_config=PunctuationEndpointingConfig(),
-                ),
-                logger=logger,
+            transcriber_config
+            or DeepgramTranscriberConfig(
+                sampling_rate=8000,
+                audio_encoding=AudioEncoding.MULAW,
+                chunk_size=self.CHUNK_SIZE,
+                model="voicemail",
+                endpointing_config=PunctuationEndpointingConfig(),
             ),
-            agent,
-            synthesizer
-            or AzureSynthesizer(
-                AzureSynthesizerConfig(
-                    sampling_rate=8000, audio_encoding=AudioEncoding.MULAW
-                )
+            agent_config,
+            synthesizer_config
+            or AzureSynthesizerConfig(
+                sampling_rate=8000, audio_encoding=AudioEncoding.MULAW
             ),
             conversation_id=conversation_id,
             per_chunk_allowance_seconds=0.01,
@@ -94,9 +93,9 @@ class Call(StreamingConversation):
             base_url=base_url,
             logger=logger,
             config_manager=config_manager,
-            agent=create_agent(call_config.agent_config),
-            transcriber=create_transcriber(call_config.transcriber_config),
-            synthesizer=create_synthesizer(call_config.synthesizer_config),
+            agent_config=call_config.agent_config,
+            transcriber_config=call_config.transcriber_config,
+            synthesizer_config=call_config.synthesizer_config,
             twilio_config=call_config.twilio_config,
             twilio_sid=call_config.twilio_sid,
             conversation_id=conversation_id,

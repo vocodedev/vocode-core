@@ -1,4 +1,3 @@
-import os
 from typing import Optional
 import openai
 from langchain.prompts import (
@@ -10,6 +9,7 @@ from langchain.prompts import (
 from langchain.chains import ConversationChain
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
+from vocode import getenv
 
 from vocode.turn_based.agent.base_agent import BaseAgent
 
@@ -25,7 +25,7 @@ class ChatGPTAgent(BaseAgent):
         max_tokens: int = 100,
     ):
         super().__init__(initial_message=initial_message)
-        openai.api_key = os.getenv("OPENAI_API_KET", api_key)
+        openai.api_key = getenv("OPENAI_API_KET", api_key)
         if not openai.api_key:
             raise ValueError("OpenAI API key not provided")
         self.prompt = ChatPromptTemplate.from_messages(

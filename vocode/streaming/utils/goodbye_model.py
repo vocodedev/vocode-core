@@ -1,19 +1,12 @@
-import os
 import asyncio
 import openai
-from dotenv import load_dotenv
 import numpy as np
 import requests
 
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+from vocode import getenv
 
-
-PLATFORM = "pyq" if os.getenv("USE_PYQ_EMBEDDINGS", "false") == "true" else "openai"
 SIMILARITY_THRESHOLD = 0.9
-SIMILARITY_THRESHOLD_PYQ = 0.7
 EMBEDDING_SIZE = 1536
-PYQ_EMBEDDING_SIZE = 768
 GOODBYE_PHRASES = [
     "bye",
     "goodbye",
@@ -24,7 +17,6 @@ GOODBYE_PHRASES = [
     "have a good day",
     "have a good night",
 ]
-PYQ_API_URL = "https://embeddings.pyqai.com"
 
 
 class GoodbyeModel:
@@ -34,11 +26,9 @@ class GoodbyeModel:
             os.path.dirname(__file__), "goodbye_embeddings"
         ),
     ):
+        openai.api_key = getenv("OPENAI_API_KEY")
         self.goodbye_embeddings = self.load_or_create_embeddings(
             f"{embeddings_cache_path}/goodbye_embeddings.npy"
-        )
-        self.goodbye_embeddings_pyq = self.load_or_create_embeddings(
-            f"{embeddings_cache_path}/goodbye_embeddings_pyq.npy"
         )
 
     def load_or_create_embeddings(self, path):
@@ -49,50 +39,33 @@ class GoodbyeModel:
             np.save(path, embeddings)
             return embeddings
 
-    def create_embeddings(self, platform=PLATFORM):
+    def create_embeddings(self):
         print("Creating embeddings...")
-        size = EMBEDDING_SIZE if platform == "openai" else PYQ_EMBEDDING_SIZE
+        size = EMBEDDING_SIZE
         embeddings = np.empty((size, len(GOODBYE_PHRASES)))
         for i, goodbye_phrase in enumerate(GOODBYE_PHRASES):
-            embeddings[:, i] = self.create_embedding(goodbye_phrase, platform=platform)
+            embeddings[:, i] = self.create_embedding(goodbye_phrase)
         return embeddings
 
-    async def is_goodbye(self, text: str, platform=PLATFORM) -> bool:
+    async def is_goodbye(self, text: str) -> bool:
         if "bye" in text.lower():
             return True
-        embedding = self.create_embedding(text.strip().lower(), platform=platform)
-        goodbye_embeddings = (
-            self.goodbye_embeddings
-            if platform == "openai"
-            else self.goodbye_embeddings_pyq
-        )
-        threshold = (
-            SIMILARITY_THRESHOLD if platform == "openai" else SIMILARITY_THRESHOLD_PYQ
-        )
-        similarity_results = embedding @ goodbye_embeddings
-        return np.max(similarity_results) > threshold
+        embedding = self.create_embedding(text.strip().lower())
+        similarity_results = embedding @ self.goodbye_embeddings
+        return np.max(similarity_results) > SIMILARITY_THRESHOLD
 
-    def create_embedding(self, text, platform=PLATFORM) -> np.array:
-        if platform == "openai":
-            return np.array(
-                openai.Embedding.create(input=text, model="text-embedding-ada-002")[
-                    "data"
-                ][0]["embedding"]
-            )
-        elif platform == "pyq":
-            return np.array(
-                requests.post(
-                    PYQ_API_URL,
-                    headers={
-                        "Content-Type": "application/json",
-                        "Authorization": os.getenv("PYQ_API_KEY"),
-                    },
-                    json={"input_sequence": [text], "account_id": "400"},
-                ).json()["response"][0]
-            )
+    def create_embedding(self, text) -> np.array:
+        return np.array(
+            openai.Embedding.create(input=text, model="text-embedding-ada-002")["data"][
+                0
+            ]["embedding"]
+        )
 
 
 if __name__ == "__main__":
+    from dotenv import load_dotenv
+
+    load_dotenv()
 
     async def main():
         model = GoodbyeModel()

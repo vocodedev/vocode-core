@@ -1,6 +1,6 @@
 import logging
 from dotenv import load_dotenv
-import os
+from vocode import getenv
 from vocode.helpers import create_microphone_input_and_speaker_output
 from vocode.turn_based.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
@@ -25,15 +25,15 @@ if __name__ == "__main__":
     conversation = TurnBasedConversation(
         input_device=microphone_input,
         output_device=speaker_output,
-        transcriber=WhisperTranscriber(api_key=os.getenv("OPENAI_API_KEY")),
+        transcriber=WhisperTranscriber(api_key=getenv("OPENAI_API_KEY")),
         agent=ChatGPTAgent(
             system_prompt="The AI is having a pleasant conversation about life",
             initial_message="Hello!",
-            api_key=os.getenv("OPENAI_API_KEY"),
+            api_key=getenv("OPENAI_API_KEY"),
         ),
         synthesizer=ElevenLabsSynthesizer(
             voice_id=ADAM_VOICE_ID,
-            api_key=os.getenv("ELEVEN_LABS_API_KEY"),
+            api_key=getenv("ELEVEN_LABS_API_KEY"),
         ),
         logger=logger,
     )

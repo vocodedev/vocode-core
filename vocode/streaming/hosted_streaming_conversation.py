@@ -2,8 +2,6 @@ import websockets
 from websockets.exceptions import ConnectionClosedOK
 from websockets.client import WebSocketClientProtocol
 import asyncio
-from dotenv import load_dotenv
-import os
 import logging
 import threading
 import queue
@@ -21,8 +19,6 @@ from vocode.streaming.models.websocket import (
     StartMessage,
     StopMessage,
 )
-
-load_dotenv()
 
 
 class HostedStreamingConversation:
