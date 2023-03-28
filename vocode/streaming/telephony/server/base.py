@@ -2,6 +2,7 @@ import logging
 from typing import Optional
 from fastapi import APIRouter, Form, Response
 from pydantic import BaseModel
+from vocode import getenv
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.synthesizer import (
@@ -111,7 +112,11 @@ class TelephonyServer:
                     sampling_rate=DEFAULT_SAMPLING_RATE,
                     audio_encoding=DEFAULT_AUDIO_ENCODING,
                 ),
-                twilio_config=twilio_config,
+                twilio_config=twilio_config
+                or TwilioConfig(
+                    account_sid=getenv("TWILIO_ACCOUNT_SID"),
+                    auth_token=getenv("TWILIO_AUTH_TOKEN"),
+                ),
                 twilio_sid=twilio_sid,
             )
 
