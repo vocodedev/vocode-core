@@ -91,7 +91,7 @@ async def main():
                 prompt_preamble="Have a pleasant conversation about life",
             ),
         ),
-        synthesizer_config=AzureSynthesizer(
+        synthesizer=AzureSynthesizer(
             AzureSynthesizerConfig.from_output_device(speaker_output)
         ),
     )
