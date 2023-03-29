@@ -1,10 +1,11 @@
 [tool.poetry]
 name = "vocode"
-version = "0.1.63"
+version = "0.1.65"
 description = "The all-in-one voice SDK"
 authors = ["Ajay Raj <ajay@vocode.dev>"]
 license = "MIT License"
 readme = "README.md"
+homepage = "https://github.com/vocodedev/vocode-python"
 
 [tool.poetry.dependencies]
 python = "^3.9"
