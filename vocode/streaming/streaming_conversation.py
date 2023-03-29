@@ -1,19 +1,14 @@
 import asyncio
-from asyncio import Future
-from ctypes import Union
 import queue
-from typing import Callable, Awaitable, Optional, Any
+from typing import Optional, Any
 import logging
 import threading
 import time
-import secrets
 import random
 
 from vocode.streaming.agent.bot_sentiment_analyser import (
-    BotSentiment,
     BotSentimentAnalyser,
 )
-from vocode.streaming.agent.information_retrieval_agent import InformationRetrievalAgent
 from vocode.streaming.factory import (
     create_agent,
     create_synthesizer,
@@ -21,26 +16,16 @@ from vocode.streaming.factory import (
 )
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.transcriber.assembly_ai_transcriber import AssemblyAITranscriber
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.utils.transcript import Transcript
 
-from vocode.streaming.models.transcriber import (
-    TranscriberConfig,
-    TranscriberType,
-)
 from vocode.streaming.models.agent import (
-    AgentConfig,
-    AgentType,
     FillerAudioConfig,
     FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS,
 )
 from vocode.streaming.models.synthesizer import (
-    SynthesizerConfig,
-    SynthesizerType,
     TrackBotSentimentConfig,
 )
-from vocode.streaming.models.websocket import AudioMessage
 from vocode.streaming.constants import (
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
     PER_CHUNK_ALLOWANCE_SECONDS,
@@ -104,7 +89,8 @@ class StreamingConversation:
             self.bot_sentiment_analyser = BotSentimentAnalyser(
                 emotions=self.track_bot_sentiment_config.emotions
             )
-        self.goodbye_model = GoodbyeModel()
+        if self.agent.get_agent_config().end_conversation_on_goodbye:
+            self.goodbye_model = GoodbyeModel()
 
         self.is_human_speaking = False
         self.active = False
