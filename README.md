@@ -8,7 +8,7 @@
 [Community](https://discord.gg/NaU4mMgcnC) | [Docs](https://docs.vocode.dev) | [Dashboard](https://app.vocode.dev)
 </div>
 
-# <span><img style='vertical-align:middle; display:inline;' src="https://user-images.githubusercontent.com/6234599/228339858-95a0873a-2d40-4542-963a-6358d19086f5.svg"  width="5%" height="5%">vocode</span>
+# <span><img style='vertical-align:middle; display:inline;' src="https://user-images.githubusercontent.com/6234599/228339858-95a0873a-2d40-4542-963a-6358d19086f5.svg"  width="5%" height="5%">&nbsp; vocode</span>
 
 ### **Build voice-based LLM apps in minutes**
 
@@ -36,6 +36,10 @@ Vocode is an open source library that makes it easy to build voice-based LLM app
 
 Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)! 
 
+# Contributing
+
+If there are features or integrations that don't exist yet, please add them! Feel free to fork and create a PR and we will get it merged as soon as possible. We'll have more guidelines on contributions soon :)
+
 # 🚀 Quickstart (Self-hosted)
 
 ```bash
@@ -53,9 +57,12 @@ from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
 )
+from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
+from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 
 # these can also be set as environment variables
 vocode.setenv(
@@ -73,14 +80,20 @@ async def main():
 
     conversation = StreamingConversation(
         output_device=speaker_output,
-        transcriber_config=DeepgramTranscriberConfig.from_input_device(
-            microphone_input, endpointing_config=PunctuationEndpointingConfig()
+        transcriber=DeepgramTranscriber(
+            DeepgramTranscriberConfig.from_input_device(
+                microphone_input, endpointing_config=PunctuationEndpointingConfig()
+            )
         ),
-        agent_config=ChatGPTAgentConfig(
-            initial_message=BaseMessage(text="Hello!"),
-            prompt_preamble="Have a pleasant conversation about life",
+        agent=ChatGPTAgent(
+            ChatGPTAgentConfig(
+                initial_message=BaseMessage(text="Hello!"),
+                prompt_preamble="Have a pleasant conversation about life",
+            ),
         ),
-        synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
+        synthesizer=AzureSynthesizer(
+            AzureSynthesizerConfig.from_output_device(speaker_output)
+        ),
     )
     await conversation.start()
     print("Conversation started, press Ctrl+C to end")
