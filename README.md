@@ -60,6 +60,8 @@ from vocode.streaming.models.transcriber import (
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
+from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 
 # these can also be set as environment variables
 vocode.setenv(
@@ -77,14 +79,20 @@ async def main():
 
     conversation = StreamingConversation(
         output_device=speaker_output,
-        transcriber_config=DeepgramTranscriberConfig.from_input_device(
-            microphone_input, endpointing_config=PunctuationEndpointingConfig()
+        transcriber=DeepgramTranscriber(
+            DeepgramTranscriberConfig.from_input_device(
+                microphone_input, endpointing_config=PunctuationEndpointingConfig()
+            )
         ),
-        agent_config=ChatGPTAgentConfig(
-            initial_message=BaseMessage(text="Hello!"),
-            prompt_preamble="Have a pleasant conversation about life",
+        agent=ChatGPTAgent(
+            ChatGPTAgentConfig(
+                initial_message=BaseMessage(text="Hello!"),
+                prompt_preamble="Have a pleasant conversation about life",
+            ),
         ),
-        synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
+        synthesizer_config=AzureSynthesizer(
+            AzureSynthesizerConfig.from_output_device(speaker_output)
+        ),
     )
     await conversation.start()
     print("Conversation started, press Ctrl+C to end")
