@@ -1,4 +1,5 @@
 import asyncio
+import os
 import time
 import queue
 from google.cloud import speech
@@ -19,10 +20,12 @@ class GoogleTranscriber(BaseTranscriber):
         super().__init__(transcriber_config)
         self._queue = queue.Queue()
         self._ended = False
-        if not getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+        credentials_path = getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if not credentials_path:
             raise Exception(
                 "Please set GOOGLE_APPLICATION_CREDENTIALS environment variable"
             )
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
         self.google_streaming_config = self.create_google_streaming_config()
         self.client = speech.SpeechClient()
         self.warmed_up = False

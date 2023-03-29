@@ -1,4 +1,5 @@
 import io
+import os
 import wave
 from typing import Any, Optional
 
@@ -23,10 +24,12 @@ class GoogleSynthesizer(BaseSynthesizer):
     def __init__(self, synthesizer_config: GoogleSynthesizerConfig):
         super().__init__(synthesizer_config)
         # Instantiates a client
-        if not getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+        credentials_path = getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if not credentials_path:
             raise Exception(
-                "GOOGLE_APPLICATION_CREDENTIALS environment variable must be set"
+                "Please set GOOGLE_APPLICATION_CREDENTIALS environment variable"
             )
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
         self.client = tts.TextToSpeechClient()
 
         # Build the voice request, select the language code ("en-US") and the ssml
