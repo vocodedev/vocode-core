@@ -36,6 +36,10 @@ Vocode is an open source library that makes it easy to build voice-based LLM app
 
 Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)! 
 
+# Contributing
+
+If there are features or integrations that don't exist yet, please add them! Feel free to fork and create a PR and we will get it merged as soon as possible. We'll have more guidelines on contributions soon :)
+
 # 🚀 Quickstart (Self-hosted)
 
 ```bash
