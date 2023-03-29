@@ -21,11 +21,17 @@ class BotSentiment(BaseModel):
 
 
 class BotSentimentAnalyser:
-    def __init__(self, emotions: list[str], model_name: str = "text-davinci-003"):
+    def __init__(
+        self,
+        emotions: list[str],
+        model_name: str = "text-davinci-003",
+        openai_api_key: Optional[str] = None,
+    ):
         self.model_name = model_name
-        self.llm = OpenAI(
-            model_name=self.model_name, openai_api_key=getenv("OPENAI_API_KEY")
-        )
+        openai_api_key = openai_api_key or getenv("OPENAI_API_KEY")
+        if not openai_api_key:
+            raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
+        self.llm = OpenAI(model_name=self.model_name, openai_api_key=openai_api_key)
         assert len(emotions) > 0
         self.emotions = [e.lower() for e in emotions]
         self.prompt = PromptTemplate(

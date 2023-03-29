@@ -23,6 +23,7 @@ class LLMAgent(BaseAgent):
         logger: logging.Logger = None,
         sender="AI",
         recipient="Human",
+        openai_api_key: Optional[str] = None,
     ):
         super().__init__(agent_config)
         self.agent_config = agent_config
@@ -40,11 +41,14 @@ class LLMAgent(BaseAgent):
             if agent_config.initial_message
             else []
         )
+        openai_api_key = openai_api_key or getenv("OPENAI_API_KEY")
+        if not openai_api_key:
+            raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
         self.llm = OpenAI(
             model_name=self.agent_config.model_name,
             temperature=self.agent_config.temperature,
             max_tokens=self.agent_config.max_tokens,
-            openai_api_key=getenv("OPENAI_API_KEY"),
+            openai_api_key=openai_api_key,
         )
         self.stop_tokens = [f"{recipient}:"]
         self.first_response = (

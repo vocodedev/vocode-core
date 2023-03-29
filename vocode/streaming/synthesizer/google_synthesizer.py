@@ -3,6 +3,7 @@ import wave
 from typing import Any, Optional
 
 from google.cloud import texttospeech_v1beta1 as tts
+from vocode import getenv
 
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
@@ -22,6 +23,10 @@ class GoogleSynthesizer(BaseSynthesizer):
     def __init__(self, synthesizer_config: GoogleSynthesizerConfig):
         super().__init__(synthesizer_config)
         # Instantiates a client
+        if not getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+            raise Exception(
+                "GOOGLE_APPLICATION_CREDENTIALS environment variable must be set"
+            )
         self.client = tts.TextToSpeechClient()
 
         # Build the voice request, select the language code ("en-US") and the ssml

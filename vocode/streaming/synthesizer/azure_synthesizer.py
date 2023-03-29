@@ -52,14 +52,27 @@ class AzureSynthesizer(BaseSynthesizer):
     OFFSET_MS = 100
 
     def __init__(
-        self, synthesizer_config: AzureSynthesizerConfig, logger: logging.Logger = None
+        self,
+        synthesizer_config: AzureSynthesizerConfig,
+        logger: logging.Logger = None,
+        azure_speech_key: str = None,
+        azure_speech_region: str = None,
     ):
         super().__init__(synthesizer_config)
         self.synthesizer_config = synthesizer_config
         # Instantiates a client
+        azure_speech_key = azure_speech_key or getenv("AZURE_SPEECH_KEY")
+        azure_speech_region = azure_speech_region or getenv("AZURE_SPEECH_REGION")
+        if not azure_speech_key:
+            raise ValueError(
+                "Please set AZURE_SPEECH_KEY environment variable or pass it as a parameter"
+            )
+        if not azure_speech_region:
+            raise ValueError(
+                "Please set AZURE_SPEECH_REGION environment variable or pass it as a parameter"
+            )
         speech_config = speechsdk.SpeechConfig(
-            subscription=getenv("AZURE_SPEECH_KEY"),
-            region=getenv("AZURE_SPEECH_REGION"),
+            subscription=azure_speech_key, region=azure_speech_region
         )
         if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
             if self.synthesizer_config.sampling_rate == 44100:

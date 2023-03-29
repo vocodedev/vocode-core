@@ -116,7 +116,7 @@ ELEVEN_LABS_ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
 
 class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN_LABS):
-    api_key: str
+    api_key: Optional[str] = None
     voice_id: Optional[str] = ELEVEN_LABS_ADAM_VOICE_ID
 
     @validator("voice_id")
@@ -127,7 +127,7 @@ class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN
     def from_output_device(
         cls,
         output_device: BaseOutputDevice,
-        api_key: str,
+        api_key: Optional[str] = None,
         voice_id: Optional[str] = None,
     ):
         return cls(
@@ -140,7 +140,7 @@ class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN
     @classmethod
     def from_telephone_output_device(
         cls,
-        api_key: str,
+        api_key: Optional[str] = None,
         voice_id: Optional[str] = None,
     ):
         return cls(

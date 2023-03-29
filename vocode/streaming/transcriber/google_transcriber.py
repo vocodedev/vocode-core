@@ -3,6 +3,7 @@ import time
 import queue
 from google.cloud import speech
 import threading
+from vocode import getenv
 
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.transcriber.base_transcriber import (
@@ -18,6 +19,10 @@ class GoogleTranscriber(BaseTranscriber):
         super().__init__(transcriber_config)
         self._queue = queue.Queue()
         self._ended = False
+        if not getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+            raise Exception(
+                "Please set GOOGLE_APPLICATION_CREDENTIALS environment variable"
+            )
         self.google_streaming_config = self.create_google_streaming_config()
         self.client = speech.SpeechClient()
         self.warmed_up = False

@@ -24,7 +24,7 @@ ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 class ElevenLabsSynthesizer(BaseSynthesizer):
     def __init__(self, config: ElevenLabsSynthesizerConfig):
         super().__init__(config)
-        self.api_key = getenv("ELEVEN_LABS_API_KEY")
+        self.api_key = config.api_key or getenv("ELEVEN_LABS_API_KEY")
         self.voice_id = config.voice_id or ADAM_VOICE_ID
         self.words_per_minute = 150
 

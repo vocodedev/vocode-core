@@ -1,5 +1,6 @@
 import os
 import asyncio
+from typing import Optional
 import openai
 import numpy as np
 import requests
@@ -26,8 +27,11 @@ class GoodbyeModel:
         embeddings_cache_path=os.path.join(
             os.path.dirname(__file__), "goodbye_embeddings"
         ),
+        openai_api_key: Optional[str] = None,
     ):
-        openai.api_key = getenv("OPENAI_API_KEY")
+        openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
+        if not openai.api_key:
+            raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
         self.goodbye_embeddings = self.load_or_create_embeddings(
             f"{embeddings_cache_path}/goodbye_embeddings.npy"
         )
