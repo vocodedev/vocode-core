@@ -169,3 +169,13 @@ if __name__ == "__main__":
 # 🌱 Documentation
 
 [docs.vocode.dev](https://docs.vocode.dev/)
+
+# Contribution
+
+We'd love for you all to build on top of our abstractions to enable new and better LLM voice applications!
+
+You can extend our [`BaseAgent`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/agent/base_agent.py), [`BaseTranscriber`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/transcriber/base_transcriber.py), and [`BaseSynthesizer`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/synthesizer/base_synthesizer.py) abstractions to integrate with new LLM APIs, speech recognition and speech synthesis providers. More detail [here](https://docs.vocode.dev/create-your-own-agent#self-hosted).
+
+You can also work with our [`BaseInputDevice`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/input_device/base_input_device.py) and [`BaseOutputDevice`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/output_device/base_output_device.py) abstractions to set up voice applications on new surfaces/platforms. More guides for this coming soon!
+
+Because our `StreamingConversation` takes in these objects and runs locally, it's relatively quick to develop on! We appreciate pull requests and would love to talk to your on [Community](https://discord.gg/NaU4mMgcnC).
