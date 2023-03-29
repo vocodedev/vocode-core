@@ -26,9 +26,16 @@ from vocode.streaming.agent.utils import stream_llm_response
 
 
 class ChatGPTAgent(BaseAgent):
-    def __init__(self, agent_config: ChatGPTAgentConfig, logger: logging.Logger = None):
+    def __init__(
+        self,
+        agent_config: ChatGPTAgentConfig,
+        logger: logging.Logger = None,
+        openai_api_key: Optional[str] = None,
+    ):
         super().__init__(agent_config)
-        openai.api_key = getenv("OPENAI_API_KEY")
+        openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
+        if not openai.api_key:
+            raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
         self.agent_config = agent_config
         self.logger = logger or logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)

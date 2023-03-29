@@ -28,9 +28,14 @@ class DeepgramTranscriber(BaseTranscriber):
         self,
         transcriber_config: DeepgramTranscriberConfig,
         logger: logging.Logger = None,
+        api_key: str = None,
     ):
         super().__init__(transcriber_config)
-        self.api_key = getenv("DEEPGRAM_API_KEY")
+        self.api_key = api_key or getenv("DEEPGRAM_API_KEY")
+        if not self.api_key:
+            raise Exception(
+                "Please set DEEPGRAM_API_KEY environment variable or pass it as a parameter"
+            )
         self.transcriber_config = transcriber_config
         self._ended = False
         self.warmed_up = False
