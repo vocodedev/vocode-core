@@ -25,7 +25,7 @@ class ChatGPTAgent(BaseAgent):
         max_tokens: int = 100,
     ):
         super().__init__(initial_message=initial_message)
-        openai.api_key = getenv("OPENAI_API_KET", api_key)
+        openai.api_key = getenv("OPENAI_API_KEY", api_key)
         if not openai.api_key:
             raise ValueError("OpenAI API key not provided")
         self.prompt = ChatPromptTemplate.from_messages(
