@@ -18,6 +18,7 @@ class SynthesizerType(str, Enum):
     GOOGLE = "synthesizer_google"
     ELEVEN_LABS = "synthesizer_eleven_labs"
     RIME = "synthesizer_rime"
+    PLAY_HT = "synthesizer_play_ht"
 
 
 class SentimentConfig(BaseModel):
@@ -104,3 +105,9 @@ class ElevenLabsSynthesizerConfig(
 
 class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME.value):
     speaker: str
+
+
+class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT):
+    voice_id: str
+    speed: Optional[str] = None
+    preset: Optional[str] = None
