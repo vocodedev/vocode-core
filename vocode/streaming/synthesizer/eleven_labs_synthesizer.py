@@ -52,6 +52,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
             }
 
         response = requests.post(url, headers=headers, json=body, timeout=5)
+        if not response.ok:
+            raise ValueError(
+                f"Eleven Labs API error: {response.status_code} - {response.text}"
+            )
 
         audio_segment: AudioSegment = AudioSegment.from_mp3(
             io.BytesIO(response.content)
