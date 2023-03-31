@@ -71,6 +71,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE):
 
 
 class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM):
+    language: Optional[str] = None
     model: Optional[str] = None
     tier: Optional[str] = None
     should_warmup_model: bool = False
