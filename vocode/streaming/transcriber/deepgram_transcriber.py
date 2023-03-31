@@ -98,6 +98,8 @@ class DeepgramTranscriber(BaseTranscriber):
             "interim_results": "true",
         }
         extra_params = {}
+        if self.transcriber_config.language:
+            extra_params["language"] = self.transcriber_config.language
         if self.transcriber_config.model:
             extra_params["model"] = self.transcriber_config.model
         if self.transcriber_config.tier:
