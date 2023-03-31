@@ -37,17 +37,19 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE):
     track_bot_sentiment_in_voice: Union[bool, TrackBotSentimentConfig] = False
 
     @classmethod
-    def from_output_device(cls, output_device: BaseOutputDevice):
+    def from_output_device(cls, output_device: BaseOutputDevice, **kwargs):
         return cls(
             sampling_rate=output_device.sampling_rate,
             audio_encoding=output_device.audio_encoding,
+            **kwargs
         )
 
     @classmethod
-    def from_telephone_output_device(cls):
+    def from_telephone_output_device(cls, **kwargs):
         return cls(
             sampling_rate=DEFAULT_SAMPLING_RATE,
             audio_encoding=DEFAULT_AUDIO_ENCODING,
+            **kwargs
         )
 
 
@@ -108,8 +110,17 @@ class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE):
         )
 
 
+DEFAULT_GOOGLE_LANGUAGE_CODE = "en-US"
+DEFAULT_GOOGLE_VOICE_NAME = "en-US-Neural2-I"
+DEFAULT_GOOGLE_PITCH = 0
+DEFAULT_GOOGLE_SPEAKING_RATE = 1.2
+
+
 class GoogleSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GOOGLE):
-    pass
+    language_code: str = DEFAULT_GOOGLE_LANGUAGE_CODE
+    voice_name: str = DEFAULT_GOOGLE_VOICE_NAME
+    pitch: float = DEFAULT_GOOGLE_PITCH
+    speaking_rate: float = DEFAULT_GOOGLE_SPEAKING_RATE
 
 
 ELEVEN_LABS_ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
