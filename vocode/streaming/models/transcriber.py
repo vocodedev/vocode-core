@@ -49,24 +49,28 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE):
         cls,
         input_device: BaseInputDevice,
         endpointing_config: Optional[EndpointingConfig] = None,
+        **kwargs,
     ):
         return cls(
             sampling_rate=input_device.sampling_rate,
             audio_encoding=input_device.audio_encoding,
             chunk_size=input_device.chunk_size,
             endpointing_config=endpointing_config,
+            **kwargs,
         )
 
     @classmethod
     def from_telephone_input_device(
         cls,
         endpointing_config: Optional[EndpointingConfig] = None,
+        **kwargs,
     ):
         return cls(
             sampling_rate=DEFAULT_SAMPLING_RATE,
             audio_encoding=DEFAULT_AUDIO_ENCODING,
             chunk_size=DEFAULT_CHUNK_SIZE,
             endpointing_config=endpointing_config,
+            **kwargs,
         )
 
 
