@@ -35,15 +35,16 @@ class GoogleSynthesizer(BaseSynthesizer):
         # Build the voice request, select the language code ("en-US") and the ssml
         # voice gender ("neutral")
         self.voice = tts.VoiceSelectionParams(
-            language_code="en-US", name="en-US-Neural2-I"
+            language_code=synthesizer_config.language_code,
+            name=synthesizer_config.voice_name,
         )
 
         # Select the type of audio file you want returned
         self.audio_config = tts.AudioConfig(
             audio_encoding=tts.AudioEncoding.LINEAR16,
             sample_rate_hertz=24000,
-            speaking_rate=1.2,
-            pitch=0,
+            speaking_rate=synthesizer_config.speaking_rate,
+            pitch=synthesizer_config.pitch,
             effects_profile_id=["telephony-class-application"],
         )
 

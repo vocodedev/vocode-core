@@ -64,5 +64,6 @@ class OutboundCall:
                 call_id=self.conversation_id,
                 twilio_config=self.twilio_config,
             ).dict(),
+            timeout=2,
         )
         assert response.ok or response.status_code == 404, response.text
