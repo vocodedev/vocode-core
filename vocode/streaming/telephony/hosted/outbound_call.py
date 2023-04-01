@@ -40,35 +40,42 @@ class OutboundCall:
         )
 
     def start(self) -> str:
-        response = requests.post(
-            self.vocode_create_outbound_call_url,
-            headers={"Authorization": f"Bearer {vocode.api_key}"},
-            json=CreateOutboundCall(
-                recipient=self.recipient,
-                caller=self.caller,
-                agent_config=self.agent_config,
-                transcriber_config=self.transcriber_config,
-                synthesizer_config=self.synthesizer_config,
-                conversation_id=self.conversation_id,
-                twilio_config=self.twilio_config,
-            ).dict(),
-        )
-        if not response.ok:
-            if response.status_code == 429:
-                raise RateLimitExceeded("Too many requests")
-            else:
-                raise Exception(response.text)
-        data = response.json()
-        self.conversation_id = data["id"]
+        try:
+            response = requests.post(
+                self.vocode_create_outbound_call_url,
+                headers={"Authorization": f"Bearer {vocode.api_key}"},
+                json=CreateOutboundCall(
+                    recipient=self.recipient,
+                    caller=self.caller,
+                    agent_config=self.agent_config,
+                    transcriber_config=self.transcriber_config,
+                    synthesizer_config=self.synthesizer_config,
+                    conversation_id=self.conversation_id,
+                    twilio_config=self.twilio_config,
+                ).dict(),
+                timeout=5,
+            )
+            if not response.ok:
+                if response.status_code == 429:
+                    raise RateLimitExceeded("Too many requests")
+                else:
+                    raise Exception(response.text)
+            data = response.json()
+            self.conversation_id = data["id"]
+        except requests.exceptions.Timeout:
+            raise RateLimitExceeded("Timed out")
 
     def end(self) -> str:
-        response = requests.post(
-            self.vocode_end_outbound_call_url,
-            headers={"Authorization": f"Bearer {vocode.api_key}"},
-            json=EndOutboundCall(
-                call_id=self.conversation_id,
-                twilio_config=self.twilio_config,
-            ).dict(),
-            timeout=2,
-        )
-        assert response.ok or response.status_code == 404, response.text
+        try:
+            response = requests.post(
+                self.vocode_end_outbound_call_url,
+                headers={"Authorization": f"Bearer {vocode.api_key}"},
+                json=EndOutboundCall(
+                    call_id=self.conversation_id,
+                    twilio_config=self.twilio_config,
+                ).dict(),
+                timeout=2,
+            )
+            assert response.ok or response.status_code == 404, response.text
+        except requests.exceptions.Timeout:
+            raise RateLimitExceeded("Timed out")
