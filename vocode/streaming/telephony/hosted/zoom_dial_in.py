@@ -5,6 +5,7 @@ import vocode
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.models.transcriber import TranscriberConfig
+from vocode.streaming.telephony.hosted.exceptions import RateLimitExceeded
 from vocode.streaming.telephony.hosted.outbound_call import OutboundCall
 from vocode.streaming.models.telephony import (
     CallEntity,
@@ -55,6 +56,10 @@ class ZoomDialIn(OutboundCall):
                 twilio_config=self.twilio_config,
             ).dict(),
         )
-        assert response.ok, response.text
+        if not response.ok:
+            if response.status_code == 429:
+                raise RateLimitExceeded("Too many requests")
+            else:
+                raise Exception(response.text)
         data = response.json()
         self.conversation_id = data["id"]

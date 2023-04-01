@@ -11,6 +11,7 @@ from vocode.streaming.models.telephony import (
     EndOutboundCall,
     TwilioConfig,
 )
+from vocode.streaming.telephony.hosted.exceptions import RateLimitExceeded
 
 
 class OutboundCall:
@@ -52,7 +53,11 @@ class OutboundCall:
                 twilio_config=self.twilio_config,
             ).dict(),
         )
-        assert response.ok, response.text
+        if not response.ok:
+            if response.status_code == 429:
+                raise RateLimitExceeded("Too many requests")
+            else:
+                raise Exception(response.text)
         data = response.json()
         self.conversation_id = data["id"]
 
