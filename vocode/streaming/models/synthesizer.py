@@ -129,12 +129,20 @@ ELEVEN_LABS_ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN_LABS):
     api_key: Optional[str] = None
     voice_id: Optional[str] = ELEVEN_LABS_ADAM_VOICE_ID
-    stability: Optional[float] = 0.75
-    similarity_boost: Optional[float] = 0.75
+    stability: Optional[float]
+    similarity_boost: Optional[float]
 
     @validator("voice_id")
     def set_name(cls, voice_id):
         return voice_id or ELEVEN_LABS_ADAM_VOICE_ID
+    
+    @validator("similarity_boost", always=True)
+    def stability_and_similarity_boost_check(cls, similarity_boost, values):
+        stability = values.get("stability")
+        if (stability is None) != (similarity_boost is None):
+            raise ValueError("Both stability and similarity_boost must be set or not set.")
+        return similarity_boost
+
 
     @classmethod
     def from_output_device(
