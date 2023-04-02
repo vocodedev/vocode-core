@@ -9,15 +9,27 @@ ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
 
 
 class ElevenLabsSynthesizer(BaseSynthesizer):
-    def __init__(self, voice_id: str, api_key: Optional[str] = None):
+    def __init__(
+        self, 
+        voice_id: str, 
+        stability: float,
+        similarity_boost: float,
+        api_key: Optional[str] = None,
+    ):
         self.voice_id = voice_id
         self.api_key = getenv("ELEVEN_LABS_API_KEY", api_key)
+        self.stability = stability
+        self.similarity_boost = similarity_boost
 
     def synthesize(self, text: str) -> AudioSegment:
         url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
         headers = {"xi-api-key": self.api_key, "voice_id": self.voice_id}
         body = {
             "text": text,
+            "voice_settings": {
+                "stability": self.stability,
+                "similarity_boost": self.similarity_boost,
+            },
         }
         response = requests.post(url, headers=headers, json=body)
         assert response.ok, response.text
