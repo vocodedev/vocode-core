@@ -129,6 +129,8 @@ ELEVEN_LABS_ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN_LABS):
     api_key: Optional[str] = None
     voice_id: Optional[str] = ELEVEN_LABS_ADAM_VOICE_ID
+    stability: Optional[float] = 0.75
+    similarity_boost: Optional[float] = 0.75
 
     @validator("voice_id")
     def set_name(cls, voice_id):
@@ -140,12 +142,16 @@ class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN
         output_device: BaseOutputDevice,
         api_key: Optional[str] = None,
         voice_id: Optional[str] = None,
+        stability: Optional[float] = None,
+        similarity_boost: Optional[float] = None,
     ):
         return cls(
             sampling_rate=output_device.sampling_rate,
             audio_encoding=output_device.audio_encoding,
             api_key=api_key,
             voice_id=voice_id,
+            stability=stability,
+            similarity_boost=similarity_boost,
         )
 
     @classmethod
@@ -153,12 +159,16 @@ class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN
         cls,
         api_key: Optional[str] = None,
         voice_id: Optional[str] = None,
+        stability: Optional[float] = None,
+        similarity_boost: Optional[float] = None,
     ):
         return cls(
             sampling_rate=DEFAULT_SAMPLING_RATE,
             audio_encoding=DEFAULT_AUDIO_ENCODING,
             api_key=api_key,
             voice_id=voice_id,
+            stability=stability,
+            similarity_boost=similarity_boost,
         )
 
 
