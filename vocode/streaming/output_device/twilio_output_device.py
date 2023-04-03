@@ -4,10 +4,17 @@ import base64
 from fastapi import WebSocket
 
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.telephony.constants import (
+    DEFAULT_AUDIO_ENCODING,
+    DEFAULT_SAMPLING_RATE,
+)
 
 
 class TwilioOutputDevice(BaseOutputDevice):
     def __init__(self, ws: WebSocket = None, stream_sid: str = None):
+        super().__init__(
+            sampling_rate=DEFAULT_SAMPLING_RATE, audio_encoding=DEFAULT_AUDIO_ENCODING
+        )
         self.ws = ws
         self.stream_sid = stream_sid
 
