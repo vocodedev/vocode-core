@@ -1,6 +1,6 @@
 import asyncio
 import queue
-from typing import Optional, Any
+from typing import Awaitable, Callable, Optional, Any
 import logging
 import threading
 import time
@@ -105,7 +105,7 @@ class StreamingConversation:
         self.current_filler_seconds_per_chunk: int = 0
         self.current_transcription_is_interrupt: bool = False
 
-    async def start(self):
+    async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber_task = asyncio.create_task(self.transcriber.run())
         is_ready = await self.transcriber.ready()
         if not is_ready:
@@ -121,6 +121,8 @@ class StreamingConversation:
             )
             self.synthesizer.set_filler_audios(filler_audio_config)
         self.agent.start()
+        if mark_ready:
+            await mark_ready()
         if self.agent.get_agent_config().initial_message:
             self.transcript.add_bot_message(
                 self.agent.get_agent_config().initial_message.text

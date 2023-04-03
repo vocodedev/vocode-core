@@ -8,9 +8,10 @@ from vocode.streaming.telephony.config_manager.base_config_manager import (
 
 from vocode.streaming.telephony.conversation.call import Call
 from vocode.streaming.telephony.templates import Templater
+from vocode.streaming.utils.base_router import BaseRouter
 
 
-class CallsRouter:
+class CallsRouter(BaseRouter):
     def __init__(
         self,
         base_url: str,
