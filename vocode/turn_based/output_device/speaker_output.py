@@ -25,6 +25,10 @@ class SpeakerOutput(BaseOutputDevice):
         )
         self.stream.start()
 
+    @classmethod
+    def from_default_device(cls, sampling_rate: int = None):
+        return cls(sd.query_devices(kind="output"), sampling_rate)
+
     def send_audio(self, audio_segment: AudioSegment):
         self.stream.write(np.frombuffer(audio_segment.raw_data, dtype=np.int16))
 
