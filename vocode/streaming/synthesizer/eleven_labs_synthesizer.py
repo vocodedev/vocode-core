@@ -26,6 +26,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
         super().__init__(config)
         self.api_key = config.api_key or getenv("ELEVEN_LABS_API_KEY")
         self.voice_id = config.voice_id or ADAM_VOICE_ID
+        self.stability = config.stability
+        self.similarity_boost = config.similarity_boost
         self.words_per_minute = 150
 
     def create_speech(
@@ -36,9 +38,14 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
     ) -> SynthesisResult:
         url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
         headers = {"xi-api-key": self.api_key, "voice_id": self.voice_id}
-        body = {
-            "text": message.text,
-        }
+        body = {"text": message.text}
+
+        if self.stability is not None and self.similarity_boost is not None:
+            body["voice_settings"] = {
+                "stability": self.stability,
+                "similarity_boost": self.similarity_boost,
+            }
+
         response = requests.post(url, headers=headers, json=body, timeout=5)
 
         audio_segment: AudioSegment = AudioSegment.from_mp3(
