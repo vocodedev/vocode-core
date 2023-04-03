@@ -4,9 +4,10 @@ from typing import Optional
 from fastapi import APIRouter
 
 from vocode.streaming.telephony.templates import Templater
+from vocode.streaming.utils.base_router import BaseRouter
 
 
-class TwiMLRouter:
+class TwiMLRouter(BaseRouter):
     def __init__(
         self,
         base_url: str,
