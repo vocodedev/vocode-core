@@ -129,10 +129,20 @@ ELEVEN_LABS_ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN_LABS):
     api_key: Optional[str] = None
     voice_id: Optional[str] = ELEVEN_LABS_ADAM_VOICE_ID
+    stability: Optional[float]
+    similarity_boost: Optional[float]
 
     @validator("voice_id")
     def set_name(cls, voice_id):
         return voice_id or ELEVEN_LABS_ADAM_VOICE_ID
+    
+    @validator("similarity_boost", always=True)
+    def stability_and_similarity_boost_check(cls, similarity_boost, values):
+        stability = values.get("stability")
+        if (stability is None) != (similarity_boost is None):
+            raise ValueError("Both stability and similarity_boost must be set or not set.")
+        return similarity_boost
+
 
     @classmethod
     def from_output_device(
@@ -140,12 +150,16 @@ class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN
         output_device: BaseOutputDevice,
         api_key: Optional[str] = None,
         voice_id: Optional[str] = None,
+        stability: Optional[float] = None,
+        similarity_boost: Optional[float] = None,
     ):
         return cls(
             sampling_rate=output_device.sampling_rate,
             audio_encoding=output_device.audio_encoding,
             api_key=api_key,
             voice_id=voice_id,
+            stability=stability,
+            similarity_boost=similarity_boost,
         )
 
     @classmethod
@@ -153,12 +167,16 @@ class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN
         cls,
         api_key: Optional[str] = None,
         voice_id: Optional[str] = None,
+        stability: Optional[float] = None,
+        similarity_boost: Optional[float] = None,
     ):
         return cls(
             sampling_rate=DEFAULT_SAMPLING_RATE,
             audio_encoding=DEFAULT_AUDIO_ENCODING,
             api_key=api_key,
             voice_id=voice_id,
+            stability=stability,
+            similarity_boost=similarity_boost,
         )
 
 
