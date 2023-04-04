@@ -24,7 +24,7 @@ from vocode.streaming.models.agent import (
     FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS,
 )
 from vocode.streaming.models.synthesizer import (
-    TrackBotSentimentConfig,
+    SentimentConfig,
 )
 from vocode.streaming.constants import (
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
@@ -76,18 +76,14 @@ class StreamingConversation:
         self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
         self.transcript = Transcript()
         self.bot_sentiment = None
-        if self.synthesizer.get_synthesizer_config().track_bot_sentiment_in_voice:
-            if isinstance(
-                self.synthesizer.get_synthesizer_config().track_bot_sentiment_in_voice,
-                bool,
-            ):
-                self.track_bot_sentiment_config = TrackBotSentimentConfig()
-            else:
-                self.track_bot_sentiment_config = (
-                    self.synthesizer.get_synthesizer_config().track_bot_sentiment_in_voice
-                )
+        if self.agent.get_agent_config().track_bot_sentiment:
+            self.sentiment_config = (
+                self.synthesizer.get_synthesizer_config().sentiment_config
+            )
+            if not self.sentiment_config:
+                self.sentiment_config = SentimentConfig()
             self.bot_sentiment_analyser = BotSentimentAnalyser(
-                emotions=self.track_bot_sentiment_config.emotions
+                emotions=self.sentiment_config.emotions
             )
         if self.agent.get_agent_config().end_conversation_on_goodbye:
             self.goodbye_model = GoodbyeModel()
@@ -127,13 +123,13 @@ class StreamingConversation:
             self.transcript.add_bot_message(
                 self.agent.get_agent_config().initial_message.text
             )
-        if self.synthesizer.get_synthesizer_config().track_bot_sentiment_in_voice:
+        if self.synthesizer.get_synthesizer_config().sentiment_config:
             self.update_bot_sentiment()
         self.send_message_to_stream_nonblocking(
             self.agent.get_agent_config().initial_message, False
         )
         self.active = True
-        if self.synthesizer.get_synthesizer_config().track_bot_sentiment_in_voice:
+        if self.synthesizer.get_synthesizer_config().sentiment_config:
             self.track_bot_sentiment_task = asyncio.create_task(
                 self.track_bot_sentiment()
             )

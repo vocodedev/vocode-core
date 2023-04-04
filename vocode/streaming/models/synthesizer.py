@@ -20,7 +20,7 @@ class SynthesizerType(str, Enum):
     RIME = "synthesizer_rime"
 
 
-class TrackBotSentimentConfig(BaseModel):
+class SentimentConfig(BaseModel):
     emotions: list[str] = ["angry", "friendly", "sad", "whispering"]
 
     @validator("emotions")
@@ -34,7 +34,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE):
     sampling_rate: int
     audio_encoding: AudioEncoding
     should_encode_as_wav: bool = False
-    track_bot_sentiment_in_voice: Union[bool, TrackBotSentimentConfig] = False
+    sentiment_config: Optional[SentimentConfig] = None
 
     @classmethod
     def from_output_device(cls, output_device: BaseOutputDevice, **kwargs):
