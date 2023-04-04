@@ -30,7 +30,10 @@ class SpeakerOutput(BaseOutputDevice):
         return cls(sd.query_devices(kind="output"), sampling_rate)
 
     def send_audio(self, audio_segment: AudioSegment):
-        self.stream.write(np.frombuffer(audio_segment.raw_data, dtype=np.int16))
+        raw_data = audio_segment.raw_data
+        if audio_segment.frame_rate != self.sampling_rate:
+            raw_data = audio_segment.set_frame_rate(self.sampling_rate).raw_data
+        self.stream.write(np.frombuffer(raw_data, dtype=np.int16))
 
     def terminate(self):
         self.stream.close()
