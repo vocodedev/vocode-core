@@ -10,10 +10,10 @@ ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
 
 class ElevenLabsSynthesizer(BaseSynthesizer):
     def __init__(
-        self, 
-        voice_id: str, 
-        stability: float,
-        similarity_boost: float,
+        self,
+        voice_id: str,
+        stability: Optional[float] = None,
+        similarity_boost: Optional[float] = None,
         api_key: Optional[str] = None,
     ):
         self.voice_id = voice_id
@@ -26,7 +26,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
         self, stability: Optional[float], similarity_boost: Optional[float]
     ) -> None:
         if (stability is None) != (similarity_boost is None):
-            raise ValueError("Both stability and similarity_boost must be set or not set.")
+            raise ValueError(
+                "Both stability and similarity_boost must be set or not set."
+            )
 
     def synthesize(self, text: str) -> AudioSegment:
         url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
