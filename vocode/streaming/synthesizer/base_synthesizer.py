@@ -153,11 +153,6 @@ class BaseSynthesizer:
         tokens = word_tokenize(message.text)
         return TreebankWordDetokenizer().detokenize(tokens[:estimated_words_spoken])
 
-    def get_maybe_cached_synthesis_result(
-        self, message: BaseMessage, chunk_size: int
-    ) -> Optional[SynthesisResult]:
-        return
-
     # returns a chunk generator and a thunk that can tell you what part of the message was read given the number of seconds spoken
     # chunk generator must return tuple (bytes of size chunk_size, flag if it is the last chunk)
     def create_speech(
@@ -167,3 +162,39 @@ class BaseSynthesizer:
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         raise NotImplementedError
+
+    # @param file - a file-like object in wav format
+    def create_synthesis_result_from_wav(
+        self, file: Any, message: BaseMessage, chunk_size: int
+    ) -> SynthesisResult:
+        output_bytes = convert_wav(
+            file,
+            output_sample_rate=self.synthesizer_config.sampling_rate,
+            output_encoding=self.synthesizer_config.audio_encoding,
+        )
+
+        if self.synthesizer_config.should_encode_as_wav:
+            chunk_transform = lambda chunk: encode_as_wav(
+                chunk, self.synthesizer_config
+            )
+        else:
+            chunk_transform = lambda chunk: chunk
+
+        def chunk_generator(output_bytes):
+            for i in range(0, len(output_bytes), chunk_size):
+                if i + chunk_size > len(output_bytes):
+                    yield SynthesisResult.ChunkResult(
+                        chunk_transform(output_bytes[i:]), True
+                    )
+                else:
+                    yield SynthesisResult.ChunkResult(
+                        chunk_transform(output_bytes[i : i + chunk_size]), False
+                    )
+
+        return SynthesisResult(
+            chunk_generator(output_bytes),
+            lambda seconds: self.get_message_cutoff_from_total_response_length(
+                message, seconds, len(output_bytes)
+            ),
+        )
+        pass

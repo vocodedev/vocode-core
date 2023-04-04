@@ -83,34 +83,8 @@ class GoogleSynthesizer(BaseSynthesizer):
         in_memory_wav.writeframes(response.audio_content[real_offset:-real_offset])
         output_bytes_io.seek(0)
 
-        if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
-            output_bytes = convert_wav(
-                output_bytes_io,
-                output_sample_rate=self.synthesizer_config.sampling_rate,
-                output_encoding=AudioEncoding.LINEAR16,
-            )
-        elif self.synthesizer_config.audio_encoding == AudioEncoding.MULAW:
-            output_bytes = convert_wav(
-                output_bytes_io,
-                output_sample_rate=self.synthesizer_config.sampling_rate,
-                output_encoding=AudioEncoding.MULAW,
-            )
-
-        if self.synthesizer_config.should_encode_as_wav:
-            output_bytes = encode_as_wav(output_bytes)
-
-        def chunk_generator(output_bytes):
-            for i in range(0, len(output_bytes), chunk_size):
-                if i + chunk_size > len(output_bytes):
-                    yield SynthesisResult.ChunkResult(output_bytes[i:], True)
-                else:
-                    yield SynthesisResult.ChunkResult(
-                        output_bytes[i : i + chunk_size], False
-                    )
-
-        return SynthesisResult(
-            chunk_generator(output_bytes),
-            lambda seconds: self.get_message_cutoff_from_total_response_length(
-                message, seconds, len(output_bytes)
-            ),
+        return self.create_synthesis_result_from_wav(
+            file=output_bytes_io,
+            message=message,
+            chunk_size=chunk_size,
         )
