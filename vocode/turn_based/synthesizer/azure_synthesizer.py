@@ -1,15 +1,18 @@
 from typing import Optional
 import azure.cognitiveservices.speech as speechsdk
 from pydub import AudioSegment
+from regex import D
 from vocode import getenv
 
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
+
+DEFAULT_SAMPLING_RATE = 22050
 
 
 class AzureSynthesizer(BaseSynthesizer):
     def __init__(
         self,
-        sampling_rate: int,
+        sampling_rate: int = DEFAULT_SAMPLING_RATE,
         api_key: Optional[str] = None,
         region: Optional[str] = None,
     ):
@@ -29,6 +32,10 @@ class AzureSynthesizer(BaseSynthesizer):
         if self.sampling_rate == 24000:
             speech_config.set_speech_synthesis_output_format(
                 speechsdk.SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm
+            )
+        if self.sampling_rate == 22050:
+            speech_config.set_speech_synthesis_output_format(
+                speechsdk.SpeechSynthesisOutputFormat.Raw22050Hz16BitMonoPcm
             )
         elif self.sampling_rate == 16000:
             speech_config.set_speech_synthesis_output_format(
