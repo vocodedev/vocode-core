@@ -78,37 +78,6 @@ class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE):
     def set_rate(cls, rate):
         return rate or AZURE_SYNTHESIZER_DEFAULT_RATE
 
-    @classmethod
-    def from_output_device(
-        cls,
-        output_device: BaseOutputDevice,
-        voice_name: Optional[str] = None,
-        pitch: Optional[int] = None,
-        rate: Optional[int] = None,
-    ):
-        return cls(
-            sampling_rate=output_device.sampling_rate,
-            audio_encoding=output_device.audio_encoding,
-            voice_name=voice_name,
-            pitch=pitch,
-            rate=rate,
-        )
-
-    @classmethod
-    def from_telephone_output_device(
-        cls,
-        voice_name: Optional[str] = None,
-        pitch: Optional[int] = None,
-        rate: Optional[int] = None,
-    ):
-        return cls(
-            sampling_rate=DEFAULT_SAMPLING_RATE,
-            audio_encoding=DEFAULT_AUDIO_ENCODING,
-            voice_name=voice_name,
-            pitch=pitch,
-            rate=rate,
-        )
-
 
 DEFAULT_GOOGLE_LANGUAGE_CODE = "en-US"
 DEFAULT_GOOGLE_VOICE_NAME = "en-US-Neural2-I"
@@ -135,73 +104,16 @@ class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN
     @validator("voice_id")
     def set_name(cls, voice_id):
         return voice_id or ELEVEN_LABS_ADAM_VOICE_ID
-    
+
     @validator("similarity_boost", always=True)
     def stability_and_similarity_boost_check(cls, similarity_boost, values):
         stability = values.get("stability")
         if (stability is None) != (similarity_boost is None):
-            raise ValueError("Both stability and similarity_boost must be set or not set.")
+            raise ValueError(
+                "Both stability and similarity_boost must be set or not set."
+            )
         return similarity_boost
-
-
-    @classmethod
-    def from_output_device(
-        cls,
-        output_device: BaseOutputDevice,
-        api_key: Optional[str] = None,
-        voice_id: Optional[str] = None,
-        stability: Optional[float] = None,
-        similarity_boost: Optional[float] = None,
-    ):
-        return cls(
-            sampling_rate=output_device.sampling_rate,
-            audio_encoding=output_device.audio_encoding,
-            api_key=api_key,
-            voice_id=voice_id,
-            stability=stability,
-            similarity_boost=similarity_boost,
-        )
-
-    @classmethod
-    def from_telephone_output_device(
-        cls,
-        api_key: Optional[str] = None,
-        voice_id: Optional[str] = None,
-        stability: Optional[float] = None,
-        similarity_boost: Optional[float] = None,
-    ):
-        return cls(
-            sampling_rate=DEFAULT_SAMPLING_RATE,
-            audio_encoding=DEFAULT_AUDIO_ENCODING,
-            api_key=api_key,
-            voice_id=voice_id,
-            stability=stability,
-            similarity_boost=similarity_boost,
-        )
 
 
 class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME):
     speaker: str
-
-    @classmethod
-    def from_output_device(
-        cls,
-        output_device: BaseOutputDevice,
-        speaker: str,
-    ):
-        return cls(
-            sampling_rate=output_device.sampling_rate,
-            audio_encoding=output_device.audio_encoding,
-            speaker=speaker,
-        )
-
-    @classmethod
-    def from_telephone_output_device(
-        cls,
-        speaker: str,
-    ):
-        return cls(
-            sampling_rate=DEFAULT_SAMPLING_RATE,
-            audio_encoding=DEFAULT_AUDIO_ENCODING,
-            speaker=speaker,
-        )
