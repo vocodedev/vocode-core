@@ -60,7 +60,7 @@ class OutboundCall:
             account_sid=getenv("TWILIO_ACCOUNT_SID"),
             auth_token=getenv("TWILIO_AUTH_TOKEN"),
         )
-        self.twilio_client = create_twilio_client(twilio_config)
+        self.twilio_client = create_twilio_client(self.twilio_config)
         self.twilio_sid = None
 
     def create_twilio_call(
