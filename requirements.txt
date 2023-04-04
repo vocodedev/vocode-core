@@ -50,7 +50,7 @@ pydantic==1.10.7
 pydub==0.25.1
 pyflakes==3.0.1
 PyJWT==2.6.0
-python-dotenv==0.21.1
+python-dotenv>=0.21.1
 python-multipart==0.0.6
 pytz==2022.7.1
 PyYAML==6.0
