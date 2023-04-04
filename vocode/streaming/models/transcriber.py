@@ -18,6 +18,7 @@ class TranscriberType(str, Enum):
     DEEPGRAM = "transcriber_deepgram"
     GOOGLE = "transcriber_google"
     ASSEMBLY_AI = "transcriber_assembly_ai"
+    REV_AI = "transcriber_rev_ai"
 
 
 class EndpointingType(str, Enum):
@@ -100,3 +101,7 @@ class AssemblyAITranscriberConfig(
     TranscriberConfig, type=TranscriberType.ASSEMBLY_AI.value
 ):
     pass
+
+class RevAITranscriberConfig(TranscriberConfig, type=TranscriberType.REV_AI):
+    should_warmup_model: bool = False
+    downsampling: Optional[int] = None
