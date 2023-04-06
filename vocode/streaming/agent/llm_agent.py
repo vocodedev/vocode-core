@@ -70,7 +70,12 @@ class LLMAgent(BaseAgent):
     def get_memory_entry(self, human_input, response):
         return f"{self.recipient}: {human_input}\n{self.sender}: {response}"
 
-    def respond(self, human_input, is_interrupt: bool = False) -> tuple[str, bool]:
+    def respond(
+        self,
+        human_input,
+        is_interrupt: bool = False,
+        conversation_id: Optional[str] = None,
+    ) -> tuple[str, bool]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
             self.memory.append(self.get_memory_entry(human_input, cut_off_response))
@@ -87,7 +92,12 @@ class LLMAgent(BaseAgent):
         self.logger.debug(f"LLM response: {response}")
         return response, False
 
-    def generate_response(self, human_input, is_interrupt: bool = False) -> Generator:
+    def generate_response(
+        self,
+        human_input,
+        is_interrupt: bool = False,
+        conversation_id: Optional[str] = None,
+    ) -> Generator:
         self.logger.debug("LLM generating response to human input")
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()

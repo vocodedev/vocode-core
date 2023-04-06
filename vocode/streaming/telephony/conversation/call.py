@@ -66,7 +66,7 @@ class Call(StreamingConversation):
         super().__init__(
             self.output_device,
             create_transcriber(transcriber_config),
-            create_agent(agent_config, conversation_id=conversation_id),
+            create_agent(agent_config),
             create_synthesizer(synthesizer_config),
             conversation_id=conversation_id,
             per_chunk_allowance_seconds=0.01,

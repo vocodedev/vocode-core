@@ -79,7 +79,12 @@ class ChatGPTAgent(BaseAgent):
     def create_first_response(self, first_prompt):
         return self.conversation.predict(input=first_prompt)
 
-    def respond(self, human_input, is_interrupt: bool = False) -> tuple[str, bool]:
+    def respond(
+        self,
+        human_input,
+        is_interrupt: bool = False,
+        conversation_id: Optional[str] = None,
+    ) -> tuple[str, bool]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
             self.memory.chat_memory.add_user_message(human_input)
@@ -96,7 +101,10 @@ class ChatGPTAgent(BaseAgent):
         return text, False
 
     def generate_response(
-        self, human_input, is_interrupt: bool = False
+        self,
+        human_input,
+        is_interrupt: bool = False,
+        conversation_id: Optional[str] = None,
     ) -> Generator[str, None, None]:
         self.memory.chat_memory.messages.append(
             ChatMessage(role="user", content=human_input)
