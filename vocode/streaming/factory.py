@@ -1,8 +1,12 @@
+from typing import Optional
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.agent.echo_agent import EchoAgent
 from vocode.streaming.agent.information_retrieval_agent import InformationRetrievalAgent
 from vocode.streaming.agent.llm_agent import LLMAgent
+from vocode.streaming.agent.restful_user_implemented_agent import (
+    RESTfulUserImplementedAgent,
+)
 from vocode.streaming.models.agent import AgentConfig, AgentType
 from vocode.streaming.models.synthesizer import SynthesizerConfig, SynthesizerType
 from vocode.streaming.models.transcriber import TranscriberConfig, TranscriberType
@@ -27,7 +31,9 @@ def create_transcriber(transcriber_config: TranscriberConfig) -> BaseTranscriber
         raise Exception("Invalid transcriber config")
 
 
-def create_agent(agent_config: AgentConfig) -> BaseAgent:
+def create_agent(
+    agent_config: AgentConfig, conversation_id: Optional[str] = None
+) -> BaseAgent:
     if agent_config.type == AgentType.LLM:
         return LLMAgent(agent_config=agent_config)
     elif agent_config.type == AgentType.CHAT_GPT:
@@ -37,6 +43,10 @@ def create_agent(agent_config: AgentConfig) -> BaseAgent:
     elif agent_config.type == AgentType.INFORMATION_RETRIEVAL:
         return InformationRetrievalAgent(
             agent_config=agent_config,
+        )
+    elif agent_config.type == AgentType.RESTFUL_USER_IMPLEMENTED:
+        return RESTfulUserImplementedAgent(
+            agent_config=agent_config, conversation_id=conversation_id
         )
     raise Exception("Invalid agent config", agent_config.type)
 

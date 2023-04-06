@@ -9,11 +9,6 @@ import random
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
-from vocode.streaming.factory import (
-    create_agent,
-    create_synthesizer,
-    create_transcriber,
-)
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
