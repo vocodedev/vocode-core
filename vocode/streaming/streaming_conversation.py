@@ -444,7 +444,9 @@ class StreamingConversation:
             self.logger.debug("Generating response for transcription")
             if self.agent.get_agent_config().generate_responses:
                 responses = self.agent.generate_response(
-                    transcription.message, is_interrupt=transcription.is_interrupt
+                    transcription.message,
+                    is_interrupt=transcription.is_interrupt,
+                    conversation_id=self.id,
                 )
                 await self.send_messages_to_stream_async(
                     responses,
@@ -453,7 +455,9 @@ class StreamingConversation:
                 )
             else:
                 response, should_stop = self.agent.respond(
-                    transcription.message, is_interrupt=transcription.is_interrupt
+                    transcription.message,
+                    is_interrupt=transcription.is_interrupt,
+                    conversation_id=self.id,
                 )
                 if self.agent.get_agent_config().send_filler_audio:
                     self.interrupt_all_synthesis()
