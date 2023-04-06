@@ -120,9 +120,10 @@ class StreamingConversation:
             )
         if self.synthesizer.get_synthesizer_config().sentiment_config:
             self.update_bot_sentiment()
-        self.send_message_to_stream_nonblocking(
-            self.agent.get_agent_config().initial_message, False
-        )
+        if self.agent.get_agent_config().initial_message:
+            self.send_message_to_stream_nonblocking(
+                self.agent.get_agent_config().initial_message, False
+            )
         self.active = True
         if self.synthesizer.get_synthesizer_config().sentiment_config:
             self.track_bot_sentiment_task = asyncio.create_task(
