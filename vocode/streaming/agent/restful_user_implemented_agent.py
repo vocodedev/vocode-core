@@ -28,7 +28,10 @@ class RESTfulUserImplementedAgent(BaseAgent):
         self.logger = logger or logging.getLogger(__name__)
 
     def respond(
-        self, human_input, is_interrupt: bool = False
+        self,
+        human_input,
+        is_interrupt: bool = False,
+        conversation_id: Optional[str] = None,
     ) -> tuple[Optional[str], bool]:
         config = self.agent_config.respond
         try:

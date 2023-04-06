@@ -31,9 +31,7 @@ def create_transcriber(transcriber_config: TranscriberConfig) -> BaseTranscriber
         raise Exception("Invalid transcriber config")
 
 
-def create_agent(
-    agent_config: AgentConfig, conversation_id: Optional[str] = None
-) -> BaseAgent:
+def create_agent(agent_config: AgentConfig) -> BaseAgent:
     if agent_config.type == AgentType.LLM:
         return LLMAgent(agent_config=agent_config)
     elif agent_config.type == AgentType.CHAT_GPT:
@@ -45,9 +43,7 @@ def create_agent(
             agent_config=agent_config,
         )
     elif agent_config.type == AgentType.RESTFUL_USER_IMPLEMENTED:
-        return RESTfulUserImplementedAgent(
-            agent_config=agent_config, conversation_id=conversation_id
-        )
+        return RESTfulUserImplementedAgent(agent_config=agent_config)
     raise Exception("Invalid agent config", agent_config.type)
 
 

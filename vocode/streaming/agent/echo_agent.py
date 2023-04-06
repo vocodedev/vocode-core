@@ -1,12 +1,22 @@
-from typing import Generator
+from typing import Generator, Optional
 from vocode.streaming.agent.base_agent import BaseAgent
 
 
 class EchoAgent(BaseAgent):
-    def respond(self, human_input, is_interrupt: bool = False) -> tuple[str, bool]:
+    def respond(
+        self,
+        human_input,
+        is_interrupt: bool = False,
+        conversation_id: Optional[str] = None,
+    ) -> tuple[str, bool]:
         return human_input, False
 
-    def generate_response(self, human_input, is_interrupt: bool = False) -> Generator:
+    def generate_response(
+        self,
+        human_input,
+        is_interrupt: bool = False,
+        conversation_id: Optional[str] = None,
+    ) -> Generator:
         yield human_input
 
     def update_last_bot_message_on_cut_off(self, message: str):

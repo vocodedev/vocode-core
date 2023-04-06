@@ -18,12 +18,18 @@ class BaseAgent:
         pass
 
     def respond(
-        self, human_input, is_interrupt: bool = False
+        self,
+        human_input,
+        is_interrupt: bool = False,
+        conversation_id: Optional[str] = None,
     ) -> tuple[Optional[str], bool]:
         raise NotImplementedError
 
     def generate_response(
-        self, human_input, is_interrupt: bool = False
+        self,
+        human_input,
+        is_interrupt: bool = False,
+        conversation_id: Optional[str] = None,
     ) -> Generator[str, None, None]:
         """Returns a generator that yields a sentence at a time."""
         raise NotImplementedError
