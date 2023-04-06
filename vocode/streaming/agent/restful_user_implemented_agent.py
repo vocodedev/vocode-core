@@ -15,7 +15,6 @@ class RESTfulUserImplementedAgent(BaseAgent):
     def __init__(
         self,
         agent_config: RESTfulUserImplementedAgentConfig,
-        conversation_id: str,
         logger=None,
     ):
         super().__init__(agent_config)
@@ -24,7 +23,6 @@ class RESTfulUserImplementedAgent(BaseAgent):
                 "Use the WebSocket user implemented agent to stream responses"
             )
         self.agent_config = agent_config
-        self.conversation_id = conversation_id
         self.logger = logger or logging.getLogger(__name__)
 
     def respond(
@@ -39,7 +37,7 @@ class RESTfulUserImplementedAgent(BaseAgent):
                 method=config.method,
                 url=config.url,
                 json=RESTfulAgentInput(
-                    human_input=human_input, conversation_id=self.conversation_id
+                    human_input=human_input, conversation_id=conversation_id
                 ).dict(),
                 timeout=15,
             )
