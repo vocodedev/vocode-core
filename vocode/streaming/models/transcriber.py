@@ -1,6 +1,8 @@
 from enum import Enum
 from typing import Optional
 
+from pydantic import validator
+
 from vocode.streaming.input_device.base_input_device import BaseInputDevice
 from vocode.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
@@ -43,6 +45,13 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE):
     audio_encoding: AudioEncoding
     chunk_size: int
     endpointing_config: Optional[EndpointingConfig] = None
+    min_interrupt_confidence: Optional[float] = None
+
+    @validator("min_interrupt_confidence")
+    def min_interrupt_confidence_must_be_between_0_and_1(cls, v):
+        if v is not None and (v < 0 or v > 1):
+            raise ValueError("must be between 0 and 1")
+        return v
 
     @classmethod
     def from_input_device(
