@@ -90,6 +90,7 @@ class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM
     should_warmup_model: bool = False
     version: Optional[str] = None
     downsampling: Optional[int] = None
+    keywords: Optional[list] = None
 
 
 class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE):
