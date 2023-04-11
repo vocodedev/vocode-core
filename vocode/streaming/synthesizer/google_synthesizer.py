@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 import wave
 from typing import Any, Optional
@@ -21,7 +22,11 @@ from vocode.streaming.utils import convert_wav
 class GoogleSynthesizer(BaseSynthesizer):
     OFFSET_SECONDS = 0.5
 
-    def __init__(self, synthesizer_config: GoogleSynthesizerConfig):
+    def __init__(
+        self,
+        synthesizer_config: GoogleSynthesizerConfig,
+        logger: Optional[logging.Logger] = None,
+    ):
         super().__init__(synthesizer_config)
         # Instantiates a client
         credentials_path = getenv("GOOGLE_APPLICATION_CREDENTIALS")

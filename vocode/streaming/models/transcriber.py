@@ -40,7 +40,7 @@ class PunctuationEndpointingConfig(
     time_cutoff_seconds: float = 0.4
 
 
-class TranscriberConfig(TypedModel, type=TranscriberType.BASE):
+class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     sampling_rate: int
     audio_encoding: AudioEncoding
     chunk_size: int
@@ -83,7 +83,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE):
         )
 
 
-class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM):
+class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM.value):
     language: Optional[str] = None
     model: Optional[str] = None
     tier: Optional[str] = None
@@ -92,10 +92,12 @@ class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM
     downsampling: Optional[int] = None
 
 
-class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE):
+class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.value):
     model: Optional[str] = None
     should_warmup_model: bool = False
 
 
-class AssemblyAITranscriberConfig(TranscriberConfig, type=TranscriberType.ASSEMBLY_AI):
+class AssemblyAITranscriberConfig(
+    TranscriberConfig, type=TranscriberType.ASSEMBLY_AI.value
+):
     should_warmup_model: bool = False

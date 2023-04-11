@@ -197,4 +197,3 @@ class BaseSynthesizer:
                 message, seconds, len(output_bytes)
             ),
         )
-        pass

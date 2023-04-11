@@ -1,4 +1,5 @@
 import audioop
+import logging
 from pydub import AudioSegment
 import base64
 from vocode import getenv
@@ -23,7 +24,9 @@ RIME_BASE_URL = "https://rjmopratfrdjgmfmaios.functions.supabase.co/rime-tts"
 
 
 class RimeSynthesizer(BaseSynthesizer):
-    def __init__(self, config: RimeSynthesizerConfig):
+    def __init__(
+        self, config: RimeSynthesizerConfig, logger: Optional[logging.Logger] = None
+    ):
         super().__init__(config)
         self.api_key = getenv("RIME_API_KEY")
         self.speaker = config.speaker
