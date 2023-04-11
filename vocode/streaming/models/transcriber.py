@@ -103,5 +103,4 @@ class AssemblyAITranscriberConfig(
     pass
 
 class RevAITranscriberConfig(TranscriberConfig, type=TranscriberType.REV_AI):
-    should_warmup_model: bool = False
     downsampling: Optional[int] = None
