@@ -338,7 +338,7 @@ class StreamingConversation:
                     transcription.message, transcription.confidence
                 )
             )
-        if not self.is_human_speaking and transcription.confidence >= (
+        if not self.is_human_speaking and transcription.confidence > (
             self.transcriber.get_transcriber_config().min_interrupt_confidence or 0
         ):
             # send interrupt
