@@ -59,8 +59,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
                 f"Eleven Labs API error: {response.status_code} - {response.text}"
             )
 
-        if response.status_code != 200:
-            print(f'WARNING: Eleven Labs responsed with non-200 response: {response.status_code}')
 
         audio_segment: AudioSegment = AudioSegment.from_mp3(
             io.BytesIO(response.content)
