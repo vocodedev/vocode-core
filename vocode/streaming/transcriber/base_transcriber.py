@@ -35,14 +35,6 @@ class BaseTranscriber:
     def set_on_response(self, on_response: Callable[[Transcription], Awaitable]):
         self.on_response = on_response
 
-    def get_warmup_bytes(self):
-        sampling_rate = self.transcriber_config.sampling_rate
-        return convert_wav(
-            "convo/audio/ajay.wav",
-            sampling_rate,
-            self.transcriber_config.audio_encoding,
-        )
-
     async def ready(self):
         return True
 
