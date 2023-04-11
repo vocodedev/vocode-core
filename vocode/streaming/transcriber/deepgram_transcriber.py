@@ -106,6 +106,8 @@ class DeepgramTranscriber(BaseTranscriber):
             extra_params["tier"] = self.transcriber_config.tier
         if self.transcriber_config.version:
             extra_params["version"] = self.transcriber_config.version
+        if self.transcriber_config.keywords:
+            extra_params["keywords"] = self.transcriber_config.keywords
         if (
             self.transcriber_config.endpointing_config
             and self.transcriber_config.endpointing_config.type
