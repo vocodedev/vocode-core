@@ -47,6 +47,8 @@ class RimeSynthesizer(BaseSynthesizer):
             "speaker": self.speaker,
         }
         response = requests.post(RIME_BASE_URL, headers=headers, json=body, timeout=5)
+        if not response.ok:
+            raise Exception(f"Rime API error: {response.status_code}, {response.text}")
         audio_file = io.BytesIO(base64.b64decode(response.json().get("audioContent")))
 
         return self.create_synthesis_result_from_wav(
