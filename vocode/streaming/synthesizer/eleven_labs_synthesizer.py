@@ -1,4 +1,5 @@
 import io
+import logging
 from typing import Any, Optional
 import requests
 from pydub import AudioSegment
@@ -22,7 +23,11 @@ ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
 
 class ElevenLabsSynthesizer(BaseSynthesizer):
-    def __init__(self, config: ElevenLabsSynthesizerConfig):
+    def __init__(
+        self,
+        config: ElevenLabsSynthesizerConfig,
+        logger: Optional[logging.Logger] = None,
+    ):
         super().__init__(config)
         self.api_key = config.api_key or getenv("ELEVEN_LABS_API_KEY")
         self.voice_id = config.voice_id or ADAM_VOICE_ID

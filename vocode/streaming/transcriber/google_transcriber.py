@@ -1,7 +1,9 @@
 import asyncio
+import logging
 import os
 import time
 import queue
+from typing import Optional
 from google.cloud import speech
 import threading
 from vocode import getenv
@@ -16,7 +18,11 @@ from vocode.streaming.utils import create_loop_in_thread
 
 
 class GoogleTranscriber(BaseTranscriber):
-    def __init__(self, transcriber_config: GoogleTranscriberConfig):
+    def __init__(
+        self,
+        transcriber_config: GoogleTranscriberConfig,
+        logger: Optional[logging.Logger] = None,
+    ):
         super().__init__(transcriber_config)
         self._queue = queue.Queue()
         self._ended = False

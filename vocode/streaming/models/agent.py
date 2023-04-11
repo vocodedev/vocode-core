@@ -42,7 +42,7 @@ class WebhookConfig(BaseModel):
     url: str
 
 
-class AgentConfig(TypedModel, type=AgentType.BASE):
+class AgentConfig(TypedModel, type=AgentType.BASE.value):
     initial_message: Optional[BaseMessage] = None
     generate_responses: bool = True
     allowed_idle_time_seconds: Optional[float] = None
@@ -57,7 +57,7 @@ class CutOffResponse(BaseModel):
     messages: list[BaseMessage] = [BaseMessage(text="Sorry?")]
 
 
-class LLMAgentConfig(AgentConfig, type=AgentType.LLM):
+class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
     model_name: str = LLM_AGENT_DEFAULT_MODEL_NAME
@@ -66,14 +66,7 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM):
     cut_off_response: Optional[CutOffResponse] = None
 
 
-class ChatGPTAlphaAgentConfig(AgentConfig, type=AgentType.CHAT_GPT_ALPHA):
-    prompt_preamble: str
-    expected_first_prompt: Optional[str] = None
-    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
-    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
-
-
-class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT):
+class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
     generate_responses: bool = False
@@ -84,7 +77,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT):
 
 
 class InformationRetrievalAgentConfig(
-    AgentConfig, type=AgentType.INFORMATION_RETRIEVAL
+    AgentConfig, type=AgentType.INFORMATION_RETRIEVAL.value
 ):
     recipient_descriptor: str
     caller_descriptor: str
@@ -93,12 +86,12 @@ class InformationRetrievalAgentConfig(
     # TODO: add fields for IVR, voicemail
 
 
-class EchoAgentConfig(AgentConfig, type=AgentType.ECHO):
+class EchoAgentConfig(AgentConfig, type=AgentType.ECHO.value):
     pass
 
 
 class RESTfulUserImplementedAgentConfig(
-    AgentConfig, type=AgentType.RESTFUL_USER_IMPLEMENTED
+    AgentConfig, type=AgentType.RESTFUL_USER_IMPLEMENTED.value
 ):
     class EndpointConfig(BaseModel):
         url: str
@@ -134,7 +127,7 @@ class RESTfulAgentEnd(RESTfulAgentOutput, type=RESTfulAgentOutputType.END):
 
 
 class WebSocketUserImplementedAgentConfig(
-    AgentConfig, type=AgentType.WEBSOCKET_USER_IMPLEMENTED
+    AgentConfig, type=AgentType.WEBSOCKET_USER_IMPLEMENTED.value
 ):
     class RouteConfig(BaseModel):
         url: str

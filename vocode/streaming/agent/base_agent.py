@@ -1,3 +1,4 @@
+import logging
 import random
 from typing import Generator, Optional
 from vocode.streaming.models.agent import (
@@ -8,7 +9,9 @@ from vocode.streaming.models.agent import (
 
 
 class BaseAgent:
-    def __init__(self, agent_config: AgentConfig):
+    def __init__(
+        self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
+    ):
         self.agent_config = agent_config
 
     def get_agent_config(self) -> AgentConfig:

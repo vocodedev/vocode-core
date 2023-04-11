@@ -30,7 +30,7 @@ class SentimentConfig(BaseModel):
         return v
 
 
-class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE):
+class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
     sampling_rate: int
     audio_encoding: AudioEncoding
     should_encode_as_wav: bool = False
@@ -58,25 +58,10 @@ AZURE_SYNTHESIZER_DEFAULT_PITCH = 0
 AZURE_SYNTHESIZER_DEFAULT_RATE = 15
 
 
-class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE):
-    voice_name: Optional[str] = AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME
-    pitch: Optional[int] = AZURE_SYNTHESIZER_DEFAULT_PITCH
-    rate: Optional[int] = AZURE_SYNTHESIZER_DEFAULT_RATE
-
-    class Config:
-        validate_assignment = True
-
-    @validator("voice_name")
-    def set_name(cls, voice_name):
-        return voice_name or AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME
-
-    @validator("pitch")
-    def set_pitch(cls, pitch):
-        return pitch or AZURE_SYNTHESIZER_DEFAULT_PITCH
-
-    @validator("rate")
-    def set_rate(cls, rate):
-        return rate or AZURE_SYNTHESIZER_DEFAULT_RATE
+class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE.value):
+    voice_name: str = AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME
+    pitch: int = AZURE_SYNTHESIZER_DEFAULT_PITCH
+    rate: int = AZURE_SYNTHESIZER_DEFAULT_RATE
 
 
 DEFAULT_GOOGLE_LANGUAGE_CODE = "en-US"
@@ -85,7 +70,7 @@ DEFAULT_GOOGLE_PITCH = 0
 DEFAULT_GOOGLE_SPEAKING_RATE = 1.2
 
 
-class GoogleSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GOOGLE):
+class GoogleSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GOOGLE.value):
     language_code: str = DEFAULT_GOOGLE_LANGUAGE_CODE
     voice_name: str = DEFAULT_GOOGLE_VOICE_NAME
     pitch: float = DEFAULT_GOOGLE_PITCH
@@ -95,7 +80,9 @@ class GoogleSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GOOGLE):
 ELEVEN_LABS_ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
 
-class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN_LABS):
+class ElevenLabsSynthesizerConfig(
+    SynthesizerConfig, type=SynthesizerType.ELEVEN_LABS.value
+):
     api_key: Optional[str] = None
     voice_id: Optional[str] = ELEVEN_LABS_ADAM_VOICE_ID
     stability: Optional[float]
@@ -115,5 +102,5 @@ class ElevenLabsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.ELEVEN
         return similarity_boost
 
 
-class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME):
+class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME.value):
     speaker: str

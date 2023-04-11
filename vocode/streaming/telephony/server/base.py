@@ -4,6 +4,7 @@ from fastapi import APIRouter, Form, Response
 from pydantic import BaseModel
 from vocode import getenv
 from vocode.streaming.agent.base_agent import BaseAgent
+from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
@@ -15,6 +16,7 @@ from vocode.streaming.models.transcriber import (
     TranscriberConfig,
 )
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.factory import SynthesizerFactory
 from vocode.streaming.telephony.config_manager.base_config_manager import (
     BaseConfigManager,
 )
@@ -38,7 +40,9 @@ from vocode.streaming.models.telephony import (
 
 from vocode.streaming.telephony.conversation.call import Call
 from vocode.streaming.telephony.templates import Templater
+from vocode.streaming.telephony.twilio import create_twilio_client, end_twilio_call
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
+from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils import create_conversation_id
 
 
@@ -56,6 +60,9 @@ class TelephonyServer:
         base_url: str,
         config_manager: BaseConfigManager,
         inbound_call_configs: list[InboundCallConfig] = [],
+        transcriber_factory: TranscriberFactory = TranscriberFactory(),
+        agent_factory: AgentFactory = AgentFactory(),
+        synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
         logger: Optional[logging.Logger] = None,
     ):
         self.base_url = base_url
@@ -68,6 +75,9 @@ class TelephonyServer:
                 base_url=base_url,
                 templater=self.templater,
                 config_manager=self.config_manager,
+                transcriber_factory=transcriber_factory,
+                agent_factory=agent_factory,
+                synthesizer_factory=synthesizer_factory,
                 logger=self.logger,
             ).get_router()
         )
@@ -132,16 +142,12 @@ class TelephonyServer:
         # TODO validation via twilio_client
         call_config = self.config_manager.get_config(conversation_id)
         if not call_config:
-            raise ValueError("Call not found")
-        call = Call.from_call_config(
-            self.base_url,
-            call_config,
-            self.config_manager,
-            conversation_id,
-            self.logger,
+            raise ValueError(f"Could not find call config for {conversation_id}")
+        end_twilio_call(
+            create_twilio_client(call_config.twilio_config),
+            call_config.twilio_sid,
         )
-        call.end_twilio_call()
-        return {"id": call.id}
+        return {"id": conversation_id}
 
     def get_router(self) -> APIRouter:
         return self.router
