@@ -33,9 +33,7 @@ class AssemblyAITranscriber(BaseTranscriber):
         self._ended = False
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
-        if self.transcriber_config.should_warmup_model:
-            raise Exception("AssemblyAI model warmup not supported yet")
-        elif self.transcriber_config.endpointing_config:
+        if self.transcriber_config.endpointing_config:
             raise Exception("Assembly AI endpointing config not supported yet")
 
     async def ready(self):

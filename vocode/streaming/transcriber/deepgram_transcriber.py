@@ -42,24 +42,15 @@ class DeepgramTranscriber(BaseTranscriber):
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
 
-    def create_warmup_chunks(self):
-        warmup_chunks = []
-        warmup_bytes = self.get_warmup_bytes()
-        chunk_size = self.transcriber_config.chunk_size
-        for i in range(len(warmup_bytes) // chunk_size):
-            warmup_chunks.append(warmup_bytes[i * chunk_size : (i + 1) * chunk_size])
-        return warmup_chunks
-
     async def ready(self):
         while not self.warmed_up:
             await asyncio.sleep(0.1)
         return self.is_ready
 
     async def run(self):
-        # warmup_chunks = await self.create_warmup_chunks()
         restarts = 0
         while not self._ended and restarts < NUM_RESTARTS:
-            await self.process(self.transcriber_config.should_warmup_model)
+            await self.process()
             restarts += 1
             self.logger.debug(
                 "Deepgram connection died, restarting, num_restarts: %s", restarts
@@ -161,22 +152,13 @@ class DeepgramTranscriber(BaseTranscriber):
             return end - words[-1]["end"]
         return data["duration"]
 
-    async def process(self, warmup=True):
+    async def process(self):
         extra_headers = {"Authorization": f"Token {self.api_key}"}
         self.audio_queue = asyncio.Queue()
 
         async with websockets.connect(
             self.get_deepgram_url(), extra_headers=extra_headers
         ) as ws:
-
-            async def warmup_sender(ws: WebSocketClientProtocol):
-                if warmup:
-                    warmup_chunks = self.create_warmup_chunks()
-                    for chunk in warmup_chunks:
-                        await ws.send(chunk)
-                    await asyncio.sleep(5)
-                self.warmed_up = True
-                self.is_ready = True
 
             async def sender(ws: WebSocketClientProtocol):  # sends audio to websocket
                 while not self._ended:
@@ -234,4 +216,4 @@ class DeepgramTranscriber(BaseTranscriber):
 
                 self.logger.debug("Terminating Deepgram transcriber receiver")
 
-            await asyncio.gather(warmup_sender(ws), sender(ws), receiver(ws))
+            await asyncio.gather(sender(ws), receiver(ws))

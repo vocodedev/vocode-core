@@ -66,37 +66,10 @@ class GoogleTranscriber(BaseTranscriber):
             interim_results=True,
         )
 
-    async def ready(self):
-        if not self.transcriber_config.should_warmup_model:
-            return True
-        while not self.warmed_up:
-            await asyncio.sleep(0.1)
-        return self.is_ready
-
-    def warmup(self):
-        warmup_bytes = self.get_warmup_bytes()
-
-        def stream():
-            chunk_size = self.transcriber_config.sampling_rate * 2
-            for i in range(len(warmup_bytes) // chunk_size):
-                yield speech.StreamingRecognizeRequest(
-                    audio_content=warmup_bytes[i * chunk_size : (i + 1) * chunk_size]
-                )
-                time.sleep(0.01)
-
-        for _ in self.client.streaming_recognize(
-            self.google_streaming_config, stream()
-        ):
-            pass
-        self.warmed_up = True
-        self.is_ready = True
-
     async def run(self):
         self.thread.start()
 
     async def process(self):
-        if self.transcriber_config.should_warmup_model:
-            self.warmup()
         stream = self.generator()
         requests = (
             speech.StreamingRecognizeRequest(audio_content=content)

@@ -87,7 +87,6 @@ class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM
     language: Optional[str] = None
     model: Optional[str] = None
     tier: Optional[str] = None
-    should_warmup_model: bool = False
     version: Optional[str] = None
     downsampling: Optional[int] = None
     keywords: Optional[list] = None
@@ -95,10 +94,9 @@ class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM
 
 class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.value):
     model: Optional[str] = None
-    should_warmup_model: bool = False
 
 
 class AssemblyAITranscriberConfig(
     TranscriberConfig, type=TranscriberType.ASSEMBLY_AI.value
 ):
-    should_warmup_model: bool = False
+    pass
