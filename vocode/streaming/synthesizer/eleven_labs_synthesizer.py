@@ -34,6 +34,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
         self.stability = config.stability
         self.similarity_boost = config.similarity_boost
         self.words_per_minute = 150
+        
 
     def create_speech(
         self,
@@ -51,17 +52,20 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
                 "similarity_boost": self.similarity_boost,
             }
 
+
         response = requests.post(url, headers=headers, json=body, timeout=5)
         if not response.ok:
             raise ValueError(
                 f"Eleven Labs API error: {response.status_code} - {response.text}"
             )
 
+
         audio_segment: AudioSegment = AudioSegment.from_mp3(
             io.BytesIO(response.content)
         )
 
         output_bytes_io = io.BytesIO()
+
         audio_segment.export(output_bytes_io, format="wav")
 
         return self.create_synthesis_result_from_wav(
