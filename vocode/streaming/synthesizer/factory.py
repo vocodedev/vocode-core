@@ -5,6 +5,7 @@ from vocode.streaming.models.synthesizer import SynthesizerConfig, SynthesizerTy
 from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 from vocode.streaming.synthesizer.google_synthesizer import GoogleSynthesizer
+from vocode.streaming.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
 from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
 
 
@@ -20,6 +21,8 @@ class SynthesizerFactory:
             return AzureSynthesizer(synthesizer_config, logger=logger)
         elif synthesizer_config.type == SynthesizerType.ELEVEN_LABS:
             return ElevenLabsSynthesizer(synthesizer_config, logger=logger)
+        elif synthesizer_config.type == SynthesizerType.PLAY_HT:
+            return PlayHtSynthesizer(synthesizer_config, logger=logger)
         elif synthesizer_config.type == SynthesizerType.RIME:
             return RimeSynthesizer(synthesizer_config, logger=logger)
         else:
