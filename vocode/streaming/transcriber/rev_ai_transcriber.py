@@ -39,22 +39,11 @@ class RevAITranscriber(BaseTranscriber):
                 "Please set REV_AI_API_KEY environment variable or pass it as a parameter"
             )
         self.transcriber_config = transcriber_config
-        self.warmed_up = False
         self.closed = False
-        self.is_ready = False
+        self.is_ready = True
         self.logger = logger or logging.getLogger(__name__)
 
-    def create_warmup_chunks(self):
-        warmup_chunks = []
-        warmup_bytes = self.get_warmup_bytes()
-        chunk_size = self.transcriber_config.chunk_size
-        for i in range(len(warmup_bytes) // chunk_size):
-            warmup_chunks.append(warmup_bytes[i * chunk_size : (i + 1) * chunk_size])
-        return warmup_chunks
-
     async def ready(self):
-        while not self.warmed_up:
-            await asyncio.sleep(0.1)
         return self.is_ready
 
 
@@ -80,25 +69,16 @@ class RevAITranscriber(BaseTranscriber):
     async def run(self):
         restarts = 0
         while not self.closed and restarts < NUM_RESTARTS:
-            await self.process(self.transcriber_config.should_warmup_model)
+            await self.process()
             restarts += 1
             self.logger.debug(
                 "Rev AI connection died, restarting, num_restarts: %s", restarts
             )
 
-    async def process(self, warmup=True):
+    async def process(self):
         self.audio_queue = asyncio.Queue()
 
         async with websockets.connect(self.get_rev_ai_url()) as ws:
-            async def warmup_sender(ws: WebSocketClientProtocol):
-                if warmup:
-                    warmup_chunks = self.create_warmup_chunks()
-                    for chunk in warmup_chunks:
-                        await ws.send(chunk)
-                    await asyncio.sleep(5)
-                self.warmed_up = True
-                self.is_ready = True
-
             async def sender(ws: WebSocketClientProtocol):
                 while not self.closed:
                     try:
@@ -150,7 +130,7 @@ class RevAITranscriber(BaseTranscriber):
 
                 self.logger.debug("Terminating Rev.AI transcriber receiver")
 
-            await asyncio.gather(warmup_sender(ws), sender(ws), receiver(ws))
+            await asyncio.gather(sender(ws), receiver(ws))
 
     def send_audio(self, chunk):
         self.audio_queue.put_nowait(chunk)
