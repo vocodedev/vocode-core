@@ -2,10 +2,10 @@
 
 ![Hero](https://user-images.githubusercontent.com/6234599/228337850-e32bb01d-3701-47ef-a433-3221c9e0e56e.png)
 
-    
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/vocodehq.svg?style=social&label=Follow%20%40vocodehq)](https://twitter.com/vocodehq) [![GitHub Repo stars](https://img.shields.io/github/stars/vocodedev/vocode-python?style=social)](https://github.com/vocodedev/vocode-python)
 
 [Community](https://discord.gg/NaU4mMgcnC) | [Docs](https://docs.vocode.dev) | [Dashboard](https://app.vocode.dev)
+
 </div>
 
 # <span><img style='vertical-align:middle; display:inline;' src="https://user-images.githubusercontent.com/6234599/228339858-95a0873a-2d40-4542-963a-6358d19086f5.svg"  width="5%" height="5%">&nbsp; vocode</span>
@@ -15,6 +15,7 @@
 Vocode is an open source library that makes it easy to build voice-based LLM apps. Using Vocode, you can build real-time streaming conversations with LLMs and deploy them to phone calls, Zoom meetings, and more. You can also build personal assistants or apps like voice-based chess. Vocode provides easy abstractions and integrations so that everything you need is in a single library.
 
 # ⭐️ Features
+
 - 🗣 [Spin up a conversation with your system audio](https://docs.vocode.dev/python-quickstart)
 - ➡️ 📞 [Set up a phone number that responds with a LLM-based agent](https://docs.vocode.dev/telephony#inbound-calls)
 - 📞 ➡️ [Send out phone calls from your phone number managed by an LLM-based agent](https://docs.vocode.dev/telephony#outbound-calls)
@@ -30,11 +31,13 @@ Vocode is an open source library that makes it easy to build voice-based LLM app
     - [GPT-4](https://platform.openai.com/docs/models/gpt-4)
     - [Anthropic](https://www.anthropic.com/) - coming soon!
   - Synthesis services, including:
+    - [Rime.ai](https://rime.ai)
     - [Microsoft Azure](https://azure.microsoft.com/en-us/products/cognitive-services/text-to-speech/)
     - [Google Cloud](https://cloud.google.com/text-to-speech)
-    - [Eleven Labs](https://elevenlabs.io/) 
+    - [Play.ht](https://play.ht)
+    - [Eleven Labs](https://elevenlabs.io/)
 
-Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)! 
+Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)!
 
 # 🫂 Contribution
 
@@ -117,7 +120,7 @@ if __name__ == "__main__":
 
 # ☁️ Quickstart (Hosted)
 
-First, get a *free* API key from our [dashboard](https://app.vocode.dev).
+First, get a _free_ API key from our [dashboard](https://app.vocode.dev).
 
 ```bash
 pip install 'vocode[io]'
@@ -169,8 +172,6 @@ if __name__ == "__main__":
 - [Inbound calls - Hosted](https://docs.vocode.dev/telephony#inbound-calls)
 - [Outbound calls - Hosted](https://docs.vocode.dev/telephony#outbound-calls)
 - [Telephony Server - Self-hosted](https://github.com/vocodedev/vocode-python/blob/main/examples/telephony_app.py)
-
-
 
 # 🌱 Documentation
 
