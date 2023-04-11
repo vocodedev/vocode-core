@@ -103,4 +103,4 @@ class AssemblyAITranscriberConfig(
     pass
 
 class RevAITranscriberConfig(TranscriberConfig, type=TranscriberType.REV_AI):
-    downsampling: Optional[int] = None
+    pass
