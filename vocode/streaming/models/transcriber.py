@@ -19,6 +19,7 @@ class TranscriberType(str, Enum):
     GOOGLE = "transcriber_google"
     ASSEMBLY_AI = "transcriber_assembly_ai"
     WHISPER_CPP = "transcriber_whisper_cpp"
+    REV_AI = "transcriber_rev_ai"
 
 
 class EndpointingType(str, Enum):
@@ -107,3 +108,7 @@ class WhisperCPPTranscriberConfig(TranscriberConfig, type=TranscriberType.WHISPE
     buffer_size_seconds: float = 1
     libname: str
     fname_model: str
+
+
+class RevAITranscriberConfig(TranscriberConfig, type=TranscriberType.REV_AI):
+    pass
