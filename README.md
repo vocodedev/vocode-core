@@ -26,6 +26,7 @@ Vocode is an open source library that makes it easy to build voice-based LLM app
     - [AssemblyAI](https://www.assemblyai.com/)
     - [Google Cloud](https://cloud.google.com/speech-to-text)
     - [Whisper](https://openai.com/blog/introducing-chatgpt-and-whisper-apis)
+    - [RevAI](https://www.rev.ai/)
   - LLMs, including:
     - [ChatGPT](https://openai.com/blog/chatgpt)
     - [GPT-4](https://platform.openai.com/docs/models/gpt-4)
