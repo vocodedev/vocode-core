@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 from vocode.turn_based.agent.base_agent import BaseAgent
-from langchain.llms import LlamaCpp
+from langchain.llms import GPT4All
 
 
 class LlamaCPPAgent(BaseAgent):
@@ -20,7 +20,7 @@ class LlamaCPPAgent(BaseAgent):
         self.prompt_template = f"{system_prompt}\n\n{self.DEFAULT_PROMPT_TEMPLATE}"
         self.logger = logger or logging.getLogger(__name__)
         self.memory = [f"AI: {initial_message}"] if initial_message else []
-        self.llm = LlamaCpp(model_path=model_path)
+        self.llm = GPT4All(model=model_path)
         self.stop_tokens = [f"Human:"]
 
     def create_prompt(self, human_input):
@@ -50,9 +50,9 @@ The AI is having a pleasant conversation about life. If the human hasn't complet
 {history}
 Human: {human_input}
 AI:""",
-        model_path="../llama-cpp/models/medium",
+        model_path="/Users/ajayraj/src/llama.cpp/models/gpt4all-7B/gpt4all-lora-quantized-new.bin",
     )
     while True:
-        # response = chat_responder.respond(input("Human: "))[0]
-        for response in chat_responder.generate_response(input("Human: ")):
-            print(f"AI: {response}")
+        response = chat_responder.respond(input("Human: "))[0]
+        # for response in chat_responder.generate_response(input("Human: ")):
+        #     print(f"AI: {response}")
