@@ -31,15 +31,12 @@ class AssemblyAITranscriber(BaseTranscriber):
                 "Please set ASSEMBLY_AI_API_KEY environment variable or pass it as a parameter"
             )
         self._ended = False
-        self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
         if self.transcriber_config.endpointing_config:
             raise Exception("Assembly AI endpointing config not supported yet")
+        self.audio_queue = asyncio.Queue()
 
     async def ready(self):
-        # while not self.warmed_up:
-        #     await asyncio.sleep(0.1)
-        # return self.is_ready
         return True
 
     async def run(self):
@@ -57,7 +54,6 @@ class AssemblyAITranscriber(BaseTranscriber):
         return ASSEMBLY_AI_URL + f"?sample_rate={self.transcriber_config.sampling_rate}"
 
     async def process(self):
-        self.audio_queue = asyncio.Queue()
         URL = self.get_assembly_ai_url()
 
         async with websockets.connect(

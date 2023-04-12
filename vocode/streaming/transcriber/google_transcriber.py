@@ -34,7 +34,6 @@ class GoogleTranscriber(BaseTranscriber):
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
         self.google_streaming_config = self.create_google_streaming_config()
         self.client = speech.SpeechClient()
-        self.warmed_up = False
         self.is_ready = False
         if self.transcriber_config.endpointing_config:
             raise Exception("Google endpointing config not supported yet")
