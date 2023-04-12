@@ -38,14 +38,9 @@ class DeepgramTranscriber(BaseTranscriber):
             )
         self.transcriber_config = transcriber_config
         self._ended = False
-        self.warmed_up = False
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
-
-    async def ready(self):
-        while not self.warmed_up:
-            await asyncio.sleep(0.1)
-        return self.is_ready
+        self.audio_queue = asyncio.Queue()
 
     async def run(self):
         restarts = 0
@@ -154,7 +149,6 @@ class DeepgramTranscriber(BaseTranscriber):
 
     async def process(self):
         extra_headers = {"Authorization": f"Token {self.api_key}"}
-        self.audio_queue = asyncio.Queue()
 
         async with websockets.connect(
             self.get_deepgram_url(), extra_headers=extra_headers
@@ -188,21 +182,14 @@ class DeepgramTranscriber(BaseTranscriber):
                     top_choice = data["channel"]["alternatives"][0]
                     confidence = top_choice["confidence"]
 
-                    if (
-                        top_choice["transcript"]
-                        and confidence > 0.0
-                        and self.warmed_up
-                        and is_final
-                    ):
+                    if top_choice["transcript"] and confidence > 0.0 and is_final:
                         buffer = f"{buffer} {top_choice['transcript']}"
 
                     if speech_final:
                         await self.on_response(Transcription(buffer, confidence, True))
                         buffer = ""
                         time_silent = 0
-                    elif (
-                        top_choice["transcript"] and confidence > 0.0 and self.warmed_up
-                    ):
+                    elif top_choice["transcript"] and confidence > 0.0:
                         await self.on_response(
                             Transcription(
                                 buffer,
