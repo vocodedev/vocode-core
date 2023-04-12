@@ -31,9 +31,10 @@ if __name__ == "__main__":
             initial_message="Hello!",
             api_key=getenv("OPENAI_API_KEY"),
         ),
-        synthesizer=ElevenLabsSynthesizer(
-            voice_id=ADAM_VOICE_ID,
-            api_key=getenv("ELEVEN_LABS_API_KEY"),
+        synthesizer=AzureSynthesizer(
+            api_key=getenv("AZURE_SPEECH_KEY"),
+            region=getenv("AZURE_SPEECH_REGION"),
+            voice_name="en-US-SteffanNeural",
         ),
         logger=logger,
     )
