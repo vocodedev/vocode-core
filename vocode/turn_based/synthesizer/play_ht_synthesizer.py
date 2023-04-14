@@ -12,33 +12,41 @@ TTS_ENDPOINT = "https://play.ht/api/v2/tts/stream"
 
 
 class PlayHtSynthesizer(BaseSynthesizer):
-    def create_speech(
+    def __init__(
         self,
-        text: str,
-        voice_id: str,
-        sampling_rate: int = DEFAULT_SAMPLING_RATE,
+        voice: str,
+        sample_rate: int = DEFAULT_SAMPLING_RATE,
         speed: Optional[float] = None,
         preset: Optional[str] = None,
         api_key: Optional[str] = None,
         user_id: Optional[str] = None,
+    ):
+        self.voice = voice
+        self.sample_rate = sample_rate
+        self.speed = speed
+        self.preset = preset
+        self.api_key = getenv("PLAY_HT_API_KEY", api_key)
+        self.user_id = getenv("PLAY_HT_USER_ID", user_id)
+
+    def synthesize(
+        self,
+        text: str,
     ) -> AudioSegment:
-        api_key = api_key or getenv("PLAY_HT_API_KEY")
-        user_id = user_id or getenv("PLAY_HT_USER_ID")
         headers = {
-            "Authorization": f"Bearer {api_key}",
-            "X-User-ID": user_id,
+            "Authorization": f"Bearer {self.api_key}",
+            "X-User-ID": self.user_id,
             "Accept": "audio/mpeg",
             "Content-Type": "application/json",
         }
         body = {
-            "voice": voice_id,
+            "voice": self.voice,
             "text": text,
-            "sample_rate": sampling_rate,
+            "sample_rate": self.sample_rate,
         }
-        if speed is not None:
-            body["speed"] = speed
-        if preset is not None:
-            body["preset"] = preset
+        if self.speed is not None:
+            body["speed"] = self.speed
+        if self.preset is not None:
+            body["preset"] = self.preset
 
         response = requests.post(TTS_ENDPOINT, headers=headers, json=body, timeout=5)
         if not response.ok:
