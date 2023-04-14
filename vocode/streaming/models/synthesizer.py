@@ -111,3 +111,14 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT):
     voice_id: str
     speed: Optional[str] = None
     preset: Optional[str] = None
+
+
+class GTTSSynthesizerConfig(SynthesizerConfig):
+    pass
+
+
+STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE = "Brian"
+
+
+class StreamElementsSynthesizerConfig(SynthesizerConfig):
+    voice: str = STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE
