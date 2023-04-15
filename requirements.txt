@@ -19,8 +19,8 @@ google-auth==2.16.3
 google-cloud-speech==2.17.3
 google-cloud-texttospeech==2.14.1
 googleapis-common-protos==1.59.0
-grpcio==1.51.3
-grpcio-status==1.51.3
+grpcio>=1.48.0
+grpcio-status>=1.48.0
 h11==0.14.0
 idna==3.4
 Jinja2==3.1.2
@@ -40,7 +40,7 @@ pathspec==0.11.0
 platformdirs==3.1.0
 ply==3.11
 proto-plus==1.22.2
-protobuf==4.22.1
+protobuf>=3.20.3
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 PyAudio==0.2.13
