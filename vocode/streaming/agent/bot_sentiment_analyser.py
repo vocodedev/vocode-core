@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
 from pydantic import BaseModel
@@ -23,7 +23,7 @@ class BotSentiment(BaseModel):
 class BotSentimentAnalyser:
     def __init__(
         self,
-        emotions: list[str],
+        emotions: List[str],
         model_name: str = "text-davinci-003",
         openai_api_key: Optional[str] = None,
     ):

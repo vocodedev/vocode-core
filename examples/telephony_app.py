@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 from fastapi import FastAPI
 from dotenv import load_dotenv
 from vocode import getenv
@@ -47,7 +47,7 @@ class SpellerAgent(BaseAgent):
         human_input,
         is_interrupt: bool = False,
         conversation_id: Optional[str] = None,
-    ) -> tuple[Optional[str], bool]:
+    ) -> Tuple[Optional[str], bool]:
         return "".join(c + " " for c in human_input), False
 
 

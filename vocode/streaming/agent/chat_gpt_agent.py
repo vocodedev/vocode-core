@@ -13,7 +13,7 @@ from langchain.memory import ConversationBufferMemory
 from langchain.schema import ChatMessage, AIMessage
 import openai
 import json
-from typing import Generator, Optional
+from typing import Generator, Optional, Tuple
 
 from typing import Generator
 import logging
@@ -84,7 +84,7 @@ class ChatGPTAgent(BaseAgent):
         human_input,
         is_interrupt: bool = False,
         conversation_id: Optional[str] = None,
-    ) -> tuple[str, bool]:
+    ) -> Tuple[str, bool]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
             self.memory.chat_memory.add_user_message(human_input)

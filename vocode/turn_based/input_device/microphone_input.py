@@ -39,7 +39,7 @@ class MicrophoneInput(BaseInputDevice):
     def from_default_device(cls, sampling_rate: int = None):
         return cls(sd.query_devices(kind="input"), sampling_rate)
 
-    def _stream_callback(self, in_data: np.ndarray[np.int16], *_args):
+    def _stream_callback(self, in_data: np.ndarray, *_args):
         if self.active:
             audio_bytes = in_data.tobytes()
             self.wave_writer.writeframes(audio_bytes)

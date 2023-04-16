@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from typing import Any, Optional
+from typing import Any, List, Optional, Tuple
 from xml.etree import ElementTree
 import azure.cognitiveservices.speech as speechsdk
 from vocode import getenv
@@ -108,7 +108,7 @@ class AzureSynthesizer(BaseSynthesizer):
         self.rate = self.synthesizer_config.rate
         self.logger = logger or logging.getLogger(__name__)
 
-    def get_phrase_filler_audios(self) -> list[FillerAudio]:
+    def get_phrase_filler_audios(self) -> List[FillerAudio]:
         filler_phrase_audios = []
         for filler_phrase in FILLER_PHRASES:
             cache_key = "-".join(
@@ -181,7 +181,7 @@ class AzureSynthesizer(BaseSynthesizer):
         prosody.text = message.strip()
         return ElementTree.tostring(ssml_root, encoding="unicode")
 
-    def synthesize_ssml(self, ssml: str) -> tuple[speechsdk.AudioDataStream, str]:
+    def synthesize_ssml(self, ssml: str) -> Tuple[speechsdk.AudioDataStream, str]:
         result = self.synthesizer.start_speaking_ssml_async(ssml).get()
         return speechsdk.AudioDataStream(result)
 

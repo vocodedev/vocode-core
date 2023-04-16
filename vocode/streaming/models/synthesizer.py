@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, validator
 
@@ -22,7 +22,7 @@ class SynthesizerType(str, Enum):
 
 
 class SentimentConfig(BaseModel):
-    emotions: list[str] = ["angry", "friendly", "sad", "whispering"]
+    emotions: List[str] = ["angry", "friendly", "sad", "whispering"]
 
     @validator("emotions")
     def emotions_must_not_be_empty(cls, v):
