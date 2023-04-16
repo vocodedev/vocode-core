@@ -6,7 +6,7 @@ from ..models.agent import (
     RESTfulAgentOutputType,
     RESTfulAgentText,
 )
-from typing import Generator, Optional, cast
+from typing import Generator, Optional, Tuple, cast
 import requests
 import logging
 
@@ -30,7 +30,7 @@ class RESTfulUserImplementedAgent(BaseAgent):
         human_input,
         is_interrupt: bool = False,
         conversation_id: Optional[str] = None,
-    ) -> tuple[Optional[str], bool]:
+    ) -> Tuple[Optional[str], bool]:
         config = self.agent_config.respond
         try:
             agent_response = requests.request(

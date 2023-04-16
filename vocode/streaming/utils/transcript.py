@@ -1,4 +1,5 @@
 import time
+from typing import List
 from pydantic import BaseModel, Field
 from enum import Enum
 
@@ -20,7 +21,7 @@ class Message(BaseModel):
 
 
 class Transcript(BaseModel):
-    messages: list[Message] = []
+    messages: List[Message] = []
     start_time: float = Field(default_factory=time.time)
 
     def to_string(self, include_timestamps: bool = False) -> str:

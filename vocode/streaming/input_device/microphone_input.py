@@ -36,7 +36,7 @@ class MicrophoneInput(BaseInputDevice):
         self.queue = queue.Queue()
         self.microphone_gain = microphone_gain
 
-    def _stream_callback(self, in_data: np.ndarray[np.int16], *_args):
+    def _stream_callback(self, in_data: np.ndarray, *_args):
         if self.microphone_gain > 1:
             in_data = in_data * (2 ^ self.microphone_gain)
         else:

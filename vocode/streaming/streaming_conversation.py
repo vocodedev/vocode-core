@@ -1,6 +1,6 @@
 import asyncio
 import queue
-from typing import Awaitable, Callable, Optional, Any
+from typing import Awaitable, Callable, Optional, Any, Tuple
 import logging
 import threading
 import time
@@ -166,7 +166,7 @@ class StreamingConversation:
         messages,
         should_allow_human_to_cut_off_bot: bool,
         wait_for_filler_audio: bool = False,
-    ) -> tuple[str, bool]:
+    ) -> Tuple[str, bool]:
         messages_queue = queue.Queue()
         messages_done = threading.Event()
         speech_cut_off = threading.Event()
@@ -250,7 +250,7 @@ class StreamingConversation:
         self,
         message: BaseMessage,
         should_allow_human_to_cut_off_bot: bool,
-    ) -> tuple[str, bool]:
+    ) -> Tuple[str, bool]:
         self.is_current_synthesis_interruptable = should_allow_human_to_cut_off_bot
         stop_event = self.enqueue_stop_event()
         self.logger.debug("Synthesizing speech for message")

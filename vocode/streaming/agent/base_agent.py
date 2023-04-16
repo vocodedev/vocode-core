@@ -1,6 +1,6 @@
 import logging
 import random
-from typing import Generator, Optional
+from typing import Generator, Optional, Tuple
 from vocode.streaming.models.agent import (
     AgentConfig,
     ChatGPTAgentConfig,
@@ -25,7 +25,7 @@ class BaseAgent:
         human_input,
         is_interrupt: bool = False,
         conversation_id: Optional[str] = None,
-    ) -> tuple[Optional[str], bool]:
+    ) -> Tuple[Optional[str], bool]:
         raise NotImplementedError
 
     def generate_response(

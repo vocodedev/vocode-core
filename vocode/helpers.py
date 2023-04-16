@@ -1,4 +1,4 @@
-from typing import Union
+from typing import List, Tuple, Union
 import sounddevice as sd
 from vocode.streaming.input_device.microphone_input import (
     MicrophoneInput as StreamingMicrophoneInput,
@@ -17,7 +17,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def _get_device_prompt(device_infos: list[dict]) -> str:
+def _get_device_prompt(device_infos: List[dict]) -> str:
     return """Please select a device:
 {}
 Choice: """.format(
@@ -33,8 +33,8 @@ def create_microphone_input_and_speaker_output(
     mic_sampling_rate=None,
     speaker_sampling_rate=None,
 ) -> Union[
-    tuple[StreamingMicrophoneInput, StreamingSpeakerOutput],
-    tuple[TurnBasedMicrophoneInput, TurnBasedSpeakerOutput],
+    Tuple[StreamingMicrophoneInput, StreamingSpeakerOutput],
+    Tuple[TurnBasedMicrophoneInput, TurnBasedSpeakerOutput],
 ]:
     device_infos = sd.query_devices()
     input_device_infos = list(

@@ -1,4 +1,4 @@
-from typing import Generator, Optional
+from typing import Generator, Optional, Tuple
 from vocode.streaming.agent.base_agent import BaseAgent
 
 
@@ -8,7 +8,7 @@ class EchoAgent(BaseAgent):
         human_input,
         is_interrupt: bool = False,
         conversation_id: Optional[str] = None,
-    ) -> tuple[str, bool]:
+    ) -> Tuple[str, bool]:
         return human_input, False
 
     def generate_response(

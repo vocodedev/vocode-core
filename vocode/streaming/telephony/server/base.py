@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import List, Optional
 from fastapi import APIRouter, Form, Response
 from pydantic import BaseModel
 from vocode import getenv
@@ -59,7 +59,7 @@ class TelephonyServer:
         self,
         base_url: str,
         config_manager: BaseConfigManager,
-        inbound_call_configs: list[InboundCallConfig] = [],
+        inbound_call_configs: List[InboundCallConfig] = [],
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),

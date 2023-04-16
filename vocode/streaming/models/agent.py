@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import List, Optional, Union
 from enum import Enum
 
 from pydantic import validator
@@ -54,7 +54,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
 
 
 class CutOffResponse(BaseModel):
-    messages: list[BaseMessage] = [BaseMessage(text="Sorry?")]
+    messages: List[BaseMessage] = [BaseMessage(text="Sorry?")]
 
 
 class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
@@ -82,7 +82,7 @@ class InformationRetrievalAgentConfig(
     recipient_descriptor: str
     caller_descriptor: str
     goal_description: str
-    fields: list[str]
+    fields: List[str]
     # TODO: add fields for IVR, voicemail
 
 

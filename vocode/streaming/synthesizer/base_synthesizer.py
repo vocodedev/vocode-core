@@ -1,5 +1,5 @@
 import os
-from typing import Any, Generator, Callable, Optional
+from typing import Any, Generator, Callable, List, Optional
 import math
 import io
 import wave
@@ -105,7 +105,7 @@ class BaseSynthesizer:
             assert (
                 synthesizer_config.sampling_rate == 8000
             ), "MuLaw encoding only supports 8kHz sampling rate"
-        self.filler_audios: list[FillerAudio] = []
+        self.filler_audios: List[FillerAudio] = []
 
     def get_synthesizer_config(self) -> SynthesizerConfig:
         return self.synthesizer_config
@@ -129,7 +129,7 @@ class BaseSynthesizer:
         elif filler_audio_config.use_typing_noise:
             self.filler_audios = [self.get_typing_noise_filler_audio()]
 
-    def get_phrase_filler_audios(self) -> list[FillerAudio]:
+    def get_phrase_filler_audios(self) -> List[FillerAudio]:
         return []
 
     def ready_synthesizer(self):
@@ -154,7 +154,7 @@ class BaseSynthesizer:
         return TreebankWordDetokenizer().detokenize(tokens[:estimated_words_spoken])
 
     # returns a chunk generator and a thunk that can tell you what part of the message was read given the number of seconds spoken
-    # chunk generator must return tuple (bytes of size chunk_size, flag if it is the last chunk)
+    # chunk generator must return a ChunkResult, essentially a tuple (bytes of size chunk_size, flag if it is the last chunk)
     def create_speech(
         self,
         message: BaseMessage,
