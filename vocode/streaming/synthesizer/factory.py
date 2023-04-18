@@ -7,7 +7,7 @@ from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynth
 from vocode.streaming.synthesizer.google_synthesizer import GoogleSynthesizer
 from vocode.streaming.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
 from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
-
+from vocode.streaming.synthesizer.coqui_tts_synthesizer import CoquiTtsSynthesizer
 
 class SynthesizerFactory:
     def create_synthesizer(
@@ -25,5 +25,7 @@ class SynthesizerFactory:
             return PlayHtSynthesizer(synthesizer_config, logger=logger)
         elif synthesizer_config.type == SynthesizerType.RIME:
             return RimeSynthesizer(synthesizer_config, logger=logger)
+        elif synthesizer_config.type == SynthesizerType.COQUI_TTS:
+            return CoquiTtsSynthesizer(synthesizer_config, logger=logger)
         else:
             raise Exception("Invalid synthesizer config")
