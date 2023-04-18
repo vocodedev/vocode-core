@@ -19,6 +19,8 @@ class SynthesizerType(str, Enum):
     ELEVEN_LABS = "synthesizer_eleven_labs"
     RIME = "synthesizer_rime"
     PLAY_HT = "synthesizer_play_ht"
+    GTTS = "synthesizer_gtts"
+    STREAM_ELEMENTS = "synthesizer_stream_elements"
 
 
 class SentimentConfig(BaseModel):
@@ -107,18 +109,18 @@ class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME.value):
     speaker: str
 
 
-class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT):
+class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.value):
     voice_id: str
     speed: Optional[str] = None
     preset: Optional[str] = None
 
 
-class GTTSSynthesizerConfig(SynthesizerConfig):
+class GTTSSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GTTS.value):
     pass
 
 
 STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE = "Brian"
 
 
-class StreamElementsSynthesizerConfig(SynthesizerConfig):
+class StreamElementsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.STREAM_ELEMENTS.value):
     voice: str = STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE
