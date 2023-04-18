@@ -19,6 +19,7 @@ class SynthesizerType(str, Enum):
     ELEVEN_LABS = "synthesizer_eleven_labs"
     RIME = "synthesizer_rime"
     PLAY_HT = "synthesizer_play_ht"
+    COQUI_TTS = "synthesizer_coqui_tts"
 
 
 class SentimentConfig(BaseModel):
@@ -112,6 +113,10 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT):
     speed: Optional[str] = None
     preset: Optional[str] = None
 
+class CoquiTtsConfig(SynthesizerConfig, type=SynthesizerType.COQUI_TTS.value):
+    model_name: str
+    speaker: Optional[str] = None
+    language: Optional[str] = None
 
 class GTTSSynthesizerConfig(SynthesizerConfig):
     pass
