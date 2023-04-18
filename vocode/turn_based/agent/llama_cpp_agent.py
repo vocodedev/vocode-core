@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 from vocode.turn_based.agent.base_agent import BaseAgent
-from langchain.llms import GPT4All
+from pyllamacpp.model import Model
 
 
 class LlamaCPPAgent(BaseAgent):
@@ -20,8 +20,7 @@ class LlamaCPPAgent(BaseAgent):
         self.prompt_template = f"{system_prompt}\n\n{self.DEFAULT_PROMPT_TEMPLATE}"
         self.logger = logger or logging.getLogger(__name__)
         self.memory = [f"AI: {initial_message}"] if initial_message else []
-        self.llm = GPT4All(model=model_path)
-        self.stop_tokens = [f"Human:"]
+        self.llm = Model(ggml_model=model_path, log_level=logging.NOTSET)
 
     def create_prompt(self, human_input):
         history = "\n".join(self.memory[-5:])
@@ -35,8 +34,15 @@ class LlamaCPPAgent(BaseAgent):
         human_input,
     ) -> tuple[str, bool]:
         self.logger.debug("LLM responding to human input")
-        response = self.llm(self.create_prompt(human_input), stop=self.stop_tokens)
-        response = response.replace(f"AI:", "")
+        prompt = self.create_prompt(human_input)
+        response = self.llm.generate(prompt, n_predict=55)[(len(prompt) + 1):]
+        if "Human:" in response:
+            response = response.split("Human:")[0]
+        else:
+            for sentence_ending in self.SENTENCE_ENDINGS:
+                if sentence_ending in response:
+                    response = response.split(sentence_ending)[0]
+                    break
         self.memory.append(self.get_memory_entry(human_input, response))
         self.logger.debug(f"LLM response: {response}")
         return response, False
@@ -44,15 +50,9 @@ class LlamaCPPAgent(BaseAgent):
 
 if __name__ == "__main__":
     chat_responder = LlamaCPPAgent(
-        system_prompt="""
-The AI is having a pleasant conversation about life. If the human hasn't completed their thought, the AI responds with 'PASS'
-
-{history}
-Human: {human_input}
-AI:""",
-        model_path="/Users/ajayraj/src/llama.cpp/models/gpt4all-7B/gpt4all-lora-quantized-new.bin",
+        system_prompt="The AI is having a pleasant conversation about life.",
+        model_path="/Users/ajayraj/src/gpt4all/gpt4all-lora-quantized-converted.bin",
     )
     while True:
         response = chat_responder.respond(input("Human: "))[0]
-        # for response in chat_responder.generate_response(input("Human: ")):
-        #     print(f"AI: {response}")
+        print(f"AI: {response}")
