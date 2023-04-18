@@ -1,4 +1,5 @@
 import io
+import logging
 from typing import Optional
 from pydub import AudioSegment
 
@@ -21,6 +22,7 @@ class PlayHtSynthesizer(BaseSynthesizer):
         synthesizer_config: PlayHtSynthesizerConfig,
         api_key: str = None,
         user_id: str = None,
+        logger: Optional[logging.Logger] = None,
     ):
         super().__init__(synthesizer_config)
         self.synthesizer_config = synthesizer_config
