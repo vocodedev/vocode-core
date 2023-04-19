@@ -16,9 +16,7 @@ from vocode.streaming.models.agent import (
 )
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.telephony import TwilioConfig
-from vocode.streaming.telephony.config_manager.redis_config_manager import (
-    RedisConfigManager,
-)
+from vocode.streaming.telephony.config_manager.in_memory_config_manager import InMemoryConfigManager
 from vocode.streaming.telephony.conversation.outbound_call import OutboundCall
 
 from vocode.streaming.telephony.server.base import InboundCallConfig, TelephonyServer
@@ -29,7 +27,7 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-config_manager = RedisConfigManager()
+config_manager = InMemoryConfigManager()
 
 BASE_URL = "<YOUR BASE URL>"
 
