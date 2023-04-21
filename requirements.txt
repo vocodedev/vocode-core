@@ -21,11 +21,12 @@ google-cloud-texttospeech==2.14.1
 googleapis-common-protos==1.59.0
 grpcio==1.47.0
 grpcio-status==1.47.0
+gTTS==2.3.1
 h11==0.14.0
 idna==3.4
 Jinja2==3.1.2
 joblib==1.2.0
-langchain==0.0.117
+langchain
 MarkupSafe==2.1.2
 marshmallow==3.19.0
 marshmallow-enum==1.5.1
