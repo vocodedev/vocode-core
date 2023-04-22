@@ -3,6 +3,7 @@
 ![Hero](https://user-images.githubusercontent.com/6234599/228337850-e32bb01d-3701-47ef-a433-3221c9e0e56e.png)
 
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/vocodehq.svg?style=social&label=Follow%20%40vocodehq)](https://twitter.com/vocodehq) [![GitHub Repo stars](https://img.shields.io/github/stars/vocodedev/vocode-python?style=social)](https://github.com/vocodedev/vocode-python)
+[![Downloads](https://static.pepy.tech/badge/vocode/month)](https://pepy.tech/project/vocode)
 
 [Community](https://discord.gg/NaU4mMgcnC) | [Docs](https://docs.vocode.dev) | [Dashboard](https://app.vocode.dev)
 
@@ -13,6 +14,8 @@
 ### **Build voice-based LLM apps in minutes**
 
 Vocode is an open source library that makes it easy to build voice-based LLM apps. Using Vocode, you can build real-time streaming conversations with LLMs and deploy them to phone calls, Zoom meetings, and more. You can also build personal assistants or apps like voice-based chess. Vocode provides easy abstractions and integrations so that everything you need is in a single library.
+
+We're actively looking for community maintainers, so please reach out if interested!
 
 # ⭐️ Features
 
@@ -42,13 +45,11 @@ Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)!
 
 # 🫂 Contribution
 
-We'd love for you all to build on top of our abstractions to enable new and better LLM voice applications!
+We're an open source project and are extremely open to contributors adding new features, integrations, and documentation! Please don't hesitate to reach out and get started building with us.
 
-You can extend our [`BaseAgent`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/agent/base_agent.py), [`BaseTranscriber`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/transcriber/base_transcriber.py), and [`BaseSynthesizer`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/synthesizer/base_synthesizer.py) abstractions to integrate with new LLM APIs, speech recognition and speech synthesis providers. More detail [here](https://docs.vocode.dev/create-your-own-agent#self-hosted).
+For more information on contributing, see our [Contribution Guide](https://github.com/vocodedev/vocode-python/contributing.md).
 
-You can also work with our [`BaseInputDevice`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/input_device/base_input_device.py) and [`BaseOutputDevice`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/output_device/base_output_device.py) abstractions to set up voice applications on new surfaces/platforms. More guides for this coming soon!
-
-Because our [`StreamingConversation`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/streaming_conversation.py) runs locally, it's relatively quick to develop on! Feel free to fork and create a PR and we will get it merged as soon as possible. And we'd love to talk to you on [Discord](https://discord.gg/NaU4mMgcnC)!
+And we'd love to talk to you on [Discord](https://discord.gg/NaU4mMgcnC)!
 
 # 🚀 Quickstart (Self-hosted)
 
