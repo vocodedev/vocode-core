@@ -48,7 +48,6 @@ if __name__ == "__main__":
         agent_config=ChatGPTAgentConfig(
             initial_message=BaseMessage(text="Hello!"),
             prompt_preamble="The AI is having a pleasant conversation about life",
-            generate_responses=False,
             cut_off_response=CutOffResponse(),
         ),
         synthesizer_config=ElevenLabsSynthesizerConfig.from_output_device(
