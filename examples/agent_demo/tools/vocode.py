@@ -28,12 +28,12 @@ def call_phone_number(input: str) -> str:
         to_phone=phone_number,
         from_phone=os.getenv("OUTBOUND_CALLER_NUMBER"),
         config_manager=RedisConfigManager(),
-        agent_config=ChatGPTAgentConfig(prompt_preamble=prompt),
+        agent_config=ChatGPTAgentConfig(prompt_preamble=prompt, end_conversation_on_goodbye=True),
         logger=logging.Logger("call_phone_number"),
     )
     call.start()
     while True:
-        transcript_filename = "examples/babyagi/call_transcripts/{}.txt".format(call.conversation_id)
+        transcript_filename = "examples/agent_demo/call_transcripts/{}.txt".format(call.conversation_id)
         if os.path.exists(transcript_filename):
             with open(transcript_filename) as f:
                 return f.read()
