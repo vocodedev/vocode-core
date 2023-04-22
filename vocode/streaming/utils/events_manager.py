@@ -5,7 +5,7 @@ from vocode.streaming.models.events import Event, EventType
 
 class EventsManager:
 
-    def __init__(self, subscriptions: List[EventType]):
+    def __init__(self, subscriptions: List[EventType] = []):
         self.queue = asyncio.Queue()
         self.subscriptions = set(subscriptions)
         self.active = False

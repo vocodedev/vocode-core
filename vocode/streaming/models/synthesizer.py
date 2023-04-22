@@ -2,6 +2,7 @@ from enum import Enum
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, validator
+from vocode.streaming.models.client_backend import OutputAudioConfig
 
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.telephony.constants import (
@@ -52,6 +53,14 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
         return cls(
             sampling_rate=DEFAULT_SAMPLING_RATE,
             audio_encoding=DEFAULT_AUDIO_ENCODING,
+            **kwargs
+        )
+
+    @classmethod
+    def from_output_audio_config(cls, output_audio_config: OutputAudioConfig, **kwargs):
+        return cls(
+            sampling_rate=output_audio_config.sampling_rate,
+            audio_encoding=output_audio_config.audio_encoding,
             **kwargs
         )
 
