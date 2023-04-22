@@ -1,93 +1,44 @@
 openapi: 3.0.1
 info:
-  title: TODO Plugin
-  description: A plugin that allows the user to create and manage a TODO list using ChatGPT. If you do not know the user's username, ask them first before making queries to the plugin. Otherwise, use the username "global".
+  title: Vocode
+  description: A plugin that allows the user to create GPT-powered automated phone calls.
   version: 'v1'
 servers:
   - url: http://localhost:5003
 paths:
-  /todos/{username}:
+  /call:
     get:
-      operationId: getTodos
-      summary: Get the list of todos
+      operationId: call
+      summary: Creates an outbound call
       parameters:
-      - in: path
-        name: username
-        schema:
+        - in: query
+          name: recipient_number
+          schema:
             type: string
-        required: true
-        description: The name of the user.
+          description: The recipient's phone number.
+        - in: query
+          name: gpt_prompt
+          schema:
+            type: string
+          description: GPT prompt for the AI agent making the phone call; in other words, instructions for GPT.
+        - in: query
+          name: initial_message
+          schema:
+            type: string
+          description: A hard-coded initial message for GPT to begin the conversation with.
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/getTodosResponse'
-    post:
-      operationId: addTodo
-      summary: Add a todo to the list
-      parameters:
-      - in: path
-        name: username
-        schema:
-            type: string
-        required: true
-        description: The name of the user.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/addTodoRequest'
-      responses:
-        "200":
-          description: OK
-    delete:
-      operationId: deleteTodo
-      summary: Delete a todo from the list
-      parameters:
-      - in: path
-        name: username
-        schema:
-            type: string
-        required: true
-        description: The name of the user.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/deleteTodoRequest'
-      responses:
-        "200":
-          description: OK
+                $ref: '#/components/schemas/callResponse'
 
 components:
   schemas:
-    getTodosResponse:
+    callResponse:
       type: object
       properties:
-        todos:
-          type: array
-          items:
-            type: string
-          description: The list of todos.
-    addTodoRequest:
-      type: object
-      required:
-      - todo
-      properties:
-        todo:
-          type: string
-          description: The todo to add to the list.
-          required: true
-    deleteTodoRequest:
-      type: object
-      required:
-      - todo_idx
-      properties:
-        todo_idx:
-          type: integer
-          description: The index of the todo to delete.
-          required: true
+        success:
+          type: boolean
+          description: Success/fail boolean for the outbound call.
