@@ -12,6 +12,7 @@ from vocode.streaming.telephony.conversation.call import Call
 from vocode.streaming.telephony.templates import Templater
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.base_router import BaseRouter
+from vocode.streaming.utils.events_manager import EventsManager
 
 
 class CallsRouter(BaseRouter):
@@ -23,6 +24,7 @@ class CallsRouter(BaseRouter):
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+        events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
         super().__init__()
@@ -32,6 +34,7 @@ class CallsRouter(BaseRouter):
         self.transcriber_factory = transcriber_factory
         self.agent_factory = agent_factory
         self.synthesizer_factory = synthesizer_factory
+        self.events_manager = events_manager
         self.logger = logger or logging.getLogger(__name__)
         self.router = APIRouter()
         self.router.websocket("/connect_call/{id}")(self.connect_call)
@@ -51,11 +54,11 @@ class CallsRouter(BaseRouter):
             transcriber_factory=self.transcriber_factory,
             agent_factory=self.agent_factory,
             synthesizer_factory=self.synthesizer_factory,
+            events_manager=self.events_manager,
             logger=self.logger,
         )
 
         await call.attach_ws_and_start(websocket)
-        self.config_manager.delete_config(call.id)
         self.logger.debug("Phone WS connection closed for chat {}".format(id))
 
     def get_router(self) -> APIRouter:
