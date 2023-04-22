@@ -21,7 +21,7 @@ app = FastAPI(docs_url=None)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://chat.openai.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,7 +33,7 @@ logger.setLevel(logging.DEBUG)
 
 config_manager = InMemoryConfigManager()
 
-BASE_URL = "850f8a900b55.ngrok.app"
+BASE_URL = "d0c256b11fe8.ngrok.app"
 
 telephony_server = TelephonyServer(
     base_url=BASE_URL,
@@ -45,27 +45,27 @@ app.include_router(telephony_server.get_router())
 
 
 class CreateOutboundCall(BaseModel):
-    phone_number: str
-    prompt: str
+    recipient_number: str
+    gpt_prompt: str = ""
     initial_message: str
 
 
-@app.post("/vocode/call")
+@app.post("/call")
 async def outbound_call(request: CreateOutboundCall):
     call = OutboundCall(
         base_url=BASE_URL,
-        to_phone=request.phone_number,
+        to_phone=request.recipient_number,
         from_phone="+16507299536",
         config_manager=config_manager,
         agent_config=ChatGPTAgentConfig(
-            prompt_preamble=request.prompt,
+            prompt_preamble=request.gpt_prompt,
             end_conversation_on_goodbye=True,
             initial_message=BaseMessage(text=request.initial_message),
         ),
         logger=logging.Logger("call_phone_number"),
     )
     call.start()
-    return Response(content="OK", status=200)
+    return "OK"
 
 
 @app.get("/logo.png")
@@ -78,7 +78,7 @@ async def plugin_logo():
 async def plugin_manifest():
     with open("./.well-known/ai-plugin.json") as f:
         text = f.read()
-        return Response(text, mimetype="text/json")
+        return Response(text, media_type="text/json")
 
 
 @app.get("/openapi.yaml")
@@ -86,12 +86,4 @@ async def openapi_spec(request: Request):
     host = request.headers["Host"]
     with open("openapi.yaml") as f:
         text = f.read()
-        return Response(text, mimetype="text/yaml")
-
-
-def main():
-    app.run(debug=True, host="0.0.0.0", port=5003)
-
-
-if __name__ == "__main__":
-    main()
+        return Response(text, media_type="text/yaml")
