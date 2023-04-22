@@ -8,6 +8,7 @@ from vocode import getenv
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
+from vocode.streaming.models.events import PhoneCallConnectedEvent, PhoneCallEndedEvent
 
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.models.telephony import CallConfig, TwilioConfig
@@ -34,6 +35,7 @@ from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode.streaming.transcriber.factory import TranscriberFactory
+from vocode.streaming.utils.events_manager import EventsManager
 
 
 class PhoneCallAction(Enum):
@@ -54,6 +56,7 @@ class Call(StreamingConversation):
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+        events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
         self.base_url = base_url
@@ -71,6 +74,7 @@ class Call(StreamingConversation):
             synthesizer_factory.create_synthesizer(synthesizer_config),
             conversation_id=conversation_id,
             per_chunk_allowance_seconds=0.01,
+            events_manager=events_manager,
             logger=logger,
         )
         self.twilio_sid = twilio_sid
@@ -86,6 +90,7 @@ class Call(StreamingConversation):
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+        events_manager: Optional[EventsManager] = None,
     ):
         return Call(
             base_url=base_url,
@@ -100,6 +105,7 @@ class Call(StreamingConversation):
             transcriber_factory=transcriber_factory,
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
+            events_manager=events_manager,
         )
 
     async def attach_ws_and_start(self, ws: WebSocket):
@@ -115,6 +121,9 @@ class Call(StreamingConversation):
         else:
             await self.wait_for_twilio_start(ws)
             await super().start()
+            self.events_manager.publish_event(
+                PhoneCallConnectedEvent(conversation_id=self.id)
+            )
             while self.active:
                 message = await ws.receive_text()
                 response = await self.handle_ws_message(message)
@@ -166,4 +175,7 @@ class Call(StreamingConversation):
         self.config_manager.delete_config(self.id)
 
     def tear_down(self):
+        self.events_manager.publish_event(
+            PhoneCallEndedEvent(conversation_id=self.id)
+        )
         self.terminate()
