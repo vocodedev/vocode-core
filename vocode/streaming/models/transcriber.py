@@ -4,6 +4,7 @@ from typing import Optional
 from pydantic import validator
 
 from vocode.streaming.input_device.base_input_device import BaseInputDevice
+from vocode.streaming.models.client_backend import InputAudioConfig
 from vocode.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_CHUNK_SIZE,
@@ -47,6 +48,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     audio_encoding: AudioEncoding
     chunk_size: int
     endpointing_config: Optional[EndpointingConfig] = None
+    downsampling: Optional[int] = None
     min_interrupt_confidence: Optional[float] = None
 
     @validator("min_interrupt_confidence")
@@ -84,13 +86,26 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
             **kwargs,
         )
 
+    @classmethod
+    def from_input_audio_config(
+        cls,
+        input_audio_config: InputAudioConfig,
+        **kwargs
+    ):
+        return cls(
+            sampling_rate=input_audio_config.sampling_rate,
+            audio_encoding=input_audio_config.audio_encoding,
+            chunk_size=input_audio_config.chunk_size,
+            downsampling=input_audio_config.downsampling,
+            **kwargs,
+        )
+
 
 class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM.value):
     language: Optional[str] = None
     model: Optional[str] = None
     tier: Optional[str] = None
     version: Optional[str] = None
-    downsampling: Optional[int] = None
     keywords: Optional[list] = None
 
 

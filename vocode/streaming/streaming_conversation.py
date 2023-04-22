@@ -72,6 +72,7 @@ class StreamingConversation:
             args=(self.synthesizer_event_loop,),
         )
         self.events_manager = events_manager or EventsManager()
+        self.events_task = None
         self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
         self.transcript = Transcript()
         self.bot_sentiment = None
