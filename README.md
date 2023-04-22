@@ -45,7 +45,7 @@ Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)!
 
 # 🫂 Contribution
 
-We're an open source project and are extremely open to contributors adding new features, integrations, documentation, etc.
+We're an open source project and are extremely open to contributors adding new features, integrations, and documentation! Please don't hesitate to reach out and get started building with us.
 
 For more information on contributing, see our [Contribution Guide](https://github.com/vocodedev/vocode-python/contributing.md).
 

@@ -1,12 +1,8 @@
 # Contributing to Vocode
 
-Hi there! Thank you for wanting to contribute to Vocode!
+Hi there! Thank you for wanting to contribute to Vocode! We're an open source project and are extremely open to contributions like new features,integrations, or documentation.
 
-We're an open source project and are extremely open to contributions like new features,integrations, or documentation.
-
-To contribute, please follow a ["fork and pull request"](https://docs.github.com/en/get-started/quickstart/contributing-to-projects) workflow.
-
-Please do not try to push directly to the repo unless you are a maintainer.
+To contribute, please ["fork and pull request"](https://docs.github.com/en/get-started/quickstart/contributing-to-projects).
 
 ## 🗺️Contributing Guidelines
 
