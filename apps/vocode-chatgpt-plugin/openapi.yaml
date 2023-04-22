@@ -2,37 +2,27 @@ openapi: 3.0.1
 info:
   title: Vocode
   description: A plugin that allows the user to create GPT-powered automated phone calls.
-  version: 'v1'
+  version: "v1"
 servers:
   - url: http://localhost:5003
 paths:
   /call:
-    get:
+    post:
       operationId: call
       summary: Creates an outbound call
-      parameters:
-        - in: query
-          name: recipient_number
-          schema:
-            type: string
-          description: The recipient's phone number.
-        - in: query
-          name: gpt_prompt
-          schema:
-            type: string
-          description: GPT prompt for the AI agent making the phone call; in other words, instructions for GPT.
-        - in: query
-          name: initial_message
-          schema:
-            type: string
-          description: A hard-coded initial message for GPT to begin the conversation with.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/createOutboundCall"
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/callResponse'
+                $ref: "#/components/schemas/callResponse"
 
 components:
   schemas:
@@ -42,3 +32,18 @@ components:
         success:
           type: boolean
           description: Success/fail boolean for the outbound call.
+    createOutboundCall:
+      type: object
+      properties:
+        recipient_number:
+          required: true
+          type: string
+          description: The recipient's phone number.
+        gpt_prompt:
+          required: true
+          type: string
+          description: GPT prompt for the AI agent making the phone call; in other words, instructions for GPT.
+        initial_message:
+          required: true
+          type: string
+          description: A hard-coded initial message for GPT to begin the conversation with.
