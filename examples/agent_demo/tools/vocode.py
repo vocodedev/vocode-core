@@ -28,7 +28,7 @@ def call_phone_number(input: str) -> str:
         to_phone=phone_number,
         from_phone=os.getenv("OUTBOUND_CALLER_NUMBER"),
         config_manager=RedisConfigManager(),
-        agent_config=ChatGPTAgentConfig(prompt_preamble=prompt, end_conversation_on_goodbye=True),
+        agent_config=ChatGPTAgentConfig(prompt_preamble=prompt, end_conversation_on_goodbye=True, model_name="gpt-4"),
         logger=logging.Logger("call_phone_number"),
     )
     call.start()
