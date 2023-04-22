@@ -16,4 +16,5 @@ class InMemoryConfigManager(BaseConfigManager):
         return self.configs.get(conversation_id)
 
     def delete_config(self, conversation_id):
-        del self.configs[conversation_id]
+        if conversation_id in self.configs:
+            del self.configs[conversation_id]
