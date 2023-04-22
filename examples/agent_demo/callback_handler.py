@@ -61,10 +61,11 @@ class VocodeCallbackHandler(AsyncCallbackHandler):
     def on_agent_action(
         self, action: AgentAction, color: Optional[str] = None, **kwargs: Any
     ) -> Any:
-        match = re.match(r"Thought: (.*)", action.log)
-        if match:
-            thought = match.group(1)
+        try:
+            thought = action.log.split("Action:")[0].replace("Thought: ", "")
             self._speak_in_thread(thought)
+        except:
+            print("BEGIN LOG\n{}\nEND LOG".format(action.log))
 
     def on_tool_end(
         self,
@@ -93,7 +94,8 @@ class VocodeCallbackHandler(AsyncCallbackHandler):
     def on_agent_finish(
         self, finish: AgentFinish, color: Optional[str] = None, **kwargs: Any
     ) -> None:
-        match = re.search(r"Final Answer: (.*)", finish.log)
-        if match:
-            thought = match.group(1)
-            self._speak_in_thread(thought)
+        try:
+            final_answer = finish.log.split("Final Answer:")[1].strip()
+            self._speak_in_thread(final_answer)
+        except:
+            pass
