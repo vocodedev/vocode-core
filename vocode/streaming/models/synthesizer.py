@@ -2,6 +2,7 @@ from enum import Enum
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, validator
+from vocode.streaming.models.client_backend import OutputAudioConfig
 
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.telephony.constants import (
@@ -19,7 +20,8 @@ class SynthesizerType(str, Enum):
     ELEVEN_LABS = "synthesizer_eleven_labs"
     RIME = "synthesizer_rime"
     PLAY_HT = "synthesizer_play_ht"
-    COQUI_TTS = "synthesizer_coqui_tts"
+    GTTS = "synthesizer_gtts"
+    STREAM_ELEMENTS = "synthesizer_stream_elements"
 
 
 class SentimentConfig(BaseModel):
@@ -51,6 +53,14 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
         return cls(
             sampling_rate=DEFAULT_SAMPLING_RATE,
             audio_encoding=DEFAULT_AUDIO_ENCODING,
+            **kwargs
+        )
+
+    @classmethod
+    def from_output_audio_config(cls, output_audio_config: OutputAudioConfig, **kwargs):
+        return cls(
+            sampling_rate=output_audio_config.sampling_rate,
+            audio_encoding=output_audio_config.audio_encoding,
             **kwargs
         )
 
@@ -108,7 +118,7 @@ class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME.value):
     speaker: str
 
 
-class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT):
+class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.value):
     voice_id: str
     speed: Optional[str] = None
     preset: Optional[str] = None
@@ -118,12 +128,12 @@ class CoquiTtsConfig(SynthesizerConfig, type=SynthesizerType.COQUI_TTS.value):
     speaker: Optional[str] = None
     language: Optional[str] = None
 
-class GTTSSynthesizerConfig(SynthesizerConfig):
+class GTTSSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GTTS.value):
     pass
 
 
 STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE = "Brian"
 
 
-class StreamElementsSynthesizerConfig(SynthesizerConfig):
+class StreamElementsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.STREAM_ELEMENTS.value):
     voice: str = STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE

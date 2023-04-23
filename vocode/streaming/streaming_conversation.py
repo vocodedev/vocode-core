@@ -1,6 +1,6 @@
 import asyncio
 import queue
-from typing import Awaitable, Callable, Optional, Any, Tuple
+from typing import Awaitable, Callable, Optional, Tuple
 import logging
 import threading
 import time
@@ -9,8 +9,10 @@ import random
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
+from vocode.streaming.models.events import TranscriptCompleteEvent
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.utils.transcript import Transcript
 
@@ -52,6 +54,7 @@ class StreamingConversation:
         synthesizer: BaseSynthesizer,
         conversation_id: str = None,
         per_chunk_allowance_seconds: int = PER_CHUNK_ALLOWANCE_SECONDS,
+        events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
         self.id = conversation_id or create_conversation_id()
@@ -68,6 +71,8 @@ class StreamingConversation:
             target=create_loop_in_thread,
             args=(self.synthesizer_event_loop,),
         )
+        self.events_manager = events_manager or EventsManager()
+        self.events_task = None
         self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
         self.transcript = Transcript()
         self.bot_sentiment = None
@@ -116,7 +121,9 @@ class StreamingConversation:
             await mark_ready()
         if self.agent.get_agent_config().initial_message:
             self.transcript.add_bot_message(
-                self.agent.get_agent_config().initial_message.text
+                text=self.agent.get_agent_config().initial_message.text,
+                events_manager=self.events_manager, 
+                conversation_id=self.id
             )
         if self.synthesizer.get_synthesizer_config().sentiment_config:
             self.update_bot_sentiment()
@@ -130,6 +137,9 @@ class StreamingConversation:
                 self.track_bot_sentiment()
             )
         self.check_for_idle_task = asyncio.create_task(self.check_for_idle())
+        if len(self.events_manager.subscriptions) > 0:
+            self.events_task = asyncio.create_task(self.events_manager.start())
+
 
     async def check_for_idle(self):
         while self.is_active():
@@ -211,7 +221,11 @@ class StreamingConversation:
                 await asyncio.sleep(0)
             if cut_off:
                 self.agent.update_last_bot_message_on_cut_off(response_buffer)
-            self.transcript.add_bot_message(response_buffer)
+            self.transcript.add_bot_message(
+                text=response_buffer,
+                events_manager=self.events_manager, 
+                conversation_id=self.id
+            )
             return response_buffer, cut_off
 
         asyncio.run_coroutine_threadsafe(send_to_call(), self.synthesizer_event_loop)
@@ -274,7 +288,11 @@ class StreamingConversation:
         self.logger.debug("Message sent: {}".format(message_sent))
         if cut_off:
             self.agent.update_last_bot_message_on_cut_off(message_sent)
-        self.transcript.add_bot_message(message_sent)
+        self.transcript.add_bot_message(
+            text=message_sent,
+            events_manager=self.events_manager, 
+            conversation_id=self.id
+        )
         return message_sent, cut_off
 
     def warmup_synthesizer(self):
@@ -418,7 +436,11 @@ class StreamingConversation:
 
     async def handle_transcription(self, transcription: Transcription):
         if transcription.is_final:
-            self.transcript.add_human_message(transcription.message)
+            self.transcript.add_human_message(
+                text=transcription.message, 
+                events_manager=self.events_manager, 
+                conversation_id=self.id
+            )
             goodbye_detected_task = None
             if self.agent.get_agent_config().end_conversation_on_goodbye:
                 goodbye_detected_task = asyncio.create_task(
@@ -494,12 +516,21 @@ class StreamingConversation:
     # must be called from the main thread
     def terminate(self):
         self.mark_terminated()
+        self.events_manager.publish_event(
+            TranscriptCompleteEvent(
+                conversation_id=self.id,
+                transcript=self.transcript.to_string()
+            )
+        )
         if self.check_for_idle_task:
             self.logger.debug("Terminating check_for_idle Task")
             self.check_for_idle_task.cancel()
         if self.track_bot_sentiment_task:
             self.logger.debug("Terminating track_bot_sentiment Task")
             self.track_bot_sentiment_task.cancel()
+        if self.events_manager and self.events_task:
+            self.logger.debug("Terminating events Task")
+            self.events_manager.end()
         self.logger.debug("Terminating agent")
         self.agent.terminate()
         self.logger.debug("Terminating speech transcriber")

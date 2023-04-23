@@ -69,7 +69,6 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
-    generate_responses: bool = False
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS

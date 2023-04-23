@@ -5,11 +5,12 @@ import typing
 from fastapi import APIRouter, WebSocket
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.models.audio_encoding import AudioEncoding
+from vocode.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.models.transcriber import DeepgramTranscriberConfig, PunctuationEndpointingConfig
 from vocode.streaming.models.websocket import (
     AudioConfigStartMessage,
     AudioMessage,
-    InputAudioConfig,
-    OutputAudioConfig,
     ReadyMessage,
     WebSocketMessage,
     WebSocketMessageType,
@@ -17,17 +18,28 @@ from vocode.streaming.models.websocket import (
 
 from vocode.streaming.output_device.websocket_output_device import WebsocketOutputDevice
 from vocode.streaming.streaming_conversation import StreamingConversation
+from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
+from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode.streaming.utils.base_router import BaseRouter
 
 
 class ConversationRouter(BaseRouter):
     def __init__(
         self,
-        transcriber_thunk: Callable[[InputAudioConfig], BaseTranscriber],
         agent: BaseAgent,
-        synthesizer_thunk: Callable[[OutputAudioConfig], BaseSynthesizer],
+        transcriber_thunk: Callable[[InputAudioConfig], BaseTranscriber] = lambda input_audio_config: DeepgramTranscriber(
+            DeepgramTranscriberConfig.from_input_audio_config(
+                input_audio_config=input_audio_config,
+                endpointing_config=PunctuationEndpointingConfig()
+            )
+        ),
+        synthesizer_thunk: Callable[[OutputAudioConfig], BaseSynthesizer] = lambda output_audio_config: AzureSynthesizer(
+            AzureSynthesizerConfig.from_output_audio_config(
+                output_audio_config=output_audio_config
+            )
+        ),
         logger: Optional[logging.Logger] = None,
     ):
         super().__init__()
