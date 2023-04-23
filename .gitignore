@@ -6,3 +6,4 @@ dist/
 credentials.json
 *.npy
 *.bytes
+examples/agent_demo/call_transcripts/*.txt

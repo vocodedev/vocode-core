@@ -9,6 +9,7 @@ class Sender(str, Enum):
 
 class EventType(str, Enum):
     TRANSCRIPT = "event_transcript"
+    TRANSCRIPT_COMPLETE = "event_transcript_complete"
     PHONE_CALL_CONNECTED = "event_phone_call_connected"
     PHONE_CALL_ENDED = "event_phone_call_ended"
 
@@ -34,3 +35,7 @@ class PhoneCallConnectedEvent(Event, type=EventType.PHONE_CALL_CONNECTED):
 
 class PhoneCallEndedEvent(Event, type=EventType.PHONE_CALL_ENDED):
     pass
+
+class TranscriptCompleteEvent(Event, type=EventType.TRANSCRIPT_COMPLETE):
+    transcript: str    
+

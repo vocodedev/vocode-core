@@ -30,11 +30,6 @@ from vocode.streaming.telephony.server.router.calls import CallsRouter
 from vocode.streaming.telephony.server.router.twiml import TwiMLRouter
 from vocode.streaming.models.telephony import (
     CallConfig,
-    CallEntity,
-    CreateOutboundCall,
-    CreateInboundCall,
-    DialIntoZoomCall,
-    EndOutboundCall,
     TwilioConfig,
 )
 
@@ -44,6 +39,7 @@ from vocode.streaming.telephony.twilio import create_twilio_client, end_twilio_c
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils import create_conversation_id
+from vocode.streaming.utils.events_manager import EventsManager
 
 
 class InboundCallConfig(BaseModel):
@@ -63,6 +59,7 @@ class TelephonyServer:
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+        events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
         self.base_url = base_url
@@ -70,6 +67,7 @@ class TelephonyServer:
         self.router = APIRouter()
         self.config_manager = config_manager
         self.templater = Templater()
+        self.events_manager = events_manager
         self.router.include_router(
             CallsRouter(
                 base_url=base_url,
@@ -78,6 +76,7 @@ class TelephonyServer:
                 transcriber_factory=transcriber_factory,
                 agent_factory=agent_factory,
                 synthesizer_factory=synthesizer_factory,
+                events_manager=self.events_manager,
                 logger=self.logger,
             ).get_router()
         )
