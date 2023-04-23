@@ -22,6 +22,7 @@ class SynthesizerType(str, Enum):
     PLAY_HT = "synthesizer_play_ht"
     GTTS = "synthesizer_gtts"
     STREAM_ELEMENTS = "synthesizer_stream_elements"
+    COQUI_TTS = "synthesizer_coqui_tts"
 
 
 class SentimentConfig(BaseModel):
