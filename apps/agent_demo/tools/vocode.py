@@ -37,7 +37,7 @@ def call_phone_number(input: str) -> str:
     )
     call.start()
     while True:
-        transcript_filename = "examples/agent_demo/call_transcripts/{}.txt".format(call.conversation_id)
+        transcript_filename = "apps/agent_demo/call_transcripts/{}.txt".format(call.conversation_id)
         if os.path.exists(transcript_filename):
             with open(transcript_filename) as f:
                 return f.read()

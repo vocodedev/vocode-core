@@ -27,7 +27,7 @@ class EventsManager(events_manager.EventsManager):
     def handle_event(self, event: Event):
         if event.type == EventType.TRANSCRIPT_COMPLETE:
             transcript_complete_event = typing.cast(TranscriptCompleteEvent, event)
-            with open("examples/agent_demo/call_transcripts/{}.txt".format(event.conversation_id), "w") as f:
+            with open("apps/agent_demo/call_transcripts/{}.txt".format(event.conversation_id), "w") as f:
                 f.write(transcript_complete_event.transcript)
 
 config_manager = RedisConfigManager()
