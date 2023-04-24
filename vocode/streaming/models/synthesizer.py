@@ -22,6 +22,7 @@ class SynthesizerType(str, Enum):
     PLAY_HT = "synthesizer_play_ht"
     GTTS = "synthesizer_gtts"
     STREAM_ELEMENTS = "synthesizer_stream_elements"
+    COQUI_TTS = "synthesizer_coqui_tts"
 
 
 class SentimentConfig(BaseModel):
@@ -39,6 +40,9 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
     audio_encoding: AudioEncoding
     should_encode_as_wav: bool = False
     sentiment_config: Optional[SentimentConfig] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
     @classmethod
     def from_output_device(cls, output_device: BaseOutputDevice, **kwargs):
@@ -123,6 +127,10 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.va
     speed: Optional[str] = None
     preset: Optional[str] = None
 
+class CoquiTTSSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI_TTS.value):
+    tts_kwargs: dict = {}
+    speaker: Optional[str] = None
+    language: Optional[str] = None
 
 class GTTSSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GTTS.value):
     pass
