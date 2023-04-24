@@ -10,13 +10,13 @@ from TTS.api import TTS
 
 
 class CoquiTtsSynthesizer(BaseSynthesizer):
-    def __init__(self, model_name: str, speaker: Optional[str] = None, language: Optional[str] = None):
-        self.model_name = model_name
+    def __init__(self, tts: TTS, speaker: Optional[str] = None, language: Optional[str] = None):
+        self.tts = tts
         self.speaker = speaker
         self.language = language
 
     def synthesize(self, text) -> AudioSegment:
-        tts = TTS(self.model_name)
+        tts = self.tts
         audio_data = numpy.array(tts.tts(text, self.speaker, self.language))
 
         # Convert the NumPy array to bytes
