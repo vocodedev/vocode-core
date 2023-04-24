@@ -8,9 +8,9 @@ from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 from TTS.api import TTS
 
 
-class CoquiTtsSynthesizer(BaseSynthesizer):
-    def __init__(self, tts: TTS, speaker: Optional[str] = None, language: Optional[str] = None):
-        self.tts = tts
+class CoquiTTSSynthesizer(BaseSynthesizer):
+    def __init__(self, tts_kwargs: dict = {}, speaker: Optional[str] = None, language: Optional[str] = None):
+        self.tts = TTS(**tts_kwargs)
         self.speaker = speaker
         self.language = language
 

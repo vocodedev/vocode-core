@@ -1,29 +1,27 @@
 import logging
+from typing import Optional
+from dotenv import load_dotenv
+load_dotenv()
 from pydub import AudioSegment
-from pydub.playback import play
 import numpy as np
 import io
-from vocode import getenv
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.message import BaseMessage
 
-from .base_synthesizer import BaseSynthesizer, SynthesisResult, encode_as_wav
+from .base_synthesizer import BaseSynthesizer, SynthesisResult
 
-from vocode.streaming.models.synthesizer import CoquiTtsConfig
-from typing import Any, Optional
-from dotenv import load_dotenv
-load_dotenv()
-import os, sys
+from vocode.streaming.models.synthesizer import CoquiTTSSynthesizerConfig
+from TTS.api import TTS
 
 
 
-class CoquiTtsSynthesizer(BaseSynthesizer):
+class CoquiTTSSynthesizer(BaseSynthesizer):
     def __init__(
-        self, config: CoquiTtsConfig, logger: Optional[logging.Logger] = None
+        self, config: CoquiTTSSynthesizerConfig, logger: Optional[logging.Logger] = None
     ):
         super().__init__(config)
-        self.tts = config.tts
+        self.tts = TTS(**config.tts_kwargs)
         self.speaker = config.speaker
         self.language = config.language
 
@@ -44,7 +42,6 @@ class CoquiTtsSynthesizer(BaseSynthesizer):
         buffer = io.BytesIO(audio_data_bytes)
 
         audio_segment: AudioSegment = AudioSegment.from_raw(buffer, frame_rate=22050, channels=1, sample_width=2)
-        # play(audio_segment)
 
         output_bytes_io = io.BytesIO()
         audio_segment.export(output_bytes_io, format="wav")
