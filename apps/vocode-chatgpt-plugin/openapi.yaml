@@ -23,6 +23,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/callResponse"
+  /transcript/{conversation_id}:
+    get:
+      operationId: transcript
+      summary: Gets the transcript of a call
+      parameters:
+        - in: path
+          name: conversation_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/transcriptResponse"
 
 components:
   schemas:
@@ -32,18 +49,31 @@ components:
         success:
           type: boolean
           description: Success/fail boolean for the outbound call.
-    createOutboundCall:
+        conversation_id:
+          type: string
+          description: The conversation ID for the outbound call.
+    transcriptResponse:
       type: object
       properties:
+        success:
+          type: boolean
+          description: Success/fail boolean for the transcript retrieval.
+        transcript:
+          type: string
+          description: The transcript of the outbound call.
+    createOutboundCall:
+      type: object
+      required:
+        - recipient_number
+        - gpt_prompt
+        - initial_message
+      properties:
         recipient_number:
-          required: true
           type: string
           description: The recipient's phone number.
         gpt_prompt:
-          required: true
           type: string
           description: GPT prompt for the AI agent making the phone call; in other words, instructions for GPT.
         initial_message:
-          required: true
           type: string
           description: A hard-coded initial message for GPT to begin the conversation with.
