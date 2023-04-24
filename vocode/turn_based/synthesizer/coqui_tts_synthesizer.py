@@ -5,7 +5,6 @@ from vocode import getenv
 import numpy
 
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
-from vocode.streaming.utils.hidden_prints import HiddenPrints
 from TTS.api import TTS
 
 
