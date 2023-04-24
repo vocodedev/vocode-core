@@ -93,7 +93,10 @@ class SSEClient(object):
             self.method, self.url, stream=True, **self.requests_kwargs
         )
         self.resp_iterator = self.iter_content()
-        encoding = self.resp.encoding or self.resp.apparent_encoding
+        if self.resp.headers.get("content-type") == "text/event-stream":
+            encoding = "utf-8"
+        else:
+            encoding = self.resp.encoding or self.resp.apparent_encoding
         self.decoder = codecs.getincrementaldecoder(encoding)(errors="replace")
 
         # TODO: Ensure we're handling redirects.  Might also stick the 'origin'
