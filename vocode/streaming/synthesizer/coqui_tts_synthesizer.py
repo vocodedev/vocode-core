@@ -11,7 +11,6 @@ from vocode.streaming.models.message import BaseMessage
 from .base_synthesizer import BaseSynthesizer, SynthesisResult, encode_as_wav
 
 from vocode.streaming.models.synthesizer import CoquiTtsConfig
-from vocode.streaming.utils.hidden_prints import HiddenPrints
 from typing import Any, Optional
 from dotenv import load_dotenv
 load_dotenv()
