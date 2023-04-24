@@ -124,7 +124,7 @@ class ChatGPTAgent(BaseAgent):
             "https://api.openai.com/v1/chat/completions",
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {getenv('OPENAI_API_KEY')}",
+                "Authorization": f"Bearer {openai.api_key}",
             },
             json={
                 "model": self.agent_config.model_name,
@@ -132,8 +132,8 @@ class ChatGPTAgent(BaseAgent):
                     prompt_message.dict(include={"content": True, "role": True})
                     for prompt_message in prompt_messages
                 ],
-                "max_tokens": 256,
-                "temperature": 1.0,
+                "max_tokens": self.agent_config.max_tokens,
+                "temperature": self.agent_config.temperature,
                 "stream": True,
             },
         )
