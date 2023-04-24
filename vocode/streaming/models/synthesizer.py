@@ -128,8 +128,8 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.va
     speed: Optional[str] = None
     preset: Optional[str] = None
 
-class CoquiTtsConfig(SynthesizerConfig, type=SynthesizerType.COQUI_TTS.value):
-    tts: TTS
+class CoquiTTSSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI_TTS.value):
+    tts_kwargs: dict = {}
     speaker: Optional[str] = None
     language: Optional[str] = None
 
