@@ -11,6 +11,7 @@ from vocode.streaming.telephony.constants import (
 )
 from .model import TypedModel
 from .audio_encoding import AudioEncoding
+from TTS.api import TTS
 
 
 class SynthesizerType(str, Enum):
@@ -40,6 +41,9 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
     audio_encoding: AudioEncoding
     should_encode_as_wav: bool = False
     sentiment_config: Optional[SentimentConfig] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
     @classmethod
     def from_output_device(cls, output_device: BaseOutputDevice, **kwargs):
@@ -125,7 +129,7 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.va
     preset: Optional[str] = None
 
 class CoquiTtsConfig(SynthesizerConfig, type=SynthesizerType.COQUI_TTS.value):
-    model_name: str
+    tts: TTS
     speaker: Optional[str] = None
     language: Optional[str] = None
 

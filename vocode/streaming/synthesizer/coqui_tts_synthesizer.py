@@ -13,7 +13,6 @@ from .base_synthesizer import BaseSynthesizer, SynthesisResult, encode_as_wav
 from vocode.streaming.models.synthesizer import CoquiTtsConfig
 from vocode.streaming.utils.hidden_prints import HiddenPrints
 from typing import Any, Optional
-from TTS.api import TTS
 from dotenv import load_dotenv
 load_dotenv()
 import os, sys
@@ -25,7 +24,7 @@ class CoquiTtsSynthesizer(BaseSynthesizer):
         self, config: CoquiTtsConfig, logger: Optional[logging.Logger] = None
     ):
         super().__init__(config)
-        self.model_name = config.model_name
+        self.tts = config.tts
         self.speaker = config.speaker
         self.language = config.language
 
@@ -36,7 +35,7 @@ class CoquiTtsSynthesizer(BaseSynthesizer):
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         
-        tts = TTS(self.model_name)
+        tts = self.tts
         audio_data = np.array(tts.tts(message.text, self.speaker, self.language))
 
         # Convert the NumPy array to bytes
