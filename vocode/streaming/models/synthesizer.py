@@ -11,7 +11,6 @@ from vocode.streaming.telephony.constants import (
 )
 from .model import TypedModel
 from .audio_encoding import AudioEncoding
-from TTS.api import TTS
 
 
 class SynthesizerType(str, Enum):
