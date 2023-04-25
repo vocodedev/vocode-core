@@ -40,6 +40,7 @@ We're actively looking for community maintainers, so please reach out if interes
     - [Google Cloud](https://cloud.google.com/text-to-speech)
     - [Play.ht](https://play.ht)
     - [Eleven Labs](https://elevenlabs.io/)
+    - [Coqui](https://coqui.ai/)
 
 Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)!
 
