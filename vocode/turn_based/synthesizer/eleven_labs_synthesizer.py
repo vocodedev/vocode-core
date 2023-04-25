@@ -1,12 +1,11 @@
 import io
 from typing import Optional
 from pydub import AudioSegment
-import requests
 from vocode import getenv
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
-ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
-
+from elevenlabs import generate, set_api_key
+from elevenlabs.api import Voice, VoiceSettings
 
 class ElevenLabsSynthesizer(BaseSynthesizer):
     def __init__(
@@ -31,18 +30,12 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
             )
 
     def synthesize(self, text: str) -> AudioSegment:
-        url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
-        headers = {"xi-api-key": self.api_key, "voice_id": self.voice_id}
-        body = {
-            "text": text,
-        }
-
+        set_api_key(self.api_key)
+        voice = Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
-            body["voice_settings"] = {
-                "stability": self.stability,
-                "similarity_boost": self.similarity_boost,
-            }
+            voice.settings = VoiceSettings(
+                stability=self.stability, similarity_boost=self.similarity_boost)
 
-        response = requests.post(url, headers=headers, json=body)
-        assert response.ok, response.text
-        return AudioSegment.from_mp3(io.BytesIO(response.content))
+        audio = generate(text, voice=voice)
+
+        return AudioSegment.from_mp3(io.BytesIO(audio))
