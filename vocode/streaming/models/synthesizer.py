@@ -129,12 +129,15 @@ COQUI_DEFAULT_SPEAKER_ID = "d2bd7ccb-1b65-4005-9578-32c4e02d8ddf"
 class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value):
     api_key: Optional[str] = None
     voice_id: Optional[str] = COQUI_DEFAULT_SPEAKER_ID
+    voice_prompt: Optional[str] = None
     sentiment_config = SentimentConfig(
         emotions=["neutral", "happy", "sad", "surprise", "angry", "dull"]
     )
 
-    @validator("voice_id")
-    def voice_id_is_set(cls, voice_id):
+    @validator("voice_id", always=True)
+    def override_voice_id_with_prompt(cls, voice_id, values):
+        if values.get("voice_prompt"):
+            return None
         return voice_id or COQUI_DEFAULT_SPEAKER_ID
 
 
