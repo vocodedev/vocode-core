@@ -56,7 +56,7 @@ marshmallow = "3.19.0"
 marshmallow-enum = "1.5.1"
 multidict = "6.0.4"
 openai = "0.27.2"
-pydub = { version = "0.25.1", optional = true }
+pydub = "0.25.1"
 pyyaml = "6.0"
 sqlalchemy = "1.4.47"
 tenacity = "8.2.2"
@@ -186,7 +186,7 @@ xattr = { version = "0.10.1", optional = true }
 zipp = { version = "3.15.0", optional = true }
 
 [tool.poetry.extras]
-io = ["pyaudio", "sounddevice", "pydub"]
+io = ["pyaudio", "sounddevice"]
 
 [build-system]
 requires = ["poetry-core"]
