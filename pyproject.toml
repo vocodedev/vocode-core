@@ -89,6 +89,7 @@ numexpr = "2.8.4"
 openapi-schema-pydantic = "1.2.4"
 rev-ai = "2.17.1"
 websocket-client = "0.59.0"
+elevenlabs = ">=0.2.5"
 pyllamacpp = { optional = true }
 anyascii = { version = "0.3.2", optional = true }
 appdirs = { version = "1.4.4", optional = true }
