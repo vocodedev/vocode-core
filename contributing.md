@@ -15,7 +15,7 @@ Our [issues](https://github.com/vocodedev/vocode-python/issues) page has all of 
 
 If you are working on an issue, please assign to yourself! And please keep issues as modular/focused as possible.
 
-We've marked the issues that we would love folks to work on first with 'good first issue': https://github.com/vocodedev/vocode-python/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22
+We've marked the issues that we would love folks to work on first with 'good first issue' - see [here](https://github.com/vocodedev/vocode-python/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) for all such issues.
 
 ### 🙋Getting Help
 
