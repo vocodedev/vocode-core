@@ -23,6 +23,7 @@ class SynthesizerType(str, Enum):
     GTTS = "synthesizer_gtts"
     STREAM_ELEMENTS = "synthesizer_stream_elements"
     COQUI_TTS = "synthesizer_coqui_tts"
+    COQUI = "synthesizer_coqui"
 
 
 class SentimentConfig(BaseModel):
@@ -120,6 +121,24 @@ class ElevenLabsSynthesizerConfig(
 
 class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME.value):
     speaker: str
+
+
+COQUI_DEFAULT_SPEAKER_ID = "d2bd7ccb-1b65-4005-9578-32c4e02d8ddf"
+
+
+class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value):
+    api_key: Optional[str] = None
+    voice_id: Optional[str] = COQUI_DEFAULT_SPEAKER_ID
+    voice_prompt: Optional[str] = None
+    sentiment_config = SentimentConfig(
+        emotions=["neutral", "happy", "sad", "surprise", "angry", "dull"]
+    )
+
+    @validator("voice_id", always=True)
+    def override_voice_id_with_prompt(cls, voice_id, values):
+        if values.get("voice_prompt"):
+            return None
+        return voice_id or COQUI_DEFAULT_SPEAKER_ID
 
 
 class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.value):
