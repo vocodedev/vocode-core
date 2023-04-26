@@ -3,7 +3,6 @@ import os
 import re
 from typing import Any, List, Optional, Tuple
 from xml.etree import ElementTree
-import azure.cognitiveservices.speech as speechsdk
 from vocode import getenv
 
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
@@ -19,6 +18,8 @@ from vocode.streaming.synthesizer.base_synthesizer import (
 )
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 from vocode.streaming.models.audio_encoding import AudioEncoding
+
+import azure.cognitiveservices.speech as speechsdk
 
 
 NAMESPACES = {

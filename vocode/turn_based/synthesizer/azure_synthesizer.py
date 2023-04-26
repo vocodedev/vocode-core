@@ -1,6 +1,5 @@
 from typing import Optional
 from xml.etree import ElementTree
-import azure.cognitiveservices.speech as speechsdk
 from pydub import AudioSegment
 from regex import D
 from vocode import getenv
@@ -22,6 +21,7 @@ ElementTree.register_namespace("mstts", NAMESPACES.get("mstts"))
 
 
 class AzureSynthesizer(BaseSynthesizer):
+
     def __init__(
         self,
         sampling_rate: int = DEFAULT_SAMPLING_RATE,
@@ -31,37 +31,41 @@ class AzureSynthesizer(BaseSynthesizer):
         api_key: Optional[str] = None,
         region: Optional[str] = None,
     ):
+        import azure.cognitiveservices.speech as speechsdk
+
+        self.speechsdk = speechsdk
+
         self.sampling_rate = sampling_rate
-        speech_config = speechsdk.SpeechConfig(
+        speech_config = self.speechsdk.SpeechConfig(
             subscription=getenv("AZURE_SPEECH_KEY", api_key),
             region=getenv("AZURE_SPEECH_REGION", region),
         )
         if self.sampling_rate == 44100:
             speech_config.set_speech_synthesis_output_format(
-                speechsdk.SpeechSynthesisOutputFormat.Raw44100Hz16BitMonoPcm
+                self.speechsdk.SpeechSynthesisOutputFormat.Raw44100Hz16BitMonoPcm
             )
         if self.sampling_rate == 48000:
             speech_config.set_speech_synthesis_output_format(
-                speechsdk.SpeechSynthesisOutputFormat.Raw48Khz16BitMonoPcm
+                self.speechsdk.SpeechSynthesisOutputFormat.Raw48Khz16BitMonoPcm
             )
         if self.sampling_rate == 24000:
             speech_config.set_speech_synthesis_output_format(
-                speechsdk.SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm
+                self.speechsdk.SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm
             )
         if self.sampling_rate == 22050:
             speech_config.set_speech_synthesis_output_format(
-                speechsdk.SpeechSynthesisOutputFormat.Raw22050Hz16BitMonoPcm
+                self.speechsdk.SpeechSynthesisOutputFormat.Raw22050Hz16BitMonoPcm
             )
         elif self.sampling_rate == 16000:
             speech_config.set_speech_synthesis_output_format(
-                speechsdk.SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm
+                self.speechsdk.SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm
             )
         elif self.sampling_rate == 8000:
             speech_config.set_speech_synthesis_output_format(
-                speechsdk.SpeechSynthesisOutputFormat.Raw8Khz16BitMonoPcm
+                self.speechsdk.SpeechSynthesisOutputFormat.Raw8Khz16BitMonoPcm
             )
 
-        self.synthesizer = speechsdk.SpeechSynthesizer(
+        self.synthesizer = self.speechsdk.SpeechSynthesizer(
             speech_config=speech_config, audio_config=None
         )
         self.voice_name = voice_name
@@ -83,7 +87,7 @@ class AzureSynthesizer(BaseSynthesizer):
 
     def synthesize(self, text) -> AudioSegment:
         result = self.synthesizer.speak_ssml(self.create_ssml(text))
-        if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+        if result.reason == self.speechsdk.ResultReason.SynthesizingAudioCompleted:
             return AudioSegment(
                 result.audio_data,
                 sample_width=2,

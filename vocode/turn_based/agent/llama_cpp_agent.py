@@ -1,7 +1,6 @@
 import logging
 from typing import Optional
 from vocode.turn_based.agent.base_agent import BaseAgent
-from pyllamacpp.model import Model
 
 
 class LlamaCPPAgent(BaseAgent):
@@ -16,6 +15,8 @@ class LlamaCPPAgent(BaseAgent):
         initial_message: Optional[str] = None,
         logger: logging.Logger = None,
     ):
+        from pyllamacpp.model import Model
+        
         super().__init__(initial_message)
         self.prompt_template = f"{system_prompt}\n\n{self.DEFAULT_PROMPT_TEMPLATE}"
         self.logger = logger or logging.getLogger(__name__)

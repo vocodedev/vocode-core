@@ -1,7 +1,5 @@
 import logging
 from typing import Optional
-from dotenv import load_dotenv
-load_dotenv()
 from pydub import AudioSegment
 import numpy as np
 import io
@@ -12,7 +10,6 @@ from vocode.streaming.models.message import BaseMessage
 from .base_synthesizer import BaseSynthesizer, SynthesisResult
 
 from vocode.streaming.models.synthesizer import CoquiTTSSynthesizerConfig
-from TTS.api import TTS
 
 
 
@@ -21,6 +18,8 @@ class CoquiTTSSynthesizer(BaseSynthesizer):
         self, config: CoquiTTSSynthesizerConfig, logger: Optional[logging.Logger] = None
     ):
         super().__init__(config)
+        
+        from TTS.api import TTS
         self.tts = TTS(**config.tts_kwargs)
         self.speaker = config.speaker
         self.language = config.language

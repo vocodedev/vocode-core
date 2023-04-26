@@ -9,14 +9,10 @@ from vocode.streaming.models.message import BaseMessage
 
 from .base_synthesizer import BaseSynthesizer, SynthesisResult, encode_as_wav
 from typing import Any, Optional
-import os
 import io
-from dotenv import load_dotenv
 import requests
 
 from vocode.streaming.models.synthesizer import RimeSynthesizerConfig
-
-load_dotenv()
 
 # https://rime.ai/docs/quickstart
 RIME_SAMPLING_RATE = 22050
