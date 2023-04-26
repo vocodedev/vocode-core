@@ -4,6 +4,14 @@ Hi there! Thank you for wanting to contribute to Vocode! We're an open source pr
 
 To contribute, please ["fork and pull request"](https://docs.github.com/en/get-started/quickstart/contributing-to-projects).
 
+This project uses [Poetry](https://python-poetry.org/) as a dependency manager. Check out Poetry's [documentation on how to install it](https://python-poetry.org/docs/#installation) on your system before proceeding.
+
+To install requirements:
+
+```bash
+poetry install -E all
+```
+
 ## 🗺️Contributing Guidelines
 
 ### 🚩GitHub Issues
