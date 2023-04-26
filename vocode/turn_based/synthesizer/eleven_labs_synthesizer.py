@@ -4,9 +4,6 @@ from pydub import AudioSegment
 from vocode import getenv
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
-from elevenlabs import generate, set_api_key
-from elevenlabs.api import Voice, VoiceSettings
-
 class ElevenLabsSynthesizer(BaseSynthesizer):
     def __init__(
         self,
@@ -15,6 +12,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
         similarity_boost: Optional[float] = None,
         api_key: Optional[str] = None,
     ):
+        import elevenlabs
+        self.elevenlabs = elevenlabs
+
         self.voice_id = voice_id
         self.api_key = getenv("ELEVEN_LABS_API_KEY", api_key)
         self.validate_stability_and_similarity_boost(stability, similarity_boost)
@@ -30,12 +30,12 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
             )
 
     def synthesize(self, text: str) -> AudioSegment:
-        set_api_key(self.api_key)
-        voice = Voice(voice_id=self.voice_id)
+        self.elevenlabs.set_api_key(self.api_key)
+        voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
-            voice.settings = VoiceSettings(
+            voice.settings = self.elevenlabs.VoiceSettings(
                 stability=self.stability, similarity_boost=self.similarity_boost)
 
-        audio = generate(text, voice=voice)
+        audio = self.elevenlabs.generate(text, voice=voice)
 
         return AudioSegment.from_mp3(io.BytesIO(audio))

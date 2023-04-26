@@ -4,7 +4,6 @@ import os
 import time
 import queue
 from typing import Optional
-from google.cloud import speech
 import threading
 from vocode import getenv
 
@@ -18,12 +17,18 @@ from vocode.streaming.utils import create_loop_in_thread
 
 
 class GoogleTranscriber(BaseTranscriber):
+
     def __init__(
         self,
         transcriber_config: GoogleTranscriberConfig,
         logger: Optional[logging.Logger] = None,
     ):
         super().__init__(transcriber_config)
+        
+        from google.cloud import speech
+
+        self.speech = speech
+
         self._queue = queue.Queue()
         self._ended = False
         credentials_path = getenv("GOOGLE_APPLICATION_CREDENTIALS")
@@ -33,7 +38,7 @@ class GoogleTranscriber(BaseTranscriber):
             )
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
         self.google_streaming_config = self.create_google_streaming_config()
-        self.client = speech.SpeechClient()
+        self.client = self.speech.SpeechClient()
         self.is_ready = False
         if self.transcriber_config.endpointing_config:
             raise Exception("Google endpointing config not supported yet")
@@ -51,12 +56,12 @@ class GoogleTranscriber(BaseTranscriber):
             extra_params["use_enhanced"] = True
 
         if self.transcriber_config.audio_encoding == AudioEncoding.LINEAR16:
-            google_audio_encoding = speech.RecognitionConfig.AudioEncoding.LINEAR16
+            google_audio_encoding = self.speech.RecognitionConfig.AudioEncoding.LINEAR16
         elif self.transcriber_config.audio_encoding == AudioEncoding.MULAW:
-            google_audio_encoding = speech.RecognitionConfig.AudioEncoding.MULAW
+            google_audio_encoding = self.speech.RecognitionConfig.AudioEncoding.MULAW
 
-        return speech.StreamingRecognitionConfig(
-            config=speech.RecognitionConfig(
+        return self.speech.StreamingRecognitionConfig(
+            config=self.speech.RecognitionConfig(
                 encoding=google_audio_encoding,
                 sample_rate_hertz=self.transcriber_config.sampling_rate,
                 language_code="en-US",
@@ -71,7 +76,7 @@ class GoogleTranscriber(BaseTranscriber):
     async def process(self):
         stream = self.generator()
         requests = (
-            speech.StreamingRecognizeRequest(audio_content=content)
+            self.speech.StreamingRecognizeRequest(audio_content=content)
             for content in stream
         )
         responses = self.client.streaming_recognize(

@@ -4,7 +4,6 @@ import os
 import wave
 from typing import Any, Optional
 
-from google.cloud import texttospeech_v1beta1 as tts
 from vocode import getenv
 
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
@@ -28,6 +27,10 @@ class GoogleSynthesizer(BaseSynthesizer):
         logger: Optional[logging.Logger] = None,
     ):
         super().__init__(synthesizer_config)
+
+        from google.cloud import texttospeech_v1beta1 as tts
+        self.tts = tts
+
         # Instantiates a client
         credentials_path = getenv("GOOGLE_APPLICATION_CREDENTIALS")
         if not credentials_path:
@@ -53,18 +56,18 @@ class GoogleSynthesizer(BaseSynthesizer):
             effects_profile_id=["telephony-class-application"],
         )
 
-    def synthesize(self, message: str) -> tts.SynthesizeSpeechResponse:
-        synthesis_input = tts.SynthesisInput(text=message)
+    def synthesize(self, message: str) -> Any:
+        synthesis_input = self.tts.SynthesisInput(text=message)
 
         # Perform the text-to-speech request on the text input with the selected
         # voice parameters and audio file type
         return self.client.synthesize_speech(
-            request=tts.SynthesizeSpeechRequest(
+            request=self.tts.SynthesizeSpeechRequest(
                 input=synthesis_input,
                 voice=self.voice,
                 audio_config=self.audio_config,
                 enable_time_pointing=[
-                    tts.SynthesizeSpeechRequest.TimepointType.SSML_MARK
+                    self.tts.SynthesizeSpeechRequest.TimepointType.SSML_MARK
                 ],
             )
         )
@@ -75,7 +78,7 @@ class GoogleSynthesizer(BaseSynthesizer):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        response = self.synthesize(message.text)
+        response: self.tts.SynthesizeSpeechResponse = self.synthesize(message.text)
         output_sample_rate = response.audio_config.sample_rate_hertz
 
         real_offset = int(GoogleSynthesizer.OFFSET_SECONDS * output_sample_rate)

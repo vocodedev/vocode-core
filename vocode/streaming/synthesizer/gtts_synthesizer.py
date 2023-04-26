@@ -1,7 +1,6 @@
 import logging
 from pydub import AudioSegment
 from typing import Optional
-from gtts import gTTS
 from io import BytesIO
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
@@ -20,13 +19,16 @@ class GTTSSynthesizer(BaseSynthesizer):
     ):
         super().__init__(config)
 
+        from gtts import gTTS
+        self.gTTS = gTTS
+
     def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        tts = gTTS(message.text)
+        tts = self.gTTS(message.text)
         audio_file = BytesIO()
         tts.write_to_fp(audio_file)
         audio_file.seek(0)
