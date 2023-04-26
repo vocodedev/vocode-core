@@ -96,7 +96,8 @@ class TelephonyServer:
                 ),
                 methods=["POST"],
             )
-            logger.info(f"Set up inbound call TwiML at https://{base_url}{config.url}")
+            logger.info(
+                f"Set up inbound call TwiML at https://{base_url}{config.url}")
 
     def create_inbound_route(
         self,
@@ -105,7 +106,11 @@ class TelephonyServer:
         transcriber_config: Optional[TranscriberConfig] = None,
         synthesizer_config: Optional[SynthesizerConfig] = None,
     ):
-        def route(twilio_sid: str = Form(alias="CallSid")) -> Response:
+        def route(
+            twilio_sid: str = Form(alias="CallSid"),
+            twilio_from: str = Form(alias="From"),
+            twilio_to: str = Form(alias="To")
+        ) -> Response:
             call_config = CallConfig(
                 transcriber_config=transcriber_config
                 or DeepgramTranscriberConfig(
@@ -127,6 +132,8 @@ class TelephonyServer:
                     auth_token=getenv("TWILIO_AUTH_TOKEN"),
                 ),
                 twilio_sid=twilio_sid,
+                twilio_from=twilio_from,
+                twilio_to=twilio_to
             )
 
             conversation_id = create_conversation_id()
@@ -141,7 +148,8 @@ class TelephonyServer:
         # TODO validation via twilio_client
         call_config = self.config_manager.get_config(conversation_id)
         if not call_config:
-            raise ValueError(f"Could not find call config for {conversation_id}")
+            raise ValueError(
+                f"Could not find call config for {conversation_id}")
         end_twilio_call(
             create_twilio_client(call_config.twilio_config),
             call_config.twilio_sid,

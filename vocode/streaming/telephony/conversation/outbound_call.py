@@ -98,16 +98,20 @@ class OutboundCall:
     def start(self):
         self.logger.debug("Starting outbound call")
         self.validate_outbound_call(self.to_phone, self.from_phone)
-        self.twilio_sid = self.create_twilio_call(self.to_phone, self.from_phone)
+        self.twilio_sid = self.create_twilio_call(
+            self.to_phone, self.from_phone)
         call_config = CallConfig(
             transcriber_config=self.transcriber_config,
             agent_config=self.agent_config,
             synthesizer_config=self.synthesizer_config,
             twilio_config=self.twilio_config,
             twilio_sid=self.twilio_sid,
+            twilio_from=self.from_phone,
+            twilio_to=self.to_phone,
         )
         self.config_manager.save_config(self.conversation_id, call_config)
 
     def end(self):
-        response = self.twilio_client.calls(self.twilio_sid).update(status="completed")
+        response = self.twilio_client.calls(
+            self.twilio_sid).update(status="completed")
         return response.status == "completed"

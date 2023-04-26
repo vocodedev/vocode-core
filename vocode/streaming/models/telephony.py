@@ -58,3 +58,5 @@ class CallConfig(BaseModel):
     synthesizer_config: SynthesizerConfig
     twilio_config: Optional[TwilioConfig]
     twilio_sid: str
+    twilio_from: str
+    twilio_to: str
