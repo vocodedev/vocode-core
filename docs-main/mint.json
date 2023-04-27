@@ -1,0 +1,70 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "Vocode",
+  "logo": {
+    "dark": "/logo/dark.png",
+    "light": "/logo/dark.png"
+  },
+  "favicon": "/favicon.png",
+  "modeToggle": {
+    "default": "dark",
+    "isHidden": true
+  },
+  "colors": {
+    "primary": "#0092e0",
+    "light": "#0092e0",
+    "dark": "#0092e0"
+  },
+  "topbarCtaButton": {
+    "name": "Star us on GitHub!",
+    "url": "https://github.com/vocodedev/vocode-python"
+  },
+  "anchors": [
+    {
+      "name": "Community",
+      "icon": "discord",
+      "url": "https://discord.gg/NaU4mMgcnC"
+    },
+    {
+      "name": "Contact",
+      "icon": "envelope",
+      "url": "mailto:kian@vocode.dev"
+    }
+  ],
+  "analytics": {
+    "posthog": {
+      "apiKey": "phc_D48lrsUUinkenYoeWRpfmQ3KGKRrawS5K6v3Nlda0g2"
+    }
+  },
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": ["welcome"]
+    },
+    {
+      "group": "Vocode 101",
+      "pages": ["what-is-vocode", "how-it-works", "how-to-use-it"]
+    },
+    {
+      "group": "Guides",
+      "pages": ["python-quickstart", "telephony", "create-your-own-agent", "agent-executor", "react", "turn-based-conversation", "language-support"]
+    },  
+    {
+      "group": "Python",
+      "pages": [
+        "transcriber-reference",
+        "agent-reference",
+        "synthesizer-reference"
+      ]
+    },
+    {
+      "group": "React",
+      "pages": ["react-quickstart"]
+    }
+  ],
+  "footerSocials": {
+    "twitter": "https://twitter.com/vocodehq",
+    "website": "https://www.vocode.dev/"
+  },
+  "backgroundImage": "images/background-image.png"
+}

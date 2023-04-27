@@ -1,0 +1,115 @@
+---
+title: "React Quickstart"
+description: "Get up and running using React"
+---
+
+# Installation
+
+`npm install vocode`
+
+Or, start from our [Replit template](https://replit.com/@vocode/Simple-Conversation).
+
+# Usage
+
+## Setting up the conversation
+
+### Hosted
+
+You'll need to get an API key from our [dashboard](https://app.vocode.dev/) to get started. Similar to the Python Quickstart, we provide a TypeScript interface for the conversation configuration.
+
+```javascript
+import {
+  AudioDeviceConfig,
+  ConversationConfig,
+  ChatGPTAgentConfig,
+  DeepgramTranscriberConfig,
+  AzureSynthesizerConfig,
+  VocodeConfig,
+} from "vocode";
+
+const transcriberConfig: Omit<
+  DeepgramTranscriberConfig,
+  "samplingRate" | "audioEncoding"
+> = {
+  type: "transcriber_deepgram",
+  chunkSize: 2048,
+};
+const agentConfig: ChatGPTAgentConfig = {
+  type: "agent_chat_gpt",
+  initialMessage: {
+    type: "message_base",
+    text: "Hello!",
+  },
+  promptPreamble: "The AI is having a pleasant conversation about life",
+};
+const synthesizerConfig: Omit<
+  AzureSynthesizerConfig,
+  "samplingRate" | "audioEncoding"
+> = {
+  type: "synthesizer_azure",
+  shouldEncodeAsWav: true,
+};
+const vocodeConfig: VocodeConfig = {
+  apiKey: process.env.REACT_APP_VOCODE_API_KEY || "",
+};
+const audioDeviceConfig: AudioDeviceConfig = {};
+```
+
+### Self-hosted (experimental)
+
+More docs coming soon! For now, check out https://github.com/vocodedev/vocode-python/blob/main/examples/client_backend.py for hosting the backend.
+You can use the `useConversation` hook with your self-hosted backend as follows:
+
+```javascript
+const { status, start, stop, analyserNode } = useConversation({
+  backendUrl: "<YOUR_BACKEND_URL>", // looks like wss://<base_url>/conversation",
+  audioDeviceConfig: {},
+});
+```
+
+## Running the conversation
+
+We provide a React hook to facilitate conversations created from the configuration above.
+
+```javascript
+import { useConversation } from "vocode";
+
+const { status, start, stop, analyserNode } = useConversation({
+  transcriberConfig,
+  agentConfig,
+  synthesizerConfig,
+  vocodeConfig,
+  audioDeviceConfig,
+});
+```
+
+- `start` opens the microphone stream and starts sending audio from the conversation to the user
+- `stop` closes the microphone and speaker streams
+- `status` is an enum that contains the status of the conversation, one of `idle`, `connecting`, `connected`, and `error`
+- `analyserNode` is an object (defined by the Web Audio API [here](https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode)) that allows for audio visualizations based on the audio output of the conversation
+
+# Demo installation and setup
+
+Clone the `vocode-react-demo` [repository](https://github.com/vocodedev/vocode-react-demo).
+
+```
+$ git clone https://github.com/vocodedev/vocode-react-demo.git
+```
+
+Run npm install inside the directory to download all of the dependencies.
+
+```
+$ npm install
+```
+
+Set your Client SDK key inside of your `.env`
+
+```
+REACT_APP_VOCODE_API_KEY=YOUR KEY HERE
+```
+
+Start the application
+
+```
+$ npm start
+```
