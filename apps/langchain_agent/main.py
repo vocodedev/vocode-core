@@ -12,7 +12,6 @@ load_dotenv()
 from langchain.chat_models import ChatOpenAI
 from langchain.agents import initialize_agent
 from langchain.agents import AgentType
-from langchain.callbacks.base import CallbackManager
 
 if __name__ == "__main__":
     OBJECTIVE = input("Objective: ") or "Find a random person in my contacts and tell them a joke"
