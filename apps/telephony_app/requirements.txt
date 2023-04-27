@@ -1,0 +1,3 @@
+vocode==0.1.105
+redis
+twilio

@@ -55,7 +55,7 @@ class OutboundCall:
             sampling_rate=DEFAULT_SAMPLING_RATE, audio_encoding=DEFAULT_AUDIO_ENCODING
         )
         self.conversation_id = conversation_id or create_conversation_id()
-        self.logger = logger
+        self.logger = logger or logging.getLogger(__name__)
         self.twilio_config = twilio_config or TwilioConfig(
             account_sid=getenv("TWILIO_ACCOUNT_SID"),
             auth_token=getenv("TWILIO_AUTH_TOKEN"),
