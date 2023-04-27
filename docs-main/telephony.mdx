@@ -1,0 +1,242 @@
+---
+title: "Working with phone calls"
+description: "How to use agents with inbound and outbound phone calls."
+---
+
+# Overview
+
+Vocode supports using agents with inbound and outbound phone calls. Users
+can [create their own agents](/create-your-own-agent) and use them
+to fulfill a variety of use cases like information collection, appointment scheduling,
+sales, customer support, and more.
+
+In this guide, we'll go over how to do inbound and outbound phone calls both self-hosted
+and hosted.
+
+# Self-hosted
+
+## Requirements
+
+Please ensure you have the following installed:
+
+1. [Ngrok](https://ngrok.com/) (used to host the `TelephonyServer` locally)
+2. [ffmpeg](https://ffmpeg.org/)
+
+## Environments
+
+Make sure you have the proper credentials set up in the Vocode environment.
+
+```python
+# these can also be set as environment variables in a .env file
+vocode.setenv(
+    OPENAI_API_KEY="<your OpenAI key>",
+    DEEPGRAM_API_KEY="<your Deepgram key>",
+    AZURE_SPEECH_KEY="<your Azure key>",
+    AZURE_SPEECH_REGION="<your Azure region>",
+    TWILIO_ACCOUNT_SID="<your Twilio account sid>",
+    TWILIO_AUTH_TOKEN="<your Twilio auth token>",
+)
+```
+
+## Telephony Server
+
+The `TelephonyServer` is–as implied by the name–a server that is responsible for
+receiving and making phone calls.
+The server is built using FastAPI and utilizes Twilio for telephony services.
+
+We will use the following template as a starting point. The template source can be found [here](https://github.com/vocodedev/vocode-python/blob/main/examples/telephony_app.py).
+
+```python
+import logging
+from fastapi import FastAPI
+from dotenv import load_dotenv
+from vocode import getenv
+
+load_dotenv()
+
+from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode.streaming.models.agent import ChatGPTAgentConfig, EchoAgentConfig
+from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.telephony import TwilioConfig
+from vocode.streaming.telephony.config_manager.in_memory_config_manager import InMemoryConfigManager
+from vocode.streaming.telephony.conversation.outbound_call import OutboundCall
+
+from vocode.streaming.telephony.server.base import InboundCallConfig, TelephonyServer
+
+app = FastAPI(docs_url=None)
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+config_manager = InMemoryConfigManager()
+
+BASE_URL = "<YOUR BASE URL>"
+
+telephony_server = TelephonyServer(
+    base_url=BASE_URL,
+    config_manager=config_manager,
+    inbound_call_configs=[
+        InboundCallConfig(
+            url="/inbound_call",
+            agent_config=ChatGPTAgentConfig(
+                initial_message=BaseMessage(text="What up"),
+                prompt_preamble="Have a pleasant conversation about life",
+                generate_responses=True,
+            ),
+        )
+    ],
+    logger=logger,
+)
+
+app.include_router(telephony_server.get_router())
+
+outbound_call = OutboundCall(
+    base_url=BASE_URL,
+    to_phone="+11234567890",
+    from_phone="+11234567890",
+    config_manager=config_manager,
+    agent_config=ChatGPTAgentConfig(
+        initial_message=BaseMessage(text="What up"),
+        prompt_preamble="Have a pleasant conversation about life",
+        generate_responses=True,
+    ),
+    logger=logger,
+)
+
+input("Press enter to start call...")
+outbound_call.start()
+```
+
+1. Replace the `to_phone` with the number you want to call and the `from_phone` with the number you want to call from.
+   In order to make a call from the `to_phone`, you must have access to it via Twilio (either a number purchased via Twilio
+   or verify the caller ID).
+
+> Note: To ensure legal compliance with robocall regulations in California, the following code snippet from the [Vocode library](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/telephony/conversation/outbound_call.py#L83-L96) utilizes Twilio Line Intelligence to check if calls are made to mobile phones: For Canadian phone numbers, the Twilio Lookup API may not return carrier data due to the Canadian Local Number Portability Consortium (CLNPC) requirements. More information on this issue can be found in the [Twilio Support Article](https://support.twilio.com/hc/en-us/articles/360004563433-Twilio-Lookup-API-is-Not-Returning-Carrier-Data-for-Canadian-Phone-Numbers).
+
+2. Expose your local server to the internet with Ngrok:
+
+In a new terminal window, navigate to the directory where Ngrok is installed and run the following command:
+
+```bash
+ngrok http 8000
+```
+
+Make note of the public URL provided by Ngrok (e.g., `https://abcd1234.ngrok.io`). Update the `BASE_URL` variable in the code with your Ngrok URL. The `BASE_URL` does
+not include `https://`.
+
+3. Run the FastAPI server:
+
+In a new terminal window, navigate to the directory containing the code and run the following command:
+
+```bash
+uvicorn main:app --reload
+```
+
+Please note that "main" is the name of the file containing the code. If you named your file something else, please replace "main" with the name of your file.
+
+4. Start an outbound call:
+
+Press "Enter" in the terminal running the FastAPI server to initiate an outbound call.
+
+# Hosted
+
+## Authentication
+
+Head to our [dashboard](https://app.vocode.dev) to get an API key.
+
+To use your API key, set the API key on the module as follows:
+
+```python
+import vocode
+vocode.api_key = '{YOUR_API_KEY}'
+```
+
+## Outbound Calls
+
+The `OutboundCall` class provides a simple abstraction for creating outbound calls.
+
+### OutboundCall Class
+
+<ParamField path="recipient" type="CallEntity" required={true}>
+  The recipient entity for the phone call.
+</ParamField>
+
+<ParamField path="caller" type="CallEntity" required={true}>
+  The caller entity for the phone call.
+</ParamField>
+
+<ParamField path="agent_config" type="AgentConfig" required={true}>
+  The configuration for the AI agent.
+</ParamField>
+
+### Example: Making an outbound call
+
+```python
+from vocode.streaming.telephony.hosted.outbound_call import OutboundCall
+from vocode.streaming.models.telephony import CallEntity
+from vocode.streaming.models.agent import ChatGPTAgentConfig
+
+if __name__ == '__main__':
+    call = OutboundCall(
+        recipient=CallEntity(
+            phone_number="+12345678900",
+        ),
+        caller=CallEntity(
+            phone_number="+12345678900",
+        ),
+        agent_config=ChatGPTAgentConfig(
+            initial_message=BaseMessage(text="Hello!"),
+            prompt_preamble="Have a pleasant conversation about life",
+        ),
+        twilio_config=TwilioConfig(
+            account_sid=os.getenv("TWILIO_ACCOUNT_SID"),
+            auth_token=os.getenv("TWILIO_AUTH_TOKEN"),
+        )
+    )
+    call.start()
+    input("Press enter to end the call...")
+    call.end()
+```
+
+## Inbound Calls
+
+The `InboundCallServer` class provides a simple abstraction to create an endpoint that can host your agent
+to respond to inbound calls. In order to implement an inbound call agent, start by defining an `InboundCallServer`
+like so:
+
+```python
+from vocode.streaming.telephony.hosted.inbound_call_server import InboundCallServer
+from vocode.streaming.models.agent import EchoAgentConfig
+from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.telephony import TwilioConfig
+
+if __name__ == '__main__':
+    server = InboundCallServer(
+        agent_config=EchoAgentConfig(initial_message=BaseMessage(text="hello!")),
+        twilio_config=TwilioConfig(
+            account_sid=os.getenv("TWILIO_ACCOUNT_SID"),
+            auth_token=os.getenv("TWILIO_AUTH_TOKEN"),
+        )
+    )
+    server.run(port=3000)
+```
+
+This spins up a FastAPI web server with a `/vocode` route that returns a TwiML object that we will need in the next
+step. If you're using our [Replit template](https://replit.com/@vocode/Inbound-Call-Server), this is already set up for you!
+
+Next, we'll set up a programmable phone number on Twilio that can accept the TwiML object from
+above. To do this,
+
+1. Create a [Twilio](https://www.twilio.com/) account
+2. Find your Twilio credentials: this is found on under _Account Info_ in the dashboard.
+   > Tip: if you already have existing Twilio integrations, set up the number in a [subaccount](https://support.twilio.com/hc/en-us/articles/360011132374-Getting-Started-with-Twilio-Accounts-and-Subaccounts)
+3. Set up `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` in your environment. If you're using Replit, use [Replit secrets](https://docs.replit.com/programming-ide/workspace-features/storing-sensitive-information-environment-variables). Otherwise, packages like [python-dotenv](https://pypi.org/project/python-dotenv/) are useful for this.
+4. Once inside your dashboard, go to Phone Numbers -> Manage -> Buy a number to get a phone number.
+5. Then, go to Phone Numbers -> Manage -> Active Numbers and select the number you want to set up.
+6. Update the config to point the Webhook URL to the `/vocode` route we just set up. [ngrok](https://ngrok.com/) one option to quickly to host the server.
+   > If you're using the Replit template, use the provided hosted URL that looks something like `https://<repl>.<username>.repl.co/vocode`
+
+![Setup](/images/twilio_number_config.png)
+
+7. Hit **Save** and call the number!
