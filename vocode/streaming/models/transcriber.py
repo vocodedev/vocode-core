@@ -111,6 +111,7 @@ class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM
 
 class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.value):
     model: Optional[str] = None
+    language_code: str = 'en-US'
 
 
 class AssemblyAITranscriberConfig(
