@@ -1,0 +1,55 @@
+---
+title: "Agent"
+description: "What are agents and how to use them."
+---
+
+## Overview
+
+Agents represent an abstraction for an AI (usually an LLM) that powers the content
+generation/understanding layer of the conversation. In other words, Agents are the
+AI that is actually having the conversation.
+
+Vocode provides agents that work out-of-the-box (see below) and also allows developers to
+[create their own agents](/create-your-own-agent).
+
+## Default Agent Implementations
+
+All Agents are implemented using the corresponding `AgentConfig` class.
+
+### ChatGPTAgentConfig
+
+The `ChatGPTAgentConfig` is configured to use the new ChatGPT endpoint from OpenAI.
+
+<ParamField path="prompt_preamble" type="str" required={true}>
+  The initial prompt message.
+</ParamField>
+
+### LLMAgentConfig
+
+The `LLMAgentConfig` is configured to use the completions endpoint using the simpler `text-curie-001` model.
+
+<ParamField path="prompt_preamble" type="str" required={true}>
+  The initial prompt message.
+</ParamField>
+
+### InformationRetrievalAgentConfig
+
+Primarily used for [Outbound phone calls](/telephony), the `InformationRetrievalAgent
+
+<ParamField path="recipient_descriptor" type="str" required={true}>
+  A description for the call recipient.
+</ParamField>
+
+<ParamField path="caller_descriptor" type="str" required={true}>
+  A description for the caller.
+</ParamField>
+
+<ParamField path="goal_description" type="str" required={true}>
+  A description for the goal of the call.
+</ParamField>
+
+<ParamField path="fields" type="List[str]" required={true}>
+  The fields that are to be collected on the call.
+</ParamField>
+
+To build your own agent, see [Create your own AI Agent](/create-your-own-agent)

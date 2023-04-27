@@ -1,0 +1,41 @@
+---
+title: "How it works"
+description: "Core concepts that power Vocode."
+---
+
+## Conversation orchestration as a service
+
+In order to have a back-and-forth conversation, you have to do several things:
+
+- Stream audio/receive audio asynchronously
+- Generate responses & understand when to generate responses
+- Handle innacuracies and interruptions
+
+And all of this is done via orchestration of:
+
+1. Speech Recognition
+2. AI/NLU Layer
+3. Speech Synthesis
+
+Vocode conveniently abstracts away much of the complexity while giving
+developers the flexibility to control every piece of the conversation.
+
+## Our core abstraction: the Conversation
+
+Vocode breaks down a Conversation into 5 core pieces:
+
+1. Transcriber (used for speech recognition)
+2. Agent (AI/NLU layer)
+3. Synthesizer (used for speech synthesis)
+4. Input Device (microphone for audio in)
+5. Output Device (speaker for audio out)
+
+In order to run an entire conversation, developers can specify each of these 5 pieces
+with the various types provided by Vocode.
+
+As an example, there are several `Transcriber` options (ex.
+`DeepgramTranscriber`, `AssemblyAITranscriber`, `GoogleTranscriber`) that allow you to specify
+which providers you would like to use and their parameters.
+
+After specifying all of the types, Vocode handles everything else necessary
+to have the conversation.
