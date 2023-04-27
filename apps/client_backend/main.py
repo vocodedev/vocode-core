@@ -1,12 +1,9 @@
 import logging
 from fastapi import FastAPI
-from dotenv import load_dotenv
 
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
-
-load_dotenv()
 
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.client_backend.conversation import ConversationRouter
