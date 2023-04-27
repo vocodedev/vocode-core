@@ -56,7 +56,7 @@ class GoogleTranscriber(BaseTranscriber):
             extra_params["use_enhanced"] = True
 
         if self.transcriber_config.language:
-            extra_params["language_code"] = self.transcriber_config.language
+            extra_params["language_code"] = self.transcriber_config.language_code
 
         if self.transcriber_config.audio_encoding == AudioEncoding.LINEAR16:
             google_audio_encoding = self.speech.RecognitionConfig.AudioEncoding.LINEAR16
