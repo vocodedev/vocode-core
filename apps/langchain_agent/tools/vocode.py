@@ -2,7 +2,9 @@ import logging
 import os
 from langchain.agents import tool
 from dotenv import load_dotenv
+
 from vocode.streaming.models.message import BaseMessage
+from call_transcript_utils import delete_transcript, get_transcript
 
 load_dotenv()
 
@@ -37,10 +39,10 @@ def call_phone_number(input: str) -> str:
     )
     call.start()
     while True:
-        transcript_filename = "apps/agent_demo/call_transcripts/{}.txt".format(call.conversation_id)
-        if os.path.exists(transcript_filename):
-            with open(transcript_filename) as f:
-                return f.read()
+        maybe_transcript = get_transcript(call.conversation_id)
+        if maybe_transcript:
+            delete_transcript(call.conversation_id)
+            return maybe_transcript
         else:
             time.sleep(1)
     

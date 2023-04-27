@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Optional, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import AgentAction, AgentFinish, LLMResult
-import re
 
 from vocode.turn_based.output_device.speaker_output import SpeakerOutput
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
