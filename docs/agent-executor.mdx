@@ -1,0 +1,87 @@
+---
+title: "Langchain agent example"
+description: "Empower Langchain agents to interact with the real world via phone calls"
+---
+
+# Introduction
+
+This example shows how to use Vocode as a tool augmenting the abilities of a Langchain
+agent. By providing it with access to Vocode, a [Langchain Agent](https://python.langchain.com/en/latest/modules/agents.html)
+can now make autonomous phone calls and take action based on the outcome of the calls.
+
+Our demo will walk through how to instruct the agent to lookup a phone number and make the
+appropriate call.
+
+# How to run it
+
+## Requirements
+
+1. Install [Ngrok](https://ngrok.com/)
+2. Install [Redis](https://redis.com/)
+
+## Run the example
+
+Note: GPT-4 is required for this to work.
+
+1. Clone the Vocode repo or copy the [Agent Demo](https://github.com/vocodedev/vocode-python/tree/main/examples/agent_demo)
+   directory.
+
+```bash
+git clone https://github.com/vocodedev/vocode-python.git
+```
+
+2. Install requirements inside of the `agent_demo/requirements.txt`
+
+```bash
+agent_demo % pip install -r requirements.txt
+```
+
+3. Expose your local server to the internet with Ngrok:
+
+In a new terminal window, navigate to the directory where Ngrok is installed and run the following command:
+
+```bash
+ngrok http 8000
+```
+
+4. Set up your environment variables in a `.env` file
+
+```bash
+OPENAI_API_KEY="<your OpenAI key>"
+DEEPGRAM_API_KEY="<your Deepgram key>"
+AZURE_SPEECH_KEY="<your Azure key>"
+AZURE_SPEECH_REGION="<your Azure region>"
+TWILIO_ACCOUNT_SID="<your Twilio account sid>"
+TWILIO_AUTH_TOKEN="<your Twilio auth token>"
+TELEPHONY_SERVER_BASE_URL="<your Ngrok base URL>" # does not include https://
+OUTBOUND_CALLER_NUMBER="<your verified outbound number on Twilio>"
+```
+
+Note: In order to make a call from the `OUTBOUND_CALLER_NUMBER`, you must have access to it via Twilio (either a number purchased via Twilio
+or verify the caller ID).
+
+5. Run the `TelephonyServer`:
+
+In a separate terminal window run
+
+```bash
+uvicorn examples.agent_demo.telephony_app:app --reload --port 8000
+```
+
+Note: if you are inside of `agent_demo/`, you can drop the `examples.agent_demo` bit
+
+6. Update the phone numbers in the contact book in `agent_demo/tools/contacts.py`
+
+```python
+CONTACTS = [{"name": "Kian", "phone": "+123456789"}]
+```
+
+7. In a new terminal, run `main.py`
+
+```bash
+python examples/agent_demo/main.py
+```
+
+# Code explanation
+
+🚧 Under construction
