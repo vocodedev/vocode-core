@@ -47,8 +47,17 @@
     },
     {
       "group": "Guides",
-      "pages": ["python-quickstart", "telephony", "create-your-own-agent", "agent-executor", "react", "turn-based-conversation", "language-support"]
-    },  
+      "pages": [
+        "python-quickstart",
+        "telephony",
+        "create-your-own-agent",
+        "langchain-agent",
+        "react",
+        "turn-based-conversation",
+        "language-support",
+        "local-conversation"
+      ]
+    },
     {
       "group": "Python",
       "pages": [
