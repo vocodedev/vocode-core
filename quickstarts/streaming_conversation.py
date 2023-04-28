@@ -45,6 +45,8 @@ from vocode.streaming.models.synthesizer import (
 import vocode
 from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
+from vocode.streaming.transcriber.assembly_ai_transcriber import AssemblyAITranscriber
+from vocode.streaming.transcriber.assembly_ai_transcriber import AssemblyAITranscriberConfig
 
 
 logging.basicConfig()
@@ -56,7 +58,7 @@ async def main():
     microphone_input, speaker_output = create_microphone_input_and_speaker_output(
         streaming=True, use_default_devices=False
     )
-
+    
     conversation = StreamingConversation(
         output_device=speaker_output,
         transcriber=DeepgramTranscriber(
