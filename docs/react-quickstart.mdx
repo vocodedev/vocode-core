@@ -55,6 +55,27 @@ const vocodeConfig: VocodeConfig = {
 const audioDeviceConfig: AudioDeviceConfig = {};
 ```
 
+#### Running the conversation
+
+We provide a React hook to facilitate conversations created from the configuration above.
+
+```javascript
+import { useConversation } from "vocode";
+
+const { status, start, stop, analyserNode } = useConversation({
+  transcriberConfig,
+  agentConfig,
+  synthesizerConfig,
+  vocodeConfig,
+  audioDeviceConfig,
+});
+```
+
+- `start` opens the microphone stream and starts sending audio from the conversation to the user
+- `stop` closes the microphone and speaker streams
+- `status` is an enum that contains the status of the conversation, one of `idle`, `connecting`, `connected`, and `error`
+- `analyserNode` is an object (defined by the Web Audio API [here](https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode)) that allows for audio visualizations based on the audio output of the conversation
+
 ### Self-hosted
 
 Our self-hosted backend allows you to expose a websocket route in the same format that our hosted backend does. This allows you to deploy any agent you'd to into the conversation.
@@ -106,27 +127,6 @@ const { status, start, stop, analyserNode } = useConversation({
   audioDeviceConfig: {},
 });
 ```
-
-## Running the conversation
-
-We provide a React hook to facilitate conversations created from the configuration above.
-
-```javascript
-import { useConversation } from "vocode";
-
-const { status, start, stop, analyserNode } = useConversation({
-  transcriberConfig,
-  agentConfig,
-  synthesizerConfig,
-  vocodeConfig,
-  audioDeviceConfig,
-});
-```
-
-- `start` opens the microphone stream and starts sending audio from the conversation to the user
-- `stop` closes the microphone and speaker streams
-- `status` is an enum that contains the status of the conversation, one of `idle`, `connecting`, `connected`, and `error`
-- `analyserNode` is an object (defined by the Web Audio API [here](https://developer.mozilla.org/en-US/docs/Web/API/AnalyserNode)) that allows for audio visualizations based on the audio output of the conversation
 
 # Demo installation and setup
 

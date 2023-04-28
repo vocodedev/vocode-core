@@ -52,7 +52,7 @@
         "telephony",
         "create-your-own-agent",
         "langchain-agent",
-        "react",
+        "react-quickstart",
         "turn-based-conversation",
         "language-support",
         "local-conversation"
@@ -65,10 +65,6 @@
         "agent-reference",
         "synthesizer-reference"
       ]
-    },
-    {
-      "group": "React",
-      "pages": ["react-quickstart"]
     }
   ],
   "footerSocials": {
