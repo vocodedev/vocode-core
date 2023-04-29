@@ -1,51 +1,46 @@
-from typing import Optional, Tuple
-from langchain import ConversationChain
+import logging
 import anthropic
 
+from typing import Generator, Optional, Tuple
+
+from utils import get_sentence_from_buffer
+
+from langchain import ConversationChain
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import ChatMessage, AIMessage, HumanMessage
 from langchain.chat_models import ChatAnthropic
-from typing import Generator
-import logging
-from vocode import getenv
-
-from vocode.streaming.agent.base_agent import BaseAgent
-
-from vocode.streaming.models.agent import ChatAnthropicAgentConfig
-
-
 from langchain.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder,
     HumanMessagePromptTemplate,
 )
 
+from vocode import getenv
+from vocode.streaming.agent.chat_agent import ChatAgent
+from vocode.streaming.models.agent import ChatAnthropicAgentConfig
+
 SENTENCE_ENDINGS = [".", "!", "?"]
 
 
-class ChatAnthropicAgent(BaseAgent):
+class ChatAnthropicAgent(ChatAgent):
     def __init__(
         self,
         agent_config: ChatAnthropicAgentConfig,
         logger: logging.Logger = None,
         anthropic_api_key: Optional[str] = None,
     ):
-        super().__init__(agent_config)
+        super().__init__(agent_config=agent_config, logger=logger)
         anthropic_api_key = anthropic_api_key or getenv("ANTHROPIC_API_KEY")
         if not anthropic_api_key:
             raise ValueError(
                 "ANTHROPIC_API_KEY must be set in environment or passed in"
             )
-        self.agent_config = agent_config
-        self.logger = logger or logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
         self.prompt = ChatPromptTemplate.from_messages(
             [
                 MessagesPlaceholder(variable_name="history"),
                 HumanMessagePromptTemplate.from_template("{input}"),
             ]
         )
-        self.memory = ConversationBufferMemory(return_messages=True)
         if agent_config.initial_message:
             raise NotImplementedError("initial_message not implemented for Anthropic")
 
@@ -100,33 +95,13 @@ class ChatAnthropicAgent(BaseAgent):
             delta = completion[len(bot_memory_message.content + buffer) :]
             buffer += delta
 
-            sentence, remainder = self.get_sentence_from_buffer(buffer)
+            sentence, remainder = get_sentence_from_buffer(buffer)
 
             if sentence:
                 bot_memory_message.content = bot_memory_message.content + sentence
                 buffer = remainder
                 yield sentence
             continue
-
-    def find_last_punctuation(self, buffer: str):
-        indices = [buffer.rfind(ending) for ending in SENTENCE_ENDINGS]
-        return indices and max(indices)
-
-    def get_sentence_from_buffer(self, buffer: str):
-        last_punctuation = self.find_last_punctuation(buffer)
-        if last_punctuation:
-            return buffer[: last_punctuation + 1], buffer[last_punctuation + 1 :]
-        else:
-            return None, None
-
-    def update_last_bot_message_on_cut_off(self, message: str):
-        for memory_message in self.memory.chat_memory.messages[::-1]:
-            if (
-                isinstance(memory_message, ChatMessage)
-                and memory_message.role == "assistant"
-            ) or isinstance(memory_message, AIMessage):
-                memory_message.content = message
-                return
 
 
 if __name__ == "__main__":
