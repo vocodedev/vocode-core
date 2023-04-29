@@ -11,6 +11,7 @@ LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
 LLM_AGENT_DEFAULT_MAX_TOKENS = 256
 LLM_AGENT_DEFAULT_MODEL_NAME = "text-curie-001"
 CHAT_GPT_AGENT_DEFAULT_MODEL_NAME = "gpt-3.5-turbo"
+CHAT_ANTHROPIC_DEFAULT_MODEL_NAME = "claude-v1"
 
 
 class AgentType(str, Enum):
@@ -18,6 +19,7 @@ class AgentType(str, Enum):
     LLM = "agent_llm"
     CHAT_GPT_ALPHA = "agent_chat_gpt_alpha"
     CHAT_GPT = "agent_chat_gpt"
+    CHAT_ANTHROPIC = "agent_chat_anthropic"
     ECHO = "agent_echo"
     INFORMATION_RETRIEVAL = "agent_information_retrieval"
     RESTFUL_USER_IMPLEMENTED = "agent_restful_user_implemented"
@@ -73,6 +75,11 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     cut_off_response: Optional[CutOffResponse] = None
+
+
+class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC):
+    model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
+    max_tokens_to_sample: int = 200
 
 
 class InformationRetrievalAgentConfig(
