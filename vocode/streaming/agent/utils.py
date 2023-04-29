@@ -4,8 +4,10 @@ SENTENCE_ENDINGS = [".", "!", "?"]
 
 
 def stream_llm_response(
-    gen, get_text=lambda choice: choice.get("text"), sentence_endings=SENTENCE_ENDINGS
+    gen, get_text=lambda choice: choice.get("text"), sentence_endings=None
 ) -> Generator:
+    if sentence_endings is None:
+        sentence_endings = SENTENCE_ENDINGS
     buffer = ""
     for response in gen:
         choices = response.get("choices", [])
@@ -23,3 +25,16 @@ def stream_llm_response(
             buffer = ""
     if buffer.strip():
         yield buffer
+
+
+def find_last_punctuation(buffer: str):
+    indices = [buffer.rfind(ending) for ending in SENTENCE_ENDINGS]
+    return indices and max(indices)
+
+
+def get_sentence_from_buffer(buffer: str):
+    last_punctuation = find_last_punctuation(buffer)
+    if last_punctuation:
+        return buffer[: last_punctuation + 1], buffer[last_punctuation + 1 :]
+    else:
+        return None, None
