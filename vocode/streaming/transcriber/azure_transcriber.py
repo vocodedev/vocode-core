@@ -30,7 +30,6 @@ class AzureTranscriber(BaseTranscriber):
         format = None
         if self.transcriber_config.audio_encoding == AudioEncoding.LINEAR16:
 
-            # google_audio_encoding = self.speech.RecognitionConfig.AudioEncoding.LINEAR16
             format = AudioStreamFormat(
                 samples_per_second=self.transcriber_config.sampling_rate,
                 wave_stream_format=AudioStreamWaveFormat.PCM
