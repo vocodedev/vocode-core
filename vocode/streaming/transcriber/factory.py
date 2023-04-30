@@ -5,6 +5,7 @@ from vocode.streaming.transcriber.assembly_ai_transcriber import AssemblyAITrans
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode.streaming.transcriber.google_transcriber import GoogleTranscriber
 from vocode.streaming.transcriber.rev_ai_transcriber import RevAITranscriber
+from vocode.streaming.transcriber.azure_transcriber import AzureTranscriber
 
 
 class TranscriberFactory:
@@ -21,5 +22,7 @@ class TranscriberFactory:
             return AssemblyAITranscriber(transcriber_config, logger=logger)
         elif transcriber_config.type == TranscriberType.REV_AI:
             return RevAITranscriber(transcriber_config, logger=logger)
+        elif transcriber_config.type == TranscriberType.AZURE:
+            return AzureTranscriber(transcriber_config, logger=logger)
         else:
             raise Exception("Invalid transcriber config")
