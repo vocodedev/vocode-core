@@ -1,11 +1,14 @@
 import os
+import sys
 from dotenv import load_dotenv
 
 from tools.contacts import get_all_contacts
 from tools.vocode import call_phone_number
-from callback_handler import VocodeCallbackHandler
 from vocode.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.turn_based.synthesizer.gtts_synthesizer import GTTSSynthesizer
+
+from callback_handler import VocodeCallbackHandler
+from stdout_filterer import RedactPhoneNumbers
 
 load_dotenv()
 
@@ -14,6 +17,9 @@ from langchain.agents import initialize_agent
 from langchain.agents import AgentType
 
 if __name__ == "__main__":
+    # Redirect stdout to our custom class
+    sys.stdout = RedactPhoneNumbers(sys.stdout)
+
     OBJECTIVE = input("Objective: ") or "Find a random person in my contacts and tell them a joke"
     llm = ChatOpenAI(temperature=0, model_name="gpt-4")
     # Logging of LLMChains
