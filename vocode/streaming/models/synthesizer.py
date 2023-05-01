@@ -24,6 +24,7 @@ class SynthesizerType(str, Enum):
     STREAM_ELEMENTS = "synthesizer_stream_elements"
     COQUI_TTS = "synthesizer_coqui_tts"
     COQUI = "synthesizer_coqui"
+    BARK = "synthesizer_bark"
 
 
 class SentimentConfig(BaseModel):
@@ -160,3 +161,7 @@ STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE = "Brian"
 
 class StreamElementsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.STREAM_ELEMENTS.value):
     voice: str = STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE
+
+class BarkSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.BARK.value):
+    preload_kwargs = {}
+    generate_kwargs = {}
