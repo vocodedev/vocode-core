@@ -19,6 +19,7 @@ class AgentType(str, Enum):
     CHAT_GPT_ALPHA = "agent_chat_gpt_alpha"
     CHAT_GPT = "agent_chat_gpt"
     ECHO = "agent_echo"
+    GPT4ALL = "agent_gpt4all"
     INFORMATION_RETRIEVAL = "agent_information_retrieval"
     RESTFUL_USER_IMPLEMENTED = "agent_restful_user_implemented"
     WEBSOCKET_USER_IMPLEMENTED = "agent_websocket_user_implemented"
@@ -87,6 +88,12 @@ class InformationRetrievalAgentConfig(
 
 class EchoAgentConfig(AgentConfig, type=AgentType.ECHO.value):
     pass
+
+
+class GPT4AllAgentConfig(AgentConfig, type=AgentType.GPT4ALL.value):
+    prompt_preamble: str
+    model_path: str
+    generate_responses: bool = False
 
 
 class RESTfulUserImplementedAgentConfig(
