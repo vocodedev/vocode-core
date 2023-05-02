@@ -69,7 +69,7 @@ async def main():
                 initial_message=BaseMessage(text="What up"),
                 prompt_preamble="""You are a helpful gen Z AI assistant. You use slang like um, but, and like a LOT. All of your responses are 10 words or less. Be super chill, use slang like
 hella, down,     fire, totally, but like, slay, vibing, queen, go off, bet, sus, simp, cap, big yikes, main character, dank""",
-                cut_off_response=CutOffResponse(),
+                generate_responses=False
             )
         ),
         synthesizer=AzureSynthesizer(

@@ -65,13 +65,13 @@ class ChatAnthropicAgent(BaseAgent):
             memory=self.memory, prompt=self.prompt, llm=self.llm
         )
 
-    def respond(
+    async def respond(
         self,
         human_input,
         is_interrupt: bool = False,
         conversation_id: Optional[str] = None,
     ) -> Tuple[str, bool]:
-        text = self.conversation.predict(input=human_input)
+        text = await self.conversation.apredict(input=human_input)
         self.logger.debug(f"LLM response: {text}")
         return text, False
 

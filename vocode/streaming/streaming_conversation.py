@@ -479,7 +479,7 @@ class StreamingConversation:
                     wait_for_filler_audio=self.agent.get_agent_config().send_filler_audio,
                 )
             else:
-                response, should_stop = self.agent.respond(
+                response, should_stop = await self.agent.respond(
                     transcription.message,
                     is_interrupt=transcription.is_interrupt,
                     conversation_id=self.id,

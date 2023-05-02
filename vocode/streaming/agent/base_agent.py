@@ -20,7 +20,7 @@ class BaseAgent:
     def start(self):
         pass
 
-    def respond(
+    async def respond(
         self,
         human_input,
         is_interrupt: bool = False,

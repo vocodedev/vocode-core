@@ -9,6 +9,7 @@ from ..models.agent import (
 from typing import Generator, Optional, Tuple, cast
 import requests
 import logging
+import aiohttp
 
 
 class RESTfulUserImplementedAgent(BaseAgent):
@@ -25,7 +26,7 @@ class RESTfulUserImplementedAgent(BaseAgent):
         self.agent_config = agent_config
         self.logger = logger or logging.getLogger(__name__)
 
-    def respond(
+    async def respond(
         self,
         human_input,
         is_interrupt: bool = False,
@@ -33,23 +34,20 @@ class RESTfulUserImplementedAgent(BaseAgent):
     ) -> Tuple[Optional[str], bool]:
         config = self.agent_config.respond
         try:
-            agent_response = requests.request(
-                method=config.method,
-                url=config.url,
-                json=RESTfulAgentInput(
+            async with aiohttp.ClientSession() as session:
+                payload = RESTfulAgentInput(
                     human_input=human_input, conversation_id=conversation_id
-                ).dict(),
-                timeout=15,
-            )
-            assert agent_response.ok
-            output = RESTfulAgentOutput.parse_obj(agent_response.json())
-            response = None
-            should_stop = False
-            if output.type == RESTfulAgentOutputType.TEXT:
-                response = cast(RESTfulAgentText, output).response
-            elif output.type == RESTfulAgentOutputType.END:
-                should_stop = True
-            return response, should_stop
+                ).dict()
+                async with session.request(config.method, config.url, json=payload, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                    assert response.status == 200
+                    output: RESTfulAgentOutput = RESTfulAgentOutput.parse_obj(await response.json())
+                    output_response = None
+                    should_stop = False
+                    if output.type == RESTfulAgentOutputType.TEXT:
+                        output_response = cast(RESTfulAgentText, output).response
+                    elif output.type == RESTfulAgentOutputType.END:
+                        should_stop = True
+                    return output_response, should_stop
         except Exception as e:
             self.logger.error(f"Error in response from RESTful agent: {e}")
             return None, True

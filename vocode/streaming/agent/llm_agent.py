@@ -2,7 +2,6 @@ import re
 from typing import Optional, Tuple
 
 from langchain import OpenAI
-from langchain.llms import OpenAIChat
 from typing import Generator
 import logging
 from vocode import getenv
@@ -70,7 +69,7 @@ class LLMAgent(BaseAgent):
     def get_memory_entry(self, human_input, response):
         return f"{self.recipient}: {human_input}\n{self.sender}: {response}"
 
-    def respond(
+    async def respond(
         self,
         human_input,
         is_interrupt: bool = False,
@@ -86,7 +85,10 @@ class LLMAgent(BaseAgent):
             self.is_first_response = False
             response = self.first_response
         else:
-            response = self.llm(self.create_prompt(human_input), stop=self.stop_tokens)
+            response = (await self.llm.agenerate(
+                [self.create_prompt(human_input)], 
+                stop=self.stop_tokens
+            )).generations[0][0].text
             response = response.replace(f"{self.sender}:", "")
         self.memory.append(self.get_memory_entry(human_input, response))
         self.logger.debug(f"LLM response: {response}")
