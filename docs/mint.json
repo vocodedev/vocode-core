@@ -52,10 +52,10 @@
         "telephony",
         "create-your-own-agent",
         "langchain-agent",
+        "local-conversation",
         "react-quickstart",
         "turn-based-conversation",
-        "language-support",
-        "local-conversation"
+        "language-support"
       ]
     },
     {
