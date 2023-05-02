@@ -1,11 +1,9 @@
 from typing import AsyncGenerator, Optional, Tuple
 from langchain import ConversationChain
-import anthropic
 
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import ChatMessage, AIMessage, HumanMessage
 from langchain.chat_models import ChatAnthropic
-from typing import Generator
 import logging
 from vocode import getenv
 
@@ -31,6 +29,8 @@ class ChatAnthropicAgent(BaseAgent):
         anthropic_api_key: Optional[str] = None,
     ):
         super().__init__(agent_config)
+        import anthropic
+
         anthropic_api_key = anthropic_api_key or getenv("ANTHROPIC_API_KEY")
         if not anthropic_api_key:
             raise ValueError(
