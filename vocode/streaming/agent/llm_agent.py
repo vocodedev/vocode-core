@@ -1,14 +1,18 @@
+import json
 import re
 from typing import Optional, Tuple
 
 from langchain import OpenAI
 from typing import Generator
 import logging
+
+import openai
 from vocode import getenv
 
 from vocode.streaming.agent.base_agent import BaseAgent
-from vocode.streaming.agent.utils import stream_llm_response
+from vocode.streaming.agent.utils import stream_openai_response_async
 from vocode.streaming.models.agent import LLMAgentConfig
+from aiohttp_sse_client import client as sse_client
 
 
 class LLMAgent(BaseAgent):
@@ -85,16 +89,48 @@ class LLMAgent(BaseAgent):
             self.is_first_response = False
             response = self.first_response
         else:
-            response = (await self.llm.agenerate(
-                [self.create_prompt(human_input)], 
-                stop=self.stop_tokens
-            )).generations[0][0].text
+            response = (
+                (
+                    await self.llm.agenerate(
+                        [self.create_prompt(human_input)], stop=self.stop_tokens
+                    )
+                )
+                .generations[0][0]
+                .text
+            )
             response = response.replace(f"{self.sender}:", "")
         self.memory.append(self.get_memory_entry(human_input, response))
         self.logger.debug(f"LLM response: {response}")
         return response, False
 
-    def generate_response(
+    async def _stream_sentences(self, prompt):
+        async with sse_client.EventSource(
+            "https://api.openai.com/v1/completions",
+            json={
+                "prompt": prompt,
+                "max_tokens": self.agent_config.max_tokens,
+                "temperature": self.agent_config.temperature,
+                "model": self.agent_config.model_name,
+                "stop": self.stop_tokens,
+                "stream": True,
+            },
+            option={"method": "POST"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {openai.api_key}",
+            },
+        ) as event_source:
+            async for sentence in stream_openai_response_async(
+                event_source,
+                get_text=lambda choice: choice.get("text"),
+            ):
+                yield sentence
+
+    async def _agen_from_list(self, l):
+        for item in l:
+            yield item
+
+    async def generate_response(
         self,
         human_input,
         is_interrupt: bool = False,
@@ -110,19 +146,14 @@ class LLMAgent(BaseAgent):
         if self.is_first_response and self.first_response:
             self.logger.debug("First response is cached")
             self.is_first_response = False
-            sentences = [self.first_response]
+            sentences = self._agen_from_list([self.first_response])
         else:
             self.logger.debug("Creating LLM prompt")
             prompt = self.create_prompt(human_input)
             self.logger.debug("Streaming LLM response")
-            sentences = stream_llm_response(
-                map(
-                    lambda resp: resp.to_dict(),
-                    self.llm.stream(prompt, stop=self.stop_tokens),
-                )
-            )
+            sentences = self._stream_sentences(prompt)
         response_buffer = ""
-        for sentence in sentences:
+        async for sentence in sentences:
             sentence = sentence.replace(f"{self.sender}:", "")
             sentence = re.sub(r"^\s+(.*)", r" \1", sentence)
             response_buffer += sentence

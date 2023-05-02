@@ -1,6 +1,6 @@
 import logging
 import random
-from typing import Generator, Optional, Tuple
+from typing import AsyncGenerator, Generator, Optional, Tuple
 from vocode.streaming.models.agent import (
     AgentConfig,
     ChatGPTAgentConfig,
@@ -28,12 +28,12 @@ class BaseAgent:
     ) -> Tuple[Optional[str], bool]:
         raise NotImplementedError
 
-    def generate_response(
+    async def generate_response(
         self,
         human_input,
         is_interrupt: bool = False,
         conversation_id: Optional[str] = None,
-    ) -> Generator[str, None, None]:
+    ) -> AsyncGenerator[str, None]:
         """Returns a generator that yields a sentence at a time."""
         raise NotImplementedError
 

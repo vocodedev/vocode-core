@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import AsyncGenerator, Optional, Tuple
 from langchain import ConversationChain
 import anthropic
 
@@ -75,15 +75,15 @@ class ChatAnthropicAgent(BaseAgent):
         self.logger.debug(f"LLM response: {text}")
         return text, False
 
-    def generate_response(
+    async def generate_response(
         self,
         human_input,
         is_interrupt: bool = False,
         conversation_id: Optional[str] = None,
-    ) -> Generator[str, None, None]:
+    ) -> AsyncGenerator[str, None]:
         self.memory.chat_memory.messages.append(HumanMessage(content=human_input))
 
-        streamed_response = self.anthropic_client.completion_stream(
+        streamed_response = await self.anthropic_client.acompletion_stream(
             prompt=self.llm._convert_messages_to_prompt(
                 self.memory.chat_memory.messages
             ),
@@ -95,7 +95,7 @@ class ChatAnthropicAgent(BaseAgent):
         self.memory.chat_memory.messages.append(bot_memory_message)
 
         buffer = ""
-        for message in streamed_response:
+        async for message in streamed_response:
             completion = message["completion"]
             delta = completion[len(bot_memory_message.content + buffer) :]
             buffer += delta
