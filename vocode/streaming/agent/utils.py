@@ -1,13 +1,20 @@
-from typing import Generator
+import json
+from typing import AsyncGenerator, Callable
+from aiohttp_sse_client.client import EventSource
 
 SENTENCE_ENDINGS = [".", "!", "?"]
 
 
-def stream_llm_response(
-    gen, get_text=lambda choice: choice.get("text"), sentence_endings=SENTENCE_ENDINGS
-) -> Generator:
+async def stream_openai_response_async(
+    gen: EventSource,
+    get_text: Callable[[dict], str],
+    sentence_endings: list[str] = SENTENCE_ENDINGS,
+) -> AsyncGenerator:
     buffer = ""
-    for response in gen:
+    async for event in gen:
+        if "[DONE]" in event.data:
+            break
+        response = json.loads(event.data)
         choices = response.get("choices", [])
         if len(choices) == 0:
             break
