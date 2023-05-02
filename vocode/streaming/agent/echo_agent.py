@@ -3,7 +3,7 @@ from vocode.streaming.agent.base_agent import BaseAgent
 
 
 class EchoAgent(BaseAgent):
-    def respond(
+    async def respond(
         self,
         human_input,
         is_interrupt: bool = False,

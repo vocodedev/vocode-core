@@ -79,7 +79,7 @@ class ChatGPTAgent(BaseAgent):
     def create_first_response(self, first_prompt):
         return self.conversation.predict(input=first_prompt)
 
-    def respond(
+    async def respond(
         self,
         human_input,
         is_interrupt: bool = False,
@@ -96,7 +96,7 @@ class ChatGPTAgent(BaseAgent):
             self.is_first_response = False
             text = self.first_response
         else:
-            text = self.conversation.predict(input=human_input)
+            text = await self.conversation.apredict(input=human_input)
         self.logger.debug(f"LLM response: {text}")
         return text, False
 
@@ -158,16 +158,20 @@ class ChatGPTAgent(BaseAgent):
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
+    import asyncio
 
     load_dotenv()
 
-    agent = ChatGPTAgent(
-        ChatGPTAgentConfig(
-            prompt_preamble="The assistant is having a pleasant conversation about life. If the user hasn't completed their thought, the assistant responds with 'PASS'",
+    async def main():
+        agent = ChatGPTAgent(
+            ChatGPTAgentConfig(
+                prompt_preamble="The assistant is having a pleasant conversation about life. If the user hasn't completed their thought, the assistant responds with 'PASS'",
+            )
         )
-    )
-    while True:
-        response = agent.respond(input("Human: "))[0]
-        print(f"AI: {response}")
-        # for response in agent.generate_response(input("Human: ")):
-        #     print(f"AI: {response}")
+        while True:
+            response = (await agent.respond(input("Human: ")))[0]
+            print(f"AI: {response}")
+            # for response in agent.generate_response(input("Human: ")):
+
+    asyncio.run(main())
+            
