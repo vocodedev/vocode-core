@@ -14,10 +14,10 @@ class GPT4AllAgent(BaseAgent):
             initial_message=agent_config.initial_message.text
         )
 
-    def respond(
+    async def respond(
         self,
         human_input,
         is_interrupt: bool = False,
         conversation_id: Optional[str] = None,
     ) -> Tuple[Optional[str], bool]:
-        return self.turn_based_agent.respond(human_input), False
+        return (await self.turn_based_agent.respond_async(human_input)), False
