@@ -135,20 +135,3 @@ class LLMAgent(BaseAgent):
             last_message.split("\n", 1)[0] + f"\n{self.sender}: {message}"
         )
         self.memory[-1] = new_last_message
-
-
-if __name__ == "__main__":
-    chat_responder = LLMAgent(
-        LLMAgentConfig(
-            prompt_preamble="""
-The AI is having a pleasant conversation about life. If the human hasn't completed their thought, the AI responds with 'PASS'
-
-{history}
-Human: {human_input}
-AI:""",
-        )
-    )
-    while True:
-        # response = chat_responder.respond(input("Human: "))[0]
-        for response in chat_responder.generate_response(input("Human: ")):
-            print(f"AI: {response}")

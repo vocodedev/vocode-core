@@ -154,24 +154,3 @@ class ChatGPTAgent(BaseAgent):
             ) or isinstance(memory_message, AIMessage):
                 memory_message.content = message
                 return
-
-
-if __name__ == "__main__":
-    from dotenv import load_dotenv
-    import asyncio
-
-    load_dotenv()
-
-    async def main():
-        agent = ChatGPTAgent(
-            ChatGPTAgentConfig(
-                prompt_preamble="The assistant is having a pleasant conversation about life. If the user hasn't completed their thought, the assistant responds with 'PASS'",
-            )
-        )
-        while True:
-            response = (await agent.respond(input("Human: ")))[0]
-            print(f"AI: {response}")
-            # for response in agent.generate_response(input("Human: ")):
-
-    asyncio.run(main())
-            

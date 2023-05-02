@@ -127,18 +127,3 @@ class ChatAnthropicAgent(BaseAgent):
             ) or isinstance(memory_message, AIMessage):
                 memory_message.content = message
                 return
-
-
-if __name__ == "__main__":
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
-    agent = ChatAnthropicAgent(
-        ChatAnthropicAgentConfig(),
-    )
-
-    while True:
-        response = agent.generate_response(input("Human: "))
-        for i in response:
-            print(i)
