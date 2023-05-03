@@ -60,12 +60,13 @@ if __name__ == "__main__":
         return message_sent, cut_off
 
     async def main():
-        message_sent, _ = await speak(
-            synthesizer=synthesizer,
-            output_device=speaker_output,
-            message=BaseMessage(text="Hello world Hello world Hello world Hello world"),
-        )
-        print("Message sent: ", message_sent)
+        while True:
+            message_sent, _ = await speak(
+                synthesizer=synthesizer,
+                output_device=speaker_output,
+                message=BaseMessage(text=input("Enter speech to synthesize: ")),
+            )
+            print("Message sent: ", message_sent)
 
     speaker_output = SpeakerOutput.from_default_device()
 

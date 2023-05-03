@@ -29,7 +29,7 @@ if __name__ == "__main__":
         )
         transcriber.set_on_response(on_response)
         asyncio.create_task(transcriber.run())
-        print("Transcriber started, press Ctrl+C to end")
+        print("Start speaking...press Ctrl+C to end. ")
         while True:
             chunk = microphone_input.get_audio()
             if chunk:
