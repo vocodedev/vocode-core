@@ -13,16 +13,15 @@ from langchain.memory import ConversationBufferMemory
 from langchain.schema import ChatMessage, AIMessage
 import openai
 import json
-from typing import Generator, Optional, Tuple
+from typing import AsyncGenerator, Optional, Tuple
 
-from typing import Generator
 import logging
+from aiohttp_sse_client import client as sse_client
 from vocode import getenv
 
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.utils.sse_client import SSEClient
-from vocode.streaming.agent.utils import stream_llm_response
+from vocode.streaming.agent.utils import stream_openai_response_async
 
 
 class ChatGPTAgent(BaseAgent):
@@ -79,7 +78,7 @@ class ChatGPTAgent(BaseAgent):
     def create_first_response(self, first_prompt):
         return self.conversation.predict(input=first_prompt)
 
-    def respond(
+    async def respond(
         self,
         human_input,
         is_interrupt: bool = False,
@@ -96,16 +95,16 @@ class ChatGPTAgent(BaseAgent):
             self.is_first_response = False
             text = self.first_response
         else:
-            text = self.conversation.predict(input=human_input)
+            text = await self.conversation.apredict(input=human_input)
         self.logger.debug(f"LLM response: {text}")
         return text, False
 
-    def generate_response(
+    async def generate_response(
         self,
         human_input,
         is_interrupt: bool = False,
         conversation_id: Optional[str] = None,
-    ) -> Generator[str, None, None]:
+    ) -> AsyncGenerator[str, None]:
         self.memory.chat_memory.messages.append(
             ChatMessage(role="user", content=human_input)
         )
@@ -119,32 +118,34 @@ class ChatGPTAgent(BaseAgent):
         prompt_messages = [
             ChatMessage(role="system", content=self.agent_config.prompt_preamble)
         ] + self.memory.chat_memory.messages
-        messages = SSEClient(
-            "POST",
-            "https://api.openai.com/v1/chat/completions",
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {openai.api_key}",
-            },
-            json={
-                "model": self.agent_config.model_name,
-                "messages": [
-                    prompt_message.dict(include={"content": True, "role": True})
-                    for prompt_message in prompt_messages
-                ],
-                "max_tokens": self.agent_config.max_tokens,
-                "temperature": self.agent_config.temperature,
-                "stream": True,
-            },
-        )
+        request_payload = {
+            "model": self.agent_config.model_name,
+            "messages": [
+                prompt_message.dict(include={"content": True, "role": True})
+                for prompt_message in prompt_messages
+            ],
+            "max_tokens": self.agent_config.max_tokens,
+            "temperature": self.agent_config.temperature,
+            "stream": True,
+        }
+        request_headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {openai.api_key}",
+        }
         bot_memory_message = ChatMessage(role="assistant", content="")
         self.memory.chat_memory.messages.append(bot_memory_message)
-        for message in stream_llm_response(
-            map(lambda event: json.loads(event.data), messages),
-            get_text=lambda choice: choice.get("delta", {}).get("content"),
-        ):
-            bot_memory_message.content = f"{bot_memory_message.content} {message}"
-            yield message
+        async with sse_client.EventSource(
+            "https://api.openai.com/v1/chat/completions",
+            json=request_payload,
+            option={"method": "POST"},
+            headers=request_headers,
+        ) as event_source:
+            async for message in stream_openai_response_async(
+                event_source,
+                get_text=lambda choice: choice.get("delta", {}).get("content"),
+            ):
+                bot_memory_message.content = f"{bot_memory_message.content} {message}"
+                yield message
 
     def update_last_bot_message_on_cut_off(self, message: str):
         for memory_message in self.memory.chat_memory.messages[::-1]:
@@ -154,20 +155,3 @@ class ChatGPTAgent(BaseAgent):
             ) or isinstance(memory_message, AIMessage):
                 memory_message.content = message
                 return
-
-
-if __name__ == "__main__":
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
-    agent = ChatGPTAgent(
-        ChatGPTAgentConfig(
-            prompt_preamble="The assistant is having a pleasant conversation about life. If the user hasn't completed their thought, the assistant responds with 'PASS'",
-        )
-    )
-    while True:
-        response = agent.respond(input("Human: "))[0]
-        print(f"AI: {response}")
-        # for response in agent.generate_response(input("Human: ")):
-        #     print(f"AI: {response}")

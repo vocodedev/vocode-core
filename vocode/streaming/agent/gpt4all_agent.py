@@ -11,13 +11,13 @@ class GPT4AllAgent(BaseAgent):
         self.turn_based_agent = TurnBasedGPT4AllAgent(
             model_path=agent_config.model_path,
             system_prompt=agent_config.prompt_preamble,
-            initial_message=agent_config.initial_message.text
+            initial_message=agent_config.initial_message.text if agent_config.initial_message else None,
         )
 
-    def respond(
+    async def respond(
         self,
         human_input,
         is_interrupt: bool = False,
         conversation_id: Optional[str] = None,
     ) -> Tuple[Optional[str], bool]:
-        return self.turn_based_agent.respond(human_input), False
+        return (await self.turn_based_agent.respond_async(human_input)), False

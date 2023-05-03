@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from vocode.streaming.agent.anthropic_agent import ChatAnthropicAgent
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.agent.echo_agent import EchoAgent
@@ -28,4 +29,6 @@ class AgentFactory:
             )
         elif agent_config.type == AgentType.RESTFUL_USER_IMPLEMENTED:
             return RESTfulUserImplementedAgent(agent_config=agent_config, logger=logger)
+        elif agent_config.type == AgentType.CHAT_ANTHROPIC:
+            return ChatAnthropicAgent(agent_config=agent_config, logger=logger)
         raise Exception("Invalid agent config", agent_config.type)

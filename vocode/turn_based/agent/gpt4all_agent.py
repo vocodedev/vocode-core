@@ -1,9 +1,12 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor, wait
 import logging
 import sys
-import threading
 from typing import Optional
 from vocode.turn_based.agent.base_agent import BaseAgent
 
+class StopThreadException(Exception):
+    pass
 
 class GPT4AllAgent(BaseAgent):
     SENTENCE_ENDINGS = [".", "!", "?"]
@@ -23,7 +26,8 @@ class GPT4AllAgent(BaseAgent):
         self.prompt_template = f"{system_prompt}\n\n{self.DEFAULT_PROMPT_TEMPLATE}"
         self.logger = logger or logging.getLogger(__name__)
         self.memory = [f"AI: {initial_message}"] if initial_message else []
-        self.llm = GPT4All_J(model_path, log_level=logging.NOTSET)
+        self.llm = GPT4All_J(model_path)
+        self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
     def create_prompt(self, human_input):
         history = "\n".join(self.memory[-5:])
@@ -45,20 +49,45 @@ class GPT4AllAgent(BaseAgent):
             if len(response_buffer) > len(prompt) and response_buffer.endswith("Human:"):
                 response_buffer = response_buffer[:-len("Human:")]
                 sys.exit()
-        thread = threading.Thread(target=self.llm.generate, args=(prompt,), kwargs={"new_text_callback": new_text_callback})
-        thread.start()
-        thread.join(timeout=10)
+        future = self.thread_pool_executor.submit(
+            self.llm.generate,
+            prompt,
+            new_text_callback = new_text_callback,
+        )
+        wait([future], timeout=10)
         response = response_buffer[(len(prompt) + 1):]
         self.memory.append(self.get_memory_entry(human_input, response))
         self.logger.debug(f"LLM response: {response}")
         return response
 
+    async def respond_async(self, human_input) -> str:
+        prompt = self.create_prompt(human_input)
+        response_buffer = ""
+        def new_text_callback(text):
+            nonlocal response_buffer
+            response_buffer += text
+            if len(response_buffer) > len(prompt) and response_buffer.endswith("Human:"):
+                response_buffer = response_buffer[:-len("Human:")]
+                raise StopThreadException("Stopping the thread")
+        loop = asyncio.get_event_loop()
+        try:
+            await loop.run_in_executor(self.thread_pool_executor, lambda: self.llm.generate(prompt, new_text_callback = new_text_callback))
+        except StopThreadException:
+            pass
+        response = response_buffer[(len(prompt) + 1):]
+        self.memory.append(self.get_memory_entry(human_input, response))
+        return response
+
 
 if __name__ == "__main__":
-    chat_responder = GPT4AllAgent(
-        system_prompt="The AI is having a pleasant conversation about life.",
-        model_path='~/Downloads/ggml-gpt4all-j-v1.3-groovy.bin',
-    )
-    while True:
-        response = chat_responder.respond(input("Human: "))
-        print(f"AI: {response}")
+
+    async def main():
+        chat_responder = GPT4AllAgent(
+            system_prompt="The AI is having a pleasant conversation about life.",
+            model_path='/Users/ajayraj/Downloads/ggml-gpt4all-j-v1.3-groovy.bin',
+        )
+        while True:
+            response = await chat_responder.respond_async(input("Human: "))
+            print(f"AI: {response}")
+    
+    asyncio.run(main())

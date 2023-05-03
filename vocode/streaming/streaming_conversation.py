@@ -1,6 +1,6 @@
 import asyncio
 import queue
-from typing import Awaitable, Callable, Optional, Tuple
+from typing import AsyncGenerator, Awaitable, Callable, Optional, Tuple
 import logging
 import threading
 import time
@@ -122,8 +122,8 @@ class StreamingConversation:
         if self.agent.get_agent_config().initial_message:
             self.transcript.add_bot_message(
                 text=self.agent.get_agent_config().initial_message.text,
-                events_manager=self.events_manager, 
-                conversation_id=self.id
+                events_manager=self.events_manager,
+                conversation_id=self.id,
             )
         if self.synthesizer.get_synthesizer_config().sentiment_config:
             self.update_bot_sentiment()
@@ -139,7 +139,6 @@ class StreamingConversation:
         self.check_for_idle_task = asyncio.create_task(self.check_for_idle())
         if len(self.events_manager.subscriptions) > 0:
             self.events_task = asyncio.create_task(self.events_manager.start())
-
 
     async def check_for_idle(self):
         while self.is_active():
@@ -173,7 +172,7 @@ class StreamingConversation:
 
     async def send_messages_to_stream_async(
         self,
-        messages,
+        messages: AsyncGenerator[str, None],
         should_allow_human_to_cut_off_bot: bool,
         wait_for_filler_audio: bool = False,
     ) -> Tuple[str, bool]:
@@ -223,17 +222,17 @@ class StreamingConversation:
                 self.agent.update_last_bot_message_on_cut_off(response_buffer)
             self.transcript.add_bot_message(
                 text=response_buffer,
-                events_manager=self.events_manager, 
-                conversation_id=self.id
+                events_manager=self.events_manager,
+                conversation_id=self.id,
             )
             return response_buffer, cut_off
 
         asyncio.run_coroutine_threadsafe(send_to_call(), self.synthesizer_event_loop)
 
         messages_generated = 0
-        for i, message in enumerate(messages):
+        async for message in messages:
             messages_generated += 1
-            if i == 0:
+            if messages_generated == 1:
                 if wait_for_filler_audio:
                     self.interrupt_all_synthesis()
                     self.wait_for_filler_audio_to_finish()
@@ -290,8 +289,8 @@ class StreamingConversation:
             self.agent.update_last_bot_message_on_cut_off(message_sent)
         self.transcript.add_bot_message(
             text=message_sent,
-            events_manager=self.events_manager, 
-            conversation_id=self.id
+            events_manager=self.events_manager,
+            conversation_id=self.id,
         )
         return message_sent, cut_off
 
@@ -437,9 +436,9 @@ class StreamingConversation:
     async def handle_transcription(self, transcription: Transcription):
         if transcription.is_final:
             self.transcript.add_human_message(
-                text=transcription.message, 
-                events_manager=self.events_manager, 
-                conversation_id=self.id
+                text=transcription.message,
+                events_manager=self.events_manager,
+                conversation_id=self.id,
             )
             goodbye_detected_task = None
             if self.agent.get_agent_config().end_conversation_on_goodbye:
@@ -479,7 +478,7 @@ class StreamingConversation:
                     wait_for_filler_audio=self.agent.get_agent_config().send_filler_audio,
                 )
             else:
-                response, should_stop = self.agent.respond(
+                response, should_stop = await self.agent.respond(
                     transcription.message,
                     is_interrupt=transcription.is_interrupt,
                     conversation_id=self.id,
@@ -518,8 +517,7 @@ class StreamingConversation:
         self.mark_terminated()
         self.events_manager.publish_event(
             TranscriptCompleteEvent(
-                conversation_id=self.id,
-                transcript=self.transcript.to_string()
+                conversation_id=self.id, transcript=self.transcript.to_string()
             )
         )
         if self.check_for_idle_task:
