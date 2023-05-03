@@ -1,4 +1,3 @@
-import json
 import re
 from typing import Optional, Tuple
 
@@ -12,7 +11,6 @@ from vocode import getenv
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.utils import stream_openai_response_async
 from vocode.streaming.models.agent import LLMAgentConfig
-from aiohttp_sse_client import client as sse_client
 
 
 class LLMAgent(BaseAgent):
@@ -104,27 +102,19 @@ class LLMAgent(BaseAgent):
         return response, False
 
     async def _stream_sentences(self, prompt):
-        async with sse_client.EventSource(
-            "https://api.openai.com/v1/completions",
-            json={
-                "prompt": prompt,
-                "max_tokens": self.agent_config.max_tokens,
-                "temperature": self.agent_config.temperature,
-                "model": self.agent_config.model_name,
-                "stop": self.stop_tokens,
-                "stream": True,
-            },
-            option={"method": "POST"},
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {openai.api_key}",
-            },
-        ) as event_source:
-            async for sentence in stream_openai_response_async(
-                event_source,
-                get_text=lambda choice: choice.get("text"),
-            ):
-                yield sentence
+        stream = await openai.Completion.acreate(
+            prompt=prompt,
+            max_tokens=self.agent_config.max_tokens,
+            temperature=self.agent_config.temperature,
+            model=self.agent_config.model_name,
+            stop=self.stop_tokens,
+            stream=True,
+        )
+        async for sentence in stream_openai_response_async(
+            stream,
+            get_text=lambda choice: choice.get("text"),
+        ):
+            yield sentence
 
     async def _agen_from_list(self, l):
         for item in l:

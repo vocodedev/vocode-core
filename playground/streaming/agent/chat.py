@@ -40,8 +40,8 @@ if __name__ == "__main__":
                 )
                 print("AI:", response)
 
-    agent = ChatAnthropicAgent(
-        ChatAnthropicAgentConfig(
+    agent = ChatGPTAgent(
+        ChatGPTAgentConfig(
             prompt_preamble="The assistant is having a pleasant conversation about life.",
         )
     )
