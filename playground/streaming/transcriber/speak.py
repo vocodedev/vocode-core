@@ -20,6 +20,8 @@ if __name__ == "__main__":
             print(response)
 
         microphone_input = MicrophoneInput.from_default_device()
+
+        # replace with the transcriber you want to test
         transcriber = DeepgramTranscriber(
             DeepgramTranscriberConfig.from_input_device(
                 microphone_input, endpointing_config=PunctuationEndpointingConfig()

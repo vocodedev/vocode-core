@@ -68,6 +68,8 @@ if __name__ == "__main__":
         print("Message sent: ", message_sent)
 
     speaker_output = SpeakerOutput.from_default_device()
+
+    # replace with the synthesizer you want to test
     synthesizer = AzureSynthesizer(
         AzureSynthesizerConfig.from_output_device(speaker_output)
     )

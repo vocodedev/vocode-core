@@ -40,6 +40,7 @@ if __name__ == "__main__":
                 )
                 print("AI:", response)
 
+    # replace with the agent you want to test
     agent = ChatGPTAgent(
         ChatGPTAgentConfig(
             prompt_preamble="The assistant is having a pleasant conversation about life.",
