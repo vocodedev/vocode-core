@@ -49,3 +49,7 @@ class MicrophoneInput(BaseInputDevice):
             return self.queue.get_nowait()
         except queue.Empty:
             return None
+
+    @classmethod
+    def from_default_device(cls, sampling_rate: int = None):
+        return cls(sd.query_devices(kind="input"), sampling_rate)
