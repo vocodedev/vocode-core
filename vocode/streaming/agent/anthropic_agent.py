@@ -1,11 +1,9 @@
-from typing import Optional, Tuple
+from typing import AsyncGenerator, Optional, Tuple
 from langchain import ConversationChain
-import anthropic
 
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import ChatMessage, AIMessage, HumanMessage
 from langchain.chat_models import ChatAnthropic
-from typing import Generator
 import logging
 from vocode import getenv
 
@@ -31,6 +29,8 @@ class ChatAnthropicAgent(BaseAgent):
         anthropic_api_key: Optional[str] = None,
     ):
         super().__init__(agent_config)
+        import anthropic
+
         anthropic_api_key = anthropic_api_key or getenv("ANTHROPIC_API_KEY")
         if not anthropic_api_key:
             raise ValueError(
@@ -65,25 +65,25 @@ class ChatAnthropicAgent(BaseAgent):
             memory=self.memory, prompt=self.prompt, llm=self.llm
         )
 
-    def respond(
+    async def respond(
         self,
         human_input,
         is_interrupt: bool = False,
         conversation_id: Optional[str] = None,
     ) -> Tuple[str, bool]:
-        text = self.conversation.predict(input=human_input)
+        text = await self.conversation.apredict(input=human_input)
         self.logger.debug(f"LLM response: {text}")
         return text, False
 
-    def generate_response(
+    async def generate_response(
         self,
         human_input,
         is_interrupt: bool = False,
         conversation_id: Optional[str] = None,
-    ) -> Generator[str, None, None]:
+    ) -> AsyncGenerator[str, None]:
         self.memory.chat_memory.messages.append(HumanMessage(content=human_input))
 
-        streamed_response = self.anthropic_client.completion_stream(
+        streamed_response = await self.anthropic_client.acompletion_stream(
             prompt=self.llm._convert_messages_to_prompt(
                 self.memory.chat_memory.messages
             ),
@@ -95,7 +95,7 @@ class ChatAnthropicAgent(BaseAgent):
         self.memory.chat_memory.messages.append(bot_memory_message)
 
         buffer = ""
-        for message in streamed_response:
+        async for message in streamed_response:
             completion = message["completion"]
             delta = completion[len(bot_memory_message.content + buffer) :]
             buffer += delta
@@ -127,18 +127,3 @@ class ChatAnthropicAgent(BaseAgent):
             ) or isinstance(memory_message, AIMessage):
                 memory_message.content = message
                 return
-
-
-if __name__ == "__main__":
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
-    agent = ChatAnthropicAgent(
-        ChatAnthropicAgentConfig(),
-    )
-
-    while True:
-        response = agent.generate_response(input("Human: "))
-        for i in response:
-            print(i)

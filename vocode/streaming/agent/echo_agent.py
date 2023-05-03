@@ -3,7 +3,7 @@ from vocode.streaming.agent.base_agent import BaseAgent
 
 
 class EchoAgent(BaseAgent):
-    def respond(
+    async def respond(
         self,
         human_input,
         is_interrupt: bool = False,
@@ -11,7 +11,7 @@ class EchoAgent(BaseAgent):
     ) -> Tuple[str, bool]:
         return human_input, False
 
-    def generate_response(
+    async def generate_response(
         self,
         human_input,
         is_interrupt: bool = False,
