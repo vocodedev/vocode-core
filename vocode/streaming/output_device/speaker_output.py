@@ -32,3 +32,10 @@ class SpeakerOutput(BaseOutputDevice):
 
     def terminate(self):
         self.stream.close()
+
+    @classmethod
+    def from_default_device(
+        cls,
+        sampling_rate: int = None,
+    ):
+        return cls(sd.query_devices(kind="output"), sampling_rate)
