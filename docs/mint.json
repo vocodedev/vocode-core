@@ -54,6 +54,7 @@
         "langchain-agent",
         "local-conversation",
         "react-quickstart",
+        "playground",
         "turn-based-conversation",
         "language-support"
       ]
