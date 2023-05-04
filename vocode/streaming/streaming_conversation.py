@@ -230,16 +230,19 @@ class StreamingConversation:
         asyncio.run_coroutine_threadsafe(send_to_call(), self.synthesizer_event_loop)
 
         messages_generated = 0
-        async for message in messages:
-            messages_generated += 1
-            if messages_generated == 1:
-                if wait_for_filler_audio:
-                    self.interrupt_all_synthesis()
-                    self.wait_for_filler_audio_to_finish()
-            if speech_cut_off.is_set():
-                break
-            messages_queue.put_nowait(BaseMessage(text=message))
-            await asyncio.sleep(0)
+        try:
+            async for message in messages:
+                messages_generated += 1
+                if messages_generated == 1:
+                    if wait_for_filler_audio:
+                        self.interrupt_all_synthesis()
+                        self.wait_for_filler_audio_to_finish()
+                if speech_cut_off.is_set():
+                    break
+                messages_queue.put_nowait(BaseMessage(text=message))
+                await asyncio.sleep(0)
+        except Exception as e:
+            self.logger.error(f"Error while generating response: {e}", exc_info=True)
         if messages_generated == 0:
             self.logger.debug("Agent generated no messages")
             if wait_for_filler_audio:
@@ -478,11 +481,18 @@ class StreamingConversation:
                     wait_for_filler_audio=self.agent.get_agent_config().send_filler_audio,
                 )
             else:
-                response, should_stop = await self.agent.respond(
-                    transcription.message,
-                    is_interrupt=transcription.is_interrupt,
-                    conversation_id=self.id,
-                )
+                try:
+                    response, should_stop = await self.agent.respond(
+                        transcription.message,
+                        is_interrupt=transcription.is_interrupt,
+                        conversation_id=self.id,
+                    )
+                except Exception as e:
+                    self.logger.error(
+                        f"Error while generating response: {e}", exc_info=True
+                    )
+                    response = None
+                    should_stop = True
                 if self.agent.get_agent_config().send_filler_audio:
                     self.interrupt_all_synthesis()
                     self.wait_for_filler_audio_to_finish()
