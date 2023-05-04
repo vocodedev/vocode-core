@@ -20,7 +20,8 @@ and hosted.
 1. [Ngrok](https://ngrok.com/) (used to host the `TelephonyServer` locally)
 2. [ffmpeg](https://ffmpeg.org/)
    a. If you have Homebrew installed, run `brew install ffmpeg`
-3. (optional) [Redis](https://redis.com/)
+3. [Redis](https://redis.com/)
+   a. If you have Homebrew installed, run `brew install redis`
 4. (optional) [Docker](https://www.docker.com/)
 
 ## Environments
@@ -58,7 +59,9 @@ Clone the Vocode repo or copy the [Telephony app](https://github.com/vocodedev/v
 
 ### Running the server
 
-#### Docker
+Pick one of these two ways to run the server: 1. Run everything with Docker, 2. Run Python directly
+
+#### Option 1: Run everything With Docker
 
 1. Build the telephony app Docker image. From the `telephony_app` directory, run:
 
@@ -72,7 +75,7 @@ docker build -t vocode-telephony-app .
 docker-compose up
 ```
 
-#### Python
+#### Option 2: Run Python directly
 
 Run the following steps from the `telephony_app` directory.
 
@@ -82,13 +85,25 @@ Run the following steps from the `telephony_app` directory.
 pip install -r requirements.txt
 ```
 
-2. Run Redis and host it at http://localhost:6379. If you have Docker installed, you can run:
+2. Run Redis with the default port of 6379.
 
+For example, using Homebrew:
+```
+brew services start redis
+```
+
+Or if you prefer to use Docker for this part:
 ```
 docker run -dp 6379:6379 -it redis/redis-stack:latest
 ```
 
-3. Run the server with `uvicorn` (should be already installed in step 1).
+3. Load the environment variables
+
+```
+source .env
+```
+
+4. Run the server with `uvicorn` (should be already installed in step 1).
 
 ```
 uvicorn main:app --port 3000
