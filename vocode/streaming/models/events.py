@@ -34,8 +34,8 @@ class PhoneCallConnectedEvent(Event, type=EventType.PHONE_CALL_CONNECTED):
 
 
 class PhoneCallEndedEvent(Event, type=EventType.PHONE_CALL_ENDED):
-    pass
+    conversation_minutes: float = 0
+
 
 class TranscriptCompleteEvent(Event, type=EventType.TRANSCRIPT_COMPLETE):
-    transcript: str    
-
+    transcript: str
