@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, AsyncIterable, Callable
+from typing import AsyncGenerator, AsyncIterable, Callable, List
 from openai.openai_object import OpenAIObject
 
 SENTENCE_ENDINGS = [".", "!", "?"]
@@ -7,7 +7,7 @@ SENTENCE_ENDINGS = [".", "!", "?"]
 async def stream_openai_response_async(
     gen: AsyncIterable[OpenAIObject],
     get_text: Callable[[dict], str],
-    sentence_endings: list[str] = SENTENCE_ENDINGS,
+    sentence_endings: List[str] = SENTENCE_ENDINGS,
 ) -> AsyncGenerator:
     buffer = ""
     async for event in gen:
