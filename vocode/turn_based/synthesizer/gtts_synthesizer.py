@@ -6,6 +6,7 @@ from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 class GTTSSynthesizer(BaseSynthesizer):
     def __init__(self):
         from gtts import gTTS
+
         self.gTTS = gTTS
 
     def synthesize(self, text) -> AudioSegment:

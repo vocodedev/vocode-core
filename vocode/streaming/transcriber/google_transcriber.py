@@ -17,14 +17,13 @@ from vocode.streaming.utils import create_loop_in_thread
 
 
 class GoogleTranscriber(BaseTranscriber):
-
     def __init__(
         self,
         transcriber_config: GoogleTranscriberConfig,
         logger: Optional[logging.Logger] = None,
     ):
         super().__init__(transcriber_config)
-        
+
         from google.cloud import speech
 
         self.speech = speech

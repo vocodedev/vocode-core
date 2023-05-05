@@ -12,24 +12,30 @@ To begin, clone the [repo](https://github.com/vocodedev/vocode-python).
 
 ## Transcriber
 
-Run the following script to transcribe your microphone input:
+1. Update your transcriber configuration in `playground/streaming/transcriber/speak.py`
+
+2. Run the following script to transcribe your microphone input:
 
 ```
-python playground/streaming/transcriber/speak.py
+make speak
 ```
 
 ## Agent
 
-Run the following script to interact with your agent in text format:
+1. Update your agent configuration in `playground/streaming/agent/chat.py`
+
+2. Run the following script to interact with your agent in text format:
 
 ```
-python playground/streaming/agent/chat.py
+make chat
 ```
 
 ## Synthesizer
 
-Run the following script to synthesize text to speech and play it to your speaker:
+1. Update your synthesizer configuration in `playground/streaming/synthesizer/listen.py`
+
+2. Run the following script to synthesize text to speech and play it to your speaker:
 
 ```
-python playground/streaming/synthesizer/listen.py
+make listen
 ```

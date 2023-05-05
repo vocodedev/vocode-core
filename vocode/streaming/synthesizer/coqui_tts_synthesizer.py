@@ -12,14 +12,14 @@ from .base_synthesizer import BaseSynthesizer, SynthesisResult
 from vocode.streaming.models.synthesizer import CoquiTTSSynthesizerConfig
 
 
-
 class CoquiTTSSynthesizer(BaseSynthesizer):
     def __init__(
         self, config: CoquiTTSSynthesizerConfig, logger: Optional[logging.Logger] = None
     ):
         super().__init__(config)
-        
+
         from TTS.api import TTS
+
         self.tts = TTS(**config.tts_kwargs)
         self.speaker = config.speaker
         self.language = config.language
@@ -30,7 +30,6 @@ class CoquiTTSSynthesizer(BaseSynthesizer):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        
         tts = self.tts
         audio_data = np.array(tts.tts(message.text, self.speaker, self.language))
 
@@ -40,7 +39,9 @@ class CoquiTTSSynthesizer(BaseSynthesizer):
         # Create an in-memory file-like object (BytesIO) to store the audio data
         buffer = io.BytesIO(audio_data_bytes)
 
-        audio_segment: AudioSegment = AudioSegment.from_raw(buffer, frame_rate=22050, channels=1, sample_width=2)
+        audio_segment: AudioSegment = AudioSegment.from_raw(
+            buffer, frame_rate=22050, channels=1, sample_width=2
+        )
 
         output_bytes_io = io.BytesIO()
         audio_segment.export(output_bytes_io, format="wav")

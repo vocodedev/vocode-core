@@ -4,6 +4,7 @@ from pydub import AudioSegment
 from vocode import getenv
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
+
 class ElevenLabsSynthesizer(BaseSynthesizer):
     def __init__(
         self,
@@ -13,6 +14,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
         api_key: Optional[str] = None,
     ):
         import elevenlabs
+
         self.elevenlabs = elevenlabs
 
         self.voice_id = voice_id
@@ -34,7 +36,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
-                stability=self.stability, similarity_boost=self.similarity_boost)
+                stability=self.stability, similarity_boost=self.similarity_boost
+            )
 
         audio = self.elevenlabs.generate(text, voice=voice)
 

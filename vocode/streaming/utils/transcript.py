@@ -33,11 +33,15 @@ class Transcript(BaseModel):
             for message in self.messages
         )
 
-    def add_message(self, text: str, sender: Sender, events_manager: EventsManager, conversation_id: str):
+    def add_message(
+        self,
+        text: str,
+        sender: Sender,
+        events_manager: EventsManager,
+        conversation_id: str,
+    ):
         timestamp = time.time()
-        self.messages.append(
-            Message(text=text, sender=sender, timestamp=timestamp)
-        )
+        self.messages.append(Message(text=text, sender=sender, timestamp=timestamp))
         events_manager.publish_event(
             TranscriptEvent(
                 text=text,
@@ -47,9 +51,22 @@ class Transcript(BaseModel):
             )
         )
 
+    def add_human_message(
+        self, text: str, events_manager: EventsManager, conversation_id: str
+    ):
+        self.add_message(
+            text=text,
+            sender=Sender.HUMAN,
+            events_manager=events_manager,
+            conversation_id=conversation_id,
+        )
 
-    def add_human_message(self, text: str, events_manager: EventsManager, conversation_id: str):
-        self.add_message(text=text, sender=Sender.HUMAN, events_manager=events_manager, conversation_id=conversation_id)
-
-    def add_bot_message(self, text: str, events_manager: EventsManager, conversation_id: str):
-        self.add_message(text=text, sender=Sender.BOT, events_manager=events_manager, conversation_id=conversation_id)
+    def add_bot_message(
+        self, text: str, events_manager: EventsManager, conversation_id: str
+    ):
+        self.add_message(
+            text=text,
+            sender=Sender.BOT,
+            events_manager=events_manager,
+            conversation_id=conversation_id,
+        )

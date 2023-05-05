@@ -17,23 +17,22 @@ ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
 
 class ElevenLabsSynthesizer(BaseSynthesizer):
-
     def __init__(
         self,
         config: ElevenLabsSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
     ):
         super().__init__(config)
-        
+
         import elevenlabs
+
         self.elevenlabs = elevenlabs
-        
+
         self.api_key = config.api_key or getenv("ELEVEN_LABS_API_KEY")
         self.voice_id = config.voice_id or ADAM_VOICE_ID
         self.stability = config.stability
         self.similarity_boost = config.similarity_boost
         self.words_per_minute = 150
-        
 
     def create_speech(
         self,
@@ -41,18 +40,16 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-
         self.elevenlabs.set_api_key(self.api_key)
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
-                stability=self.stability, similarity_boost=self.similarity_boost)
+                stability=self.stability, similarity_boost=self.similarity_boost
+            )
 
         audio = self.elevenlabs.generate(message.text, voice=voice)
 
-        audio_segment: AudioSegment = AudioSegment.from_mp3(
-            io.BytesIO(audio)
-        )
+        audio_segment: AudioSegment = AudioSegment.from_mp3(io.BytesIO(audio))
 
         output_bytes_io = io.BytesIO()
 

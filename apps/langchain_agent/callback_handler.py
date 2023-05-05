@@ -17,7 +17,11 @@ class VocodeCallbackHandler(BaseCallbackHandler):
         self.synthesizer = synthesizer
 
     def _speak_in_thread(self, text: str) -> None:
-        thread = threading.Thread(target=lambda: self.output_device.send_audio(self.synthesizer.synthesize(text)))
+        thread = threading.Thread(
+            target=lambda: self.output_device.send_audio(
+                self.synthesizer.synthesize(text)
+            )
+        )
         thread.start()
 
     def on_llm_start(

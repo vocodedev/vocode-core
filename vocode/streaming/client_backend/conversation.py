@@ -7,7 +7,10 @@ from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode.streaming.models.transcriber import DeepgramTranscriberConfig, PunctuationEndpointingConfig
+from vocode.streaming.models.transcriber import (
+    DeepgramTranscriberConfig,
+    PunctuationEndpointingConfig,
+)
 from vocode.streaming.models.websocket import (
     AudioConfigStartMessage,
     AudioMessage,
@@ -29,13 +32,17 @@ class ConversationRouter(BaseRouter):
     def __init__(
         self,
         agent: BaseAgent,
-        transcriber_thunk: Callable[[InputAudioConfig], BaseTranscriber] = lambda input_audio_config: DeepgramTranscriber(
+        transcriber_thunk: Callable[
+            [InputAudioConfig], BaseTranscriber
+        ] = lambda input_audio_config: DeepgramTranscriber(
             DeepgramTranscriberConfig.from_input_audio_config(
                 input_audio_config=input_audio_config,
-                endpointing_config=PunctuationEndpointingConfig()
+                endpointing_config=PunctuationEndpointingConfig(),
             )
         ),
-        synthesizer_thunk: Callable[[OutputAudioConfig], BaseSynthesizer] = lambda output_audio_config: AzureSynthesizer(
+        synthesizer_thunk: Callable[
+            [OutputAudioConfig], BaseSynthesizer
+        ] = lambda output_audio_config: AzureSynthesizer(
             AzureSynthesizerConfig.from_output_audio_config(
                 output_audio_config=output_audio_config
             )

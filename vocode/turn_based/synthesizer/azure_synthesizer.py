@@ -21,7 +21,6 @@ ElementTree.register_namespace("mstts", NAMESPACES.get("mstts"))
 
 
 class AzureSynthesizer(BaseSynthesizer):
-
     def __init__(
         self,
         sampling_rate: int = DEFAULT_SAMPLING_RATE,

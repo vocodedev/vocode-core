@@ -29,6 +29,7 @@ class GoogleSynthesizer(BaseSynthesizer):
         super().__init__(synthesizer_config)
 
         from google.cloud import texttospeech_v1beta1 as tts
+
         self.tts = tts
 
         # Instantiates a client

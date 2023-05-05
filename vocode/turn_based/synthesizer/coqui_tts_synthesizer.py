@@ -8,10 +8,14 @@ from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 
 class CoquiTTSSynthesizer(BaseSynthesizer):
-
-    def __init__(self, tts_kwargs: dict = {}, speaker: Optional[str] = None, language: Optional[str] = None):
+    def __init__(
+        self,
+        tts_kwargs: dict = {},
+        speaker: Optional[str] = None,
+        language: Optional[str] = None,
+    ):
         from TTS.api import TTS
-        
+
         self.tts = TTS(**tts_kwargs)
         self.speaker = speaker
         self.language = language
@@ -27,4 +31,6 @@ class CoquiTTSSynthesizer(BaseSynthesizer):
         buffer = io.BytesIO(audio_data_bytes)
 
         # Create an AudioSegment from the buffer and set the appropriate frame rate, channels, and sample width
-        return AudioSegment.from_raw(buffer, frame_rate=22050, channels=1, sample_width=2)
+        return AudioSegment.from_raw(
+            buffer, frame_rate=22050, channels=1, sample_width=2
+        )
