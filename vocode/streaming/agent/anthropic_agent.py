@@ -1,6 +1,12 @@
 from typing import AsyncGenerator, Optional, Tuple
 from langchain import ConversationChain
+import logging
 
+from typing import Generator, Optional, Tuple
+
+from utils import get_sentence_from_buffer
+
+from langchain import ConversationChain
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import ChatMessage, AIMessage, HumanMessage
 from langchain.chat_models import ChatAnthropic
@@ -18,17 +24,21 @@ from langchain.prompts import (
     HumanMessagePromptTemplate,
 )
 
+from vocode import getenv
+from vocode.streaming.agent.chat_agent import ChatAgent
+from vocode.streaming.models.agent import ChatAnthropicAgentConfig
+
 SENTENCE_ENDINGS = [".", "!", "?"]
 
 
-class ChatAnthropicAgent(BaseAgent):
+class ChatAnthropicAgent(ChatAgent):
     def __init__(
         self,
         agent_config: ChatAnthropicAgentConfig,
         logger: logging.Logger = None,
         anthropic_api_key: Optional[str] = None,
     ):
-        super().__init__(agent_config)
+        super().__init__(agent_config=agent_config, logger=logger)
         import anthropic
 
         anthropic_api_key = anthropic_api_key or getenv("ANTHROPIC_API_KEY")
@@ -36,16 +46,12 @@ class ChatAnthropicAgent(BaseAgent):
             raise ValueError(
                 "ANTHROPIC_API_KEY must be set in environment or passed in"
             )
-        self.agent_config = agent_config
-        self.logger = logger or logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
         self.prompt = ChatPromptTemplate.from_messages(
             [
                 MessagesPlaceholder(variable_name="history"),
                 HumanMessagePromptTemplate.from_template("{input}"),
             ]
         )
-        self.memory = ConversationBufferMemory(return_messages=True)
         if agent_config.initial_message:
             raise NotImplementedError("initial_message not implemented for Anthropic")
 
@@ -100,7 +106,7 @@ class ChatAnthropicAgent(BaseAgent):
             delta = completion[len(bot_memory_message.content + buffer) :]
             buffer += delta
 
-            sentence, remainder = self.get_sentence_from_buffer(buffer)
+            sentence, remainder = get_sentence_from_buffer(buffer)
 
             if sentence:
                 bot_memory_message.content = bot_memory_message.content + sentence
