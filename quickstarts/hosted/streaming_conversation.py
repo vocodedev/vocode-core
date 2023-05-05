@@ -50,9 +50,7 @@ if __name__ == "__main__":
             prompt_preamble="The AI is having a pleasant conversation about life",
             cut_off_response=CutOffResponse(),
         ),
-        synthesizer_config=AzureSynthesizerConfig.from_output_device(
-            speaker_output
-        ),
+        synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
     )
     signal.signal(signal.SIGINT, lambda _0, _1: conversation.deactivate())
     asyncio.run(conversation.start())

@@ -175,7 +175,5 @@ class Call(StreamingConversation):
         self.config_manager.delete_config(self.id)
 
     def tear_down(self):
-        self.events_manager.publish_event(
-            PhoneCallEndedEvent(conversation_id=self.id)
-        )
+        self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
         self.terminate()

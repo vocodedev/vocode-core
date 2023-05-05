@@ -22,8 +22,10 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 
 NUM_RESTARTS = 5
 
+
 def getSeconds():
     return time.time()
+
 
 class RevAITranscriber(BaseTranscriber):
     def __init__(
@@ -46,12 +48,11 @@ class RevAITranscriber(BaseTranscriber):
     async def ready(self):
         return self.is_ready
 
-
     def get_rev_ai_url(self):
-        codec = 'audio/x-raw'
-        layout = 'interleaved'
+        codec = "audio/x-raw"
+        layout = "interleaved"
         rate = self.transcriber_config.sampling_rate
-        audio_format = 'S16LE'
+        audio_format = "S16LE"
         channels = 1
 
         content_type = f"{codec};layout={layout};rate={rate};format={audio_format};channels={channels}"
@@ -61,10 +62,9 @@ class RevAITranscriber(BaseTranscriber):
             "content_type": content_type,
         }
 
-        url_params_arr = [f'{key}={value}' for (key, value) in url_params_dict.items()]
-        url = f"wss://api.rev.ai/speechtotext/v1/stream?" + '&'.join(url_params_arr)
+        url_params_arr = [f"{key}={value}" for (key, value) in url_params_dict.items()]
+        url = f"wss://api.rev.ai/speechtotext/v1/stream?" + "&".join(url_params_arr)
         return url
-
 
     async def run(self):
         restarts = 0
@@ -79,6 +79,7 @@ class RevAITranscriber(BaseTranscriber):
         self.audio_queue = asyncio.Queue()
 
         async with websockets.connect(self.get_rev_ai_url()) as ws:
+
             async def sender(ws: WebSocketClientProtocol):
                 while not self.closed:
                     try:
@@ -100,17 +101,26 @@ class RevAITranscriber(BaseTranscriber):
                         break
                     data = json.loads(msg)
 
-                    if (data['type'] == 'connected'):
-                        continue                    
+                    if data["type"] == "connected":
+                        continue
 
-                    is_done = data['type'] == 'final'
-                    if ((len(buffer) > 0)
+                    is_done = data["type"] == "final"
+                    if (
+                        (len(buffer) > 0)
                         and (self.transcriber_config.endpointing_config)
-                        and (self.transcriber_config.endpointing_config.type == EndpointingType.TIME_BASED)
-                        and (getSeconds() > self.last_signal_seconds + self.transcriber_config.endpointing_config.time_cutoff_seconds)):
+                        and (
+                            self.transcriber_config.endpointing_config.type
+                            == EndpointingType.TIME_BASED
+                        )
+                        and (
+                            getSeconds()
+                            > self.last_signal_seconds
+                            + self.transcriber_config.endpointing_config.time_cutoff_seconds
+                        )
+                    ):
                         is_done = True
 
-                    new_text = ''.join([e['value'] for e in data['elements']])
+                    new_text = "".join([e["value"] for e in data["elements"]])
                     if len(new_text) > len(buffer):
                         self.last_signal_seconds = getSeconds()
                     buffer = new_text

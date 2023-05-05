@@ -9,7 +9,7 @@ This project uses [Poetry](https://python-poetry.org/) as a dependency manager. 
 To install requirements:
 
 ```bash
-poetry install -E all
+poetry install
 ```
 
 ## 🗺️Contributing Guidelines
@@ -41,7 +41,13 @@ If you submit a PR, we'd love to feature your contribution on Twitter so please 
 
 ## Code Formatting/Linting/Testing
 
-🚧 Under construction
+### Linting
+
+```
+make lint_diff
+```
+
+### Testing
 
 ## Documentation
 

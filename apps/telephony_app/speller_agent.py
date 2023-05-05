@@ -4,6 +4,7 @@ from vocode.streaming.models.agent import AgentConfig, AgentType
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.factory import AgentFactory
 
+
 class SpellerAgentConfig(AgentConfig, type="agent_speller"):
     pass
 

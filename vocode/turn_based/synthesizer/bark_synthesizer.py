@@ -7,7 +7,9 @@ from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 
 class BarkSynthesizer(BaseSynthesizer):
-    def __init__(self, logger: logging.Logger = None, silent: bool = False, **kwargs) -> None:
+    def __init__(
+        self, logger: logging.Logger = None, silent: bool = False, **kwargs
+    ) -> None:
         from bark import SAMPLE_RATE, generate_audio, preload_models
 
         self.SAMPLE_RATE = SAMPLE_RATE

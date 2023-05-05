@@ -4,7 +4,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from vocode.streaming.telephony.conversation.outbound_call import OutboundCall
-from vocode.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
+from vocode.streaming.telephony.config_manager.redis_config_manager import (
+    RedisConfigManager,
+)
 
 from speller_agent import SpellerAgentConfig
 
@@ -17,7 +19,7 @@ outbound_call = OutboundCall(
     to_phone="+15555555555",
     from_phone="+15555555555",
     config_manager=config_manager,
-    agent_config=SpellerAgentConfig(generate_responses=False)
+    agent_config=SpellerAgentConfig(generate_responses=False),
 )
 
 input("Press enter to start call...")

@@ -147,10 +147,14 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.va
     speed: Optional[str] = None
     preset: Optional[str] = None
 
-class CoquiTTSSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI_TTS.value):
+
+class CoquiTTSSynthesizerConfig(
+    SynthesizerConfig, type=SynthesizerType.COQUI_TTS.value
+):
     tts_kwargs: dict = {}
     speaker: Optional[str] = None
     language: Optional[str] = None
+
 
 class GTTSSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GTTS.value):
     pass
@@ -159,8 +163,11 @@ class GTTSSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GTTS.value):
 STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE = "Brian"
 
 
-class StreamElementsSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.STREAM_ELEMENTS.value):
+class StreamElementsSynthesizerConfig(
+    SynthesizerConfig, type=SynthesizerType.STREAM_ELEMENTS.value
+):
     voice: str = STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE
+
 
 class BarkSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.BARK.value):
     preload_kwargs = {}

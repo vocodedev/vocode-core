@@ -20,6 +20,7 @@ class GTTSSynthesizer(BaseSynthesizer):
         super().__init__(config)
 
         from gtts import gTTS
+
         self.gTTS = gTTS
 
     def create_speech(

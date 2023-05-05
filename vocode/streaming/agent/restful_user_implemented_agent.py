@@ -38,9 +38,16 @@ class RESTfulUserImplementedAgent(BaseAgent):
                 payload = RESTfulAgentInput(
                     human_input=human_input, conversation_id=conversation_id
                 ).dict()
-                async with session.request(config.method, config.url, json=payload, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                async with session.request(
+                    config.method,
+                    config.url,
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=15),
+                ) as response:
                     assert response.status == 200
-                    output: RESTfulAgentOutput = RESTfulAgentOutput.parse_obj(await response.json())
+                    output: RESTfulAgentOutput = RESTfulAgentOutput.parse_obj(
+                        await response.json()
+                    )
                     output_response = None
                     should_stop = False
                     if output.type == RESTfulAgentOutputType.TEXT:

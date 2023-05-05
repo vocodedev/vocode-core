@@ -2,7 +2,9 @@ import logging
 import os
 from fastapi import FastAPI
 
-from vocode.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
+from vocode.streaming.telephony.config_manager.redis_config_manager import (
+    RedisConfigManager,
+)
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.telephony.server.base import InboundCallConfig, TelephonyServer
@@ -37,4 +39,3 @@ telephony_server = TelephonyServer(
 )
 
 app.include_router(telephony_server.get_router())
-

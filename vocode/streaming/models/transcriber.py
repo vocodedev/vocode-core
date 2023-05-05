@@ -87,11 +87,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
         )
 
     @classmethod
-    def from_input_audio_config(
-        cls,
-        input_audio_config: InputAudioConfig,
-        **kwargs
-    ):
+    def from_input_audio_config(cls, input_audio_config: InputAudioConfig, **kwargs):
         return cls(
             sampling_rate=input_audio_config.sampling_rate,
             audio_encoding=input_audio_config.audio_encoding,
@@ -111,7 +107,7 @@ class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM
 
 class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.value):
     model: Optional[str] = None
-    language_code: str = 'en-US'
+    language_code: str = "en-US"
 
 
 class AssemblyAITranscriberConfig(
