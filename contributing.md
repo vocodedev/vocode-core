@@ -12,9 +12,7 @@ To install requirements:
 poetry install
 ```
 
-## 🗺️Contributing Guidelines
-
-### 🚩GitHub Issues
+## 🚩 GitHub Issues
 
 Our [issues](https://github.com/vocodedev/vocode-python/issues) page has all of the bugs and enhancements that we want to implement. We have labels that split them into the following categories:
 
@@ -25,7 +23,7 @@ If you are working on an issue, please assign to yourself! And please keep issue
 
 We've marked the issues that we would love folks to work on first with 'good first issue' - see [here](https://github.com/vocodedev/vocode-python/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) for all such issues.
 
-### 🙋Getting Help
+## 🙋Getting Help
 
 We are in the process of making it as easy as possible to contribute but we completely understand if you run into issues.
 
@@ -33,7 +31,7 @@ Please contact us if you need help! We'd love to help + improve the process so t
 
 We're working on our linting/documentation standards – and will have updates soon. We don't want that to get in your way at all.
 
-### 🏭Release process
+## 🏭 Release process
 
 We release updates to Vocode on a daily basis published to [PyPI](https://pypi.org/project/vocode/).
 
@@ -53,4 +51,4 @@ make lint_diff
 
 ## Documentation
 
-Our docs are currently [here](https://github.com/vocodedev/docs). If you make a change or notice that something is incorrect, please feel free to submit an update!
+We use [Mintlify](https://mintlify.com) for docs, which are found in the `docs` directory. See the [README](https://github.com/vocodedev/vocode-python/blob/main/docs/README.md) for how to update.
