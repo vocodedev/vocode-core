@@ -1,39 +1,41 @@
+import json
+import openai
+import logging
+
+from typing import Generator, Optional, Tuple
+
 from langchain.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder,
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
+
 from langchain.chains import ConversationChain
 from langchain.chat_models import ChatOpenAI
-from langchain.llms import OpenAIChat
-from langchain.memory import ConversationBufferMemory
 from langchain.schema import ChatMessage, AIMessage
 import openai
 from typing import AsyncGenerator, Optional, Tuple
 
 import logging
-from vocode import getenv
 
-from vocode.streaming.agent.base_agent import BaseAgent
+from vocode import getenv
+from vocode.streaming.agent.chat_agent import ChatAgent
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.agent.utils import stream_openai_response_async
 
 
-class ChatGPTAgent(BaseAgent):
+class ChatGPTAgent(ChatAgent):
     def __init__(
         self,
         agent_config: ChatGPTAgentConfig,
         logger: logging.Logger = None,
         openai_api_key: Optional[str] = None,
     ):
-        super().__init__(agent_config)
+        super().__init__(agent_config=agent_config, logger=logger)
         openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
         if not openai.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
-        self.agent_config = agent_config
-        self.logger = logger or logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
         self.prompt = ChatPromptTemplate.from_messages(
             [
                 SystemMessagePromptTemplate.from_template(agent_config.prompt_preamble),
@@ -41,11 +43,9 @@ class ChatGPTAgent(BaseAgent):
                 HumanMessagePromptTemplate.from_template("{input}"),
             ]
         )
-        self.memory = ConversationBufferMemory(return_messages=True)
         if agent_config.initial_message:
-            if (
-                agent_config.generate_responses
-            ):  # we use ChatMessages for memory when we generate responses
+            if agent_config.generate_responses:
+                # we use ChatMessages for memory when we generate responses
                 self.memory.chat_memory.messages.append(
                     ChatMessage(
                         content=agent_config.initial_message.text, role="assistant"
@@ -132,12 +132,3 @@ class ChatGPTAgent(BaseAgent):
         ):
             bot_memory_message.content = f"{bot_memory_message.content} {message}"
             yield message
-
-    def update_last_bot_message_on_cut_off(self, message: str):
-        for memory_message in self.memory.chat_memory.messages[::-1]:
-            if (
-                isinstance(memory_message, ChatMessage)
-                and memory_message.role == "assistant"
-            ) or isinstance(memory_message, AIMessage):
-                memory_message.content = message
-                return
