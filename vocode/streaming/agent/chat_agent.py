@@ -16,7 +16,6 @@ class ChatAgent(BaseAgent):
     ):
         super().__init__(agent_config)
         self.logger = logger or logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
         self.memory = ConversationBufferMemory(return_messages=True)
 
     def respond(

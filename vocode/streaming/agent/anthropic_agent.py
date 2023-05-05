@@ -2,18 +2,15 @@ from typing import AsyncGenerator, Optional, Tuple
 from langchain import ConversationChain
 import logging
 
-from typing import Generator, Optional, Tuple
+from typing import Optional, Tuple
 
 from vocode.streaming.agent.utils import get_sentence_from_buffer
 
 from langchain import ConversationChain
-from langchain.memory import ConversationBufferMemory
 from langchain.schema import ChatMessage, AIMessage, HumanMessage
 from langchain.chat_models import ChatAnthropic
 import logging
 from vocode import getenv
-
-from vocode.streaming.agent.base_agent import BaseAgent
 
 from vocode.streaming.models.agent import ChatAnthropicAgentConfig
 
