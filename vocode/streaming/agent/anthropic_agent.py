@@ -4,7 +4,7 @@ import logging
 
 from typing import Generator, Optional, Tuple
 
-from utils import get_sentence_from_buffer
+from vocode.streaming.agent.utils import get_sentence_from_buffer
 
 from langchain import ConversationChain
 from langchain.memory import ConversationBufferMemory
