@@ -39,15 +39,17 @@ We release updates to Vocode on a daily basis published to [PyPI](https://pypi.o
 
 If you submit a PR, we'd love to feature your contribution on Twitter so please include your handle in your PR/otherwise!
 
-## Code Formatting/Linting/Testing
+## Linting
 
-### Linting
+We use [`black`](https://black.readthedocs.io/en/stable/) for linting. If you're using VSCode, code should auto-format automaticaly. Otherwise, run the following script before pushing:
 
 ```
 make lint_diff
 ```
 
-### Testing
+## Testing
+
+🚧 Under construction
 
 ## Documentation
 
