@@ -6,46 +6,76 @@ description: "🚧 Under construction"
 # `TranscriberConfig`
 
 <ParamField body="sampling_rate" type="int">
-  placeholder
+  The sampling rate of the audio in samples per second (Hz). A higher sampling
+  rate provides better audio quality but may increase processing time and data
+  size.
 </ParamField>
 <ParamField body="audio_encoding" type="AudioEncoding">
-  placeholder
+  The encoding format of the audio data. Options include: LINEAR16, MULAW.
 </ParamField>
 <ParamField body="chunk_size" type="int">
-  placeholder
+  The size of each chunk of audio data sent to the transcriber, in bytes. A
+  larger chunk size can reduce network overhead but may increase latency.
 </ParamField>
 <ParamField body="endpointing_config" type="Optional[EndpointingConfig]">
-  placeholder
+  Optional configuration for endpointing, which determines when to split the
+  transcript based on criteria such as time or punctuation. If not provided, the
+  default endpointing behavior will be used.
 </ParamField>
 <ParamField body="min_interrupt_confidence" type="Optional[float]">
-  placeholder
+  Optional minimum confidence threshold for interrupting the transcription.
+  Confidence values range from 0 to 1, with higher values indicating greater
+  confidence. If provided, transcriptions will only be interrupted when the
+  confidence exceeds the threshold. If not provided, the default interrupting
+  behavior will be used.
 </ParamField>
+
+The `TranscriberConfig` class provides helper methods to abstract away some fields to the user.
+
+For example, when using an input device like `MicrophoneInput`, you can use:
+
+```
+TranscriberConfig.from_input_device(MicrophoneInput())
+```
+
+You can also do this for telephone calls, which all share the same sampling rate, chunk size and audio encoding:
+
+```
+TranscriberConfig.from_telephone_input_device()
+```
 
 # `DeepgramTranscriberConfig`
 
 <ParamField body="language" type="Optional[str]">
-  placeholder
+  The language code for the transcription, e.g., 'en-US' for American English.
+  If not provided, the default language will be used.
 </ParamField>
 <ParamField body="model" type="Optional[str]">
-  placeholder
+  The model used for transcription. For Deepgram, it can be 'phonecall',
+  'voicemail'.
 </ParamField>
 <ParamField body="tier" type="Optional[str]">
-  placeholder
+  The tier of the Deepgram API to use for the transcription, e.g., 'enhanced'.
+  If not provided, the default tier will be used.
 </ParamField>
 <ParamField body="version" type="Optional[str]">
-  placeholder
-</ParamField>
-<ParamField body="downsampling" type="Optional[int]">
-  placeholder
+  The version of the Deepgram API to use for the transcription. If not provided,
+  the latest version will be used.
 </ParamField>
 <ParamField body="keywords" type="Optional[list]">
-  placeholder
+  A list of keywords to be used for keyword spotting during transcription with
+  the Deepgram API. If not provided, no keyword spotting will be performed.
 </ParamField>
 
 # `GoogleTranscriberConfig`
 
+<ParamField body="language_code" type="str">
+  The language code for the transcription, e.g., 'en-US' for American English.
+  Defaults to 'en-US'.
+</ParamField>
 <ParamField body="model" type="Optional[str]">
-  placeholder
+  The model used for transcription. For Google, it can be 'default', 'video', or
+  'phone_call'. If not provided, the default model will be used.
 </ParamField>
 
 # `AssemblyAITranscriberConfig`

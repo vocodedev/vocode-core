@@ -116,11 +116,13 @@ class AssemblyAITranscriberConfig(
     pass
 
 
-class WhisperCPPTranscriberConfig(TranscriberConfig, type=TranscriberType.WHISPER_CPP):
+class WhisperCPPTranscriberConfig(
+    TranscriberConfig, type=TranscriberType.WHISPER_CPP.value
+):
     buffer_size_seconds: float = 1
     libname: str
     fname_model: str
 
 
-class RevAITranscriberConfig(TranscriberConfig, type=TranscriberType.REV_AI):
+class RevAITranscriberConfig(TranscriberConfig, type=TranscriberType.REV_AI.value):
     pass
