@@ -3,11 +3,11 @@
 chat:
 	poetry run python playground/streaming/agent/chat.py
 
-speak:
-	poetry run python playground/streaming/transcriber/speak.py
+transcribe:
+	poetry run python playground/streaming/transcriber/transcribe.py
 
-listen:
-	poetry run python playground/streaming/synthesizer/listen.py
+synthesize:
+	poetry run python playground/streaming/synthesizer/synthesize.py
 
 PYTHON_FILES=.
 lint: PYTHON_FILES=.
@@ -21,8 +21,8 @@ help:
 	@echo ""
 	@echo "Targets:"
 	@echo "  chat        Run chat agent"
-	@echo "  speak       Speak text"
-	@echo "  listen      Listen to audio"
+	@echo "  transcribe  Transcribe audio to text"
+	@echo "  synthesize  Synthesize text into audio"
 	@echo "  lint        Lint all Python files"
 	@echo "  lint_diff   Lint changed Python files"
 	@echo "  help        Show this help message"
