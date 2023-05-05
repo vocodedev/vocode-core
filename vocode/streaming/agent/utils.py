@@ -26,3 +26,16 @@ async def stream_openai_response_async(
             buffer = ""
     if buffer.strip():
         yield buffer
+
+
+def find_last_punctuation(buffer: str):
+    indices = [buffer.rfind(ending) for ending in SENTENCE_ENDINGS]
+    return indices and max(indices)
+
+
+def get_sentence_from_buffer(buffer: str):
+    last_punctuation = find_last_punctuation(buffer)
+    if last_punctuation:
+        return buffer[: last_punctuation + 1], buffer[last_punctuation + 1 :]
+    else:
+        return None, None
