@@ -21,6 +21,7 @@ class TranscriberType(str, Enum):
     ASSEMBLY_AI = "transcriber_assembly_ai"
     WHISPER_CPP = "transcriber_whisper_cpp"
     REV_AI = "transcriber_rev_ai"
+    AZURE = "transcriber_azure"
 
 
 class EndpointingType(str, Enum):
@@ -109,6 +110,8 @@ class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.val
     model: Optional[str] = None
     language_code: str = "en-US"
 
+class AzureTranscriberConfig(TranscriberConfig, type=TranscriberType.AZURE.value):
+    pass
 
 class AssemblyAITranscriberConfig(
     TranscriberConfig, type=TranscriberType.ASSEMBLY_AI.value
