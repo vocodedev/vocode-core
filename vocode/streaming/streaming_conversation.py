@@ -6,6 +6,9 @@ import threading
 import time
 import random
 
+from opentelemetry import trace
+from opentelemetry.trace import Span
+
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
@@ -43,6 +46,10 @@ from vocode.streaming.transcriber.base_transcriber import (
     Transcription,
     BaseTranscriber,
 )
+
+tracer = trace.get_tracer(__name__)
+SYNTHESIS_TRACE_NAME = "synthesis"
+AGENT_TRACE_NAME = "agent"
 
 
 class StreamingConversation:
@@ -100,6 +107,12 @@ class StreamingConversation:
         self.current_filler_audio_done_event: Optional[threading.Event] = None
         self.current_filler_seconds_per_chunk: int = 0
         self.current_transcription_is_interrupt: bool = False
+
+        # tracing
+        self.current_synthesis_span: Optional[Span] = None
+        self.current_agent_span: Optional[Span] = None
+        self.start_time: float = None
+        self.end_time: float = None
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber_task = asyncio.create_task(self.transcriber.run())
@@ -176,6 +189,9 @@ class StreamingConversation:
         should_allow_human_to_cut_off_bot: bool,
         wait_for_filler_audio: bool = False,
     ) -> Tuple[str, bool]:
+        self.current_agent_span = tracer.start_span(
+            AGENT_TRACE_NAME, {"generate_response": True}
+        )
         messages_queue = queue.Queue()
         messages_done = threading.Event()
         speech_cut_off = threading.Event()
@@ -203,6 +219,14 @@ class StreamingConversation:
                         continue
 
                 stop_event = self.enqueue_stop_event()
+                self.current_synthesis_span = tracer.start_span(
+                    SYNTHESIS_TRACE_NAME,
+                    {
+                        "synthesizer": str(
+                            self.synthesizer.get_synthesizer_config().type
+                        )
+                    },
+                )
                 synthesis_result = self.synthesizer.create_speech(
                     message, chunk_size, bot_sentiment=self.bot_sentiment
                 )
@@ -232,6 +256,10 @@ class StreamingConversation:
         messages_generated = 0
         try:
             async for message in messages:
+                if messages_generated == 0:
+                    if self.current_agent_span:
+                        self.current_agent_span.end()
+
                 messages_generated += 1
                 if messages_generated == 1:
                     if wait_for_filler_audio:
@@ -277,6 +305,10 @@ class StreamingConversation:
                 self.synthesizer.get_synthesizer_config().sampling_rate,
             )
             * seconds_per_chunk
+        )
+        self.current_synthesis_span = tracer.start_span(
+            SYNTHESIS_TRACE_NAME,
+            {"synthesizer": str(self.synthesizer.get_synthesizer_config().type)},
         )
         synthesis_result = self.synthesizer.create_speech(
             message, chunk_size, bot_sentiment=self.bot_sentiment
@@ -329,6 +361,8 @@ class StreamingConversation:
                 cut_off = True
                 break
             if i == 0:
+                if self.current_synthesis_span:
+                    self.current_synthesis_span.end()
                 if is_filler_audio:
                     self.should_wait_for_filler_audio_done_event = True
             await self.output_device.send_async(chunk_result.chunk)
@@ -482,11 +516,14 @@ class StreamingConversation:
                 )
             else:
                 try:
-                    response, should_stop = await self.agent.respond(
-                        transcription.message,
-                        is_interrupt=transcription.is_interrupt,
-                        conversation_id=self.id,
-                    )
+                    with tracer.start_span(
+                        AGENT_TRACE_NAME, {"generate_response": False}
+                    ):
+                        response, should_stop = await self.agent.respond(
+                            transcription.message,
+                            is_interrupt=transcription.is_interrupt,
+                            conversation_id=self.id,
+                        )
                 except Exception as e:
                     self.logger.error(
                         f"Error while generating response: {e}", exc_info=True
@@ -530,6 +567,12 @@ class StreamingConversation:
                 conversation_id=self.id, transcript=self.transcript.to_string()
             )
         )
+        if self.current_agent_span:
+            self.logger.debug("Closing agent span")
+            self.current_agent_span.end()
+        if self.current_synthesis_span:
+            self.logger.debug("Closing synthesizer span")
+            self.current_synthesis_span.end()
         if self.check_for_idle_task:
             self.logger.debug("Terminating check_for_idle Task")
             self.check_for_idle_task.cancel()
