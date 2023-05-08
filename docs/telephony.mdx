@@ -88,11 +88,13 @@ pip install -r requirements.txt
 2. Run Redis with the default port of 6379.
 
 For example, using Homebrew:
+
 ```
 brew services start redis
 ```
 
 Or if you prefer to use Docker for this part:
+
 ```
 docker run -dp 6379:6379 -it redis/redis-stack:latest
 ```
@@ -205,9 +207,15 @@ The `OutboundCall` class provides a simple abstraction for creating outbound cal
 ### Example: Making an outbound call
 
 ```python
+import os
 from vocode.streaming.telephony.hosted.outbound_call import OutboundCall
-from vocode.streaming.models.telephony import CallEntity
 from vocode.streaming.models.agent import ChatGPTAgentConfig
+from vocode.streaming.models.telephony import CallEntity, TwilioConfig
+from vocode.streaming.models.message import BaseMessage
+
+import vocode
+vocode.api_key = '{YOUR_API_KEY}'
+
 
 if __name__ == '__main__':
     call = OutboundCall(
