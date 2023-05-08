@@ -205,9 +205,15 @@ The `OutboundCall` class provides a simple abstraction for creating outbound cal
 ### Example: Making an outbound call
 
 ```python
+import os
 from vocode.streaming.telephony.hosted.outbound_call import OutboundCall
-from vocode.streaming.models.telephony import CallEntity
 from vocode.streaming.models.agent import ChatGPTAgentConfig
+from vocode.streaming.models.telephony import CallEntity, TwilioConfig
+from vocode.streaming.models.message import BaseMessage
+
+import vocode
+vocode.api_key = '{YOUR_API_KEY}'
+
 
 if __name__ == '__main__':
     call = OutboundCall(
