@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import websockets
+import audioop
 from urllib.parse import urlencode
 from vocode import getenv
 
@@ -35,6 +36,7 @@ class AssemblyAITranscriber(BaseTranscriber):
         if self.transcriber_config.endpointing_config:
             raise Exception("Assembly AI endpointing config not supported yet")
         self.audio_queue = asyncio.Queue()
+        self.buffer = bytearray()
 
     async def ready(self):
         return True
@@ -43,7 +45,14 @@ class AssemblyAITranscriber(BaseTranscriber):
         await self.process()
 
     def send_audio(self, chunk):
-        self.audio_queue.put_nowait(chunk)
+        if self.transcriber_config.audio_encoding == AudioEncoding.MULAW:
+            chunk = audioop.ulaw2lin(chunk, 2)
+
+        self.buffer.extend(chunk)
+
+        if (len(self.buffer) / (2*self.transcriber_config.sampling_rate)) >= self.transcriber_config.buffer_size_seconds:
+            self.audio_queue.put_nowait(self.buffer)
+            self.buffer = bytearray()
 
     def terminate(self):
         terminate_msg = json.dumps({"terminate_session": True})
