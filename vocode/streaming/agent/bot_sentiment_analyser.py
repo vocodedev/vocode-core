@@ -41,9 +41,9 @@ class BotSentimentAnalyser:
             ),
         )
 
-    def analyse(self, transcript: str) -> BotSentiment:
+    async def analyse(self, transcript: str) -> BotSentiment:
         prompt = self.prompt.format(transcript=transcript)
-        response = self.llm(prompt).strip()
+        response = (await self.llm.agenerate([prompt])).generations[0][0].text.strip()
         tokens = response.split(",")
         if len(tokens) != 2:
             return BotSentiment(emotion=None, degree=0.0)

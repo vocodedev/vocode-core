@@ -1,4 +1,5 @@
 from typing import Callable, Optional, Awaitable
+import asyncio
 
 from vocode.streaming.utils import convert_wav
 from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
@@ -27,13 +28,10 @@ class BaseTranscriber:
         transcriber_config: TranscriberConfig,
     ):
         self.transcriber_config = transcriber_config
-        self.on_response: Optional[Callable[[Transcription], Awaitable]] = None
+        self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
 
     def get_transcriber_config(self) -> TranscriberConfig:
         return self.transcriber_config
-
-    def set_on_response(self, on_response: Callable[[Transcription], Awaitable]):
-        self.on_response = on_response
 
     async def ready(self):
         return True
@@ -46,3 +44,6 @@ class BaseTranscriber:
 
     def terminate(self):
         pass
+
+    def get_output_queue(self) -> asyncio.Queue[Transcription]:
+        return self.output_queue
