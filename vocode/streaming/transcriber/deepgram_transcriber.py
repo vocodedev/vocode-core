@@ -186,11 +186,13 @@ class DeepgramTranscriber(BaseTranscriber):
                         buffer = f"{buffer} {top_choice['transcript']}"
 
                     if speech_final:
-                        await self.on_response(Transcription(buffer, confidence, True))
+                        self.output_queue.put_nowait(
+                            Transcription(buffer, confidence, True)
+                        )
                         buffer = ""
                         time_silent = 0
                     elif top_choice["transcript"] and confidence > 0.0:
-                        await self.on_response(
+                        self.output_queue.put_nowait(
                             Transcription(
                                 buffer,
                                 confidence,
