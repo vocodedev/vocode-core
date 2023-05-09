@@ -72,12 +72,12 @@ class StreamingConversation:
         self.transcriber_task = None
         self.agent = agent
         self.synthesizer = synthesizer
-        self.synthesizer_event_loop = asyncio.new_event_loop()
-        self.synthesizer_thread = threading.Thread(
-            name="synthesizer",
-            target=create_loop_in_thread,
-            args=(self.synthesizer_event_loop,),
-        )
+        # self.synthesizer_event_loop = asyncio.new_event_loop()
+        # self.synthesizer_thread = threading.Thread(
+        #     name="synthesizer",
+        #     target=create_loop_in_thread,
+        #     args=(self.synthesizer_event_loop,),
+        # )
         self.events_manager = events_manager or EventsManager()
         self.events_task = None
         self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
@@ -99,12 +99,12 @@ class StreamingConversation:
         self.active = False
         self.current_synthesis_task = None
         self.is_current_synthesis_interruptable = False
-        self.stop_events: queue.Queue[threading.Event] = queue.Queue()
+        self.stop_events: asyncio.Queue[asyncio.Event] = asyncio.Queue()
         self.last_action_timestamp = time.time()
         self.check_for_idle_task = None
         self.track_bot_sentiment_task = None
         self.should_wait_for_filler_audio_done_event = False
-        self.current_filler_audio_done_event: Optional[threading.Event] = None
+        self.current_filler_audio_done_event: Optional[asyncio.Event] = None
         self.current_filler_seconds_per_chunk: int = 0
         self.current_transcription_is_interrupt: bool = False
 
@@ -119,7 +119,7 @@ class StreamingConversation:
         is_ready = await self.transcriber.ready()
         if not is_ready:
             raise Exception("Transcriber startup failed")
-        self.synthesizer_thread.start()
+        # self.synthesizer_thread.start()
         if self.agent.get_agent_config().send_filler_audio:
             filler_audio_config = (
                 self.agent.get_agent_config().send_filler_audio
@@ -192,9 +192,9 @@ class StreamingConversation:
         self.current_agent_span = tracer.start_span(
             AGENT_TRACE_NAME, {"generate_response": True}
         )
-        messages_queue = queue.Queue()
-        messages_done = threading.Event()
-        speech_cut_off = threading.Event()
+        messages_queue = asyncio.Queue()
+        messages_done = asyncio.Event()
+        speech_cut_off = asyncio.Event()
         seconds_per_chunk = TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
         chunk_size = (
             get_chunk_size_per_second(
@@ -211,7 +211,7 @@ class StreamingConversation:
             while True:
                 try:
                     message: BaseMessage = messages_queue.get_nowait()
-                except queue.Empty:
+                except asyncio.QueueEmpty:
                     if messages_done.is_set():
                         break
                     else:
@@ -227,7 +227,7 @@ class StreamingConversation:
                         )
                     },
                 )
-                synthesis_result = self.synthesizer.create_speech(
+                synthesis_result = await self.synthesizer.create_speech(
                     message, chunk_size, bot_sentiment=self.bot_sentiment
                 )
                 message_sent, cut_off = await self.send_speech_to_output(
@@ -251,7 +251,7 @@ class StreamingConversation:
             )
             return response_buffer, cut_off
 
-        asyncio.run_coroutine_threadsafe(send_to_call(), self.synthesizer_event_loop)
+        asyncio.create_task(send_to_call())
 
         messages_generated = 0
         try:
@@ -264,7 +264,7 @@ class StreamingConversation:
                 if messages_generated == 1:
                     if wait_for_filler_audio:
                         self.interrupt_all_synthesis()
-                        self.wait_for_filler_audio_to_finish()
+                        await self.wait_for_filler_audio_to_finish()
                 if speech_cut_off.is_set():
                     break
                 messages_queue.put_nowait(BaseMessage(text=message))
@@ -282,12 +282,11 @@ class StreamingConversation:
         message: BaseMessage,
         should_allow_human_to_cut_off_bot: bool,
     ):
-        asyncio.run_coroutine_threadsafe(
+        asyncio.create_task(
             self.send_message_to_stream_async(
                 message,
                 self.agent.get_agent_config().allow_agent_to_be_cut_off,
-            ),
-            self.synthesizer_event_loop,
+            )
         )
 
     async def send_message_to_stream_async(
@@ -310,7 +309,7 @@ class StreamingConversation:
             SYNTHESIS_TRACE_NAME,
             {"synthesizer": str(self.synthesizer.get_synthesizer_config().type)},
         )
-        synthesis_result = self.synthesizer.create_speech(
+        synthesis_result = await self.synthesizer.create_speech(
             message, chunk_size, bot_sentiment=self.bot_sentiment
         )
         message_sent, cut_off = await self.send_speech_to_output(
@@ -337,7 +336,7 @@ class StreamingConversation:
         self,
         message,
         synthesis_result: SynthesisResult,
-        stop_event: threading.Event,
+        stop_event: asyncio.Event,
         seconds_per_chunk: int,
         is_filler_audio: bool = False,
     ):
@@ -407,7 +406,7 @@ class StreamingConversation:
         return await self.handle_transcription(transcription)
 
     def enqueue_stop_event(self):
-        stop_event = threading.Event()
+        stop_event = asyncio.Event()
         self.stop_events.put_nowait(stop_event)
         return stop_event
 
@@ -421,15 +420,15 @@ class StreamingConversation:
                     self.logger.debug("Interrupting synthesis")
                     stop_event.set()
                     num_interrupts += 1
-            except queue.Empty:
+            except asyncio.QueueEmpty:
                 break
         return num_interrupts > 0
 
     async def send_filler_audio_to_output(
         self,
         filler_audio: FillerAudio,
-        stop_event: threading.Event,
-        done_event: threading.Event,
+        stop_event: asyncio.Event,
+        done_event: asyncio.Event,
     ):
         filler_synthesis_result = filler_audio.create_synthesis_result()
         self.is_current_synthesis_interruptable = filler_audio.is_interruptable
@@ -452,7 +451,7 @@ class StreamingConversation:
         )
         done_event.set()
 
-    def wait_for_filler_audio_to_finish(self):
+    async def wait_for_filler_audio_to_finish(self):
         if not self.should_wait_for_filler_audio_done_event:
             self.logger.debug(
                 "Not waiting for filler audio to finish since we didn't send any chunks"
@@ -465,7 +464,7 @@ class StreamingConversation:
         ):
             self.logger.debug("Waiting for filler audio to finish")
             # this should guarantee that filler audio finishes, since it has to be on its last chunk
-            if not self.current_filler_audio_done_event.wait(
+            if not await self.current_filler_audio_done_event.wait(
                 self.current_filler_seconds_per_chunk
             ):
                 self.logger.debug("Filler audio did not finish")
@@ -487,18 +486,17 @@ class StreamingConversation:
                 if self.synthesizer.filler_audios:
                     filler_audio = random.choice(self.synthesizer.filler_audios)
                     self.logger.debug(f"Chose {filler_audio.message.text}")
-                    self.current_filler_audio_done_event = threading.Event()
+                    self.current_filler_audio_done_event = asyncio.Event()
                     self.current_filler_seconds_per_chunk = (
                         filler_audio.seconds_per_chunk
                     )
                     stop_event = self.enqueue_stop_event()
-                    asyncio.run_coroutine_threadsafe(
+                    asyncio.create_task(
                         self.send_filler_audio_to_output(
                             filler_audio,
                             stop_event,
                             done_event=self.current_filler_audio_done_event,
-                        ),
-                        self.synthesizer_event_loop,
+                        )
                     )
                 else:
                     self.logger.debug("No filler audio available for synthesizer")
@@ -532,7 +530,7 @@ class StreamingConversation:
                     should_stop = True
                 if self.agent.get_agent_config().send_filler_audio:
                     self.interrupt_all_synthesis()
-                    self.wait_for_filler_audio_to_finish()
+                    await self.wait_for_filler_audio_to_finish()
                 if should_stop:
                     self.logger.debug("Agent requested to stop")
                     self.mark_terminated()
@@ -587,12 +585,12 @@ class StreamingConversation:
         self.logger.debug("Terminating speech transcriber")
         self.transcriber.terminate()
         self.logger.debug("Terminating synthesizer event loop")
-        self.synthesizer_event_loop.call_soon_threadsafe(
-            self.synthesizer_event_loop.stop
-        )
+        # self.synthesizer_event_loop.call_soon_threadsafe(
+        #     self.synthesizer_event_loop.stop
+        # )
         self.logger.debug("Terminating synthesizer thread")
-        if self.synthesizer_thread.is_alive():
-            self.synthesizer_thread.join()
+        # if self.synthesizer_thread.is_alive():
+        #     self.synthesizer_thread.join()
         self.logger.debug("Terminating transcriber task")
         self.transcriber_task.cancel()
         self.logger.debug("Successfully terminated")
