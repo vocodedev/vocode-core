@@ -1,7 +1,7 @@
 import logging
 import os
 from fastapi import FastAPI
-
+from pyngrok import ngrok
 from vocode.streaming.telephony.config_manager.redis_config_manager import (
     RedisConfigManager,
 )
@@ -20,6 +20,10 @@ logger.setLevel(logging.DEBUG)
 config_manager = RedisConfigManager()
 
 BASE_URL = os.getenv("BASE_URL")
+
+if not BASE_URL:
+    http_tunnel = ngrok.connect(3000)
+    BASE_URL = http_tunnel.public_url.replace("https://", "")
 
 telephony_server = TelephonyServer(
     base_url=BASE_URL,
