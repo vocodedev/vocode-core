@@ -60,7 +60,11 @@ class AssemblyAITranscriber(BaseTranscriber):
         self._ended = True
 
     def get_assembly_ai_url(self):
-        return ASSEMBLY_AI_URL + f"?sample_rate={self.transcriber_config.sampling_rate}"
+        url_params = {"sample_rate": self.transcriber_config.sampling_rate}
+        if self.transcriber_config.word_boost:
+            url_params.update({"word_boost":json.dumps(self.transcriber_config.word_boost)})
+        print(ASSEMBLY_AI_URL + f"?{urlencode(url_params)}")    
+        return ASSEMBLY_AI_URL + f"?{urlencode(url_params)}"
 
     async def process(self):
         URL = self.get_assembly_ai_url()
