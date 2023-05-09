@@ -1,3 +1,5 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 import re
@@ -107,6 +109,7 @@ class AzureSynthesizer(BaseSynthesizer):
         self.voice_name = self.synthesizer_config.voice_name
         self.pitch = self.synthesizer_config.pitch
         self.rate = self.synthesizer_config.rate
+        self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
         self.logger = logger or logging.getLogger(__name__)
 
     def get_phrase_filler_audios(self) -> List[FillerAudio]:
@@ -129,7 +132,9 @@ class AzureSynthesizer(BaseSynthesizer):
             else:
                 self.logger.debug(f"Generating filler audio for {filler_phrase.text}")
                 ssml = self.create_ssml(filler_phrase.text)
-                result = self.synthesizer.speak_ssml(ssml)
+                result = asyncio.get_event_loop().run_in_executor(
+                    self.thread_pool_executor, self.synthesizer.speak_ssml, ssml
+                )
                 offset = self.synthesizer_config.sampling_rate * self.OFFSET_MS // 1000
                 audio_data = result.audio_data[offset:]
                 with open(filler_audio_path, "wb") as f:
@@ -205,7 +210,7 @@ class AzureSynthesizer(BaseSynthesizer):
                 return ssml_fragment.split(">")[-1]
         return message
 
-    def create_speech(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
