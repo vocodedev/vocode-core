@@ -14,7 +14,7 @@ The `EventsManager` class is responsible for managing the event queue and handli
 ### Initialization
 
 ```python
-def **init**(self, subscriptions: List[EventType] = []):
+def __init__(self, subscriptions: List[EventType] = []):
     self.queue = asyncio.Queue()
     self.subscriptions = set(subscriptions)
     self.active = False
@@ -27,7 +27,7 @@ The `EventsManager` constructor accepts an optional list of `EventType` subscrip
 ```python
 def publish_event(self, event: Event):
     if event.type in self.subscriptions:
-    self.queue.put_nowait(event)
+        self.queue.put_nowait(event)
 ```
 
 The `publish_event` method takes an `Event` object as input and adds it to the queue if its type is in the set of subscribed event types.
