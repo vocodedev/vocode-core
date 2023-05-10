@@ -3,6 +3,7 @@ import json
 import logging
 import websockets
 import audioop
+import numpy as np
 from urllib.parse import urlencode
 from vocode import getenv
 
@@ -46,7 +47,11 @@ class AssemblyAITranscriber(BaseTranscriber):
 
     def send_audio(self, chunk):
         if self.transcriber_config.audio_encoding == AudioEncoding.MULAW:
-            chunk = audioop.ulaw2lin(chunk, 2)
+            sample_width = 1
+            if isinstance(chunk, np.ndarray):
+                chunk = chunk.astype(np.int16)
+                chunk = chunk.tobytes()
+            chunk = audioop.ulaw2lin(chunk, sample_width)
 
         self.buffer.extend(chunk)
 
