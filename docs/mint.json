@@ -53,6 +53,8 @@
         "create-your-own-agent",
         "langchain-agent",
         "local-conversation",
+        "events-manager",
+        "using-synthesizers",
         "react-quickstart",
         "playground",
         "turn-based-conversation",
