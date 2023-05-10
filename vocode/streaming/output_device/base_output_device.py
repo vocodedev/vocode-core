@@ -11,3 +11,6 @@ class BaseOutputDevice:
 
     async def maybe_send_mark_async(self, message):
         pass
+
+    def terminate(self):
+        pass

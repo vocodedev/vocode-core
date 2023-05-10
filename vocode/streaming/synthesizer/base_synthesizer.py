@@ -123,13 +123,13 @@ class BaseSynthesizer:
             seconds_per_chunk=2,
         )
 
-    def set_filler_audios(self, filler_audio_config: FillerAudioConfig):
+    async def set_filler_audios(self, filler_audio_config: FillerAudioConfig):
         if filler_audio_config.use_phrases:
-            self.filler_audios = self.get_phrase_filler_audios()
+            self.filler_audios = await self.get_phrase_filler_audios()
         elif filler_audio_config.use_typing_noise:
             self.filler_audios = [self.get_typing_noise_filler_audio()]
 
-    def get_phrase_filler_audios(self) -> List[FillerAudio]:
+    async def get_phrase_filler_audios(self) -> List[FillerAudio]:
         return []
 
     def ready_synthesizer(self):

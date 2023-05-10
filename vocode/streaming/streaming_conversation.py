@@ -69,6 +69,8 @@ class StreamingConversation:
         self.transcriber_task: asyncio.Task = None
         self.agent = agent
         self.consume_transcriptions_task: asyncio.Task = None
+        self.consume_final_transcriptions_task: asyncio.Task = None
+        self.final_transcriptions_queue: asyncio.Queue[Transcription] = asyncio.Queue()
         self.consume_agent_responses_task: asyncio.Task = None
         self.agent_responses_queue: asyncio.Queue[
             Tuple[BaseMessage, bool]
@@ -115,6 +117,9 @@ class StreamingConversation:
         self.consume_transcriptions_task = asyncio.create_task(
             self.consume_transcriptions()
         )
+        self.consume_final_transcriptions_task = asyncio.create_task(
+            self.consume_final_transcriptions()
+        )
         self.consume_agent_responses_task = asyncio.create_task(
             self.consume_agent_responses()
         )
@@ -129,7 +134,7 @@ class StreamingConversation:
                 )
                 else FillerAudioConfig()
             )
-            self.synthesizer.set_filler_audios(filler_audio_config)
+            await self.synthesizer.set_filler_audios(filler_audio_config)
         self.agent.start()
         if mark_ready:
             await mark_ready()
@@ -191,55 +196,6 @@ class StreamingConversation:
     def warmup_synthesizer(self):
         self.synthesizer.ready_synthesizer()
 
-    # returns an estimate of what was sent up to, and a flag if the message was cut off
-    async def send_speech_to_output(
-        self,
-        message,
-        synthesis_result: SynthesisResult,
-        stop_event: asyncio.Event,
-        seconds_per_chunk: int,
-        is_filler_audio: bool = False,
-    ):
-        message_sent = message
-        cut_off = False
-        chunk_size = seconds_per_chunk * get_chunk_size_per_second(
-            self.synthesizer.get_synthesizer_config().audio_encoding,
-            self.synthesizer.get_synthesizer_config().sampling_rate,
-        )
-        for i, chunk_result in enumerate(synthesis_result.chunk_generator):
-            start_time = time.time()
-            speech_length_seconds = seconds_per_chunk * (
-                len(chunk_result.chunk) / chunk_size
-            )
-            if stop_event.is_set():
-                seconds = i * seconds_per_chunk
-                self.logger.debug(
-                    "Interrupted, stopping text to speech after {} chunks".format(i)
-                )
-                message_sent = f"{synthesis_result.get_message_up_to(seconds)}-"
-                cut_off = True
-                break
-            if i == 0:
-                if self.current_synthesis_span:
-                    self.current_synthesis_span.end()
-                if is_filler_audio:
-                    self.should_wait_for_filler_audio_done_event = True
-            await self.output_device.send_async(chunk_result.chunk)
-            end_time = time.time()
-            await asyncio.sleep(
-                max(
-                    speech_length_seconds
-                    - (end_time - start_time)
-                    - self.per_chunk_allowance_seconds,
-                    0,
-                )
-            )
-            self.logger.debug(
-                "Sent chunk {} with size {}".format(i, len(chunk_result.chunk))
-            )
-            self.last_action_timestamp = time.time()
-        return message_sent, cut_off
-
     async def consume_transcriptions(self):
         while self.active:
             transcription = await self.transcriber.get_output_queue().get()
@@ -264,7 +220,108 @@ class StreamingConversation:
 
             transcription.is_interrupt = self.current_transcription_is_interrupt
             self.is_human_speaking = not transcription.is_final
-            await self.handle_transcription(transcription)
+            if transcription.is_final:
+                self.final_transcriptions_queue.put_nowait(transcription)
+
+    async def consume_final_transcriptions(self):
+        while self.active:
+            transcription = await self.final_transcriptions_queue.get()
+            self.transcript.add_human_message(
+                text=transcription.message,
+                events_manager=self.events_manager,
+                conversation_id=self.id,
+            )
+            # goodbye_detected_task = None
+            # if self.agent.get_agent_config().end_conversation_on_goodbye:
+            #     goodbye_detected_task = asyncio.create_task(
+            #         self.goodbye_model.is_goodbye(transcription.message)
+            #     )
+            # if self.agent.get_agent_config().send_filler_audio:
+            #     self.logger.debug("Sending filler audio")
+            #     if self.synthesizer.filler_audios:
+            #         filler_audio = random.choice(self.synthesizer.filler_audios)
+            #         self.logger.debug(f"Chose {filler_audio.message.text}")
+            #         self.current_filler_audio_done_event = asyncio.Event()
+            #         self.current_filler_seconds_per_chunk = (
+            #             filler_audio.seconds_per_chunk
+            #         )
+            #         stop_event = self.enqueue_stop_event()
+            #         asyncio.create_task(
+            #             self.send_filler_audio_to_output(
+            #                 filler_audio,
+            #                 stop_event,
+            #                 done_event=self.current_filler_audio_done_event,
+            #             )
+            #         )
+            #     else:
+            #         self.logger.debug("No filler audio available for synthesizer")
+            self.logger.debug("Generating response for transcription")
+            if self.agent.get_agent_config().generate_responses:
+                responses = self.agent.generate_response(
+                    transcription.message,
+                    is_interrupt=transcription.is_interrupt,
+                    conversation_id=self.id,
+                )
+                stop_event = self.enqueue_stop_event()
+                should_wait_for_filler_audio = (
+                    self.agent.get_agent_config().send_filler_audio
+                )
+                async for response in responses:
+                    if should_wait_for_filler_audio:
+                        self.interrupt_all_synthesis()
+                        await self.wait_for_filler_audio_to_finish()
+                        should_wait_for_filler_audio = False
+                    self.agent_responses_queue.put_nowait(
+                        (
+                            BaseMessage(text=response),
+                            self.agent.get_agent_config().allow_agent_to_be_cut_off,
+                            stop_event,
+                        )
+                    )
+            else:
+                try:
+                    with tracer.start_span(
+                        AGENT_TRACE_NAME, {"generate_response": False}
+                    ):
+                        response, should_stop = await self.agent.respond(
+                            transcription.message,
+                            is_interrupt=transcription.is_interrupt,
+                            conversation_id=self.id,
+                        )
+                except Exception as e:
+                    self.logger.error(
+                        f"Error while generating response: {e}", exc_info=True
+                    )
+                    response = None
+                    should_stop = True
+                # if self.agent.get_agent_config().send_filler_audio:
+                #     self.interrupt_all_synthesis()
+                #     await self.wait_for_filler_audio_to_finish()
+                if should_stop:
+                    self.logger.debug("Agent requested to stop")
+                    self.mark_terminated()
+                    return
+                if response:
+                    self.agent_responses_queue.put_nowait(
+                        (
+                            BaseMessage(text=response),
+                            self.agent.get_agent_config().allow_agent_to_be_cut_off,
+                            self.enqueue_stop_event(),
+                        )
+                    )
+                else:
+                    self.logger.debug("No response generated")
+            # if goodbye_detected_task:
+            #     try:
+            #         goodbye_detected = await asyncio.wait_for(
+            #             goodbye_detected_task, 0.1
+            #         )
+            #         if goodbye_detected:
+            #             self.logger.debug("Goodbye detected, ending conversation")
+            #             self.mark_terminated()
+            #             return
+            #     except asyncio.TimeoutError:
+            #         self.logger.debug("Goodbye detection timed out")
 
     async def consume_agent_responses(self):
         seconds_per_chunk = TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
@@ -329,6 +386,55 @@ class StreamingConversation:
                 break
         return num_interrupts > 0
 
+    # returns an estimate of what was sent up to, and a flag if the message was cut off
+    async def send_speech_to_output(
+        self,
+        message: str,
+        synthesis_result: SynthesisResult,
+        stop_event: asyncio.Event,
+        seconds_per_chunk: int,
+        is_filler_audio: bool = False,
+    ):
+        message_sent = message
+        cut_off = False
+        chunk_size = seconds_per_chunk * get_chunk_size_per_second(
+            self.synthesizer.get_synthesizer_config().audio_encoding,
+            self.synthesizer.get_synthesizer_config().sampling_rate,
+        )
+        for i, chunk_result in enumerate(synthesis_result.chunk_generator):
+            start_time = time.time()
+            speech_length_seconds = seconds_per_chunk * (
+                len(chunk_result.chunk) / chunk_size
+            )
+            if stop_event.is_set():
+                seconds = i * seconds_per_chunk
+                self.logger.debug(
+                    "Interrupted, stopping text to speech after {} chunks".format(i)
+                )
+                message_sent = f"{synthesis_result.get_message_up_to(seconds)}-"
+                cut_off = True
+                break
+            if i == 0:
+                if self.current_synthesis_span:
+                    self.current_synthesis_span.end()
+                if is_filler_audio:
+                    self.should_wait_for_filler_audio_done_event = True
+            await self.output_device.send_async(chunk_result.chunk)
+            end_time = time.time()
+            await asyncio.sleep(
+                max(
+                    speech_length_seconds
+                    - (end_time - start_time)
+                    - self.per_chunk_allowance_seconds,
+                    0,
+                )
+            )
+            self.logger.debug(
+                "Sent chunk {} with size {}".format(i, len(chunk_result.chunk))
+            )
+            self.last_action_timestamp = time.time()
+        return message_sent, cut_off
+
     async def send_filler_audio_to_output(
         self,
         filler_audio: FillerAudio,
@@ -374,105 +480,6 @@ class StreamingConversation:
             ):
                 self.logger.debug("Filler audio did not finish")
 
-    async def handle_transcription(self, transcription: Transcription):
-        if transcription.is_final:
-            self.transcript.add_human_message(
-                text=transcription.message,
-                events_manager=self.events_manager,
-                conversation_id=self.id,
-            )
-            goodbye_detected_task = None
-            if self.agent.get_agent_config().end_conversation_on_goodbye:
-                goodbye_detected_task = asyncio.create_task(
-                    self.goodbye_model.is_goodbye(transcription.message)
-                )
-            if self.agent.get_agent_config().send_filler_audio:
-                self.logger.debug("Sending filler audio")
-                if self.synthesizer.filler_audios:
-                    filler_audio = random.choice(self.synthesizer.filler_audios)
-                    self.logger.debug(f"Chose {filler_audio.message.text}")
-                    self.current_filler_audio_done_event = asyncio.Event()
-                    self.current_filler_seconds_per_chunk = (
-                        filler_audio.seconds_per_chunk
-                    )
-                    stop_event = self.enqueue_stop_event()
-                    asyncio.create_task(
-                        self.send_filler_audio_to_output(
-                            filler_audio,
-                            stop_event,
-                            done_event=self.current_filler_audio_done_event,
-                        )
-                    )
-                else:
-                    self.logger.debug("No filler audio available for synthesizer")
-            self.logger.debug("Generating response for transcription")
-            if self.agent.get_agent_config().generate_responses:
-                responses = self.agent.generate_response(
-                    transcription.message,
-                    is_interrupt=transcription.is_interrupt,
-                    conversation_id=self.id,
-                )
-                stop_event = self.enqueue_stop_event()
-                should_wait_for_filler_audio = (
-                    self.agent.get_agent_config().send_filler_audio
-                )
-                async for response in responses:
-                    if should_wait_for_filler_audio:
-                        self.interrupt_all_synthesis()
-                        await self.wait_for_filler_audio_to_finish()
-                        should_wait_for_filler_audio = False
-                    self.agent_responses_queue.put_nowait(
-                        (
-                            BaseMessage(text=response),
-                            self.agent.get_agent_config().allow_agent_to_be_cut_off,
-                            stop_event,
-                        )
-                    )
-            else:
-                try:
-                    with tracer.start_span(
-                        AGENT_TRACE_NAME, {"generate_response": False}
-                    ):
-                        response, should_stop = await self.agent.respond(
-                            transcription.message,
-                            is_interrupt=transcription.is_interrupt,
-                            conversation_id=self.id,
-                        )
-                except Exception as e:
-                    self.logger.error(
-                        f"Error while generating response: {e}", exc_info=True
-                    )
-                    response = None
-                    should_stop = True
-                if self.agent.get_agent_config().send_filler_audio:
-                    self.interrupt_all_synthesis()
-                    await self.wait_for_filler_audio_to_finish()
-                if should_stop:
-                    self.logger.debug("Agent requested to stop")
-                    self.mark_terminated()
-                    return
-                if response:
-                    self.agent_responses_queue.put_nowait(
-                        (
-                            BaseMessage(text=response),
-                            self.agent.get_agent_config().allow_agent_to_be_cut_off,
-                            self.enqueue_stop_event(),
-                        )
-                    )
-                else:
-                    self.logger.debug("No response generated")
-            if goodbye_detected_task:
-                try:
-                    goodbye_detected = await asyncio.wait_for(
-                        goodbye_detected_task, 0.1
-                    )
-                    if goodbye_detected:
-                        self.logger.debug("Goodbye detected, ending conversation")
-                        self.mark_terminated()
-                        return
-                except asyncio.TimeoutError:
-                    self.logger.debug("Goodbye detection timed out")
-
     def mark_terminated(self):
         self.active = False
 
@@ -501,12 +508,16 @@ class StreamingConversation:
             self.events_manager.end()
         self.logger.debug("Terminating agent")
         self.agent.terminate()
+        self.logger.debug("Terminating output device")
+        self.output_device.terminate()
         self.logger.debug("Terminating speech transcriber")
         self.transcriber.terminate()
         self.logger.debug("Terminating transcriber task")
         self.transcriber_task.cancel()
         self.logger.debug("Terminating consume transcriptions task")
         self.consume_transcriptions_task.cancel()
+        self.logger.debug("Terminating consume final transcriptions task")
+        self.consume_final_transcriptions_task.cancel()
         self.logger.debug("Terminating consume agent responses task")
         self.consume_agent_responses_task.cancel()
         self.logger.debug("Successfully terminated")
