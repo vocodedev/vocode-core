@@ -1,5 +1,9 @@
+import queue
+import threading
 import sounddevice as sd
 import numpy as np
+
+from vocode.streaming.telephony.constants import DEFAULT_CHUNK_SIZE
 
 from .base_output_device import BaseOutputDevice
 from vocode.streaming.models.audio_encoding import AudioEncoding
@@ -23,12 +27,25 @@ class SpeakerOutput(BaseOutputDevice):
             channels=1,
             samplerate=self.sampling_rate,
             dtype=np.int16,
+            blocksize=44100,
             device=int(self.device_info["index"]),
+            callback=self.callback,
         )
         self.stream.start()
+        self.queue: queue.Queue[np.ndarray] = queue.Queue()
+
+    def callback(self, outdata: np.ndarray, frames, time, status):
+        if self.queue.empty():
+            return
+        data = self.queue.get()
+        outdata[: data.shape[0], 0] = data
+        if data.shape[0] < frames:  # If the data chunk is smaller than the blocksize
+            outdata[data.shape[0] :] = 0
 
     async def send_async(self, chunk):
-        self.stream.write(np.frombuffer(chunk, dtype=np.int16))
+        chunk_arr = np.frombuffer(chunk, dtype=np.int16)
+        for i in range(0, self.stream.blocksize, chunk_arr.shape[0]):
+            self.queue.put_nowait(chunk_arr[i : i + self.stream.blocksize])
 
     def terminate(self):
         self.stream.close()
