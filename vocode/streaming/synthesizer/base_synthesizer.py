@@ -35,6 +35,14 @@ FILLER_PHRASES = [
 FILLER_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "filler_audio")
 TYPING_NOISE_PATH = "%s/typing-noise.wav" % FILLER_AUDIO_PATH
 
+def dtmf_wav_path(digit: str) -> str:
+    # Sounds come from here: https://freesound.org/people/ialexs/packs/10184/
+    # The original audio files didn't work with the wave library, it gave this error:
+    #   wave.Error: unknown format: 65534
+    # The fix was to uncompress them using the sox commandline tool:
+    #   sox 164396__ialexs__dtmf-0.wav -b 16 dtmf-0.wav
+    directory = os.path.join(os.path.dirname(__file__), "dtmf_audio")
+    return "%s/dtmf-%s.wav" % (directory, digit)
 
 def encode_as_wav(chunk: bytes, synthesizer_config: SynthesizerConfig) -> bytes:
     output_bytes_io = io.BytesIO()
