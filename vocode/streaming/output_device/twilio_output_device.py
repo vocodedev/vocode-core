@@ -1,3 +1,4 @@
+import asyncio
 import json
 import base64
 
@@ -17,16 +18,24 @@ class TwilioOutputDevice(BaseOutputDevice):
         )
         self.ws = ws
         self.stream_sid = stream_sid
+        self.queue = asyncio.Queue()
+        self.process_task = asyncio.create_task(self.process())
+        self.active = True
 
-    async def send_async(self, chunk: bytes):
+    async def process(self):
+        while self.active:
+            message = await self.queue.get()
+            await self.ws.send_text(message)
+
+    def send_nonblocking(self, chunk: bytes):
         twilio_message = {
             "event": "media",
             "streamSid": self.stream_sid,
             "media": {"payload": base64.b64encode(chunk).decode("utf-8")},
         }
-        await self.ws.send_text(json.dumps(twilio_message))
+        self.queue.put_nowait(json.dumps(twilio_message))
 
-    async def maybe_send_mark_async(self, message_sent):
+    def maybe_send_mark_nonblocking(self, message_sent):
         mark_message = {
             "event": "mark",
             "streamSid": self.stream_sid,
@@ -34,4 +43,7 @@ class TwilioOutputDevice(BaseOutputDevice):
                 "name": "Sent {}".format(message_sent),
             },
         }
-        await self.ws.send_text(json.dumps(mark_message))
+        self.queue.put_nowait(json.dumps(mark_message))
+
+    def terminate(self):
+        self.process_task.cancel()

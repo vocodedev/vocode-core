@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import WebSocket
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
@@ -11,14 +12,17 @@ class WebsocketOutputDevice(BaseOutputDevice):
         super().__init__(sampling_rate, audio_encoding)
         self.ws = ws
         self.active = True
+        self.queue = asyncio.Queue()
 
     def mark_closed(self):
         self.active = False
 
-    async def send_async(self, chunk: bytes):
+    async def process(self):
+        while self.active:
+            message = await self.queue.get()
+            await self.ws.send_text(message)
+
+    def send_nonblocking(self, chunk: bytes):
         if self.active:
             audio_message = AudioMessage.from_bytes(chunk)
-            await self.ws.send_text(audio_message.json())
-
-    async def maybe_send_mark_async(self, message):
-        pass
+            self.queue.put_nowait(audio_message.json())
