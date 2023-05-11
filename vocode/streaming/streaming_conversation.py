@@ -405,20 +405,23 @@ class StreamingConversation:
             self.synthesizer.get_synthesizer_config().audio_encoding,
             self.synthesizer.get_synthesizer_config().sampling_rate,
         )
-        for i, chunk_result in enumerate(synthesis_result.chunk_generator):
+        chunk_idx = True
+        async for chunk_result in synthesis_result.chunk_generator:
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
                 len(chunk_result.chunk) / chunk_size
             )
             if stop_event.is_set():
-                seconds = i * seconds_per_chunk
+                seconds = chunk_idx * seconds_per_chunk
                 self.logger.debug(
-                    "Interrupted, stopping text to speech after {} chunks".format(i)
+                    "Interrupted, stopping text to speech after {} chunks".format(
+                        chunk_idx
+                    )
                 )
                 message_sent = f"{synthesis_result.get_message_up_to(seconds)}-"
                 cut_off = True
                 break
-            if i == 0:
+            if chunk_idx == 0:
                 if self.current_synthesis_span:
                     self.current_synthesis_span.end()
                 if is_filler_audio:
@@ -434,9 +437,10 @@ class StreamingConversation:
                 )
             )
             self.logger.debug(
-                "Sent chunk {} with size {}".format(i, len(chunk_result.chunk))
+                "Sent chunk {} with size {}".format(chunk_idx, len(chunk_result.chunk))
             )
             self.last_action_timestamp = time.time()
+            chunk_idx += 1
         return message_sent, cut_off
 
     async def send_filler_audio_to_output(

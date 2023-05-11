@@ -1,5 +1,5 @@
 import os
-from typing import Any, Generator, Callable, List, Optional
+from typing import Any, AsyncGenerator, Generator, Callable, List, Optional
 import math
 import io
 import wave
@@ -48,7 +48,7 @@ class SynthesisResult:
     def __init__(
         self,
         # TODO(ajay): this needs to be AsyncGenerator
-        chunk_generator: Generator[ChunkResult, None, None],
+        chunk_generator: AsyncGenerator[ChunkResult, None],
         get_message_up_to: Callable[[int], str],
     ):
         self.chunk_generator = chunk_generator
