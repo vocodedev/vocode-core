@@ -23,11 +23,12 @@ class SpeakerOutput(BaseOutputDevice):
             self.device_info.get("default_samplerate", self.DEFAULT_SAMPLING_RATE)
         )
         super().__init__(sampling_rate, audio_encoding)
+        self.blocksize = self.sampling_rate
         self.stream = sd.OutputStream(
             channels=1,
             samplerate=self.sampling_rate,
             dtype=np.int16,
-            blocksize=44100,
+            blocksize=self.blocksize,
             device=int(self.device_info["index"]),
             callback=self.callback,
         )
@@ -36,16 +37,18 @@ class SpeakerOutput(BaseOutputDevice):
 
     def callback(self, outdata: np.ndarray, frames, time, status):
         if self.queue.empty():
+            outdata[:] = 0
             return
         data = self.queue.get()
-        outdata[: data.shape[0], 0] = data
-        if data.shape[0] < frames:  # If the data chunk is smaller than the blocksize
-            outdata[data.shape[0] :] = 0
+        outdata[:, 0] = data
 
     async def send_async(self, chunk):
         chunk_arr = np.frombuffer(chunk, dtype=np.int16)
-        for i in range(0, self.stream.blocksize, chunk_arr.shape[0]):
-            self.queue.put_nowait(chunk_arr[i : i + self.stream.blocksize])
+        for i in range(0, chunk_arr.shape[0], self.blocksize):
+            block = np.zeros(self.blocksize, dtype=np.int16)
+            size = min(self.blocksize, chunk_arr.shape[0] - i)
+            block[:size] = chunk_arr[i : i + size]
+            self.queue.put_nowait(block)
 
     def terminate(self):
         self.stream.close()
