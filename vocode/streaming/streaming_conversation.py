@@ -49,6 +49,10 @@ tracer = trace.get_tracer(__name__)
 SYNTHESIS_TRACE_NAME = "synthesis"
 AGENT_TRACE_NAME = "agent"
 
+# TODO(ajay)
+# - interrupt LLM generation / flush queue on interrupt
+# - fix no interrupt flow
+
 
 class StreamingConversation:
     def __init__(
@@ -419,7 +423,7 @@ class StreamingConversation:
                     self.current_synthesis_span.end()
                 if is_filler_audio:
                     self.should_wait_for_filler_audio_done_event = True
-            await self.output_device.send_async(chunk_result.chunk)
+            self.output_device.send_nonblocking(chunk_result.chunk)
             end_time = time.time()
             await asyncio.sleep(
                 max(
