@@ -28,7 +28,7 @@ class EventsManager(events_manager.EventsManager):
             transcript_complete_event = typing.cast(TranscriptCompleteEvent, event)
             add_transcript(
                 transcript_complete_event.conversation_id,
-                transcript_complete_event.transcript,
+                transcript_complete_event.transcript.to_string(),
             )
 
 
