@@ -79,6 +79,10 @@ class StreamingConversation:
         self.agent_responses_queue: asyncio.Queue[
             Tuple[BaseMessage, bool]
         ] = asyncio.Queue()
+        self.synthesis_results_queue: asyncio.Queue[
+            BaseMessage, SynthesisResult, asyncio.Event
+        ] = asyncio.Queue()
+        self.consume_synthesis_results_task: asyncio.Task = None
         self.synthesizer = synthesizer
         self.events_manager = events_manager or EventsManager()
         self.events_task = None
@@ -126,6 +130,9 @@ class StreamingConversation:
         )
         self.consume_agent_responses_task = asyncio.create_task(
             self.consume_agent_responses()
+        )
+        self.consume_synthesis_results_task = asyncio.create_task(
+            self.consume_synthesis_results()
         )
         is_ready = await self.transcriber.ready()
         if not is_ready:
@@ -328,13 +335,12 @@ class StreamingConversation:
                     self.logger.debug("Goodbye detection timed out")
 
     async def consume_agent_responses(self):
-        seconds_per_chunk = TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
         chunk_size = (
             get_chunk_size_per_second(
                 self.synthesizer.get_synthesizer_config().audio_encoding,
                 self.synthesizer.get_synthesizer_config().sampling_rate,
             )
-            * seconds_per_chunk
+            * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
         )
         while self.active:
             agent_response: Tuple[
@@ -356,11 +362,19 @@ class StreamingConversation:
             synthesis_result = await self.synthesizer.create_speech(
                 message, chunk_size, bot_sentiment=self.bot_sentiment
             )
+            self.synthesis_results_queue.put_nowait(
+                (message, synthesis_result, stop_event)
+            )
+
+    async def consume_synthesis_results(self):
+        while self.active:
+            queue_element = await self.synthesis_results_queue.get()
+            (message, synthesis_result, stop_event) = queue_element
             message_sent, cut_off = await self.send_speech_to_output(
                 message.text,
                 synthesis_result,
                 stop_event,
-                seconds_per_chunk,
+                TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
             )
             self.logger.debug("Message sent: {}".format(message_sent))
             if cut_off:
@@ -528,6 +542,8 @@ class StreamingConversation:
         self.consume_final_transcriptions_task.cancel()
         self.logger.debug("Terminating consume agent responses task")
         self.consume_agent_responses_task.cancel()
+        self.logger.debug("Terminating consume synthesis results task")
+        self.consume_synthesis_results_task.cancel()
         self.logger.debug("Successfully terminated")
 
     def is_active(self):
