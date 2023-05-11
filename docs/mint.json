@@ -55,6 +55,7 @@
         "local-conversation",
         "events-manager",
         "using-synthesizers",
+        "using-transcribers",
         "react-quickstart",
         "playground",
         "turn-based-conversation",
