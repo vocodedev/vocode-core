@@ -97,11 +97,12 @@ class AssemblyAITranscriber(BaseTranscriber):
                 while not self._ended:
                     try:
                         result_str = await ws.recv()
+                        data = json.loads(result_str)
+                        if "error" in data and data["error"]:
+                            raise Exception(data["error"]) 
                     except websockets.exceptions.ConnectionClosedError as e:
                         self.logger.debug(e)
                         break
-                    except Exception as e:
-                        assert False, "Not a websocket 4008 error"
 
                     data = json.loads(result_str)
                     is_final = (
