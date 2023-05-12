@@ -62,8 +62,14 @@ class InterruptibleEvent(Generic[Payload]):
         self.is_interruptible = is_interruptible
         self.payload = payload
 
-    def interrupt(self):
-        return self.is_interruptible and self.interruption_event.set()
+    def interrupt(self) -> bool:
+        """
+        Returns True if the event was interruptible and is now interrupted.
+        """
+        if not self.is_interruptible:
+            return False
+        self.interruption_event.set()
+        return True
 
     def is_interrupted(self):
         return self.is_interruptible and self.interruption_event.is_set()
@@ -90,6 +96,7 @@ class InterruptibleWorker(AsyncWorker):
                 self.interruptible_event = item
                 self.current_task = asyncio.create_task(self.process(item))
                 await self.current_task
+                self.interruptible_event.is_interruptible = False
                 self.current_task = None
         except asyncio.CancelledError:
             pass
