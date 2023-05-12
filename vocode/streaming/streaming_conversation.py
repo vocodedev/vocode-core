@@ -121,7 +121,7 @@ class StreamingConversation:
         self.end_time: float = None
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
-        self.transcriber_task = asyncio.create_task(self.transcriber.run())
+        self.transcriber_task = self.transcriber.start()
         self.consume_transcriptions_task = asyncio.create_task(
             self.consume_transcriptions()
         )
@@ -209,7 +209,7 @@ class StreamingConversation:
 
     async def consume_transcriptions(self):
         while self.active:
-            transcription = await self.transcriber.get_output_queue().get()
+            transcription = await self.transcriber.output_queue.get()
             self.last_action_timestamp = time.time()
             if transcription.is_final:
                 self.logger.debug(
@@ -419,7 +419,7 @@ class StreamingConversation:
             self.synthesizer.get_synthesizer_config().audio_encoding,
             self.synthesizer.get_synthesizer_config().sampling_rate,
         )
-        chunk_idx = True
+        chunk_idx = 0
         async for chunk_result in synthesis_result.chunk_generator:
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
@@ -534,8 +534,6 @@ class StreamingConversation:
         self.output_device.terminate()
         self.logger.debug("Terminating speech transcriber")
         self.transcriber.terminate()
-        self.logger.debug("Terminating transcriber task")
-        self.transcriber_task.cancel()
         self.logger.debug("Terminating consume transcriptions task")
         self.consume_transcriptions_task.cancel()
         self.logger.debug("Terminating consume final transcriptions task")
