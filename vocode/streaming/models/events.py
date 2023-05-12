@@ -1,6 +1,6 @@
 from enum import Enum
 from vocode.streaming.models.model import TypedModel
-from vocode.streaming.utils import Transcript
+
 
 class Sender(str, Enum):
     HUMAN = "human"
@@ -38,4 +38,4 @@ class PhoneCallEndedEvent(Event, type=EventType.PHONE_CALL_ENDED):
 
 
 class TranscriptCompleteEvent(Event, type=EventType.TRANSCRIPT_COMPLETE):
-    transcript: Transcript
+    transcript: str
