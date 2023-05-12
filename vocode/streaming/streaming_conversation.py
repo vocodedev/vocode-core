@@ -88,10 +88,11 @@ class StreamingConversation:
                 self.conversation.transcriber.get_transcriber_config().min_interrupt_confidence
                 or 0
             ):
-                self.conversation.logger.debug("sending interrupt")
                 self.conversation.current_transcription_is_interrupt = (
                     self.conversation.broadcast_interrupt()
                 )
+                if self.conversation.current_transcription_is_interrupt:
+                    self.conversation.logger.debug("sending interrupt")
                 self.conversation.logger.debug("Human started speaking")
 
             transcription.is_interrupt = (
@@ -252,7 +253,8 @@ class StreamingConversation:
                 bot_sentiment=self.conversation.bot_sentiment,
             )
             event = self.conversation.enqueue_interruptible_event(
-                payload=(agent_response, synthesis_result)
+                payload=(agent_response, synthesis_result),
+                is_interruptible=item.is_interruptible,
             )
             self.output_queue.put_nowait(event)
 
