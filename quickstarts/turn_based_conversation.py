@@ -1,6 +1,4 @@
 import logging
-import sys
-sys.path.insert(1, '/Users/vionna/vocode-python/')
 from dotenv import load_dotenv
 from vocode import getenv
 from vocode.helpers import create_microphone_input_and_speaker_output
@@ -9,7 +7,6 @@ from vocode.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.turn_based.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 from vocode.turn_based.transcriber.whisper_transcriber import WhisperTranscriber
 from vocode.turn_based.turn_based_conversation import TurnBasedConversation
-from vocode.turn_based.synthesizer.google_synthesizer import GoogleSynthesizer
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -34,13 +31,11 @@ if __name__ == "__main__":
             initial_message="Hello!",
             api_key=getenv("OPENAI_API_KEY"),
         ),
-        synthesizer= GoogleSynthesizer(),
-        
-        # AzureSynthesizer(
-        #     api_key=getenv("AZURE_SPEECH_KEY"),
-        #     region=getenv("AZURE_SPEECH_REGION"),
-        #     voice_name="en-US-SteffanNeural",
-        # ),
+        synthesizer=AzureSynthesizer(
+            api_key=getenv("AZURE_SPEECH_KEY"),
+            region=getenv("AZURE_SPEECH_REGION"),
+            voice_name="en-US-SteffanNeural",
+        ),
         logger=logger,
     )
     print("Starting conversation. Press Ctrl+C to exit.")

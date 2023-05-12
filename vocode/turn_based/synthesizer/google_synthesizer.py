@@ -7,15 +7,21 @@ from vocode import getenv
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 from google.cloud import texttospeech_v1beta1 as tts
 
+DEFAULT_GOOGLE_LANGUAGE_CODE = "en-US"
+DEFAULT_GOOGLE_VOICE_NAME = "en-US-Neural2-I"
+DEFAULT_GOOGLE_PITCH = 0
+DEFAULT_GOOGLE_SPEAKING_RATE = 1.2
 
 class GoogleSynthesizer(BaseSynthesizer):
-    def __init__(self):
+    def __init__(
+        self, 
+        language_code: str = DEFAULT_GOOGLE_LANGUAGE_CODE,
+        voice_name: str = DEFAULT_GOOGLE_VOICE_NAME,
+        pitch: int = DEFAULT_GOOGLE_PITCH,
+        speaking_rate: int = DEFAULT_GOOGLE_SPEAKING_RATE,
+        ):
         self.tts = tts
-        DEFAULT_GOOGLE_LANGUAGE_CODE = "en-US"
-        DEFAULT_GOOGLE_VOICE_NAME = "en-US-Neural2-I"
-        DEFAULT_GOOGLE_PITCH = 0
-        DEFAULT_GOOGLE_SPEAKING_RATE = 1.2
-
+        
         # Instantiates a client
         credentials_path = getenv("GOOGLE_APPLICATION_CREDENTIALS")
         if not credentials_path:
@@ -25,14 +31,11 @@ class GoogleSynthesizer(BaseSynthesizer):
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
         self.client = tts.TextToSpeechClient()
 
-        # Build the voice request, select the language code ("en-US") and the ssml
-        # voice gender ("neutral")
         self.voice = tts.VoiceSelectionParams(
             language_code=DEFAULT_GOOGLE_LANGUAGE_CODE,
             name=DEFAULT_GOOGLE_VOICE_NAME,
         )
 
-        # Select the type of audio file you want returned
         self.audio_config = tts.AudioConfig(
             audio_encoding=tts.AudioEncoding.LINEAR16,
             sample_rate_hertz=24000,
