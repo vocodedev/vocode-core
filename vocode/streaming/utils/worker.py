@@ -2,6 +2,7 @@ import asyncio
 import threading
 import janus
 from typing import Any
+from typing import TypeVar, Generic
 
 
 class AsyncWorker:
@@ -31,66 +32,85 @@ class AsyncWorker:
         return False
 
 
-# class InterruptibleEvent:
-#     def __init__(
-#         self,
-#         is_interruptible: bool,
-#         payload: Any = None,
-#     ):
-#         self.interruption_event = threading.Event()
-#         self.is_interruptible = is_interruptible
-#         self.payload = payload
+class AsyncQueueWorker(AsyncWorker):
+    async def _run_loop(self):
+        try:
+            while True:
+                item = await self.input_queue.get()
+                await self.process(item)
+        except asyncio.CancelledError:
+            pass
 
-#     def interrupt(self):
-#         if not self.is_interruptible:
-#             raise Exception("This event is not interruptible")
-#         self.interruption_event.set()
-
-#     def is_interrupted(self):
-#         return self.is_interruptible and self.interruption_event.is_set()
+    async def process(self, item):
+        """
+        Publish results onto output queue.
+        Calls to async function / task should be able to handle asyncio.CancelledError gracefully:
+        """
+        raise NotImplementedError
 
 
-# class InterruptibleWorker(AsyncWorker):
-#     def __init__(
-#         self,
-#         input_queue: asyncio.Queue[InterruptibleEvent],
-#         output_queue: asyncio.Queue[InterruptibleEvent],
-#         max_concurrency=2,
-#     ) -> None:
-#         super().__init__(input_queue, output_queue)
-#         self.max_concurrency = max_concurrency
+Payload = TypeVar("Payload")
 
-#     async def _run_loop(self):
-#         # TODO Implement concurrency with max_nb_of_thread
-#         try:
-#             while True:
-#                 item = await self.input_queue.get()
-#                 if isinstance(item, InterruptibleEvent) and item.is_interrupted():
-#                     continue
-#                 self.interruptible_event = item
-#                 self.current_task = asyncio.create_task(self.process(item))
-#                 await self.current_task
-#                 self.current_task = None
-#         except asyncio.CancelledError:
-#             pass
 
-#     async def process(self, item):
-#         """
-#         Publish results onto output queue.
-#         Calls to async function / task should be able to handle asyncio.CancelledError gracefully:
-#         """
-#         raise NotImplementedError
+class InterruptibleEvent(Generic[Payload]):
+    def __init__(
+        self,
+        is_interruptible: bool = True,
+        payload: Payload = None,
+    ):
+        self.interruption_event = threading.Event()
+        self.is_interruptible = is_interruptible
+        self.payload = payload
 
-#     def cancel_current_task(self):
-#         """Free up the resources. That's useful so implementors do not have to implement this but:
-#         - threads tasks won't be able to be interrupted. Hopefully not too much of a big deal
-#             Threads will also get a reference to the interuptible event
-#         - asyncio tasks will still have to handle CancelledError and clean up resources
-#         """
-#         if self.current_task and self.interruptible_event.is_interruptible:
-#             return self.current_task.cancel()
+    def interrupt(self):
+        return self.is_interruptible and self.interruption_event.set()
 
-#         return False
+    def is_interrupted(self):
+        return self.is_interruptible and self.interruption_event.is_set()
+
+
+class InterruptibleWorker(AsyncWorker):
+    def __init__(
+        self,
+        input_queue: asyncio.Queue[InterruptibleEvent],
+        output_queue: asyncio.Queue,
+        max_concurrency=2,
+    ) -> None:
+        super().__init__(input_queue, output_queue)
+        self.input_queue = input_queue
+        self.max_concurrency = max_concurrency
+
+    async def _run_loop(self):
+        # TODO Implement concurrency with max_nb_of_thread
+        try:
+            while True:
+                item = await self.input_queue.get()
+                if item.is_interrupted():
+                    continue
+                self.interruptible_event = item
+                self.current_task = asyncio.create_task(self.process(item))
+                await self.current_task
+                self.current_task = None
+        except asyncio.CancelledError:
+            pass
+
+    async def process(self, item: InterruptibleEvent):
+        """
+        Publish results onto output queue.
+        Calls to async function / task should be able to handle asyncio.CancelledError gracefully:
+        """
+        raise NotImplementedError
+
+    def cancel_current_task(self):
+        """Free up the resources. That's useful so implementors do not have to implement this but:
+        - threads tasks won't be able to be interrupted. Hopefully not too much of a big deal
+            Threads will also get a reference to the interruptible event
+        - asyncio tasks will still have to handle CancelledError and clean up resources
+        """
+        if self.current_task and self.interruptible_event.is_interruptible:
+            return self.current_task.cancel()
+
+        return False
 
 
 # class ThreadAsyncWorker(InterruptibleWorker):
