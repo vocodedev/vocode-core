@@ -193,6 +193,7 @@ class StreamingConversation:
             AGENT_TRACE_NAME, {"generate_response": True}
         )
         messages_queue = queue.Queue()
+        synth_queue = queue.Queue()
         messages_done = threading.Event()
         speech_cut_off = threading.Event()
         seconds_per_chunk = TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
@@ -204,10 +205,7 @@ class StreamingConversation:
             * seconds_per_chunk
         )
 
-        async def send_to_call():
-            response_buffer = ""
-            cut_off = False
-            self.is_current_synthesis_interruptable = should_allow_human_to_cut_off_bot
+        async def send_to_synth():
             while True:
                 try:
                     message: BaseMessage = messages_queue.get_nowait()
@@ -230,6 +228,24 @@ class StreamingConversation:
                 synthesis_result = self.synthesizer.create_speech(
                     message, chunk_size, bot_sentiment=self.bot_sentiment
                 )
+                synth_queue.put_nowait((message, synthesis_result, stop_event))
+
+        async def send_to_call():
+            response_buffer = ""
+            cut_off = False
+            self.is_current_synthesis_interruptable = should_allow_human_to_cut_off_bot
+            while True:
+                try:
+                    synth_package = synth_queue.get_nowait()
+                except queue.Empty:
+                    if messages_done.is_set():
+                        break
+                    else:
+                        await asyncio.sleep(0)
+                        continue
+
+                message, synthesis_result, stop_event = synth_package
+
                 message_sent, cut_off = await self.send_speech_to_output(
                     message.text,
                     synthesis_result,
@@ -251,6 +267,7 @@ class StreamingConversation:
             )
             return response_buffer, cut_off
 
+        asyncio.run_coroutine_threadsafe(send_to_synth(), self.synthesizer_event_loop)
         asyncio.run_coroutine_threadsafe(send_to_call(), self.synthesizer_event_loop)
 
         messages_generated = 0
