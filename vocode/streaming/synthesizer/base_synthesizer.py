@@ -61,13 +61,13 @@ class FillerAudio:
         message: BaseMessage,
         audio_data: bytes,
         synthesizer_config: SynthesizerConfig,
-        is_interruptable: bool = False,
+        is_interruptible: bool = False,
         seconds_per_chunk: int = 1,
     ):
         self.message = message
         self.audio_data = audio_data
         self.synthesizer_config = synthesizer_config
-        self.is_interruptable = is_interruptable
+        self.is_interruptible = is_interruptible
         self.seconds_per_chunk = seconds_per_chunk
 
     def create_synthesis_result(self) -> SynthesisResult:
@@ -120,7 +120,7 @@ class BaseSynthesizer:
                 output_encoding=self.synthesizer_config.audio_encoding,
             ),
             synthesizer_config=self.synthesizer_config,
-            is_interruptable=True,
+            is_interruptible=True,
             seconds_per_chunk=2,
         )
 

@@ -3,6 +3,9 @@ import threading
 import janus
 from typing import Any
 from typing import TypeVar, Generic
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AsyncWorker:
@@ -34,12 +37,14 @@ class AsyncWorker:
 
 class AsyncQueueWorker(AsyncWorker):
     async def _run_loop(self):
-        try:
-            while True:
+        while True:
+            try:
                 item = await self.input_queue.get()
                 await self.process(item)
-        except asyncio.CancelledError:
-            pass
+            except asyncio.CancelledError:
+                pass
+            except Exception as e:
+                logger.exception("AsyncQueueWorker", exc_info=True)
 
     async def process(self, item):
         """
@@ -57,8 +62,9 @@ class InterruptibleEvent(Generic[Payload]):
         self,
         is_interruptible: bool = True,
         payload: Payload = None,
+        interruption_event: threading.Event = None,
     ):
-        self.interruption_event = threading.Event()
+        self.interruption_event = interruption_event or threading.Event()
         self.is_interruptible = is_interruptible
         self.payload = payload
 
@@ -88,18 +94,20 @@ class InterruptibleWorker(AsyncWorker):
 
     async def _run_loop(self):
         # TODO Implement concurrency with max_nb_of_thread
-        try:
-            while True:
-                item = await self.input_queue.get()
-                if item.is_interrupted():
-                    continue
-                self.interruptible_event = item
-                self.current_task = asyncio.create_task(self.process(item))
+        while True:
+            item = await self.input_queue.get()
+            if item.is_interrupted():
+                continue
+            self.interruptible_event = item
+            self.current_task = asyncio.create_task(self.process(item))
+            try:
                 await self.current_task
-                self.interruptible_event.is_interruptible = False
-                self.current_task = None
-        except asyncio.CancelledError:
-            pass
+            except asyncio.CancelledError:
+                pass
+            except Exception as e:
+                logger.exception("InterruptibleWorker", exc_info=True)
+            self.interruptible_event.is_interruptible = False
+            self.current_task = None
 
     async def process(self, item: InterruptibleEvent):
         """
@@ -114,7 +122,11 @@ class InterruptibleWorker(AsyncWorker):
             Threads will also get a reference to the interruptible event
         - asyncio tasks will still have to handle CancelledError and clean up resources
         """
-        if self.current_task and self.interruptible_event.is_interruptible:
+        if (
+            self.current_task
+            and not self.current_task.done()
+            and self.interruptible_event.is_interruptible
+        ):
             return self.current_task.cancel()
 
         return False
