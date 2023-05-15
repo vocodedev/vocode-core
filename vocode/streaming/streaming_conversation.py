@@ -59,6 +59,7 @@ class StreamingConversation:
         transcriber: BaseTranscriber,
         agent: BaseAgent,
         synthesizer: BaseSynthesizer,
+        mute_mic_during_agent_response: bool = False,
         conversation_id: str = None,
         per_chunk_allowance_seconds: int = PER_CHUNK_ALLOWANCE_SECONDS,
         events_manager: Optional[EventsManager] = None,
@@ -78,6 +79,7 @@ class StreamingConversation:
             target=create_loop_in_thread,
             args=(self.synthesizer_event_loop,),
         )
+        self.mute_mic_during_agent_response = mute_mic_during_agent_response
         self.events_manager = events_manager or EventsManager()
         self.events_task = None
         self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
@@ -95,6 +97,7 @@ class StreamingConversation:
         if self.agent.get_agent_config().end_conversation_on_goodbye:
             self.goodbye_model = GoodbyeModel()
 
+        self.is_mic_muted = False
         self.is_human_speaking = False
         self.active = False
         self.current_synthesis_task = None
@@ -181,6 +184,9 @@ class StreamingConversation:
             self.bot_sentiment = new_bot_sentiment
 
     def receive_audio(self, chunk: bytes):
+        if self.is_mic_muted:
+            return
+
         self.transcriber.send_audio(chunk)
 
     async def send_messages_to_stream_async(
@@ -341,6 +347,9 @@ class StreamingConversation:
         seconds_per_chunk: int,
         is_filler_audio: bool = False,
     ):
+        if self.mute_mic_during_agent_response:
+            self.is_mic_muted = True
+
         message_sent = message
         cut_off = False
         chunk_size = seconds_per_chunk * get_chunk_size_per_second(
@@ -382,6 +391,8 @@ class StreamingConversation:
         # clears it off the stop events queue
         if not stop_event.is_set():
             stop_event.set()
+
+        self.is_mic_muted = False
         return message_sent, cut_off
 
     async def on_transcription_response(self, transcription: Transcription):
