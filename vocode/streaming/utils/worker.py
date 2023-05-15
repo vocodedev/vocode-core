@@ -17,9 +17,12 @@ class AsyncWorker:
         self.worker_task: None | asyncio.Task = None
         self.input_queue = input_queue
         self.output_queue = output_queue
+        # necessary because _run_loop may swallow asyncio.CancelledError
+        self.active = False
 
     def start(self) -> asyncio.Task:
         self.worker_task = asyncio.create_task(self._run_loop())
+        self.active = True
         return self.worker_task
 
     def send_nonblocking(self, item):
@@ -29,6 +32,7 @@ class AsyncWorker:
         raise NotImplementedError
 
     def terminate(self):
+        self.active = False
         if self.worker_task:
             return self.worker_task.cancel()
 
@@ -37,12 +41,12 @@ class AsyncWorker:
 
 class AsyncQueueWorker(AsyncWorker):
     async def _run_loop(self):
-        while True:
+        while self.active:
             try:
                 item = await self.input_queue.get()
                 await self.process(item)
             except asyncio.CancelledError:
-                pass
+                break
             except Exception as e:
                 logger.exception("AsyncQueueWorker", exc_info=True)
 
@@ -95,7 +99,7 @@ class InterruptibleWorker(AsyncWorker):
 
     async def _run_loop(self):
         # TODO Implement concurrency with max_nb_of_thread
-        while True:
+        while self.active:
             item = await self.input_queue.get()
             if item.is_interrupted():
                 continue

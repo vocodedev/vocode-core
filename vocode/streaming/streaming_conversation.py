@@ -152,7 +152,7 @@ class StreamingConversation:
                 async for response in responses:
                     # TODO should this be in a different worker?
                     if should_wait_for_filler_audio:
-                        self.conversation.broadcast_interrupt()
+                        self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
                         should_wait_for_filler_audio = False
                     event = self.conversation.enqueue_interruptible_event(
@@ -178,7 +178,7 @@ class StreamingConversation:
                     should_stop = True
                 # TODO should this be in a different worker?
                 if self.conversation.agent.get_agent_config().send_filler_audio:
-                    self.conversation.broadcast_interrupt()
+                    self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                     await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
                 if should_stop:
                     self.conversation.logger.debug("Agent requested to stop")
@@ -215,18 +215,21 @@ class StreamingConversation:
             self.input_queue = input_queue
             self.conversation = conversation
             self.current_filler_seconds_per_chunk: Optional[int] = None
+            self.filler_audio_started_event: Optional[threading.Event] = None
 
         async def wait_for_filler_audio_to_finish(self):
-            if not self.should_wait_for_filler_audio_done_event:
+            if not self.filler_audio_started_event.set():
                 self.conversation.logger.debug(
                     "Not waiting for filler audio to finish since we didn't send any chunks"
                 )
                 return
-            self.should_wait_for_filler_audio_done_event = False
             if self.current_task and not self.current_task.done():
                 self.conversation.logger.debug("Waiting for filler audio to finish")
-                # this should guarantee that filler audio finishes, since it has to be on its last chunk
                 await self.current_task
+                self.conversation.logger.debug("Filler audio finished")
+
+        def interrupt_current_filler_audio(self):
+            self.interruptible_event and self.interruptible_event.interrupt()
 
         async def process(self, item: InterruptibleEvent[FillerAudio]):
             filler_audio = item.payload
@@ -243,12 +246,13 @@ class StreamingConversation:
                 silence_threshold = FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
             await asyncio.sleep(silence_threshold)
             self.conversation.logger.debug("Sending filler audio to output")
+            self.filler_audio_started_event = threading.Event()
             await self.conversation.send_speech_to_output(
                 filler_audio.message.text,
                 filler_synthesis_result,
                 item.interruption_event,
                 filler_audio.seconds_per_chunk,
-                is_filler_audio=True,
+                started_event=self.filler_audio_started_event,
             )
 
     class AgentResponsesWorker(InterruptibleWorker):
@@ -392,9 +396,6 @@ class StreamingConversation:
         self.check_for_idle_task = None
         self.track_bot_sentiment_task = None
 
-        # filler audio
-        self.should_wait_for_filler_audio_done_event = False
-
         self.current_transcription_is_interrupt: bool = False
 
         # tracing
@@ -515,7 +516,7 @@ class StreamingConversation:
         synthesis_result: SynthesisResult,
         stop_event: threading.Event,
         seconds_per_chunk: int,
-        is_filler_audio: bool = False,
+        started_event: Optional[threading.Event] = None,
     ):
         message_sent = message
         cut_off = False
@@ -542,8 +543,8 @@ class StreamingConversation:
             if chunk_idx == 0:
                 if self.current_synthesis_span:
                     self.current_synthesis_span.end()
-                if is_filler_audio:
-                    self.should_wait_for_filler_audio_done_event = True
+                if started_event:
+                    started_event.set()
             self.output_device.send_nonblocking(chunk_result.chunk)
             end_time = time.time()
             await asyncio.sleep(
