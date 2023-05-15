@@ -23,6 +23,7 @@ from vocode.streaming.models.transcriber import (
     WhisperCPPTranscriberConfig,
 )
 from vocode.streaming.models.agent import (
+    FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS,
     ChatGPTAgentConfig,
     CutOffResponse,
     FillerAudioConfig,
@@ -68,8 +69,6 @@ async def main():
             ChatGPTAgentConfig(
                 initial_message=BaseMessage(text="What up"),
                 prompt_preamble="""The AI is having a pleasant conversation about life""",
-                generate_responses=True,
-                allow_agent_to_be_cut_off=False,
             )
         ),
         synthesizer=AzureSynthesizer(

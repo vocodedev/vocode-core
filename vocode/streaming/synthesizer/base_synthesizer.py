@@ -79,7 +79,7 @@ class FillerAudio:
             * self.seconds_per_chunk
         )
 
-        def chunk_generator(chunk_transform=lambda x: x):
+        async def chunk_generator(chunk_transform=lambda x: x):
             for i in range(0, len(self.audio_data), chunk_size):
                 if i + chunk_size > len(self.audio_data):
                     yield SynthesisResult.ChunkResult(
