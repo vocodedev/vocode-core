@@ -601,8 +601,9 @@ class StreamingConversation:
         self.agent_responses_worker.terminate()
         self.logger.debug("Terminating synthesis results worker")
         self.synthesis_results_worker.terminate()
-        self.logger.debug("Terminating filler audio worker")
-        self.filler_audio_worker.terminate()
+        if self.filler_audio_worker:
+            self.logger.debug("Terminating filler audio worker")
+            self.filler_audio_worker.terminate()
         self.logger.debug("Successfully terminated")
 
     def is_active(self):

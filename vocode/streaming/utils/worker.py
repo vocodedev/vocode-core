@@ -91,6 +91,7 @@ class InterruptibleWorker(AsyncWorker):
         super().__init__(input_queue, output_queue)
         self.input_queue = input_queue
         self.max_concurrency = max_concurrency
+        self.current_task = None
 
     async def _run_loop(self):
         # TODO Implement concurrency with max_nb_of_thread
