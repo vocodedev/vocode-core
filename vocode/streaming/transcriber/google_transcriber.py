@@ -16,6 +16,7 @@ from vocode.streaming.models.transcriber import GoogleTranscriberConfig
 from vocode.streaming.utils import create_loop_in_thread
 
 
+# TODO: make this nonblocking so it can run in the main thread, see speech.TextToSpeechAsyncClient
 class GoogleTranscriber(BaseThreadAsyncTranscriber):
     def __init__(
         self,
@@ -64,7 +65,7 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber):
             interim_results=True,
         )
 
-    def run(self):
+    def _run_loop(self):
         stream = self.generator()
         requests = (
             self.speech.StreamingRecognizeRequest(audio_content=content)
@@ -77,6 +78,7 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber):
 
     def terminate(self):
         self._ended = True
+        super().terminate()
 
     def process_responses_loop(self, responses):
         for response in responses:

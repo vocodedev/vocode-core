@@ -78,9 +78,13 @@ class StreamingConversation:
                         transcription.message, transcription.confidence
                     )
                 )
-            if not self.conversation.is_human_speaking and transcription.confidence > (
-                self.conversation.transcriber.get_transcriber_config().min_interrupt_confidence
-                or 0
+            if (
+                not self.conversation.is_human_speaking
+                and transcription.confidence
+                >= (
+                    self.conversation.transcriber.get_transcriber_config().min_interrupt_confidence
+                    or 0
+                )
             ):
                 self.conversation.current_transcription_is_interrupt = (
                     self.conversation.broadcast_interrupt()

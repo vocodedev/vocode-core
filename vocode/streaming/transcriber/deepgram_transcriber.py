@@ -41,7 +41,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber):
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
 
-    async def run(self):
+    async def _run_loop(self):
         restarts = 0
         while not self._ended and restarts < NUM_RESTARTS:
             await self.process()
