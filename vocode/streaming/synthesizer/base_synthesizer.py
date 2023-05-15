@@ -181,7 +181,7 @@ class BaseSynthesizer:
         else:
             chunk_transform = lambda chunk: chunk
 
-        def chunk_generator(output_bytes):
+        async def chunk_generator(output_bytes):
             for i in range(0, len(output_bytes), chunk_size):
                 if i + chunk_size > len(output_bytes):
                     yield SynthesisResult.ChunkResult(
