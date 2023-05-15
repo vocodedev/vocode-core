@@ -129,6 +129,9 @@ class StreamingConversation:
                 )
 
         async def generate_responses(self, transcription: Transcription) -> bool:
+            agent_span = tracer.start_span(
+                AGENT_TRACE_NAME, {"generate_response": True}
+            )
             responses = self.conversation.agent.generate_response(
                 transcription.message,
                 is_interrupt=transcription.is_interrupt,
@@ -137,7 +140,14 @@ class StreamingConversation:
             should_wait_for_filler_audio = (
                 self.conversation.agent.get_agent_config().send_filler_audio
             )
+            is_first_response = True
             async for response in responses:
+                if is_first_response:
+                    agent_span.end()
+                    if self.conversation.agent.get_agent_config().send_filler_audio:
+                        self.conversation.filler_audio_worker.interrupt_current_filler_audio()
+                        await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
+                    is_first_response = False
                 # TODO should this be in a different worker?
                 if should_wait_for_filler_audio:
                     self.conversation.filler_audio_worker.interrupt_current_filler_audio()
@@ -431,7 +441,6 @@ class StreamingConversation:
 
         # tracing
         self.current_synthesis_span: Optional[Span] = None
-        self.current_agent_span: Optional[Span] = None
         self.start_time: float = None
         self.end_time: float = None
 
@@ -604,9 +613,6 @@ class StreamingConversation:
                 conversation_id=self.id, transcript=self.transcript.to_string()
             )
         )
-        if self.current_agent_span:
-            self.logger.debug("Closing agent span")
-            self.current_agent_span.end()
         if self.current_synthesis_span:
             self.logger.debug("Closing synthesizer span")
             self.current_synthesis_span.end()
