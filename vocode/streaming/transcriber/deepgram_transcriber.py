@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 from vocode import getenv
 
 from vocode.streaming.transcriber.base_transcriber import (
-    BaseTranscriber,
+    BaseAsyncTranscriber,
     Transcription,
 )
 from vocode.streaming.models.transcriber import (
@@ -23,7 +23,7 @@ PUNCTUATION_TERMINATORS = [".", "!", "?"]
 NUM_RESTARTS = 5
 
 
-class DeepgramTranscriber(BaseTranscriber):
+class DeepgramTranscriber(BaseAsyncTranscriber):
     def __init__(
         self,
         transcriber_config: DeepgramTranscriberConfig,

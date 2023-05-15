@@ -20,7 +20,6 @@ class AsyncWorker:
 
     def start(self) -> asyncio.Task:
         self.worker_task = asyncio.create_task(self._run_loop())
-        self.active = True
         return self.worker_task
 
     def send_nonblocking(self, item):
@@ -34,6 +33,43 @@ class AsyncWorker:
             return self.worker_task.cancel()
 
         return False
+
+
+class ThreadAsyncWorker(AsyncWorker):
+    def __init__(
+        self,
+        input_queue: asyncio.Queue,
+        output_queue: asyncio.Queue,
+    ) -> None:
+        super().__init__(input_queue, output_queue)
+        self.worker_thread = None
+        self.input_janus_queue = janus.Queue()
+        self.output_janus_queue = janus.Queue()
+
+    def start(self) -> None:
+        self.worker_thread = threading.Thread(target=self._run_loop)
+        self.worker_thread.start()
+        self.worker_task = asyncio.gather(
+            self._forward_to_thread(),
+            self._forward_from_thead(),
+        )
+        return self.worker_task
+
+    async def _forward_to_thread(self):
+        while True:
+            item = await self.input_queue.get()
+            self.input_janus_queue.async_q.put_nowait(item)
+
+    async def _forward_from_thead(self):
+        while True:
+            item = await self.output_janus_queue.async_q.get()
+            self.output_queue.put_nowait(item)
+
+    def _run_loop(self):
+        raise NotImplementedError
+
+    def terminate(self):
+        return True
 
 
 class AsyncQueueWorker(AsyncWorker):
