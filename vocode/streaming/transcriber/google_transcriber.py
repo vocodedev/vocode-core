@@ -9,14 +9,14 @@ from vocode import getenv
 
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.transcriber.base_transcriber import (
-    BaseTranscriber,
+    BaseThreadAsyncTranscriber,
     Transcription,
 )
 from vocode.streaming.models.transcriber import GoogleTranscriberConfig
 from vocode.streaming.utils import create_loop_in_thread
 
 
-class GoogleTranscriber(BaseTranscriber):
+class GoogleTranscriber(BaseThreadAsyncTranscriber):
     def __init__(
         self,
         transcriber_config: GoogleTranscriberConfig,
@@ -28,7 +28,6 @@ class GoogleTranscriber(BaseTranscriber):
 
         self.speech = speech
 
-        self._queue = queue.Queue()
         self._ended = False
         credentials_path = getenv("GOOGLE_APPLICATION_CREDENTIALS")
         if not credentials_path:
@@ -41,12 +40,6 @@ class GoogleTranscriber(BaseTranscriber):
         self.is_ready = False
         if self.transcriber_config.endpointing_config:
             raise Exception("Google endpointing config not supported yet")
-        self.event_loop = asyncio.new_event_loop()
-        self.thread = threading.Thread(
-            name="google_transcriber",
-            target=create_loop_in_thread,
-            args=(self.event_loop, self.process()),
-        )
 
     def create_google_streaming_config(self):
         extra_params = {}
@@ -71,10 +64,7 @@ class GoogleTranscriber(BaseTranscriber):
             interim_results=True,
         )
 
-    async def run(self):
-        self.thread.start()
-
-    async def process(self):
+    def run(self):
         stream = self.generator()
         requests = (
             self.speech.StreamingRecognizeRequest(audio_content=content)
@@ -83,22 +73,19 @@ class GoogleTranscriber(BaseTranscriber):
         responses = self.client.streaming_recognize(
             self.google_streaming_config, requests
         )
-        await self.process_responses_loop(responses)
+        self.process_responses_loop(responses)
 
     def terminate(self):
         self._ended = True
 
-    def send_audio(self, chunk: bytes):
-        self._queue.put(chunk, block=False)
-
-    async def process_responses_loop(self, responses):
+    def process_responses_loop(self, responses):
         for response in responses:
-            await self._on_response(response)
+            self._on_response(response)
 
             if self._ended:
                 break
 
-    async def _on_response(self, response):
+    def _on_response(self, response):
         if not response.results:
             return
 
@@ -110,7 +97,7 @@ class GoogleTranscriber(BaseTranscriber):
         message = top_choice.transcript
         confidence = top_choice.confidence
 
-        return await self.on_response(
+        self.output_janus_queue.sync_q.put_nowait(
             Transcription(message, confidence, result.is_final)
         )
 
@@ -119,7 +106,7 @@ class GoogleTranscriber(BaseTranscriber):
             # Use a blocking get() to ensure there's at least one chunk of
             # data, and stop iteration if the chunk is None, indicating the
             # end of the audio stream.
-            chunk = self._queue.get()
+            chunk = self.input_janus_queue.sync_q.get()
             if chunk is None:
                 return
             data = [chunk]
@@ -127,7 +114,7 @@ class GoogleTranscriber(BaseTranscriber):
             # Now consume whatever other data's still buffered.
             while True:
                 try:
-                    chunk = self._queue.get(block=False)
+                    chunk = self.input_janus_queue.sync_q.get_nowait()
                     if chunk is None:
                         return
                     data.append(chunk)
