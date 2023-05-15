@@ -22,6 +22,7 @@ from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 from vocode.streaming.models.audio_encoding import AudioEncoding
 
 import azure.cognitiveservices.speech as speechsdk
+from opentelemetry import trace
 
 
 NAMESPACES = {
@@ -31,6 +32,8 @@ NAMESPACES = {
 
 ElementTree.register_namespace("", NAMESPACES.get(""))
 ElementTree.register_namespace("mstts", NAMESPACES.get("mstts"))
+
+tracer = trace.get_tracer(__name__)
 
 
 class WordBoundaryEventPool:
@@ -224,9 +227,11 @@ class AzureSynthesizer(BaseSynthesizer):
             audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
         ):
             audio_buffer = bytes(chunk_size)
-            while not audio_data_stream.can_read_data(chunk_size):
-                await asyncio.sleep(0)
-            filled_size = audio_data_stream.read_data(audio_buffer)
+
+            with tracer.start_span("azure_play_audio"):
+                while not audio_data_stream.can_read_data(chunk_size):
+                    await asyncio.sleep(0)
+                filled_size = audio_data_stream.read_data(audio_buffer)
             if filled_size != chunk_size:
                 yield SynthesisResult.ChunkResult(
                     chunk_transform(audio_buffer[offset:]), True
@@ -254,9 +259,10 @@ class AzureSynthesizer(BaseSynthesizer):
             if isinstance(message, SSMLMessage)
             else self.create_ssml(message.text, bot_sentiment=bot_sentiment)
         )
-        audio_data_stream = await asyncio.get_event_loop().run_in_executor(
-            self.thread_pool_executor, self.synthesize_ssml, ssml
-        )
+        with tracer.start_span("azure_synthesize_ssml"):
+            audio_data_stream = await asyncio.get_event_loop().run_in_executor(
+                self.thread_pool_executor, self.synthesize_ssml, ssml
+            )
         if self.synthesizer_config.should_encode_as_wav:
             output_generator = chunk_generator(
                 audio_data_stream,
