@@ -664,7 +664,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.mark_terminated()
         self.events_manager.publish_event(
             TranscriptCompleteEvent(
-                conversation_id=self.id, transcript=self.transcript.to_string()
+                conversation_id=self.id, transcript=self.transcript
             )
         )
         if self.check_for_idle_task:
