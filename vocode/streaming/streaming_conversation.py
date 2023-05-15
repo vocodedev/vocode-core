@@ -163,7 +163,9 @@ class StreamingConversation:
 
         async def respond(self, transcription: Transcription) -> bool:
             try:
-                with tracer.start_span(AGENT_TRACE_NAME, {"generate_response": False}):
+                with tracer.start_as_current_span(
+                    AGENT_TRACE_NAME, {"generate_response": False}
+                ):
                     response, should_stop = await self.conversation.agent.respond(
                         transcription.message,
                         is_interrupt=transcription.is_interrupt,
@@ -310,19 +312,22 @@ class StreamingConversation:
             try:
                 agent_response = item.payload
                 self.conversation.logger.debug("Synthesizing speech for message")
-                self.conversation.current_synthesis_span = tracer.start_span(
+                # TODO: also time the synthesis stream playback
+                with tracer.start_as_current_span(
                     SYNTHESIS_TRACE_NAME,
                     {
                         "synthesizer": str(
                             self.conversation.synthesizer.get_synthesizer_config().type
                         )
                     },
-                )
-                synthesis_result = await self.conversation.synthesizer.create_speech(
-                    agent_response,
-                    self.chunk_size,
-                    bot_sentiment=self.conversation.bot_sentiment,
-                )
+                ):
+                    synthesis_result = (
+                        await self.conversation.synthesizer.create_speech(
+                            agent_response,
+                            self.chunk_size,
+                            bot_sentiment=self.conversation.bot_sentiment,
+                        )
+                    )
                 event = self.conversation.enqueue_interruptible_event(
                     payload=(agent_response, synthesis_result),
                     is_interruptible=item.is_interruptible,
@@ -440,7 +445,6 @@ class StreamingConversation:
         self.current_transcription_is_interrupt: bool = False
 
         # tracing
-        self.current_synthesis_span: Optional[Span] = None
         self.start_time: float = None
         self.end_time: float = None
 
@@ -581,8 +585,6 @@ class StreamingConversation:
                 cut_off = True
                 break
             if chunk_idx == 0:
-                if self.current_synthesis_span:
-                    self.current_synthesis_span.end()
                 if started_event:
                     started_event.set()
             self.output_device.send_nonblocking(chunk_result.chunk)
@@ -613,9 +615,6 @@ class StreamingConversation:
                 conversation_id=self.id, transcript=self.transcript.to_string()
             )
         )
-        if self.current_synthesis_span:
-            self.logger.debug("Closing synthesizer span")
-            self.current_synthesis_span.end()
         if self.check_for_idle_task:
             self.logger.debug("Terminating check_for_idle Task")
             self.check_for_idle_task.cancel()
