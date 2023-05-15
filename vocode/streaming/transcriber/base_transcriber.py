@@ -39,10 +39,7 @@ class BaseAsyncTranscriber(AsyncWorker):
         return True
 
     async def _run_loop(self):
-        await self.run()
-
-    async def run(self):
-        pass
+        raise NotImplementedError
 
     def send_audio(self, chunk):
         self.send_nonblocking(chunk)
@@ -68,10 +65,7 @@ class BaseThreadAsyncTranscriber(ThreadAsyncWorker):
         return True
 
     def _run_loop(self):
-        self.run()
-
-    def run(self):
-        pass
+        raise NotImplementedError
 
     def send_audio(self, chunk):
         self.send_nonblocking(chunk)

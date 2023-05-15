@@ -3,21 +3,17 @@ import json
 import logging
 import websockets
 from websockets.client import WebSocketClientProtocol
-import audioop
-from urllib.parse import urlencode
 from vocode import getenv
 import time
 
 from vocode.streaming.transcriber.base_transcriber import (
-    BaseTranscriber,
+    BaseAsyncTranscriber,
     Transcription,
 )
 from vocode.streaming.models.transcriber import (
     RevAITranscriberConfig,
-    EndpointingConfig,
     EndpointingType,
 )
-from vocode.streaming.models.audio_encoding import AudioEncoding
 
 
 NUM_RESTARTS = 5
@@ -27,7 +23,7 @@ def getSeconds():
     return time.time()
 
 
-class RevAITranscriber(BaseTranscriber):
+class RevAITranscriber(BaseAsyncTranscriber):
     def __init__(
         self,
         transcriber_config: RevAITranscriberConfig,
@@ -66,7 +62,7 @@ class RevAITranscriber(BaseTranscriber):
         url = f"wss://api.rev.ai/speechtotext/v1/stream?" + "&".join(url_params_arr)
         return url
 
-    async def run(self):
+    async def _run_loop(self):
         restarts = 0
         while not self.closed and restarts < NUM_RESTARTS:
             await self.process()
@@ -76,14 +72,12 @@ class RevAITranscriber(BaseTranscriber):
             )
 
     async def process(self):
-        self.audio_queue = asyncio.Queue()
-
         async with websockets.connect(self.get_rev_ai_url()) as ws:
 
             async def sender(ws: WebSocketClientProtocol):
                 while not self.closed:
                     try:
-                        data = await asyncio.wait_for(self.audio_queue.get(), 5)
+                        data = await asyncio.wait_for(self.input_queue.get(), 5)
                     except asyncio.exceptions.TimeoutError:
                         break
                     await ws.send(data)
@@ -127,10 +121,12 @@ class RevAITranscriber(BaseTranscriber):
 
                     confidence = 1.0
                     if is_done:
-                        await self.on_response(Transcription(buffer, confidence, True))
+                        self.output_queue.put_nowait(
+                            Transcription(buffer, confidence, True)
+                        )
                         buffer = ""
                     else:
-                        await self.on_response(
+                        self.output_queue.put_nowait(
                             Transcription(
                                 buffer,
                                 confidence,
@@ -142,10 +138,7 @@ class RevAITranscriber(BaseTranscriber):
 
             await asyncio.gather(sender(ws), receiver(ws))
 
-    def send_audio(self, chunk):
-        self.audio_queue.put_nowait(chunk)
-
     def terminate(self):
         terminate_msg = json.dumps({"type": "CloseStream"})
-        self.audio_queue.put_nowait(terminate_msg)
+        self.input_queue.put_nowait(terminate_msg)
         self.closed = True
