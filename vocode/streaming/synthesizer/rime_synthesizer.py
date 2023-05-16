@@ -1,5 +1,6 @@
 import audioop
 import logging
+import aiohttp
 from pydub import AudioSegment
 import base64
 from vocode import getenv
@@ -27,7 +28,7 @@ class RimeSynthesizer(BaseSynthesizer):
         self.api_key = getenv("RIME_API_KEY")
         self.speaker = config.speaker
 
-    def create_speech(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
@@ -42,11 +43,20 @@ class RimeSynthesizer(BaseSynthesizer):
             "text": message.text,
             "speaker": self.speaker,
         }
-        response = requests.post(RIME_BASE_URL, headers=headers, json=body, timeout=5)
-        if not response.ok:
-            raise Exception(f"Rime API error: {response.status_code}, {response.text}")
-        audio_file = io.BytesIO(base64.b64decode(response.json().get("audioContent")))
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                RIME_BASE_URL,
+                headers=headers,
+                json=body,
+                timeout=aiohttp.ClientTimeout(total=15),
+            ) as response:
+                if not response.ok:
+                    raise Exception(
+                        f"Rime API error: {response.status}, {await response.text()}"
+                    )
+                data = await response.json()
+                audio_file = io.BytesIO(base64.b64decode(data.get("audioContent")))
 
-        return self.create_synthesis_result_from_wav(
-            file=audio_file, message=message, chunk_size=chunk_size
-        )
+                return self.create_synthesis_result_from_wav(
+                    file=audio_file, message=message, chunk_size=chunk_size
+                )

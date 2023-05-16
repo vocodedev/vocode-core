@@ -1,3 +1,5 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import logging
 from pydub import AudioSegment
 from typing import Optional
@@ -22,16 +24,23 @@ class GTTSSynthesizer(BaseSynthesizer):
         from gtts import gTTS
 
         self.gTTS = gTTS
+        self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
-    def create_speech(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        tts = self.gTTS(message.text)
         audio_file = BytesIO()
-        tts.write_to_fp(audio_file)
+
+        def thread():
+            tts = self.gTTS(message.text)
+            tts.write_to_fp(audio_file)
+
+        await asyncio.get_event_loop().run_in_executor(
+            self.thread_pool_executor, thread
+        )
         audio_file.seek(0)
         audio_segment: AudioSegment = AudioSegment.from_mp3(audio_file)
         output_bytes_io = BytesIO()

@@ -1,6 +1,7 @@
 import io
 import logging
 from typing import Optional
+import aiohttp
 from pydub import AudioSegment
 
 import requests
@@ -33,7 +34,7 @@ class PlayHtSynthesizer(BaseSynthesizer):
                 "You must set the PLAY_HT_API_KEY and PLAY_HT_USER_ID environment variables"
             )
 
-    def create_speech(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
@@ -54,23 +55,29 @@ class PlayHtSynthesizer(BaseSynthesizer):
             body["speed"] = self.synthesizer_config.speed
         if self.synthesizer_config.preset:
             body["preset"] = self.synthesizer_config.preset
-        print(body)
 
-        response = requests.post(TTS_ENDPOINT, headers=headers, json=body, timeout=5)
-        if not response.ok:
-            raise Exception(
-                f"Play.ht API error: {response.status_code}, {response.text}"
-            )
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                url=TTS_ENDPOINT,
+                method="POST",
+                headers=headers,
+                json=body,
+                timeout=aiohttp.ClientTimeout(total=15),
+            ) as response:
+                if not response.ok:
+                    raise Exception(
+                        f"Play.ht API error: {response.status_code}, {response.text}"
+                    )
 
-        audio_segment: AudioSegment = AudioSegment.from_mp3(
-            io.BytesIO(response.content)
-        )
+                audio_segment: AudioSegment = AudioSegment.from_mp3(
+                    io.BytesIO(await response.read())
+                )
 
-        output_bytes_io = io.BytesIO()
-        audio_segment.export(output_bytes_io, format="wav")
+                output_bytes_io = io.BytesIO()
+                audio_segment.export(output_bytes_io, format="wav")
 
-        return self.create_synthesis_result_from_wav(
-            file=output_bytes_io,
-            message=message,
-            chunk_size=chunk_size,
-        )
+                return self.create_synthesis_result_from_wav(
+                    file=output_bytes_io,
+                    message=message,
+                    chunk_size=chunk_size,
+                )

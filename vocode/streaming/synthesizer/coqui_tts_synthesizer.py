@@ -1,3 +1,5 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import logging
 from typing import Optional
 from pydub import AudioSegment
@@ -23,15 +25,23 @@ class CoquiTTSSynthesizer(BaseSynthesizer):
         self.tts = TTS(**config.tts_kwargs)
         self.speaker = config.speaker
         self.language = config.language
+        self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
-    def create_speech(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         tts = self.tts
-        audio_data = np.array(tts.tts(message.text, self.speaker, self.language))
+        audio_data = await asyncio.get_event_loop().run_in_executor(
+            self.thread_pool_executor,
+            tts.tts,
+            message.text,
+            self.speaker,
+            self.language,
+        )
+        audio_data = np.array(audio_data)
 
         # Convert the NumPy array to bytes
         audio_data_bytes = (audio_data * 32767).astype(np.int16).tobytes()

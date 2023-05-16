@@ -1,6 +1,9 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import io
 import logging
 import os
+from re import T
 import wave
 from typing import Any, Optional
 
@@ -56,6 +59,7 @@ class GoogleSynthesizer(BaseSynthesizer):
             pitch=synthesizer_config.pitch,
             effects_profile_id=["telephony-class-application"],
         )
+        self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
     def synthesize(self, message: str) -> Any:
         synthesis_input = self.tts.SynthesisInput(text=message)
@@ -73,13 +77,18 @@ class GoogleSynthesizer(BaseSynthesizer):
             )
         )
 
-    def create_speech(
+    # TODO: make this nonblocking, see speech.TextToSpeechAsyncClient
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        response: self.tts.SynthesizeSpeechResponse = self.synthesize(message.text)
+        response: self.tts.SynthesizeSpeechResponse = (
+            await asyncio.get_event_loop().run_in_executor(
+                self.thread_pool_executor, self.synthesize, message.text
+            )
+        )
         output_sample_rate = response.audio_config.sample_rate_hertz
 
         real_offset = int(GoogleSynthesizer.OFFSET_SECONDS * output_sample_rate)

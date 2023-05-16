@@ -1135,6 +1135,21 @@ test = ["pytest (<7.1)", "pytest-asyncio", "testpath"]
 test-extra = ["curio", "matplotlib (!=3.2.0)", "nbformat", "numpy (>=1.21)", "pandas", "pytest (<7.1)", "pytest-asyncio", "testpath", "trio"]
 
 [[package]]
+name = "janus"
+version = "1.0.0"
+description = "Mixed sync-async queue to interoperate between asyncio tasks and classic threads"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "janus-1.0.0-py3-none-any.whl", hash = "sha256:2596ea5482711c1ee3ef2df6c290aaf370a13c55a007826e8f7c32d696d1d00a"},
+    {file = "janus-1.0.0.tar.gz", hash = "sha256:df976f2cdcfb034b147a2d51edfc34ff6bfb12d4e2643d3ad0e10de058cb1612"},
+]
+
+[package.dependencies]
+typing-extensions = ">=3.7.4.3"
+
+[[package]]
 name = "jedi"
 version = "0.18.2"
 description = "An autocompletion tool for Python that can be used for text editors."
@@ -2839,4 +2854,4 @@ transcribers = ["google-cloud-speech"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<4.0"
-content-hash = "78ca5efdb71a72107eb1963f2d86b870c81c4631e953012a6db0d6918bf85756"
+content-hash = "769923d77f75195d8772c95d77e6848988ef5e168bc366bde2afd915297c8eb3"
