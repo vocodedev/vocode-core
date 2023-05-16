@@ -1,5 +1,4 @@
 import asyncio
-from collections import defaultdict
 import logging
 import signal
 from dotenv import load_dotenv
@@ -24,7 +23,6 @@ from vocode.streaming.models.transcriber import (
     WhisperCPPTranscriberConfig,
 )
 from vocode.streaming.models.agent import (
-    FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS,
     ChatGPTAgentConfig,
     CutOffResponse,
     FillerAudioConfig,
@@ -48,37 +46,10 @@ import vocode
 from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter
-from opentelemetry.sdk.resources import Resource
-
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-
-
-class PrintDurationSpanExporter(SpanExporter):
-    def __init__(self):
-        super().__init__()
-        self.spans = defaultdict(list)
-
-    def export(self, spans):
-        for span in spans:
-            duration_ns = span.end_time - span.start_time
-            duration_s = duration_ns / 1e9
-            self.spans[span.name].append(duration_s)
-
-    def shutdown(self):
-        for name, durations in self.spans.items():
-            print(f"{name}: {sum(durations) / len(durations)}")
-
-
-trace.set_tracer_provider(TracerProvider(resource=Resource.create({})))
-trace.get_tracer_provider().add_span_processor(
-    SimpleSpanProcessor(PrintDurationSpanExporter())
-)
 
 
 async def main():
