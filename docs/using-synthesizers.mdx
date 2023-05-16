@@ -72,3 +72,17 @@ The method takes a `speaker_output` object as an argument, and extracts the `sam
 
 - For everything except `StreamingConversation`, you must use configuration objects.
 - For `StreamingConversation`, you can use the actual synthesizer object, but you still need to initialize it with a configuration object.
+
+## Synthesizer Comparisons
+
+| Provider          | Latency | Voice Cloning | Natural Sounding | Notes       |
+| ----------------- | ------- | ------------- | ---------------- | ----------- |
+| Azure (Microsoft) | Low     | No            |                  |             |
+| Google            | Low     | No            |                  |             |
+| Eleven Labs       | High    | Yes           |                  |             |
+| Rime              | Low     | No            |                  |             |
+| Play.ht           | High    | Yes           |                  |             |
+| Coqui TTS         |         |               |                  | Open source |
+| GTTS              |         |               |                  |             |
+| Stream Elements   |         |               |                  |             |
+| Bark              |         |               |                  |             |
