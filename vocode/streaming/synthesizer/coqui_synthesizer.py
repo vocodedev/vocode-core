@@ -1,5 +1,6 @@
 import io
 from typing import Optional
+import aiohttp
 import requests
 from pydub import AudioSegment
 
@@ -23,7 +24,7 @@ class CoquiSynthesizer(BaseSynthesizer):
         self.voice_id = config.voice_id
         self.voice_prompt = config.voice_prompt
 
-    def create_speech(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
@@ -50,19 +51,28 @@ class CoquiSynthesizer(BaseSynthesizer):
         else:
             body["voice_id"] = self.voice_id
 
-        # print(url, "➡️", body)
-        response = requests.post(url, headers=headers, json=body)
-        sample = response.json()
-        # print("⬅️", sample)
-        response = requests.get(sample["audio_url"])
-        audio_segment: AudioSegment = AudioSegment.from_wav(
-            io.BytesIO(response.content)
-        )
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                "POST",
+                url,
+                json=body,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=15),
+            ) as response:
+                response = requests.post(url, headers=headers, json=body)
+                sample = await response.json()
+            async with session.request(
+                "GET",
+                sample["audio_url"],
+            ) as response:
+                audio_segment: AudioSegment = AudioSegment.from_wav(
+                    io.BytesIO(await response.read())
+                )
 
-        output_bytes: bytes = audio_segment.raw_data
+                output_bytes: bytes = audio_segment.raw_data
 
-        self.create_synthesis_result_from_wav(
-            file=output_bytes,
-            message=message,
-            chunk_size=chunk_size,
-        )
+                self.create_synthesis_result_from_wav(
+                    file=output_bytes,
+                    message=message,
+                    chunk_size=chunk_size,
+                )

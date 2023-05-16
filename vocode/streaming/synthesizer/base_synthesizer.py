@@ -156,7 +156,7 @@ class BaseSynthesizer:
 
     # returns a chunk generator and a thunk that can tell you what part of the message was read given the number of seconds spoken
     # chunk generator must return a ChunkResult, essentially a tuple (bytes of size chunk_size, flag if it is the last chunk)
-    def create_speech(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,

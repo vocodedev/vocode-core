@@ -1,4 +1,7 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import io
+from re import T
 import numpy as np
 import logging
 from typing import Optional
@@ -26,15 +29,21 @@ class BarkSynthesizer(BaseSynthesizer):
         self.logger = logger or logging.getLogger(__name__)
         self.logger.info("Loading Bark models")
         preload_models(**self.config.preload_kwargs)
+        self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
-    def create_speech(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         self.logger.debug("Bark synthesizing audio")
-        audio_array = self.generate_audio(message.text, **self.config.generate_kwargs)
+        audio_array = await asyncio.get_event_loop().run_in_executor(
+            self.thread_pool_executor,
+            self.generate_audio,
+            message.text,
+            **self.config.generate_kwargs
+        )
         int_audio_arr = (audio_array * np.iinfo(np.int16).max).astype(np.int16)
 
         output_bytes_io = io.BytesIO()
