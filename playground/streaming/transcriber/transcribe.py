@@ -1,5 +1,3 @@
-import signal
-from vocode.streaming.input_device.base_input_device import BaseInputDevice
 from vocode.streaming.input_device.microphone_input import MicrophoneInput
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
@@ -7,7 +5,6 @@ from vocode.streaming.models.transcriber import (
 )
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber, Transcription
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
-from vocode.streaming.utils.worker import ThreadAsyncWorker
 
 
 if __name__ == "__main__":

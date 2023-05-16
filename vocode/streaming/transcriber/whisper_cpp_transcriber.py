@@ -11,6 +11,7 @@ from vocode.streaming.agent.utils import SENTENCE_ENDINGS
 from vocode.streaming.models.transcriber import WhisperCPPTranscriberConfig
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
+    BaseThreadAsyncTranscriber,
     Transcription,
 )
 from vocode.utils.whisper_cpp.helpers import transcribe
@@ -19,7 +20,7 @@ from vocode.utils.whisper_cpp.whisper_params import WhisperFullParams
 WHISPER_CPP_SAMPLING_RATE = 16000
 
 
-class WhisperCPPTranscriber(BaseAsyncTranscriber):
+class WhisperCPPTranscriber(BaseThreadAsyncTranscriber):
     def __init__(
         self,
         transcriber_config: WhisperCPPTranscriberConfig,
@@ -64,22 +65,17 @@ class WhisperCPPTranscriber(BaseAsyncTranscriber):
         wav.setframerate(self.transcriber_config.sampling_rate)
         return wav, buffer
 
-    async def _run_loop(self):
+    def _run_loop(self):
         in_memory_wav, audio_buffer = self.create_new_buffer()
         message_buffer = ""
         while not self._ended:
-            chunk = await self.input_queue.get()
+            chunk = self.input_janus_queue.sync_q.get()
             in_memory_wav.writeframes(chunk)
             if audio_buffer.tell() >= self.buffer_size * 2:
                 audio_buffer.seek(0)
                 audio_segment = AudioSegment.from_wav(audio_buffer)
-                message, confidence = await asyncio.get_event_loop().run_in_executor(
-                    self.thread_pool_executor,
-                    transcribe,
-                    self.whisper,
-                    self.params,
-                    self.ctx,
-                    audio_segment,
+                message, confidence = transcribe(
+                    self.whisper, self.params, self.ctx, audio_segment
                 )
                 message_buffer += message
                 is_final = any(
