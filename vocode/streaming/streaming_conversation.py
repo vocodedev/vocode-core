@@ -52,10 +52,6 @@ tracer = trace.get_tracer(__name__)
 SYNTHESIS_TRACE_NAME = "synthesis"
 AGENT_TRACE_NAME = "agent"
 
-# TODO(ajay)
-# - fix filler audio flow
-# - fix goodbye flow
-
 
 class StreamingConversation:
     class TranscriptionsWorker(AsyncQueueWorker):
