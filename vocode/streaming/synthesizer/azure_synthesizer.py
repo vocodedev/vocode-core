@@ -1,3 +1,5 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 import re
@@ -107,9 +109,10 @@ class AzureSynthesizer(BaseSynthesizer):
         self.voice_name = self.synthesizer_config.voice_name
         self.pitch = self.synthesizer_config.pitch
         self.rate = self.synthesizer_config.rate
+        self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
         self.logger = logger or logging.getLogger(__name__)
 
-    def get_phrase_filler_audios(self) -> List[FillerAudio]:
+    async def get_phrase_filler_audios(self) -> List[FillerAudio]:
         filler_phrase_audios = []
         for filler_phrase in FILLER_PHRASES:
             cache_key = "-".join(
@@ -129,7 +132,9 @@ class AzureSynthesizer(BaseSynthesizer):
             else:
                 self.logger.debug(f"Generating filler audio for {filler_phrase.text}")
                 ssml = self.create_ssml(filler_phrase.text)
-                result = self.synthesizer.speak_ssml(ssml)
+                result = await asyncio.get_event_loop().run_in_executor(
+                    self.thread_pool_executor, self.synthesizer.speak_ssml, ssml
+                )
                 offset = self.synthesizer_config.sampling_rate * self.OFFSET_MS // 1000
                 audio_data = result.audio_data[offset:]
                 with open(filler_audio_path, "wb") as f:
@@ -182,7 +187,7 @@ class AzureSynthesizer(BaseSynthesizer):
         prosody.text = message.strip()
         return ElementTree.tostring(ssml_root, encoding="unicode")
 
-    def synthesize_ssml(self, ssml: str) -> Tuple[speechsdk.AudioDataStream, str]:
+    def synthesize_ssml(self, ssml: str) -> speechsdk.AudioDataStream:
         result = self.synthesizer.start_speaking_ssml_async(ssml).get()
         return speechsdk.AudioDataStream(result)
 
@@ -205,7 +210,7 @@ class AzureSynthesizer(BaseSynthesizer):
                 return ssml_fragment.split(">")[-1]
         return message
 
-    def create_speech(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
@@ -215,10 +220,12 @@ class AzureSynthesizer(BaseSynthesizer):
         offset = 0
         self.logger.debug(f"Synthesizing message: {message}")
 
-        def chunk_generator(
+        async def chunk_generator(
             audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
         ):
             audio_buffer = bytes(chunk_size)
+            while not audio_data_stream.can_read_data(chunk_size):
+                await asyncio.sleep(0)
             filled_size = audio_data_stream.read_data(audio_buffer)
             if filled_size != chunk_size:
                 yield SynthesisResult.ChunkResult(
@@ -247,7 +254,9 @@ class AzureSynthesizer(BaseSynthesizer):
             if isinstance(message, SSMLMessage)
             else self.create_ssml(message.text, bot_sentiment=bot_sentiment)
         )
-        audio_data_stream = self.synthesize_ssml(ssml)
+        audio_data_stream = await asyncio.get_event_loop().run_in_executor(
+            self.thread_pool_executor, self.synthesize_ssml, ssml
+        )
         if self.synthesizer_config.should_encode_as_wav:
             output_generator = chunk_generator(
                 audio_data_stream,
