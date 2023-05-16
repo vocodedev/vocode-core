@@ -55,6 +55,9 @@ AGENT_TRACE_NAME = "agent"
 
 class StreamingConversation:
     class TranscriptionsWorker(AsyncQueueWorker):
+        """Processes all transcriptions: sends an interrupt if needed
+        and sends final transcriptions to the output queue"""
+
         def __init__(
             self,
             input_queue: asyncio.Queue[Transcription],
@@ -100,6 +103,12 @@ class StreamingConversation:
                 self.output_queue.put_nowait(event)
 
     class FinalTranscriptionsWorker(InterruptibleWorker):
+        """
+        - Sends final transcriptions to the agent and publishes agent responses to the output queue
+        - Sends a task to the FillerAudioWorker if the agent config requires it
+        - Runs the goodbye model on the transcription and ends the conversation if goodbye is detected
+        """
+
         def __init__(
             self,
             input_queue: asyncio.Queue[InterruptibleEvent[Transcription]],
@@ -239,6 +248,12 @@ class StreamingConversation:
                 pass
 
     class FillerAudioWorker(InterruptibleWorker):
+        """
+        - Waits for a configured number of seconds and then sends filler audio to the output
+        - Exposes wait_for_filler_audio_to_finish() which the AgentResponsesWorker waits on before
+          sending responses to the output queue
+        """
+
         def __init__(
             self,
             input_queue: asyncio.Queue[InterruptibleEvent[FillerAudio]],
@@ -291,6 +306,8 @@ class StreamingConversation:
                 pass
 
     class AgentResponsesWorker(InterruptibleWorker):
+        """Runs Synthesizer.create_speech and sends the SynthesisResult to the output queue"""
+
         def __init__(
             self,
             input_queue: asyncio.Queue[InterruptibleEvent[BaseMessage]],
@@ -337,6 +354,8 @@ class StreamingConversation:
                 pass
 
     class SynthesisResultsWorker(InterruptibleWorker):
+        """Plays SynthesisResults from the output queue on the output device"""
+
         def __init__(
             self,
             input_queue: asyncio.Queue[
@@ -495,6 +514,7 @@ class StreamingConversation:
             self.events_task = asyncio.create_task(self.events_manager.start())
 
     async def check_for_idle(self):
+        """Terminates the conversation after 15 seconds if no activity is detected"""
         while self.is_active():
             if time.time() - self.last_action_timestamp > (
                 self.agent.get_agent_config().allowed_idle_time_seconds
@@ -506,6 +526,7 @@ class StreamingConversation:
             await asyncio.sleep(15)
 
     async def track_bot_sentiment(self):
+        """Updates self.bot_sentiment every second based on the current transcript"""
         prev_transcript = None
         while self.is_active():
             await asyncio.sleep(1)
@@ -538,7 +559,10 @@ class StreamingConversation:
         return interruptible_event
 
     def broadcast_interrupt(self):
-        """Returns true if any events were interrupted"""
+        """Stops all inflight events and cancels all workers that are sending output
+
+        Returns true if any events were interrupted - which is used as a flag for the agent (is_interrupt)
+        """
         num_interrupts = 0
         while True:
             try:
@@ -553,7 +577,6 @@ class StreamingConversation:
         self.final_transcriptions_worker.cancel_current_task()
         return num_interrupts > 0
 
-    # returns an estimate of what was sent up to, and a flag if the message was cut off
     async def send_speech_to_output(
         self,
         message: str,
@@ -562,6 +585,17 @@ class StreamingConversation:
         seconds_per_chunk: int,
         started_event: Optional[threading.Event] = None,
     ):
+        """
+        - Sends the speech chunk by chunk to the output device
+        - If the stop_event is set, the output is stopped
+        - Sets started_event when the first chunk is sent
+
+        Importantly, we rate limit the chunks sent to the output. For interrupts to work properly,
+        the next chunk of audio can only be sent after the last chunk is played, so we send
+        a chunk of x seconds only after x seconds have passed since the last chunk was sent.
+
+        Returns the message that was sent up to, and a flag if the message was cut off
+        """
         message_sent = message
         cut_off = False
         chunk_size = seconds_per_chunk * get_chunk_size_per_second(
