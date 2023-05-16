@@ -47,7 +47,6 @@ class SynthesisResult:
 
     def __init__(
         self,
-        # TODO(ajay): this needs to be AsyncGenerator
         chunk_generator: AsyncGenerator[ChunkResult, None],
         get_message_up_to: Callable[[int], str],
     ):
