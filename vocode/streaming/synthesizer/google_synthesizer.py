@@ -77,6 +77,7 @@ class GoogleSynthesizer(BaseSynthesizer):
             )
         )
 
+    # TODO: make this nonblocking, see speech.TextToSpeechAsyncClient
     async def create_speech(
         self,
         message: BaseMessage,
