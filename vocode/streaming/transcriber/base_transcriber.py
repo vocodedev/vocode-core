@@ -3,6 +3,7 @@ from typing import Union
 
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
+from vocode.turn_based.transcriber.base_transcriber import BaseTranscriber
 
 
 class Transcription:
@@ -22,7 +23,7 @@ class Transcription:
         return f"Transcription({self.message}, {self.confidence}, {self.is_final})"
 
 
-class BaseTranscriber:
+class AbstractTranscriber:
     def __init__(self, transcriber_config: TranscriberConfig):
         self.transcriber_config = transcriber_config
 
@@ -33,7 +34,7 @@ class BaseTranscriber:
         return True
 
 
-class BaseAsyncTranscriber(AsyncWorker, BaseTranscriber):
+class BaseAsyncTranscriber(AsyncWorker, AbstractTranscriber):
     def __init__(
         self,
         transcriber_config: TranscriberConfig,
@@ -42,7 +43,7 @@ class BaseAsyncTranscriber(AsyncWorker, BaseTranscriber):
         self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
         self.transcriber_config = transcriber_config
         AsyncWorker.__init__(self, self.input_queue, self.output_queue)
-        BaseTranscriber.__init__(self, transcriber_config)
+        AbstractTranscriber.__init__(self, transcriber_config)
 
     async def _run_loop(self):
         raise NotImplementedError
@@ -54,7 +55,7 @@ class BaseAsyncTranscriber(AsyncWorker, BaseTranscriber):
         AsyncWorker.terminate(self)
 
 
-class BaseThreadAsyncTranscriber(ThreadAsyncWorker, BaseTranscriber):
+class BaseThreadAsyncTranscriber(ThreadAsyncWorker, AbstractTranscriber):
     def __init__(
         self,
         transcriber_config: TranscriberConfig,
@@ -62,7 +63,7 @@ class BaseThreadAsyncTranscriber(ThreadAsyncWorker, BaseTranscriber):
         self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
         ThreadAsyncWorker.__init__(self, self.input_queue, self.output_queue)
-        BaseTranscriber.__init__(self, transcriber_config)
+        AbstractTranscriber.__init__(self, transcriber_config)
 
     def _run_loop(self):
         raise NotImplementedError
@@ -72,3 +73,6 @@ class BaseThreadAsyncTranscriber(ThreadAsyncWorker, BaseTranscriber):
 
     def terminate(self):
         ThreadAsyncWorker.terminate(self)
+
+
+BaseTranscriber = Union[BaseAsyncTranscriber, BaseThreadAsyncTranscriber]
