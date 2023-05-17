@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import validator
 
@@ -110,13 +110,16 @@ class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.val
     model: Optional[str] = None
     language_code: str = "en-US"
 
+
 class AzureTranscriberConfig(TranscriberConfig, type=TranscriberType.AZURE.value):
     pass
+
 
 class AssemblyAITranscriberConfig(
     TranscriberConfig, type=TranscriberType.ASSEMBLY_AI.value
 ):
-    pass
+    buffer_size_seconds: float = 0.1
+    word_boost: Optional[List[str]] = None
 
 
 class WhisperCPPTranscriberConfig(
