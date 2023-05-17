@@ -105,7 +105,11 @@ class TelephonyServer:
         transcriber_config: Optional[TranscriberConfig] = None,
         synthesizer_config: Optional[SynthesizerConfig] = None,
     ):
-        def route(twilio_sid: str = Form(alias="CallSid")) -> Response:
+        def route(
+            twilio_sid: str = Form(alias="CallSid"),
+            twilio_from: str = Form(alias="From"),
+            twilio_to: str = Form(alias="To"),
+        ) -> Response:
             call_config = CallConfig(
                 transcriber_config=transcriber_config
                 or DeepgramTranscriberConfig(
@@ -127,6 +131,8 @@ class TelephonyServer:
                     auth_token=getenv("TWILIO_AUTH_TOKEN"),
                 ),
                 twilio_sid=twilio_sid,
+                twilio_from=twilio_from,
+                twilio_to=twilio_to,
             )
 
             conversation_id = create_conversation_id()
