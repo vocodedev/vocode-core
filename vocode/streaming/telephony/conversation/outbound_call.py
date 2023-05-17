@@ -64,13 +64,14 @@ class OutboundCall:
         self.twilio_sid = None
 
     def create_twilio_call(
-        self, to_phone: str, from_phone: str, digits: str = ""
+        self, to_phone: str, from_phone: str, digits: str = "", record: bool = False
     ) -> str:
         twilio_call = self.twilio_client.calls.create(
             url=f"https://{self.base_url}/twiml/initiate_call/{self.conversation_id}",
             to=to_phone,
             from_=from_phone,
             send_digits=digits,
+            record=record,
         )
         return twilio_call.sid
 
@@ -98,7 +99,11 @@ class OutboundCall:
     def start(self):
         self.logger.debug("Starting outbound call")
         self.validate_outbound_call(self.to_phone, self.from_phone)
-        self.twilio_sid = self.create_twilio_call(self.to_phone, self.from_phone)
+        self.twilio_sid = self.create_twilio_call(
+            to_phone=self.to_phone,
+            from_phone=self.from_phone,
+            record=self.twilio_config.record,
+        )
         call_config = CallConfig(
             transcriber_config=self.transcriber_config,
             agent_config=self.agent_config,

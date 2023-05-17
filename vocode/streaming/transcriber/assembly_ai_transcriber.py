@@ -10,7 +10,7 @@ from vocode import getenv
 from vocode.streaming.models.transcriber import AssemblyAITranscriberConfig
 from vocode.streaming.models.websocket import AudioMessage
 from vocode.streaming.transcriber.base_transcriber import (
-    BaseTranscriber,
+    BaseAsyncTranscriber,
     Transcription,
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
@@ -19,7 +19,7 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 ASSEMBLY_AI_URL = "wss://api.assemblyai.com/v2/realtime/ws"
 
 
-class AssemblyAITranscriber(BaseTranscriber):
+class AssemblyAITranscriber(BaseAsyncTranscriber):
     def __init__(
         self,
         transcriber_config: AssemblyAITranscriberConfig,
@@ -36,13 +36,15 @@ class AssemblyAITranscriber(BaseTranscriber):
         self.logger = logger or logging.getLogger(__name__)
         if self.transcriber_config.endpointing_config:
             raise Exception("Assembly AI endpointing config not supported yet")
+
         self.audio_queue = asyncio.Queue()
         self.buffer = bytearray()
+
 
     async def ready(self):
         return True
 
-    async def run(self):
+    async def _run_loop(self):
         await self.process()
 
     def send_audio(self, chunk):
@@ -61,7 +63,7 @@ class AssemblyAITranscriber(BaseTranscriber):
 
     def terminate(self):
         terminate_msg = json.dumps({"terminate_session": True})
-        self.audio_queue.put_nowait(terminate_msg)
+        self.input_queue.put_nowait(terminate_msg)
         self._ended = True
 
     def get_assembly_ai_url(self):
@@ -84,7 +86,7 @@ class AssemblyAITranscriber(BaseTranscriber):
             async def sender(ws):  # sends audio to websocket
                 while not self._ended:
                     try:
-                        data = await asyncio.wait_for(self.audio_queue.get(), 5)
+                        data = await asyncio.wait_for(self.input_queue.get(), 5)
                     except asyncio.exceptions.TimeoutError:
                         break
                     await ws.send(
@@ -109,7 +111,7 @@ class AssemblyAITranscriber(BaseTranscriber):
                         and data["message_type"] == "FinalTranscript"
                     )
                     if "text" in data and data["text"]:
-                        await self.on_response(
+                        self.output_queue.put_nowait(
                             Transcription(data["text"], data["confidence"], is_final)
                         )
 

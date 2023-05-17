@@ -55,15 +55,17 @@ class GoodbyeModel:
     async def is_goodbye(self, text: str) -> bool:
         if "bye" in text.lower():
             return True
-        embedding = self.create_embedding(text.strip().lower())
+        embedding = await self.create_embedding(text.strip().lower())
         similarity_results = embedding @ self.goodbye_embeddings
         return np.max(similarity_results) > SIMILARITY_THRESHOLD
 
-    def create_embedding(self, text) -> np.array:
+    async def create_embedding(self, text) -> np.array:
         return np.array(
-            openai.Embedding.create(input=text, model="text-embedding-ada-002")["data"][
-                0
-            ]["embedding"]
+            (
+                await openai.Embedding.acreate(
+                    input=text, model="text-embedding-ada-002"
+                )
+            )["data"][0]["embedding"]
         )
 
 

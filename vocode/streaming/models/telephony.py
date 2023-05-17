@@ -9,6 +9,7 @@ from vocode.streaming.models.transcriber import TranscriberConfig
 class TwilioConfig(BaseModel):
     account_sid: str
     auth_token: str
+    record: bool = False
 
 
 class CallEntity(BaseModel):

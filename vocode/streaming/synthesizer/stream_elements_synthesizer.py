@@ -1,4 +1,5 @@
 import io
+import aiohttp
 from pydub import AudioSegment
 import logging
 from typing import Optional
@@ -24,7 +25,7 @@ class StreamElementsSynthesizer(BaseSynthesizer):
         super().__init__(config)
         self.voice = config.voice
 
-    def create_speech(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
@@ -34,14 +35,19 @@ class StreamElementsSynthesizer(BaseSynthesizer):
             "voice": self.voice,
             "text": message.text,
         }
-        response = requests.get(self.TTS_ENDPOINT, params=url_params)
-        audio_segment: AudioSegment = AudioSegment.from_mp3(
-            io.BytesIO(response.content)
-        )
-        output_bytes_io = io.BytesIO()
-        audio_segment.export(output_bytes_io, format="wav")
-        return self.create_synthesis_result_from_wav(
-            file=output_bytes_io,
-            message=message,
-            chunk_size=chunk_size,
-        )
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                self.TTS_ENDPOINT,
+                params=url_params,
+                timeout=aiohttp.ClientTimeout(total=15),
+            ) as response:
+                audio_segment: AudioSegment = AudioSegment.from_mp3(
+                    io.BytesIO(await response.read())
+                )
+                output_bytes_io = io.BytesIO()
+                audio_segment.export(output_bytes_io, format="wav")
+                return self.create_synthesis_result_from_wav(
+                    file=output_bytes_io,
+                    message=message,
+                    chunk_size=chunk_size,
+                )
