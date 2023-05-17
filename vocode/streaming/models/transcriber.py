@@ -116,7 +116,8 @@ class AzureTranscriberConfig(TranscriberConfig, type=TranscriberType.AZURE.value
 class AssemblyAITranscriberConfig(
     TranscriberConfig, type=TranscriberType.ASSEMBLY_AI.value
 ):
-    pass
+    buffer_size_seconds: float = 0.1
+    word_boost: Optional[list[str]] = None
 
 
 class WhisperCPPTranscriberConfig(
