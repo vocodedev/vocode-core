@@ -113,7 +113,7 @@ class StreamingConversation:
         def __init__(
             self,
             input_queue: AsyncQueueType[InterruptibleEvent[Transcription]],
-            output_queue: AsyncQueueType[InterruptibleEvent[Tuple[BaseMessage, bool]]],
+            output_queue: AsyncQueueType[InterruptibleEvent[BaseMessage]],
             conversation: "StreamingConversation",
         ):
             super().__init__(input_queue, output_queue)
