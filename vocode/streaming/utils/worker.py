@@ -7,6 +7,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+QueueElement = TypeVar("QueueElement")
+
+
+class QueueType(asyncio.Queue, Generic[QueueElement]):
+    pass
+
 
 class AsyncWorker:
     def __init__(
@@ -127,7 +133,7 @@ class InterruptibleEvent(Generic[Payload]):
 class InterruptibleWorker(AsyncWorker):
     def __init__(
         self,
-        input_queue: asyncio.Queue[InterruptibleEvent],
+        input_queue: QueueType[InterruptibleEvent],
         output_queue: asyncio.Queue,
         max_concurrency=2,
     ) -> None:
