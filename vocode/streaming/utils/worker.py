@@ -5,13 +5,9 @@ from typing import Any
 from typing import TypeVar, Generic
 import logging
 
+from vocode.streaming.utils.queues import AsyncQueueType
+
 logger = logging.getLogger(__name__)
-
-QueueElement = TypeVar("QueueElement")
-
-
-class QueueType(asyncio.Queue, Generic[QueueElement]):
-    pass
 
 
 class AsyncWorker:
@@ -133,7 +129,7 @@ class InterruptibleEvent(Generic[Payload]):
 class InterruptibleWorker(AsyncWorker):
     def __init__(
         self,
-        input_queue: QueueType[InterruptibleEvent],
+        input_queue: AsyncQueueType[InterruptibleEvent],
         output_queue: asyncio.Queue,
         max_concurrency=2,
     ) -> None:
@@ -145,7 +141,7 @@ class InterruptibleWorker(AsyncWorker):
     async def _run_loop(self):
         # TODO Implement concurrency with max_nb_of_thread
         while True:
-            item = await self.input_queue.get()
+            item: InterruptibleEvent = await self.input_queue.get()
             if item.is_interrupted():
                 continue
             self.interruptible_event = item

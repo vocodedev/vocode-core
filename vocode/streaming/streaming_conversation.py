@@ -46,8 +46,8 @@ from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
     InterruptibleEvent,
     InterruptibleWorker,
-    QueueType,
 )
+from vocode.streaming.utils.queues import AsyncQueueType, SyncQueueType
 
 tracer = trace.get_tracer(__name__)
 SYNTHESIS_TRACE_NAME = "synthesis"
@@ -61,8 +61,8 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: QueueType[Transcription],
-            output_queue: QueueType[InterruptibleEvent[Transcription]],
+            input_queue: AsyncQueueType[Transcription],
+            output_queue: AsyncQueueType[InterruptibleEvent[Transcription]],
             conversation: "StreamingConversation",
         ):
             super().__init__(input_queue, output_queue)
@@ -112,8 +112,8 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: QueueType[InterruptibleEvent[Transcription]],
-            output_queue: QueueType[InterruptibleEvent[Tuple[BaseMessage, bool]]],
+            input_queue: AsyncQueueType[InterruptibleEvent[Transcription]],
+            output_queue: AsyncQueueType[InterruptibleEvent[Tuple[BaseMessage, bool]]],
             conversation: "StreamingConversation",
         ):
             super().__init__(input_queue, output_queue)
@@ -257,9 +257,10 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: QueueType[InterruptibleEvent[FillerAudio]],
+            input_queue: AsyncQueueType[InterruptibleEvent[FillerAudio]],
             conversation: "StreamingConversation",
         ):
+            super().__init__(input_queue=input_queue, output_queue=None)
             self.input_queue = input_queue
             self.conversation = conversation
             self.current_filler_seconds_per_chunk: Optional[int] = None
@@ -311,10 +312,11 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: QueueType[InterruptibleEvent[BaseMessage]],
-            output_queue: QueueType[SynthesisResult],
+            input_queue: AsyncQueueType[InterruptibleEvent[BaseMessage]],
+            output_queue: AsyncQueueType[SynthesisResult],
             conversation: "StreamingConversation",
         ):
+            super().__init__(input_queue=input_queue, output_queue=output_queue)
             self.input_queue = input_queue
             self.output_queue = output_queue
             self.conversation = conversation
@@ -359,11 +361,12 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: QueueType[
+            input_queue: AsyncQueueType[
                 InterruptibleEvent[Tuple[BaseMessage, SynthesisResult]]
             ],
             conversation: "StreamingConversation",
         ):
+            super().__init__(input_queue=input_queue, output_queue=None)
             self.input_queue = input_queue
             self.conversation = conversation
 
@@ -408,16 +411,16 @@ class StreamingConversation:
         self.transcriber = transcriber
         self.agent = agent
         self.synthesizer = synthesizer
-        self.final_transcriptions_queue: QueueType[
+        self.final_transcriptions_queue: AsyncQueueType[
             InterruptibleEvent[Transcription]
         ] = asyncio.Queue()
-        self.agent_responses_queue: QueueType[
+        self.agent_responses_queue: AsyncQueueType[
             InterruptibleEvent[Tuple[BaseMessage, bool]]
         ] = asyncio.Queue()
-        self.synthesis_results_queue: QueueType[
+        self.synthesis_results_queue: AsyncQueueType[
             InterruptibleEvent[BaseMessage, SynthesisResult]
         ] = asyncio.Queue()
-        self.filler_audio_queue: QueueType[
+        self.filler_audio_queue: AsyncQueueType[
             InterruptibleEvent[FillerAudio]
         ] = asyncio.Queue()
         self.transcriptions_worker = self.TranscriptionsWorker(
@@ -456,7 +459,7 @@ class StreamingConversation:
 
         self.is_human_speaking = False
         self.active = False
-        self.interruptible_events: queue.Queue[InterruptibleEvent] = queue.Queue()
+        self.interruptible_events: SyncQueueType[InterruptibleEvent] = queue.Queue()
         self.mark_last_action_timestamp()
 
         self.check_for_idle_task = None
@@ -567,7 +570,9 @@ class StreamingConversation:
         num_interrupts = 0
         while True:
             try:
-                interruptible_event = self.interruptible_events.get_nowait()
+                interruptible_event: InterruptibleEvent = (
+                    self.interruptible_events.get_nowait()
+                )
                 if not interruptible_event.is_interrupted():
                     if interruptible_event.interrupt():
                         self.logger.debug("Interrupting event")
