@@ -16,6 +16,9 @@ lint_diff: PYTHON_FILES=$(shell git diff --name-only --diff-filter=d main | grep
 lint lint_diff:
 	poetry run black $(PYTHON_FILES)
 
+test:
+	poetry run pytest
+
 help:
 	@echo "Usage: make <target>"
 	@echo ""
@@ -25,5 +28,6 @@ help:
 	@echo "  synthesize  Synthesize text into audio"
 	@echo "  lint        Lint all Python files"
 	@echo "  lint_diff   Lint changed Python files"
+	@echo "  test        Run tests"
 	@echo "  help        Show this help message"
 

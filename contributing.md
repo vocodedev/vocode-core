@@ -47,7 +47,11 @@ make lint_diff
 
 ## Testing
 
-🚧 Under construction
+We use `pytest` for tests under the `tests` directory. Run tests via:
+
+```
+make test
+```
 
 ## Documentation
 
