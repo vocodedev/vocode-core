@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 import websockets
+import audioop
+import numpy as np
 from urllib.parse import urlencode
 from vocode import getenv
 
@@ -35,11 +37,29 @@ class AssemblyAITranscriber(BaseAsyncTranscriber):
         if self.transcriber_config.endpointing_config:
             raise Exception("Assembly AI endpointing config not supported yet")
 
+        self.buffer = bytearray()
+
     async def ready(self):
         return True
 
     async def _run_loop(self):
         await self.process()
+
+    def send_audio(self, chunk):
+        if self.transcriber_config.audio_encoding == AudioEncoding.MULAW:
+            sample_width = 1
+            if isinstance(chunk, np.ndarray):
+                chunk = chunk.astype(np.int16)
+                chunk = chunk.tobytes()
+            chunk = audioop.ulaw2lin(chunk, sample_width)
+
+        self.buffer.extend(chunk)
+
+        if (
+            len(self.buffer) / (2 * self.transcriber_config.sampling_rate)
+        ) >= self.transcriber_config.buffer_size_seconds:
+            self.input_queue.put_nowait(self.buffer)
+            self.buffer = bytearray()
 
     def terminate(self):
         terminate_msg = json.dumps({"terminate_session": True})
@@ -47,7 +67,12 @@ class AssemblyAITranscriber(BaseAsyncTranscriber):
         self._ended = True
 
     def get_assembly_ai_url(self):
-        return ASSEMBLY_AI_URL + f"?sample_rate={self.transcriber_config.sampling_rate}"
+        url_params = {"sample_rate": self.transcriber_config.sampling_rate}
+        if self.transcriber_config.word_boost:
+            url_params.update(
+                {"word_boost": json.dumps(self.transcriber_config.word_boost)}
+            )
+        return ASSEMBLY_AI_URL + f"?{urlencode(url_params)}"
 
     async def process(self):
         URL = self.get_assembly_ai_url()
@@ -75,11 +100,12 @@ class AssemblyAITranscriber(BaseAsyncTranscriber):
                 while not self._ended:
                     try:
                         result_str = await ws.recv()
+                        data = json.loads(result_str)
+                        if "error" in data and data["error"]:
+                            raise Exception(data["error"])
                     except websockets.exceptions.ConnectionClosedError as e:
                         self.logger.debug(e)
                         break
-                    except Exception as e:
-                        assert False, "Not a websocket 4008 error"
 
                     data = json.loads(result_str)
                     is_final = (
