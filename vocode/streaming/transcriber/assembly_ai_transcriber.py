@@ -37,9 +37,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber):
         if self.transcriber_config.endpointing_config:
             raise Exception("Assembly AI endpointing config not supported yet")
 
-        self.audio_queue = asyncio.Queue()
         self.buffer = bytearray()
-
 
     async def ready(self):
         return True
@@ -57,8 +55,10 @@ class AssemblyAITranscriber(BaseAsyncTranscriber):
 
         self.buffer.extend(chunk)
 
-        if (len(self.buffer) / (2*self.transcriber_config.sampling_rate)) >= self.transcriber_config.buffer_size_seconds:
-            self.audio_queue.put_nowait(self.buffer)
+        if (
+            len(self.buffer) / (2 * self.transcriber_config.sampling_rate)
+        ) >= self.transcriber_config.buffer_size_seconds:
+            self.input_queue.put_nowait(self.buffer)
             self.buffer = bytearray()
 
     def terminate(self):
@@ -69,7 +69,9 @@ class AssemblyAITranscriber(BaseAsyncTranscriber):
     def get_assembly_ai_url(self):
         url_params = {"sample_rate": self.transcriber_config.sampling_rate}
         if self.transcriber_config.word_boost:
-            url_params.update({"word_boost":json.dumps(self.transcriber_config.word_boost)})
+            url_params.update(
+                {"word_boost": json.dumps(self.transcriber_config.word_boost)}
+            )
         return ASSEMBLY_AI_URL + f"?{urlencode(url_params)}"
 
     async def process(self):
@@ -100,7 +102,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber):
                         result_str = await ws.recv()
                         data = json.loads(result_str)
                         if "error" in data and data["error"]:
-                            raise Exception(data["error"]) 
+                            raise Exception(data["error"])
                     except websockets.exceptions.ConnectionClosedError as e:
                         self.logger.debug(e)
                         break
