@@ -1,5 +1,5 @@
 import os
-from typing import Any, Generator, Callable, List, Optional
+from typing import Any, AsyncGenerator, Generator, Callable, List, Optional
 import math
 import io
 import wave
@@ -47,7 +47,7 @@ class SynthesisResult:
 
     def __init__(
         self,
-        chunk_generator: Generator[ChunkResult, None, None],
+        chunk_generator: AsyncGenerator[ChunkResult, None],
         get_message_up_to: Callable[[int], str],
     ):
         self.chunk_generator = chunk_generator
@@ -60,13 +60,13 @@ class FillerAudio:
         message: BaseMessage,
         audio_data: bytes,
         synthesizer_config: SynthesizerConfig,
-        is_interruptable: bool = False,
+        is_interruptible: bool = False,
         seconds_per_chunk: int = 1,
     ):
         self.message = message
         self.audio_data = audio_data
         self.synthesizer_config = synthesizer_config
-        self.is_interruptable = is_interruptable
+        self.is_interruptible = is_interruptible
         self.seconds_per_chunk = seconds_per_chunk
 
     def create_synthesis_result(self) -> SynthesisResult:
@@ -78,7 +78,7 @@ class FillerAudio:
             * self.seconds_per_chunk
         )
 
-        def chunk_generator(chunk_transform=lambda x: x):
+        async def chunk_generator(chunk_transform=lambda x: x):
             for i in range(0, len(self.audio_data), chunk_size):
                 if i + chunk_size > len(self.audio_data):
                     yield SynthesisResult.ChunkResult(
@@ -119,17 +119,17 @@ class BaseSynthesizer:
                 output_encoding=self.synthesizer_config.audio_encoding,
             ),
             synthesizer_config=self.synthesizer_config,
-            is_interruptable=True,
+            is_interruptible=True,
             seconds_per_chunk=2,
         )
 
-    def set_filler_audios(self, filler_audio_config: FillerAudioConfig):
+    async def set_filler_audios(self, filler_audio_config: FillerAudioConfig):
         if filler_audio_config.use_phrases:
-            self.filler_audios = self.get_phrase_filler_audios()
+            self.filler_audios = await self.get_phrase_filler_audios()
         elif filler_audio_config.use_typing_noise:
             self.filler_audios = [self.get_typing_noise_filler_audio()]
 
-    def get_phrase_filler_audios(self) -> List[FillerAudio]:
+    async def get_phrase_filler_audios(self) -> List[FillerAudio]:
         return []
 
     def ready_synthesizer(self):
@@ -155,7 +155,7 @@ class BaseSynthesizer:
 
     # returns a chunk generator and a thunk that can tell you what part of the message was read given the number of seconds spoken
     # chunk generator must return a ChunkResult, essentially a tuple (bytes of size chunk_size, flag if it is the last chunk)
-    def create_speech(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
@@ -180,7 +180,7 @@ class BaseSynthesizer:
         else:
             chunk_transform = lambda chunk: chunk
 
-        def chunk_generator(output_bytes):
+        async def chunk_generator(output_bytes):
             for i in range(0, len(output_bytes), chunk_size):
                 if i + chunk_size > len(output_bytes):
                     yield SynthesisResult.ChunkResult(

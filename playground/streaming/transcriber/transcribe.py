@@ -1,5 +1,3 @@
-import signal
-from vocode.streaming.input_device.base_input_device import BaseInputDevice
 from vocode.streaming.input_device.microphone_input import MicrophoneInput
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
@@ -15,10 +13,12 @@ if __name__ == "__main__":
 
     load_dotenv()
 
-    async def listen():
-        async def on_response(response: Transcription):
-            print(response)
+    async def print_output(transcriber: BaseTranscriber):
+        while True:
+            transcription: Transcription = await transcriber.output_queue.get()
+            print(transcription)
 
+    async def listen():
         microphone_input = MicrophoneInput.from_default_device()
 
         # replace with the transcriber you want to test
@@ -27,8 +27,8 @@ if __name__ == "__main__":
                 microphone_input, endpointing_config=PunctuationEndpointingConfig()
             )
         )
-        transcriber.set_on_response(on_response)
-        asyncio.create_task(transcriber.run())
+        transcriber.start()
+        asyncio.create_task(print_output(transcriber))
         print("Start speaking...press Ctrl+C to end. ")
         while True:
             chunk = microphone_input.get_audio()

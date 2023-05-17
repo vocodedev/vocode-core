@@ -1,5 +1,3 @@
-import json
-import openai
 import logging
 
 from typing import Generator, Optional, Tuple
@@ -33,6 +31,7 @@ class ChatGPTAgent(ChatAgent):
         openai_api_key: Optional[str] = None,
     ):
         super().__init__(agent_config=agent_config, logger=logger)
+        self.agent_config = agent_config
         openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
         if not openai.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")

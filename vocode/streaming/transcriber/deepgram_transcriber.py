@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 from vocode import getenv
 
 from vocode.streaming.transcriber.base_transcriber import (
-    BaseTranscriber,
+    BaseAsyncTranscriber,
     Transcription,
 )
 from vocode.streaming.models.transcriber import (
@@ -23,7 +23,7 @@ PUNCTUATION_TERMINATORS = [".", "!", "?"]
 NUM_RESTARTS = 5
 
 
-class DeepgramTranscriber(BaseTranscriber):
+class DeepgramTranscriber(BaseAsyncTranscriber):
     def __init__(
         self,
         transcriber_config: DeepgramTranscriberConfig,
@@ -40,9 +40,8 @@ class DeepgramTranscriber(BaseTranscriber):
         self._ended = False
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
-        self.audio_queue = asyncio.Queue()
 
-    async def run(self):
+    async def _run_loop(self):
         restarts = 0
         while not self._ended and restarts < NUM_RESTARTS:
             await self.process()
@@ -65,12 +64,13 @@ class DeepgramTranscriber(BaseTranscriber):
                 self.transcriber_config.sampling_rate,
                 None,
             )
-        self.audio_queue.put_nowait(chunk)
+        super().send_audio(chunk)
 
     def terminate(self):
         terminate_msg = json.dumps({"type": "CloseStream"})
-        self.audio_queue.put_nowait(terminate_msg)
+        self.input_queue.put_nowait(terminate_msg)
         self._ended = True
+        super().terminate()
 
     def get_deepgram_url(self):
         if self.transcriber_config.audio_encoding == AudioEncoding.LINEAR16:
@@ -157,7 +157,7 @@ class DeepgramTranscriber(BaseTranscriber):
             async def sender(ws: WebSocketClientProtocol):  # sends audio to websocket
                 while not self._ended:
                     try:
-                        data = await asyncio.wait_for(self.audio_queue.get(), 5)
+                        data = await asyncio.wait_for(self.input_queue.get(), 5)
                     except asyncio.exceptions.TimeoutError:
                         break
                     await ws.send(data)
@@ -186,11 +186,13 @@ class DeepgramTranscriber(BaseTranscriber):
                         buffer = f"{buffer} {top_choice['transcript']}"
 
                     if speech_final:
-                        await self.on_response(Transcription(buffer, confidence, True))
+                        self.output_queue.put_nowait(
+                            Transcription(buffer, confidence, True)
+                        )
                         buffer = ""
                         time_silent = 0
                     elif top_choice["transcript"] and confidence > 0.0:
-                        await self.on_response(
+                        self.output_queue.put_nowait(
                             Transcription(
                                 buffer,
                                 confidence,

@@ -1,6 +1,5 @@
 import os
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode.streaming.output_device.telephone_output import TelephoneOutput
 from vocode.streaming.telephony.hosted.outbound_call import OutboundCall
 from vocode.streaming.models.telephony import CallEntity, TwilioConfig
 from vocode.streaming.models.agent import (
@@ -23,8 +22,8 @@ if __name__ == "__main__":
             initial_message=BaseMessage(text="the quick fox jumped over the lazy dog "),
             prompt_preamble="respond two sentences at a time",
         ),
-        synthesizer_config=AzureSynthesizerConfig.from_output_device(
-            output_device=TelephoneOutput(), voice_name="en-US-JennyNeural"
+        synthesizer_config=AzureSynthesizerConfig.from_telephone_output_device(
+            voice_name="en-US-JennyNeural"
         ),
         twilio_config=TwilioConfig(
             account_sid=os.getenv("TWILIO_ACCOUNT_SID"),
