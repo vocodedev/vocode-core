@@ -46,6 +46,7 @@ from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
     InterruptibleEvent,
     InterruptibleWorker,
+    QueueType,
 )
 
 tracer = trace.get_tracer(__name__)
@@ -60,8 +61,8 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: asyncio.Queue[Transcription],
-            output_queue: asyncio.Queue[InterruptibleEvent[Transcription]],
+            input_queue: QueueType[Transcription],
+            output_queue: QueueType[InterruptibleEvent[Transcription]],
             conversation: "StreamingConversation",
         ):
             super().__init__(input_queue, output_queue)
@@ -111,8 +112,8 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: asyncio.Queue[InterruptibleEvent[Transcription]],
-            output_queue: asyncio.Queue[InterruptibleEvent[Tuple[BaseMessage, bool]]],
+            input_queue: QueueType[InterruptibleEvent[Transcription]],
+            output_queue: QueueType[InterruptibleEvent[Tuple[BaseMessage, bool]]],
             conversation: "StreamingConversation",
         ):
             super().__init__(input_queue, output_queue)
@@ -256,10 +257,9 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: asyncio.Queue[InterruptibleEvent[FillerAudio]],
+            input_queue: QueueType[InterruptibleEvent[FillerAudio]],
             conversation: "StreamingConversation",
         ):
-            super().__init__(input_queue, None)
             self.input_queue = input_queue
             self.conversation = conversation
             self.current_filler_seconds_per_chunk: Optional[int] = None
@@ -311,11 +311,10 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: asyncio.Queue[InterruptibleEvent[BaseMessage]],
-            output_queue: asyncio.Queue[SynthesisResult],
+            input_queue: QueueType[InterruptibleEvent[BaseMessage]],
+            output_queue: QueueType[SynthesisResult],
             conversation: "StreamingConversation",
         ):
-            super().__init__(input_queue, output_queue)
             self.input_queue = input_queue
             self.output_queue = output_queue
             self.conversation = conversation
@@ -360,12 +359,11 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: asyncio.Queue[
+            input_queue: QueueType[
                 InterruptibleEvent[Tuple[BaseMessage, SynthesisResult]]
             ],
             conversation: "StreamingConversation",
         ):
-            super().__init__(input_queue, None)
             self.input_queue = input_queue
             self.conversation = conversation
 
@@ -410,16 +408,16 @@ class StreamingConversation:
         self.transcriber = transcriber
         self.agent = agent
         self.synthesizer = synthesizer
-        self.final_transcriptions_queue: asyncio.Queue[
+        self.final_transcriptions_queue: QueueType[
             InterruptibleEvent[Transcription]
         ] = asyncio.Queue()
-        self.agent_responses_queue: asyncio.Queue[
+        self.agent_responses_queue: QueueType[
             InterruptibleEvent[Tuple[BaseMessage, bool]]
         ] = asyncio.Queue()
-        self.synthesis_results_queue: asyncio.Queue[
+        self.synthesis_results_queue: QueueType[
             InterruptibleEvent[BaseMessage, SynthesisResult]
         ] = asyncio.Queue()
-        self.filler_audio_queue: asyncio.Queue[
+        self.filler_audio_queue: QueueType[
             InterruptibleEvent[FillerAudio]
         ] = asyncio.Queue()
         self.transcriptions_worker = self.TranscriptionsWorker(
