@@ -3,7 +3,6 @@ from typing import Union
 
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
-from vocode.turn_based.transcriber.base_transcriber import BaseTranscriber
 
 
 class Transcription:

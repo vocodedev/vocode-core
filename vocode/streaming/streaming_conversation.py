@@ -259,6 +259,7 @@ class StreamingConversation:
             input_queue: asyncio.Queue[InterruptibleEvent[FillerAudio]],
             conversation: "StreamingConversation",
         ):
+            super().__init__(input_queue, None)
             self.input_queue = input_queue
             self.conversation = conversation
             self.current_filler_seconds_per_chunk: Optional[int] = None
@@ -314,6 +315,7 @@ class StreamingConversation:
             output_queue: asyncio.Queue[SynthesisResult],
             conversation: "StreamingConversation",
         ):
+            super().__init__(input_queue, output_queue)
             self.input_queue = input_queue
             self.output_queue = output_queue
             self.conversation = conversation
@@ -363,6 +365,7 @@ class StreamingConversation:
             ],
             conversation: "StreamingConversation",
         ):
+            super().__init__(input_queue, None)
             self.input_queue = input_queue
             self.conversation = conversation
 
