@@ -42,6 +42,9 @@ jobs:
         shell: bash
         run: python -m poetry install
 
+      - name: Lint with mypy
+        run: python -m poetry run mypy vocode/
+
       - name: Test with pytest
         run: |
           python -m poetry run python -m pytest -v tests

@@ -96,7 +96,9 @@ class TelephonyServer:
                 ),
                 methods=["POST"],
             )
-            logger.info(f"Set up inbound call TwiML at https://{base_url}{config.url}")
+            self.logger.info(
+                f"Set up inbound call TwiML at https://{base_url}{config.url}"
+            )
 
     def create_inbound_route(
         self,

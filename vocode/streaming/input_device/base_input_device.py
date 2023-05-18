@@ -10,7 +10,6 @@ class BaseInputDevice:
         self.sampling_rate = sampling_rate
         self.audio_encoding = audio_encoding
         self.chunk_size = chunk_size
-        self.queue = queue.Queue()
 
     def get_audio(self) -> Optional[bytes]:
         raise NotImplementedError

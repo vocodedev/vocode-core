@@ -20,13 +20,15 @@ RIME_SAMPLING_RATE = 22050
 RIME_BASE_URL = "https://rjmopratfrdjgmfmaios.functions.supabase.co/rime-tts"
 
 
-class RimeSynthesizer(BaseSynthesizer):
+class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
     def __init__(
-        self, config: RimeSynthesizerConfig, logger: Optional[logging.Logger] = None
+        self,
+        synthesizer_config: RimeSynthesizerConfig,
+        logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(config)
+        super().__init__(synthesizer_config)
         self.api_key = getenv("RIME_API_KEY")
-        self.speaker = config.speaker
+        self.speaker = synthesizer_config.speaker
 
     async def create_speech(
         self,

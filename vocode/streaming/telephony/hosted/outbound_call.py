@@ -39,7 +39,7 @@ class OutboundCall:
             f"https://{vocode.base_url}/end_outbound_call"
         )
 
-    def start(self) -> str:
+    def start(self):
         try:
             response = requests.post(
                 self.vocode_create_outbound_call_url,
@@ -65,7 +65,7 @@ class OutboundCall:
         except requests.exceptions.Timeout:
             raise RateLimitExceeded("Timed out")
 
-    def end(self) -> str:
+    def end(self):
         try:
             response = requests.post(
                 self.vocode_end_outbound_call_url,

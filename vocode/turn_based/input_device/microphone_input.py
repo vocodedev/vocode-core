@@ -15,7 +15,7 @@ class MicrophoneInput(BaseInputDevice):
     def __init__(
         self,
         device_info: dict,
-        sampling_rate: int = None,
+        sampling_rate: Optional[int] = None,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
     ):
         self.device_info = device_info
@@ -36,11 +36,11 @@ class MicrophoneInput(BaseInputDevice):
         self.active = False
 
     @classmethod
-    def from_default_device(cls, sampling_rate: int = None):
+    def from_default_device(cls, sampling_rate: Optional[int] = None):
         return cls(sd.query_devices(kind="input"), sampling_rate)
 
     def _stream_callback(self, in_data: np.ndarray, *_args):
-        if self.active:
+        if self.active and self.wave_writer is not None:
             audio_bytes = in_data.tobytes()
             self.wave_writer.writeframes(audio_bytes)
 
@@ -60,5 +60,6 @@ class MicrophoneInput(BaseInputDevice):
     def end_listening(self) -> AudioSegment:
         self.stream.stop()
         self.active = False
-        self.buffer.seek(0)
-        return AudioSegment.from_wav(self.buffer)
+        if self.buffer is not None:
+            self.buffer.seek(0)
+        return AudioSegment.from_wav(self.buffer)  # type: ignore

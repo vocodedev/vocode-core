@@ -1,3 +1,6 @@
+# type: ignore
+# to be deprecated
+
 from .base_agent import BaseAgent
 import uuid
 import typing
@@ -44,8 +47,10 @@ class WebSocketAgent(BaseAgent):
                 break
             text_message = typing.cast(WebSocketAgentTextMessage, input_message)
             if self.generate_responses:
-                async for output_response in self.generate_response(
-                    text_message.data.text, text_message.conversation_id
+                async for output_response in (
+                    await self.generate_response(
+                        text_message.data.text, text_message.conversation_id
+                    )
                 ):
                     await websocket.send_text(output_response.json())
             else:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from fastapi import WebSocket
 from vocode.streaming.models.audio_encoding import AudioEncoding
@@ -12,7 +14,7 @@ class WebsocketOutputDevice(BaseOutputDevice):
         super().__init__(sampling_rate, audio_encoding)
         self.ws = ws
         self.active = True
-        self.queue = asyncio.Queue()
+        self.queue: asyncio.Queue[str] = asyncio.Queue()
 
     def mark_closed(self):
         self.active = False

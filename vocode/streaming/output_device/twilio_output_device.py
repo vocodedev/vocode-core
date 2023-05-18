@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import base64
+from typing import Optional
 
 from fastapi import WebSocket
 
@@ -12,13 +15,15 @@ from vocode.streaming.telephony.constants import (
 
 
 class TwilioOutputDevice(BaseOutputDevice):
-    def __init__(self, ws: WebSocket = None, stream_sid: str = None):
+    def __init__(
+        self, ws: Optional[WebSocket] = None, stream_sid: Optional[str] = None
+    ):
         super().__init__(
             sampling_rate=DEFAULT_SAMPLING_RATE, audio_encoding=DEFAULT_AUDIO_ENCODING
         )
         self.ws = ws
         self.stream_sid = stream_sid
-        self.queue = asyncio.Queue()
+        self.queue: asyncio.Queue[str] = asyncio.Queue()
         self.process_task = asyncio.create_task(self.process())
         self.active = True
 
