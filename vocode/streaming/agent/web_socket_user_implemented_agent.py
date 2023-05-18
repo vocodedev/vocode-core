@@ -58,10 +58,6 @@ class WebSocketUserImplementedAgent(BaseAsyncAgent):
                 "Socket Agent connection died, restarting, num_restarts: %s", restarts
             )
 
-    def receive_transcription(self, transcription: Transcription) -> None:
-        self.logger.info("INPUT: Receiving transcript in Web Socket Agent: %s", transcription)
-        super().receive_transcription(transcription)
-
     def handle_incoming_socket_message(self, message: WebSocketAgentMessage) -> None:
         self.logger.info("OUTPUT: Handling incoming message from Socket Agent: %s", message)
 

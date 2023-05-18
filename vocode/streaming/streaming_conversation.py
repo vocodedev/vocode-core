@@ -149,7 +149,7 @@ class StreamingConversation:
 
         async def send_to_agent(self, transcription: Transcription) -> None:
             try:
-                self.conversation.agent.receive_transcription(transcription)
+                await self.conversation.agent.add_transcript_to_input_queue(transcription)
 
             except Exception as e:
                 self.conversation.logger.error(
@@ -270,6 +270,10 @@ class StreamingConversation:
             conversation: "StreamingConversation",
             should_wait_for_filler_audio: bool,
         ):
+            super().__init__(
+                input_queue=input_queue,
+                output_queue=output_queue,
+            )
             self.input_queue = input_queue
             self.output_queue = output_queue
             self.conversation = conversation

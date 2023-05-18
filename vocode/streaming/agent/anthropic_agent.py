@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, Optional, Tuple
+from typing import AsyncGenerator, Optional
 import logging
 
 import anthropic
@@ -13,12 +13,17 @@ from langchain.prompts import (
 )
 
 from vocode import getenv
-from vocode.streaming.agent.base_agent import AgentResponse, AgentResponseMessage, OneShotAgentResponse, TextAgentResponseMessage
+from vocode.streaming.agent.base_agent import (
+    AgentResponse,
+    AgentResponseMessage,
+    GeneratorAgentResponse,
+    OneShotAgentResponse,
+    TextAgentResponseMessage
+)
 from vocode.streaming.agent.chat_agent import ChatAsyncAgent
 from vocode.streaming.agent.utils import get_sentence_from_buffer
 from vocode.streaming.models.agent import ChatAnthropicAgentConfig
 from vocode.streaming.transcriber.base_transcriber import Transcription
-from vocode.streaming.utils.worker import InterruptibleEvent
 
 SENTENCE_ENDINGS = [".", "!", "?"]
 
@@ -62,7 +67,9 @@ class ChatAnthropicAgent(ChatAsyncAgent):
             memory=self.memory, prompt=self.prompt, llm=self.llm
         )
 
-    async def receive_transcription(self, transcription: Transcription) -> None:
+    async def did_add_transcript_to_input_queue(self, transcription: Transcription):
+        await super().did_add_transcript_to_input_queue(transcription)
+
         agent_response: AgentResponse
 
         if self.agent_config.generate_responses:
@@ -74,11 +81,7 @@ class ChatAnthropicAgent(ChatAsyncAgent):
             message = TextAgentResponseMessage(text=text)
             agent_response = OneShotAgentResponse(message=message)
 
-        event = InterruptibleEvent(
-            is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
-            payload=agent_response,
-        )
-        self.output_queue.put_nowait(event)
+        self.add_agent_response_to_output_queue(response=agent_response)
 
     async def _create_generator_response(self, transcription: Transcription) -> AsyncGenerator[AgentResponseMessage, None]:
         self.memory.chat_memory.messages.append(HumanMessage(content=transcription.message))

@@ -70,7 +70,10 @@ class AbstractAgent:
     def get_agent_config(self) -> AgentConfig:
         return self.agent_config
 
-    def receive_transcription(self, transcription: Transcription):
+    async def add_transcript_to_input_queue(self, transcription: Transcription):
+        pass
+
+    async def did_add_transcript_to_input_queue(self, transcription: Transcription):
         pass
 
     def update_last_bot_message_on_cut_off(self, message: str):
@@ -102,8 +105,16 @@ class BaseAsyncAgent(AsyncWorker, AbstractAgent):
     async def _run_loop(self) -> None:
         raise NotImplementedError
 
-    def receive_transcription(self, transcription: Transcription) -> None:
+    async def add_transcript_to_input_queue(self, transcription: Transcription) -> None:
         self.send_nonblocking(transcription)
+        await self.did_add_transcript_to_input_queue(transcription)
+
+    def add_agent_response_to_output_queue(self, response: AgentResponse) -> None:
+        event = InterruptibleEvent(
+            is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+            payload=response,
+        )
+        self.output_queue.put_nowait(event)
 
     def terminate(self) -> None:
         AsyncWorker.terminate(self)
@@ -119,17 +130,25 @@ class BaseThreadAsyncAgent(ThreadAsyncWorker, AbstractAgent):
         self.output_queue: QueueType[AgentResponse] = asyncio.Queue()
         self.agent_config = agent_config
         self.logger = logger or logging.getLogger(__name__)
-        AsyncWorker.__init__(self, self.input_queue, self.output_queue)
+        ThreadAsyncWorker.__init__(self, self.input_queue, self.output_queue)
         AbstractAgent.__init__(self, agent_config, logger)
 
     async def _run_loop(self) -> None:
         raise NotImplementedError
 
-    def receive_transcription(self, transcription: Transcription) -> None:
+    async def add_transcript_to_input_queue(self, transcription: Transcription) -> None:
         self.send_nonblocking(transcription)
+        await self.did_add_transcript_to_input_queue(transcription)
+
+    def add_agent_response_to_output_queue(self, response: AgentResponse) -> None:
+        event = InterruptibleEvent(
+            is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+            payload=response,
+        )
+        self.output_queue.put_nowait(event)
 
     def terminate(self) -> None:
-        AsyncWorker.terminate(self)
+        ThreadAsyncWorker.terminate(self)
 
 
 BaseAgent = Union[BaseAsyncAgent, BaseThreadAsyncAgent]
