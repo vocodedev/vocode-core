@@ -1,5 +1,14 @@
 import os
-from typing import Any, AsyncGenerator, Generator, Callable, List, Optional
+from typing import (
+    Any,
+    AsyncGenerator,
+    Generator,
+    Callable,
+    Generic,
+    List,
+    Optional,
+    TypeVar,
+)
 import math
 import io
 import wave
@@ -98,8 +107,11 @@ class FillerAudio:
         return SynthesisResult(output_generator, lambda seconds: self.message.text)
 
 
-class BaseSynthesizer:
-    def __init__(self, synthesizer_config: SynthesizerConfig):
+SynthesizerConfigType = TypeVar("SynthesizerConfigType", bound=SynthesizerConfig)
+
+
+class BaseSynthesizer(Generic[SynthesizerConfigType]):
+    def __init__(self, synthesizer_config: SynthesizerConfigType):
         self.synthesizer_config = synthesizer_config
         if synthesizer_config.audio_encoding == AudioEncoding.MULAW:
             assert (

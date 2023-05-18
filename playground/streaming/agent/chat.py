@@ -29,11 +29,11 @@ if __name__ == "__main__":
         conversation_id = create_conversation_id()
         while True:
             if generate_responses:
-                responses = agent.generate_response(
+                stream = agent.generate_response(
                     input("Human: "), conversation_id=conversation_id
                 )
-                async for response in responses:
-                    print("AI:", response)
+                async for sentence in stream:
+                    print("AI:", sentence)
             else:
                 response, _ = await agent.respond(
                     input("Human: "), conversation_id=conversation_id

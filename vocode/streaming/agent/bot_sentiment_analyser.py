@@ -31,7 +31,7 @@ class BotSentimentAnalyser:
         openai_api_key = openai_api_key or getenv("OPENAI_API_KEY")
         if not openai_api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
-        self.llm = OpenAI(model_name=self.model_name, openai_api_key=openai_api_key)
+        self.llm = OpenAI(model_name=self.model_name, openai_api_key=openai_api_key)  # type: ignore
         assert len(emotions) > 0
         self.emotions = [e.lower() for e in emotions]
         self.prompt = PromptTemplate(
@@ -52,7 +52,7 @@ class BotSentimentAnalyser:
         if emotion.lower() not in self.emotions:
             return BotSentiment(emotion=None, degree=0.0)
         try:
-            degree = float(degree.strip())
+            parsed_degree = float(degree.strip())
         except ValueError:
             return BotSentiment(emotion=emotion, degree=0.5)
-        return BotSentiment(emotion=emotion, degree=degree)
+        return BotSentiment(emotion=emotion, degree=parsed_degree)

@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Tuple
+from typing import AsyncGenerator, Optional, Tuple
 
 from langchain import OpenAI
 from typing import Generator
@@ -13,7 +13,7 @@ from vocode.streaming.agent.utils import stream_openai_response_async
 from vocode.streaming.models.agent import LLMAgentConfig
 
 
-class LLMAgent(BaseAgent):
+class LLMAgent(BaseAgent[LLMAgentConfig]):
     SENTENCE_ENDINGS = [".", "!", "?"]
 
     DEFAULT_PROMPT_TEMPLATE = "{history}\nHuman: {human_input}\nAI:"
@@ -21,13 +21,12 @@ class LLMAgent(BaseAgent):
     def __init__(
         self,
         agent_config: LLMAgentConfig,
-        logger: logging.Logger = None,
+        logger: Optional[logging.Logger] = None,
         sender="AI",
         recipient="Human",
         openai_api_key: Optional[str] = None,
     ):
         super().__init__(agent_config)
-        self.agent_config = agent_config
         self.prompt_template = (
             f"{agent_config.prompt_preamble}\n\n{self.DEFAULT_PROMPT_TEMPLATE}"
         )
@@ -45,7 +44,7 @@ class LLMAgent(BaseAgent):
         openai_api_key = openai_api_key or getenv("OPENAI_API_KEY")
         if not openai_api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
-        self.llm = OpenAI(
+        self.llm = OpenAI(  # type: ignore
             model_name=self.agent_config.model_name,
             temperature=self.agent_config.temperature,
             max_tokens=self.agent_config.max_tokens,
@@ -74,8 +73,8 @@ class LLMAgent(BaseAgent):
     async def respond(
         self,
         human_input,
+        conversation_id: str,
         is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
     ) -> Tuple[str, bool]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
@@ -123,9 +122,9 @@ class LLMAgent(BaseAgent):
     async def generate_response(
         self,
         human_input,
+        conversation_id: str,
         is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
-    ) -> Generator:
+    ) -> AsyncGenerator[str, None]:
         self.logger.debug("LLM generating response to human input")
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()

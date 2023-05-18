@@ -1,3 +1,6 @@
+from __future__ import annotations
+import typing
+
 import sounddevice as sd
 import numpy as np
 from typing import Optional
@@ -15,15 +18,24 @@ class MicrophoneInput(BaseInputDevice):
     def __init__(
         self,
         device_info: dict,
-        sampling_rate: int = None,
+        sampling_rate: Optional[int] = None,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         microphone_gain: int = 1,
     ):
         self.device_info = device_info
-        sampling_rate = sampling_rate or (
-            self.device_info.get("default_samplerate", self.DEFAULT_SAMPLING_RATE)
+        super().__init__(
+            sampling_rate
+            or (
+                typing.cast(
+                    int,
+                    self.device_info.get(
+                        "default_samplerate", self.DEFAULT_SAMPLING_RATE
+                    ),
+                )
+            ),
+            AudioEncoding.LINEAR16,
+            chunk_size,
         )
-        super().__init__(int(sampling_rate), AudioEncoding.LINEAR16, chunk_size)
         self.stream = sd.InputStream(
             dtype=np.int16,
             channels=1,
@@ -33,7 +45,7 @@ class MicrophoneInput(BaseInputDevice):
             callback=self._stream_callback,
         )
         self.stream.start()
-        self.queue = queue.Queue()
+        self.queue: queue.Queue[bytes] = queue.Queue()
         self.microphone_gain = microphone_gain
 
     def _stream_callback(self, in_data: np.ndarray, *_args):
@@ -51,5 +63,5 @@ class MicrophoneInput(BaseInputDevice):
             return None
 
     @classmethod
-    def from_default_device(cls, sampling_rate: int = None):
+    def from_default_device(cls, sampling_rate: Optional[int] = None):
         return cls(sd.query_devices(kind="input"), sampling_rate)

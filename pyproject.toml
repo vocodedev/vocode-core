@@ -45,11 +45,23 @@ python-dotenv = "^1.0.0"
 pytest = "^7.3.1"
 pytest-asyncio = "^0.21.0"
 
+
+[tool.poetry.group.typing.dependencies]
+mypy = "^1.3.0"
+pydub-stubs = "^0.25.1.0"
+types-requests = "^2.30.0.0"
+types-regex = "^2023.5.5.0"
+types-redis = "^4.5.5.2"
+
+[tool.mypy]
+ignore_missing_imports = "True"
+
 [tool.poetry.extras]
 synthesizers = ["gtts", "google-cloud-texttospeech", "elevenlabs"]
 transcribers = ["google-cloud-speech"]
 telephony = ["twilio", "redis"]
 agents = ["anthropic"]
+all = ["gtts", "google-cloud-texttospeech", "elevenlabs", "google-cloud-speech", "twilio", "redis", "anthropic"]
 
 
 [build-system]

@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 from langchain import OpenAI
 from vocode.streaming.agent.llm_agent import LLMAgent
@@ -10,7 +10,7 @@ class InformationRetrievalAgent(LLMAgent):
     def __init__(
         self,
         agent_config: InformationRetrievalAgentConfig,
-        logger: logging.Logger,
+        logger: Optional[logging.Logger] = None,
     ):
         # super().__init__(agent_config, logger)
         prompt_preamble = f"""
@@ -25,8 +25,10 @@ Information to provide to the person who answers the phone: this is a robot call
 
 The AI begins the call by introducing itself and who it represents.
         """
-        agent_config = LLMAgentConfig(
-            prompt_preamble=prompt_preamble,
+        super().__init__(
+            LLMAgentConfig(
+                prompt_preamble=prompt_preamble,
+            ),
+            logger=logger,
         )
-        super().__init__(agent_config, logger=logger)
-        self.llm = OpenAI(model_name="text-davinci-003", temperature=1)
+        self.llm = OpenAI(model_name="text-davinci-003", temperature=1)  # type: ignore

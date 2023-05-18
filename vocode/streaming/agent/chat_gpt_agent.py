@@ -23,15 +23,14 @@ from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.agent.utils import stream_openai_response_async
 
 
-class ChatGPTAgent(ChatAgent):
+class ChatGPTAgent(ChatAgent[ChatGPTAgentConfig]):
     def __init__(
         self,
         agent_config: ChatGPTAgentConfig,
-        logger: logging.Logger = None,
+        logger: Optional[logging.Logger] = None,
         openai_api_key: Optional[str] = None,
     ):
         super().__init__(agent_config=agent_config, logger=logger)
-        self.agent_config = agent_config
         openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
         if not openai.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
@@ -54,7 +53,7 @@ class ChatGPTAgent(ChatAgent):
                 self.memory.chat_memory.add_ai_message(
                     agent_config.initial_message.text
                 )
-        self.llm = ChatOpenAI(
+        self.llm = ChatOpenAI(  # type: ignore
             model_name=self.agent_config.model_name,
             temperature=self.agent_config.temperature,
             max_tokens=self.agent_config.max_tokens,
@@ -73,11 +72,11 @@ class ChatGPTAgent(ChatAgent):
     def create_first_response(self, first_prompt):
         return self.conversation.predict(input=first_prompt)
 
-    async def respond(
+    async def respond(  # type: ignore
         self,
         human_input,
+        conversation_id: str,
         is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
     ) -> Tuple[str, bool]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
@@ -96,9 +95,9 @@ class ChatGPTAgent(ChatAgent):
 
     async def generate_response(
         self,
-        human_input,
+        human_input: str,
+        conversation_id: str,
         is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
         self.memory.chat_memory.messages.append(
             ChatMessage(role="user", content=human_input)

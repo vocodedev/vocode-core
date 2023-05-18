@@ -1,16 +1,18 @@
 import logging
 import random
-from typing import AsyncGenerator, Generator, Optional, Tuple
+from typing import AsyncGenerator, Generator, Generic, Optional, Tuple, TypeVar
 from vocode.streaming.models.agent import (
     AgentConfig,
     ChatGPTAgentConfig,
     LLMAgentConfig,
 )
 
+AgentConfigType = TypeVar("AgentConfigType", bound=AgentConfig)
 
-class BaseAgent:
+
+class BaseAgent(Generic[AgentConfigType]):
     def __init__(
-        self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
+        self, agent_config: AgentConfigType, logger: Optional[logging.Logger] = None
     ):
         self.agent_config = agent_config
 
@@ -23,16 +25,16 @@ class BaseAgent:
     async def respond(
         self,
         human_input,
+        conversation_id: str,
         is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
     ) -> Tuple[Optional[str], bool]:
         raise NotImplementedError
 
-    async def generate_response(
+    def generate_response(
         self,
         human_input,
+        conversation_id: str,
         is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
         """Returns a generator that yields a sentence at a time."""
         raise NotImplementedError
@@ -41,13 +43,14 @@ class BaseAgent:
         """Updates the last bot message in the conversation history when the human cuts off the bot's response."""
         pass
 
-    def get_cut_off_response(self) -> Optional[str]:
+    def get_cut_off_response(self) -> str:
         assert isinstance(self.agent_config, LLMAgentConfig) or isinstance(
             self.agent_config, ChatGPTAgentConfig
         )
+        assert self.agent_config.cut_off_response is not None
         on_cut_off_messages = self.agent_config.cut_off_response.messages
-        if on_cut_off_messages:
-            return random.choice(on_cut_off_messages).text
+        assert len(on_cut_off_messages) > 0
+        return random.choice(on_cut_off_messages).text
 
     def terminate(self):
         pass

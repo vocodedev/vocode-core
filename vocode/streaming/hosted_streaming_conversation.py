@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from typing import Optional
 import websockets
 from websockets.exceptions import ConnectionClosedOK
 from websockets.client import WebSocketClientProtocol
@@ -29,7 +32,7 @@ class HostedStreamingConversation:
         transcriber_config: TranscriberConfig,
         agent_config: AgentConfig,
         synthesizer_config: SynthesizerConfig,
-        id: str = None,
+        id: Optional[str] = None,
     ):
         self.id = id
         self.input_device = input_device
@@ -41,7 +44,7 @@ class HostedStreamingConversation:
         self.receiver_ready = False
         self.active = True
         self.output_loop = asyncio.new_event_loop()
-        self.output_audio_queue = queue.Queue()
+        self.output_audio_queue: queue.Queue[bytes] = queue.Queue()
         self.vocode_websocket_url = f"wss://{vocode.base_url}/conversation"
 
     async def wait_for_ready(self):

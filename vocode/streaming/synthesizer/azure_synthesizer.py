@@ -29,8 +29,8 @@ NAMESPACES = {
     "": "https://www.w3.org/2001/10/synthesis",
 }
 
-ElementTree.register_namespace("", NAMESPACES.get(""))
-ElementTree.register_namespace("mstts", NAMESPACES.get("mstts"))
+ElementTree.register_namespace("", NAMESPACES[""])
+ElementTree.register_namespace("mstts", NAMESPACES["mstts"])
 
 
 class WordBoundaryEventPool:
@@ -51,18 +51,17 @@ class WordBoundaryEventPool:
         return sorted(self.events, key=lambda event: event["audio_offset"])
 
 
-class AzureSynthesizer(BaseSynthesizer):
+class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
     OFFSET_MS = 100
 
     def __init__(
         self,
         synthesizer_config: AzureSynthesizerConfig,
-        logger: logging.Logger = None,
-        azure_speech_key: str = None,
-        azure_speech_region: str = None,
+        logger: Optional[logging.Logger] = None,
+        azure_speech_key: Optional[str] = None,
+        azure_speech_region: Optional[str] = None,
     ):
         super().__init__(synthesizer_config)
-        self.synthesizer_config = synthesizer_config
         # Instantiates a client
         azure_speech_key = azure_speech_key or getenv("AZURE_SPEECH_KEY")
         azure_speech_region = azure_speech_region or getenv("AZURE_SPEECH_REGION")
@@ -267,6 +266,6 @@ class AzureSynthesizer(BaseSynthesizer):
         return SynthesisResult(
             output_generator,
             lambda seconds: self.get_message_up_to(
-                message, ssml, seconds, word_boundary_event_pool
+                message.text, ssml, seconds, word_boundary_event_pool
             ),
         )

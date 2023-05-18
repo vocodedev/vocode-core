@@ -29,8 +29,8 @@ class RESTfulUserImplementedAgent(BaseAgent):
     async def respond(
         self,
         human_input,
+        conversation_id: str,
         is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
     ) -> Tuple[Optional[str], bool]:
         config = self.agent_config.respond
         try:
@@ -58,7 +58,3 @@ class RESTfulUserImplementedAgent(BaseAgent):
         except Exception as e:
             self.logger.error(f"Error in response from RESTful agent: {e}")
             return None, True
-
-    def generate_response(self, human_input, is_interrupt: bool = False) -> Generator:
-        """Returns a generator that yields a sentence at a time."""
-        raise NotImplementedError

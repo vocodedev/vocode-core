@@ -40,7 +40,7 @@ class ZoomDialIn(OutboundCall):
         self.zoom_meeting_password = zoom_meeting_password
         self.vocode_zoom_dial_in_url = f"https://{vocode.base_url}/dial_into_zoom_call"
 
-    def start(self) -> str:
+    def start(self):
         response = requests.post(
             self.vocode_zoom_dial_in_url,
             headers={"Authorization": f"Bearer {vocode.api_key}"},
