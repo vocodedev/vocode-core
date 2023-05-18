@@ -73,9 +73,6 @@ class ChatGPTAgent(ChatAsyncAgent):
         )
         self.is_first_response = True
 
-    async def _run_loop(self) -> None:
-        pass
-
     def create_first_response(self, first_prompt):
         return self.conversation.predict(input=first_prompt)
 
@@ -89,7 +86,7 @@ class ChatGPTAgent(ChatAsyncAgent):
         else:
             response_message = self._create_one_shot_response(transcription)
             agent_response = OneShotAgentResponse(message=response_message)
-        await self.add_agent_response_to_output_queue(response=agent_response)
+        self.add_agent_response_to_output_queue(response=agent_response)
 
     async def _create_generator_response(self, transcription: Transcription) -> AsyncGenerator[AgentResponseMessage, None]:
         self.memory.chat_memory.messages.append(

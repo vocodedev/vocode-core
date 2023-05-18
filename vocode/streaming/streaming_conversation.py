@@ -290,12 +290,12 @@ class StreamingConversation:
             try:
                 agent_response = item.payload
                 if isinstance(agent_response, OneShotAgentResponse):
-                    await self.handle_one_shot_response(
+                    await self._handle_one_shot_response(
                         agent_response=agent_response,
                         is_interruptible=item.is_interruptible
                         )
                 elif isinstance(agent_response, GeneratorAgentResponse):
-                    await self.handle_generator_response(
+                    await self._handle_generator_response(
                         agent_response=agent_response,
                         is_interruptible=item.is_interruptible,
                         interrupt_filler_audio_on_first_response=self.should_wait_for_filler_audio
@@ -304,7 +304,7 @@ class StreamingConversation:
             except asyncio.CancelledError:
                 pass
 
-        async def handle_one_shot_response(self, agent_response: OneShotAgentResponse, is_interruptible: bool) -> None:
+        async def _handle_one_shot_response(self, agent_response: OneShotAgentResponse, is_interruptible: bool) -> None:
             if self.conversation.agent.get_agent_config().send_filler_audio:
                 self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                 await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
@@ -315,7 +315,7 @@ class StreamingConversation:
                 )
             self._terminate_conversation_if_needed(agent_response.message)
 
-        async def handle_generator_response(
+        async def _handle_generator_response(
                 self,
                 agent_response: GeneratorAgentResponse,
                 is_interruptible: bool,
@@ -460,23 +460,18 @@ class StreamingConversation:
         ] = asyncio.Queue()
 
         # Workers setup
-        # TranscriptionsWorker reads from transcriber output queue
         self.transcriptions_worker = self.TranscriptionsWorker(
             self.transcriber.output_queue, self.transcriptions_worker_output_queue, self
         )
-        ## There probably shouldn't be much difference in the queues
-        # FinalTranscriptionsWorker reads output of TranscriptionsWorker, writes to Agent input
         self.final_transcriptions_worker = self.FinalTranscriptionsWorker(
             self.transcriptions_worker_output_queue, self.agent_input_queue, self
         )
-        # AgentRequestsWorker reads from Agent output queue
         self.agent_responses_worker = self.AgentResponsesWorker(
             input_queue=self.agent_output_queue,
             output_queue=self.agent_responses_output_queue,
             conversation=self,
             should_wait_for_filler_audio=self.agent.get_agent_config().send_filler_audio
         )
-        # SynthesisResultsWorker reads from AgentResponsesWorker output queue
         self.synthesis_results_worker = self.SynthesisResultsWorker(
             self.agent_responses_output_queue, self
         )
@@ -514,8 +509,8 @@ class StreamingConversation:
         self.current_transcription_is_interrupt: bool = False
 
         # tracing
-        self.start_time: float = None
-        self.end_time: float = None
+        self.start_time: Optional[float] = None
+        self.end_time: Optional[float] = None
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
@@ -547,7 +542,7 @@ class StreamingConversation:
                 conversation_id=self.id,
             )
         if self.synthesizer.get_synthesizer_config().sentiment_config:
-            self.update_bot_sentiment()
+            await self.update_bot_sentiment()
         if self.agent.get_agent_config().initial_message:
             agent_response = OneShotAgentResponse(
                 message=TextAgentResponseMessage(

@@ -36,7 +36,6 @@ class WebSocketUserImplementedAgent(BaseAsyncAgent):
         logger: Optional[logging.Logger] = None,
     ):
         self.agent_config = agent_config
-        self.on_response: Optional[Callable[[AgentResponseMessage], Awaitable]] = None
         self.logger = logger or logging.getLogger(__name__)
 
         self.has_ended = False
@@ -44,9 +43,6 @@ class WebSocketUserImplementedAgent(BaseAsyncAgent):
 
     def get_agent_config(self) -> WebSocketUserImplementedAgentConfig:
         return self.agent_config
-
-    def set_on_response(self, on_response: Callable[[AgentResponseMessage], Awaitable]) -> None:
-        self.on_response = on_response
 
     async def _run_loop(self) -> None:
         restarts = 0
@@ -58,7 +54,7 @@ class WebSocketUserImplementedAgent(BaseAsyncAgent):
                 "Socket Agent connection died, restarting, num_restarts: %s", restarts
             )
 
-    def handle_incoming_socket_message(self, message: WebSocketAgentMessage) -> None:
+    def _handle_incoming_socket_message(self, message: WebSocketAgentMessage) -> None:
         self.logger.info("OUTPUT: Handling incoming message from Socket Agent: %s", message)
 
         agent_response_message: AgentResponseMessage
@@ -106,9 +102,7 @@ class WebSocketUserImplementedAgent(BaseAsyncAgent):
                         agent_request = WebSocketAgentTextMessage.from_text(transcription.message)
                         agent_request_json = json.dumps(agent_request.to_json_dictionary())
                         self.logger.info(f"Sending data to web socket agent: {agent_request_json}")
-                        if isinstance(agent_request, StopAgentResponseMessage):
-                            self.has_ended = True
-                        elif isinstance(agent_request, TextAndStopAgentResponseMessage):
+                        if isinstance(agent_request, (StopAgentResponseMessage, TextAndStopAgentResponseMessage))):
                             # In practice, it doesn't make sense for the client to send a text and stop message to the agent service
                             self.has_ended = True
 
@@ -127,6 +121,10 @@ class WebSocketUserImplementedAgent(BaseAsyncAgent):
                     try:
                         msg = await ws.recv()
                         self.logger.info("Received data from web socket agent")
+                        data = json.loads(msg)
+                        message = WebSocketAgentMessage.parse_obj(data)
+                        self._handle_incoming_socket_message(message)
+
                     except websockets.exceptions.ConnectionClosed as e:
                         self.logger.error(f"WebSocket Agent Receive Error: Connection Closed - \"{e}\"")
                         break
@@ -141,9 +139,6 @@ class WebSocketUserImplementedAgent(BaseAsyncAgent):
                     except Exception as e:
                         self.logger.error(f"WebSocket Agent Receive Error: \"{e}\"")
                         break
-                    data = json.loads(msg)
-                    message = WebSocketAgentMessage.parse_obj(data)
-                    self.handle_incoming_socket_message(message)
 
                 self.logger.debug("Terminating Web Socket User Implemented Agent receiver")
 

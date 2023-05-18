@@ -1,18 +1,23 @@
-from .base_agent import BaseAgent
+from vocode.streaming.transcriber.base_transcriber import Transcription
+from .base_agent import (
+    AgentResponseMessage,
+    BaseAsyncAgent,
+    OneShotAgentResponse,
+    StopAgentResponseMessage,
+    TextAgentResponseMessage,
+)
 from ..models.agent import (
+    RESTfulAgentEnd,
     RESTfulUserImplementedAgentConfig,
     RESTfulAgentInput,
     RESTfulAgentOutput,
-    RESTfulAgentOutputType,
     RESTfulAgentText,
 )
-from typing import Generator, Optional, Tuple, cast
-import requests
 import logging
 import aiohttp
 
 
-class RESTfulUserImplementedAgent(BaseAgent):
+class RESTfulUserImplementedAgent(BaseAsyncAgent):
     def __init__(
         self,
         agent_config: RESTfulUserImplementedAgentConfig,
@@ -26,17 +31,17 @@ class RESTfulUserImplementedAgent(BaseAgent):
         self.agent_config = agent_config
         self.logger = logger or logging.getLogger(__name__)
 
-    async def respond(
-        self,
-        human_input,
-        is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
-    ) -> Tuple[Optional[str], bool]:
+    async def did_add_transcript_to_input_queue(self, transcription: Transcription):
+        await super().did_add_transcript_to_input_queue(transcription)
+        response_message = await self.get_response_message(transcription)
+        self.add_agent_response_to_output_queue(OneShotAgentResponse(message=response_message))
+
+    async def get_response_message(self, transcription: Transcription) -> AgentResponseMessage:
         config = self.agent_config.respond
         try:
             async with aiohttp.ClientSession() as session:
                 payload = RESTfulAgentInput(
-                    human_input=human_input, conversation_id=conversation_id
+                    human_input=transcription.message
                 ).dict()
                 async with session.request(
                     config.method,
@@ -48,17 +53,12 @@ class RESTfulUserImplementedAgent(BaseAgent):
                     output: RESTfulAgentOutput = RESTfulAgentOutput.parse_obj(
                         await response.json()
                     )
-                    output_response = None
-                    should_stop = False
-                    if output.type == RESTfulAgentOutputType.TEXT:
-                        output_response = cast(RESTfulAgentText, output).response
-                    elif output.type == RESTfulAgentOutputType.END:
-                        should_stop = True
-                    return output_response, should_stop
+                    if isinstance(output, RESTfulAgentText):
+                        return TextAgentResponseMessage(text=output.response)
+                    elif isinstance(output, RESTfulAgentEnd):
+                        return StopAgentResponseMessage()
+                    else:
+                        raise Exception(f"Unknown RESTful response type: {output}")
         except Exception as e:
             self.logger.error(f"Error in response from RESTful agent: {e}")
-            return None, True
-
-    def generate_response(self, human_input, is_interrupt: bool = False) -> Generator:
-        """Returns a generator that yields a sentence at a time."""
-        raise NotImplementedError
+            return StopAgentResponseMessage()

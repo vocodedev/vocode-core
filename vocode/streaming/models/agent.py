@@ -117,7 +117,6 @@ class RESTfulUserImplementedAgentConfig(
 
 
 class RESTfulAgentInput(BaseModel):
-    conversation_id: str
     human_input: str
 
 
