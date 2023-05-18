@@ -11,23 +11,26 @@ from langchain.prompts import (
 
 from langchain.chains import ConversationChain
 from langchain.chat_models import ChatOpenAI
-from langchain.schema import ChatMessage, AIMessage
+from langchain.schema import ChatMessage
 import openai
 from typing import AsyncGenerator, Optional, Tuple
 
 import logging
 
 from vocode import getenv
-from vocode.streaming.agent.chat_agent import ChatAgent
+from vocode.streaming.agent.base_agent import AgentResponse, AgentResponseMessage, GeneratorAgentResponse, OneShotAgentResponse, TextAgentResponseMessage
+from vocode.streaming.agent.chat_agent import ChatAsyncAgent
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.agent.utils import stream_openai_response_async
+from vocode.streaming.transcriber.base_transcriber import Transcription
+from vocode.streaming.utils.worker import InterruptibleEvent
 
 
-class ChatGPTAgent(ChatAgent):
+class ChatGPTAgent(ChatAsyncAgent):
     def __init__(
         self,
         agent_config: ChatGPTAgentConfig,
-        logger: logging.Logger = None,
+        logger: Optional[logging.Logger] = None,
         openai_api_key: Optional[str] = None,
     ):
         super().__init__(agent_config=agent_config, logger=logger)
@@ -70,46 +73,40 @@ class ChatGPTAgent(ChatAgent):
         )
         self.is_first_response = True
 
+    async def _run_loop(self) -> None:
+        pass
+
     def create_first_response(self, first_prompt):
         return self.conversation.predict(input=first_prompt)
 
-    async def respond(
-        self,
-        human_input,
-        is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
-    ) -> Tuple[str, bool]:
-        if is_interrupt and self.agent_config.cut_off_response:
-            cut_off_response = self.get_cut_off_response()
-            self.memory.chat_memory.add_user_message(human_input)
-            self.memory.chat_memory.add_ai_message(cut_off_response)
-            return cut_off_response, False
-        self.logger.debug("LLM responding to human input")
-        if self.is_first_response and self.first_response:
-            self.logger.debug("First response is cached")
-            self.is_first_response = False
-            text = self.first_response
-        else:
-            text = await self.conversation.apredict(input=human_input)
-        self.logger.debug(f"LLM response: {text}")
-        return text, False
+    def receive_transcription(self, transcription: Transcription) -> None:
+        agent_response: AgentResponse
 
-    async def generate_response(
-        self,
-        human_input,
-        is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
-    ) -> AsyncGenerator[str, None]:
-        self.memory.chat_memory.messages.append(
-            ChatMessage(role="user", content=human_input)
+        if self.agent_config.generate_responses:
+            generator = self._create_generator_response(transcription)
+            agent_response = GeneratorAgentResponse(generator=generator)
+        else:
+            response_message = self._create_one_shot_response(transcription)
+            agent_response = OneShotAgentResponse(message=response_message)
+
+        event = InterruptibleEvent(
+            is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+            payload=agent_response,
         )
-        if is_interrupt and self.agent_config.cut_off_response:
+        self.output_queue.put_nowait(event)
+
+    async def _create_generator_response(self, transcription: Transcription) -> AsyncGenerator[AgentResponseMessage, None]:
+        self.memory.chat_memory.messages.append(
+            ChatMessage(role="user", content=transcription.message)
+        )
+        if transcription.is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
             self.memory.chat_memory.messages.append(
                 ChatMessage(role="assistant", content=cut_off_response)
             )
-            yield cut_off_response
+            yield TextAgentResponseMessage(text=cut_off_response)
             return
+
         prompt_messages = [
             ChatMessage(role="system", content=self.agent_config.prompt_preamble)
         ] + self.memory.chat_memory.messages
@@ -130,4 +127,21 @@ class ChatGPTAgent(ChatAgent):
             get_text=lambda choice: choice.get("delta", {}).get("content"),
         ):
             bot_memory_message.content = f"{bot_memory_message.content} {message}"
-            yield message
+            yield TextAgentResponseMessage(text=message)
+
+    def _create_one_shot_response(self, transcription: Transcription) -> TextAgentResponseMessage:
+        if transcription.is_interrupt and self.agent_config.cut_off_response:
+            cut_off_response = self.get_cut_off_response()
+            self.memory.chat_memory.add_user_message(transcription.message)
+            self.memory.chat_memory.add_ai_message(cut_off_response)
+            return TextAgentResponseMessage(text=cut_off_response)
+
+        else:
+            if self.is_first_response and self.first_response:
+                self.logger.debug("First response is cached")
+                self.is_first_response = False
+                return TextAgentResponseMessage(text=self.first_response)
+            else:
+                text = self.conversation.predict(input=transcription.message)
+                self.logger.debug(f"LLM response: {text}")
+                return TextAgentResponseMessage(text=text)
