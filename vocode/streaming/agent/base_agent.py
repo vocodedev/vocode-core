@@ -103,7 +103,7 @@ class BaseAsyncAgent(AsyncWorker, AbstractAgent):
         AbstractAgent.__init__(self, agent_config, logger)
 
     async def _run_loop(self) -> None:
-        raise NotImplementedError
+        pass
 
     async def add_transcript_to_input_queue(self, transcription: Transcription) -> None:
         self.send_nonblocking(transcription)
@@ -134,7 +134,7 @@ class BaseThreadAsyncAgent(ThreadAsyncWorker, AbstractAgent):
         AbstractAgent.__init__(self, agent_config, logger)
 
     async def _run_loop(self) -> None:
-        raise NotImplementedError
+        pass
 
     async def add_transcript_to_input_queue(self, transcription: Transcription) -> None:
         self.send_nonblocking(transcription)

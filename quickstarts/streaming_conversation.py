@@ -2,6 +2,7 @@ import asyncio
 import logging
 import signal
 from dotenv import load_dotenv
+from vocode.streaming.agent.echo_agent import EchoAgent
 from vocode.streaming.synthesizer.coqui_tts_synthesizer import CoquiTTSSynthesizer
 
 from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
@@ -53,7 +54,7 @@ logger.setLevel(logging.DEBUG)
 
 async def main():
     microphone_input, speaker_output = create_microphone_input_and_speaker_output(
-        streaming=True, use_default_devices=True
+        streaming=True, use_default_devices=False
     )
 
     conversation = StreamingConversation(
@@ -72,7 +73,6 @@ async def main():
         synthesizer=AzureSynthesizer(
             AzureSynthesizerConfig.from_output_device(speaker_output)
         ),
-        mute_mic_during_agent_response=True,
         logger=logger,
     )
     await conversation.start()
