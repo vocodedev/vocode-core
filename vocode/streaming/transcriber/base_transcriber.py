@@ -1,6 +1,7 @@
 import asyncio
+import audioop
 from typing import Union
-import wave
+from vocode.streaming.models.audio_encoding import AudioEncoding
 
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.utils.worker import AsyncWorker, AsyncQueueType, ThreadAsyncWorker
@@ -26,12 +27,26 @@ class Transcription:
 class AbstractTranscriber:
     def __init__(self, transcriber_config: TranscriberConfig):
         self.transcriber_config = transcriber_config
+        self.is_muted = False
+
+    def mute(self):
+        self.is_muted = True
+
+    def unmute(self):
+        self.is_muted = False
 
     def get_transcriber_config(self) -> TranscriberConfig:
         return self.transcriber_config
 
     async def ready(self):
         return True
+
+    def create_silent_chunk(self, chunk_size, sample_width=2):
+        linear_audio = b"\0" * chunk_size
+        if self.get_transcriber_config().audio_encoding == AudioEncoding.LINEAR16:
+            return linear_audio
+        elif self.get_transcriber_config().audio_encoding == AudioEncoding.MULAW:
+            return audioop.lin2ulaw(linear_audio, sample_width)
 
 
 class BaseAsyncTranscriber(AsyncWorker, AbstractTranscriber):
@@ -49,7 +64,10 @@ class BaseAsyncTranscriber(AsyncWorker, AbstractTranscriber):
         raise NotImplementedError
 
     def send_audio(self, chunk):
-        self.send_nonblocking(chunk)
+        if not self.is_muted:
+            self.send_nonblocking(chunk)
+        else:
+            self.send_nonblocking(self.create_silent_chunk(len(chunk)))
 
     def terminate(self):
         AsyncWorker.terminate(self)
@@ -69,7 +87,10 @@ class BaseThreadAsyncTranscriber(ThreadAsyncWorker, AbstractTranscriber):
         raise NotImplementedError
 
     def send_audio(self, chunk):
-        self.send_nonblocking(chunk)
+        if not self.is_muted:
+            self.send_nonblocking(chunk)
+        else:
+            self.send_nonblocking(self.create_silent_chunk(len(chunk)))
 
     def terminate(self):
         ThreadAsyncWorker.terminate(self)

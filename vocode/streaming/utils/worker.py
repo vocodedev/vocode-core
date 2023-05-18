@@ -51,27 +51,27 @@ class ThreadAsyncWorker(AsyncWorker):
     def start(self) -> None:
         self.worker_thread = threading.Thread(target=self._run_loop)
         self.worker_thread.start()
-        self.worker_task = asyncio.gather(
-            self._forward_to_thread(),
-            self._forward_from_thead(),
-        )
+        self.worker_task = asyncio.create_task(self.run_thread_forwarding())
         return self.worker_task
 
-    async def _forward_to_thread(self):
+    async def run_thread_forwarding(self):
         try:
-            while True:
-                item = await self.input_queue.get()
-                self.input_janus_queue.async_q.put_nowait(item)
+            await asyncio.gather(
+                self._forward_to_thread(),
+                self._forward_from_thead(),
+            )
         except asyncio.CancelledError:
             return
 
+    async def _forward_to_thread(self):
+        while True:
+            item = await self.input_queue.get()
+            self.input_janus_queue.async_q.put_nowait(item)
+
     async def _forward_from_thead(self):
-        try:
-            while True:
-                item = await self.output_janus_queue.async_q.get()
-                self.output_queue.put_nowait(item)
-        except asyncio.CancelledError:
-            return
+        while True:
+            item = await self.output_janus_queue.async_q.get()
+            self.output_queue.put_nowait(item)
 
     def _run_loop(self):
         raise NotImplementedError

@@ -6,6 +6,9 @@ class BaseOutputDevice:
         self.sampling_rate = sampling_rate
         self.audio_encoding = audio_encoding
 
+    def start(self):
+        pass
+
     def send_nonblocking(self, chunk: bytes):
         raise NotImplemented
 
