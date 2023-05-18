@@ -63,7 +63,6 @@ async def main():
             DeepgramTranscriberConfig.from_input_device(
                 microphone_input,
                 endpointing_config=PunctuationEndpointingConfig(),
-                mute_during_speech=True,
             )
         ),
         agent=ChatGPTAgent(

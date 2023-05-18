@@ -19,7 +19,6 @@ from vocode.streaming.models.events import TranscriptCompleteEvent
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.output_device.speaker_output import SpeakerOutput
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.utils.transcript import Transcript
@@ -475,14 +474,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # tracing
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
-
-        self.validate_params()
-
-    def validate_params(self):
-        if self.transcriber.get_transcriber_config().mute_during_speech:
-            assert not isinstance(
-                self.output_device, SpeakerOutput
-            ), "Use BlockingSpeakerOutput with mute_during_speech=True"
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
