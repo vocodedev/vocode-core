@@ -102,7 +102,7 @@ class WebSocketUserImplementedAgent(BaseAsyncAgent):
                         agent_request = WebSocketAgentTextMessage.from_text(transcription.message)
                         agent_request_json = json.dumps(agent_request.to_json_dictionary())
                         self.logger.info(f"Sending data to web socket agent: {agent_request_json}")
-                        if isinstance(agent_request, (StopAgentResponseMessage, TextAndStopAgentResponseMessage))):
+                        if isinstance(agent_request, (StopAgentResponseMessage, TextAndStopAgentResponseMessage)):
                             # In practice, it doesn't make sense for the client to send a text and stop message to the agent service
                             self.has_ended = True
 
