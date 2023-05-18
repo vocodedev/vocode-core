@@ -342,7 +342,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async def process(self, item: InterruptibleEvent[BaseMessage]):
             try:
                 agent_response = item.payload
-                self.conversation.logger.debug("Synthesizing speech for message")
+                self.conversation.logger.debug("Synthesizing speech for message: " + item.payload.text)
                 # TODO: also time the synthesis stream playback
                 with tracer.start_as_current_span(
                     SYNTHESIS_TRACE_NAME,
@@ -396,10 +396,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     wav_file_path = dtmf_wav_path(match.group(1))
                     output_bytes = convert_wav(
                         wav_file_path,
-                        output_sample_rate=self.synthesizer.get_synthesizer_config().sampling_rate,
-                        output_encoding=self.synthesizer.get_synthesizer_config().audio_encoding,
+                        output_sample_rate=self.conversation.synthesizer.get_synthesizer_config().sampling_rate,
+                        output_encoding=self.conversation.synthesizer.get_synthesizer_config().audio_encoding,
                     )
-                    await self.output_device.send_async(output_bytes)
+                    self.conversation.output_device.send_nonblocking(output_bytes)
                 else:
                     self.conversation.logger.debug("Message is not DTMF")
 
