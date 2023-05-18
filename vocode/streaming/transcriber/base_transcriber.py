@@ -103,6 +103,6 @@ class BaseThreadAsyncTranscriber(
 
 
 BaseTranscriber = Union[
-    BaseAsyncTranscriber[TranscriberConfig],
-    BaseThreadAsyncTranscriber[TranscriberConfig],
+    BaseAsyncTranscriber[TranscriberConfigType],
+    BaseThreadAsyncTranscriber[TranscriberConfigType],
 ]
