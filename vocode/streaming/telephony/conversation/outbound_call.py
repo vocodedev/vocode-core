@@ -110,6 +110,8 @@ class OutboundCall:
             synthesizer_config=self.synthesizer_config,
             twilio_config=self.twilio_config,
             twilio_sid=self.twilio_sid,
+            twilio_from=self.from_phone,
+            twilio_to=self.to_phone,
         )
         self.config_manager.save_config(self.conversation_id, call_config)
 

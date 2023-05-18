@@ -3,6 +3,9 @@ import sounddevice as sd
 from vocode.streaming.input_device.microphone_input import (
     MicrophoneInput as StreamingMicrophoneInput,
 )
+from vocode.streaming.output_device.blocking_speaker_output import (
+    BlockingSpeakerOutput as BlockingStreamingSpeakerOutput,
+)
 from vocode.streaming.output_device.speaker_output import (
     SpeakerOutput as StreamingSpeakerOutput,
 )
@@ -32,8 +35,13 @@ def create_microphone_input_and_speaker_output(
     use_default_devices=False,
     mic_sampling_rate=None,
     speaker_sampling_rate=None,
+    microphone_class_override=None,
+    speaker_class_override=None,
 ) -> Union[
-    Tuple[StreamingMicrophoneInput, StreamingSpeakerOutput],
+    Tuple[
+        StreamingMicrophoneInput,
+        Union[StreamingSpeakerOutput, BlockingStreamingSpeakerOutput],
+    ],
     Tuple[TurnBasedMicrophoneInput, TurnBasedSpeakerOutput],
 ]:
     device_infos = sd.query_devices()
@@ -54,10 +62,12 @@ def create_microphone_input_and_speaker_output(
             int(input(_get_device_prompt(output_device_infos)))
         ]
     logger.info("Using microphone input device: %s", input_device_info["name"])
-    microphone_class = (
+    microphone_class = microphone_class_override or (
         StreamingMicrophoneInput if streaming else TurnBasedMicrophoneInput
     )
-    speaker_class = StreamingSpeakerOutput if streaming else TurnBasedSpeakerOutput
+    speaker_class = speaker_class_override or (
+        StreamingSpeakerOutput if streaming else TurnBasedSpeakerOutput
+    )
 
     microphone_input = microphone_class(
         input_device_info, sampling_rate=mic_sampling_rate

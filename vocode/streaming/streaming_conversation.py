@@ -55,8 +55,8 @@ from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
     InterruptibleEvent,
     InterruptibleWorker,
-    QueueType,
 )
+from vocode.streaming.utils.queues import AsyncQueueType, SyncQueueType
 
 tracer = trace.get_tracer(__name__)
 SYNTHESIS_TRACE_NAME = "synthesis"
@@ -70,8 +70,8 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: QueueType[Transcription],
-            output_queue: QueueType[InterruptibleEvent[Transcription]],
+            input_queue: AsyncQueueType[Transcription],
+            output_queue: AsyncQueueType[InterruptibleEvent[Transcription]],
             conversation: "StreamingConversation",
         ):
             super().__init__(input_queue, output_queue)
@@ -121,8 +121,8 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: QueueType[InterruptibleEvent[Transcription]],
-            output_queue: QueueType[InterruptibleEvent[Transcription]],
+            input_queue: AsyncQueueType[InterruptibleEvent[Transcription]],
+            output_queue: AsyncQueueType[InterruptibleEvent[Transcription]],
             conversation: "StreamingConversation",
         ):
             super().__init__(input_queue, output_queue)
@@ -207,9 +207,10 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: QueueType[InterruptibleEvent[FillerAudio]],
+            input_queue: AsyncQueueType[InterruptibleEvent[FillerAudio]],
             conversation: "StreamingConversation",
         ):
+            super().__init__(input_queue=input_queue, output_queue=None)
             self.input_queue = input_queue
             self.conversation = conversation
             self.current_filler_seconds_per_chunk: Optional[int] = None
@@ -265,15 +266,12 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: QueueType[InterruptibleEvent[AgentResponse]],
-            output_queue: QueueType[InterruptibleEvent[Tuple[BaseMessage, SynthesisResult]]],
+            input_queue: AsyncQueueType[InterruptibleEvent[BaseMessage]],
+            output_queue: AsyncQueueType[SynthesisResult],
             conversation: "StreamingConversation",
             should_wait_for_filler_audio: bool,
         ):
-            super().__init__(
-                input_queue=input_queue,
-                output_queue=output_queue,
-            )
+            super().__init__(input_queue=input_queue, output_queue=output_queue)
             self.input_queue = input_queue
             self.output_queue = output_queue
             self.conversation = conversation
@@ -388,11 +386,12 @@ class StreamingConversation:
 
         def __init__(
             self,
-            input_queue: QueueType[
+            input_queue: AsyncQueueType[
                 InterruptibleEvent[Tuple[BaseMessage, SynthesisResult]]
             ],
             conversation: "StreamingConversation",
         ):
+            super().__init__(input_queue=input_queue, output_queue=None)
             self.input_queue = input_queue
             self.conversation = conversation
 
@@ -441,21 +440,21 @@ class StreamingConversation:
         self.mute_mic_during_agent_response = mute_mic_during_agent_response
 
         # Queue setup
-        self.transcriptions_worker_output_queue: QueueType[
+        self.transcriptions_worker_output_queue: AsyncQueueType[
             InterruptibleEvent[Transcription]
         ] = asyncio.Queue()
 
-        self.agent_input_queue: QueueType[
+        self.agent_input_queue: AsyncQueueType[
             InterruptibleEvent[Transcription]
         ] = self.agent.input_queue
-        self.agent_output_queue: QueueType[
+        self.agent_output_queue: AsyncQueueType[
             InterruptibleEvent[AgentResponseMessage]
         ] = self.agent.output_queue
 
-        self.agent_responses_output_queue: QueueType[
-            InterruptibleEvent[BaseMessage, SynthesisResult]
+        self.agent_responses_output_queue: AsyncQueueType[
+            InterruptibleEvent[SynthesisResult]
         ] = asyncio.Queue()
-        self.filler_audio_queue: QueueType[
+        self.filler_audio_queue: AsyncQueueType[
             InterruptibleEvent[FillerAudio]
         ] = asyncio.Queue()
 
@@ -500,7 +499,7 @@ class StreamingConversation:
         self.is_mic_muted = False
         self.is_human_speaking = False
         self.active = False
-        self.interruptible_events: queue.Queue[InterruptibleEvent] = queue.Queue()
+        self.interruptible_events: SyncQueueType[InterruptibleEvent] = queue.Queue()
         self.mark_last_action_timestamp()
 
         self.check_for_idle_task = None
@@ -519,6 +518,7 @@ class StreamingConversation:
         self.final_transcriptions_worker.start()
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
+        self.output_device.start()
         if self.filler_audio_worker:
             self.filler_audio_worker.start()
         is_ready = await self.transcriber.ready()
@@ -620,7 +620,9 @@ class StreamingConversation:
         num_interrupts = 0
         while True:
             try:
-                interruptible_event = self.interruptible_events.get_nowait()
+                interruptible_event: InterruptibleEvent = (
+                    self.interruptible_events.get_nowait()
+                )
                 if not interruptible_event.is_interrupted():
                     if interruptible_event.interrupt():
                         self.logger.debug("Interrupting event")
@@ -650,6 +652,9 @@ class StreamingConversation:
 
         Returns the message that was sent up to, and a flag if the message was cut off
         """
+        if self.transcriber.get_transcriber_config().mute_during_speech:
+            self.logger.debug("Muting transcriber")
+            self.transcriber.mute()
         message_sent = message
         cut_off = False
 
@@ -694,9 +699,9 @@ class StreamingConversation:
             )
             self.mark_last_action_timestamp()
             chunk_idx += 1
-
-        self.is_mic_muted = False
-
+        if self.transcriber.get_transcriber_config().mute_during_speech:
+            self.logger.debug("Unmuting transcriber")
+            self.transcriber.unmute()
         return message_sent, cut_off
 
     def mark_terminated(self):
