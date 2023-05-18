@@ -144,7 +144,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             agent_span = tracer.start_span(
                 AGENT_TRACE_NAME, {"generate_response": True}  # type: ignore
             )
-            responses = await self.conversation.agent.generate_response(
+            responses = self.conversation.agent.generate_response(
                 transcription.message,
                 is_interrupt=transcription.is_interrupt,
                 conversation_id=self.conversation.id,
