@@ -477,6 +477,7 @@ class StreamingConversation:
         self.final_transcriptions_worker.start()
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
+        self.output_device.start()
         if self.filler_audio_worker:
             self.filler_audio_worker.start()
         is_ready = await self.transcriber.ready()
@@ -602,6 +603,9 @@ class StreamingConversation:
 
         Returns the message that was sent up to, and a flag if the message was cut off
         """
+        if self.transcriber.get_transcriber_config().mute_during_speech:
+            self.logger.debug("Muting transcriber")
+            self.transcriber.mute()
         message_sent = message
         cut_off = False
         chunk_size = seconds_per_chunk * get_chunk_size_per_second(
@@ -642,6 +646,9 @@ class StreamingConversation:
             )
             self.mark_last_action_timestamp()
             chunk_idx += 1
+        if self.transcriber.get_transcriber_config().mute_during_speech:
+            self.logger.debug("Unmuting transcriber")
+            self.transcriber.unmute()
         return message_sent, cut_off
 
     def mark_terminated(self):
