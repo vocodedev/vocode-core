@@ -8,6 +8,7 @@ from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 import logging
 import time
 import typing
+import re
 
 from opentelemetry import trace
 from opentelemetry.trace import Span
@@ -40,8 +41,13 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
     FillerAudio,
+    dtmf_wav_path,
 )
-from vocode.streaming.utils import create_conversation_id, get_chunk_size_per_second
+from vocode.streaming.utils import (
+    create_conversation_id,
+    get_chunk_size_per_second,
+    convert_wav,
+)
 from vocode.streaming.transcriber.base_transcriber import (
     Transcription,
     BaseTranscriber,
@@ -55,6 +61,8 @@ from vocode.streaming.utils.worker import (
 tracer = trace.get_tracer(__name__)
 SYNTHESIS_TRACE_NAME = "synthesis"
 AGENT_TRACE_NAME = "agent"
+
+PRESSES_DTMF_REGEX = re.compile(".*\*presses ([0-9])\*.*")
 
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
 
@@ -378,6 +386,23 @@ class StreamingConversation(Generic[OutputDeviceType]):
         ):
             try:
                 message, synthesis_result = item.payload
+
+                # Check if the message indicates that we should press a DTMF key.  If so, send the DTMF tone wav to the output device.
+                # This happens in addition to normal processing, which means we will play the tone and also speak the message.
+                self.conversation.logger.debug("Checking if message is DTMF: %s" % message.text)
+                match = PRESSES_DTMF_REGEX.match(message.text)
+                if match and match.group(1):
+                    self.conversation.logger.debug("Detected DTMF: %s" % match.group(1))
+                    wav_file_path = dtmf_wav_path(match.group(1))
+                    output_bytes = convert_wav(
+                        wav_file_path,
+                        output_sample_rate=self.synthesizer.get_synthesizer_config().sampling_rate,
+                        output_encoding=self.synthesizer.get_synthesizer_config().audio_encoding,
+                    )
+                    await self.output_device.send_async(output_bytes)
+                else:
+                    self.conversation.logger.debug("Message is not DTMF")
+
                 message_sent, cut_off = await self.conversation.send_speech_to_output(
                     message.text,
                     synthesis_result,
