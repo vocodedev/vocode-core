@@ -51,6 +51,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     endpointing_config: Optional[EndpointingConfig] = None
     downsampling: Optional[int] = None
     min_interrupt_confidence: Optional[float] = None
+    mute_during_speech: bool = False
 
     @validator("min_interrupt_confidence")
     def min_interrupt_confidence_must_be_between_0_and_1(cls, v):
