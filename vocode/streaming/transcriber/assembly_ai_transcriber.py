@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from typing import Optional
 import websockets
 import audioop
 import numpy as np
@@ -19,12 +20,12 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 ASSEMBLY_AI_URL = "wss://api.assemblyai.com/v2/realtime/ws"
 
 
-class AssemblyAITranscriber(BaseAsyncTranscriber):
+class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
     def __init__(
         self,
         transcriber_config: AssemblyAITranscriberConfig,
-        logger: logging.Logger = None,
-        api_key: str = None,
+        api_key: Optional[str] = None,
+        logger: Optional[logging.Logger] = None,
     ):
         super().__init__(transcriber_config)
         self.api_key = api_key or getenv("ASSEMBLY_AI_API_KEY")

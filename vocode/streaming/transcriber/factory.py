@@ -1,6 +1,15 @@
 import logging
 from typing import Optional
-from vocode.streaming.models.transcriber import TranscriberConfig, TranscriberType
+import typing
+from vocode.streaming.models.transcriber import (
+    AssemblyAITranscriberConfig,
+    AzureTranscriberConfig,
+    DeepgramTranscriberConfig,
+    GoogleTranscriberConfig,
+    RevAITranscriberConfig,
+    TranscriberConfig,
+    TranscriberType,
+)
 from vocode.streaming.transcriber.assembly_ai_transcriber import AssemblyAITranscriber
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode.streaming.transcriber.google_transcriber import GoogleTranscriber
@@ -15,14 +24,26 @@ class TranscriberFactory:
         logger: Optional[logging.Logger] = None,
     ):
         if transcriber_config.type == TranscriberType.DEEPGRAM:
-            return DeepgramTranscriber(transcriber_config, logger=logger)
+            return DeepgramTranscriber(
+                typing.cast(DeepgramTranscriberConfig, transcriber_config),
+                logger=logger,
+            )
         elif transcriber_config.type == TranscriberType.GOOGLE:
-            return GoogleTranscriber(transcriber_config, logger=logger)
+            return GoogleTranscriber(
+                typing.cast(GoogleTranscriberConfig, transcriber_config), logger=logger
+            )
         elif transcriber_config.type == TranscriberType.ASSEMBLY_AI:
-            return AssemblyAITranscriber(transcriber_config, logger=logger)
+            return AssemblyAITranscriber(
+                typing.cast(AssemblyAITranscriberConfig, transcriber_config),
+                logger=logger,
+            )
         elif transcriber_config.type == TranscriberType.REV_AI:
-            return RevAITranscriber(transcriber_config, logger=logger)
+            return RevAITranscriber(
+                typing.cast(RevAITranscriberConfig, transcriber_config), logger=logger
+            )
         elif transcriber_config.type == TranscriberType.AZURE:
-            return AzureTranscriber(transcriber_config, logger=logger)
+            return AzureTranscriber(
+                typing.cast(AzureTranscriberConfig, transcriber_config), logger=logger
+            )
         else:
             raise Exception("Invalid transcriber config")

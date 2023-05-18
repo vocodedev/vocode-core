@@ -16,10 +16,10 @@ from vocode.streaming.synthesizer.base_synthesizer import (
 class GTTSSynthesizer(BaseSynthesizer):
     def __init__(
         self,
-        config: GTTSSynthesizerConfig,
+        synthesizer_config: GTTSSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(config)
+        super().__init__(synthesizer_config)
 
         from gtts import gTTS
 
@@ -42,9 +42,9 @@ class GTTSSynthesizer(BaseSynthesizer):
             self.thread_pool_executor, thread
         )
         audio_file.seek(0)
-        audio_segment: AudioSegment = AudioSegment.from_mp3(audio_file)
+        audio_segment: AudioSegment = AudioSegment.from_mp3(audio_file)  # type: ignore
         output_bytes_io = BytesIO()
-        audio_segment.export(output_bytes_io, format="wav")
+        audio_segment.export(output_bytes_io, format="wav")  # type: ignore
         return self.create_synthesis_result_from_wav(
             file=output_bytes_io,
             message=message,

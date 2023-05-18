@@ -16,8 +16,8 @@ NAMESPACES = {
     "": "https://www.w3.org/2001/10/synthesis",
 }
 
-ElementTree.register_namespace("", NAMESPACES.get(""))
-ElementTree.register_namespace("mstts", NAMESPACES.get("mstts"))
+ElementTree.register_namespace("", NAMESPACES[""])
+ElementTree.register_namespace("mstts", NAMESPACES["mstts"])
 
 
 class AzureSynthesizer(BaseSynthesizer):

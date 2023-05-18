@@ -41,4 +41,4 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
 
         audio = self.elevenlabs.generate(text, voice=voice)
 
-        return AudioSegment.from_mp3(io.BytesIO(audio))
+        return AudioSegment.from_mp3(io.BytesIO(audio))  # type: ignore

@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import asyncio
 import audioop
-from typing import Union
+from typing import Generic, TypeVar, Union
 from vocode.streaming.models.audio_encoding import AudioEncoding
 
 from vocode.streaming.models.transcriber import TranscriberConfig
-from vocode.streaming.utils.worker import AsyncWorker, AsyncQueueType, ThreadAsyncWorker
+from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
 
 
 class Transcription:
@@ -24,8 +26,11 @@ class Transcription:
         return f"Transcription({self.message}, {self.confidence}, {self.is_final})"
 
 
-class AbstractTranscriber:
-    def __init__(self, transcriber_config: TranscriberConfig):
+TranscriberConfigType = TypeVar("TranscriberConfigType", bound=TranscriberConfig)
+
+
+class AbstractTranscriber(Generic[TranscriberConfigType]):
+    def __init__(self, transcriber_config: TranscriberConfigType):
         self.transcriber_config = transcriber_config
         self.is_muted = False
 
@@ -35,7 +40,7 @@ class AbstractTranscriber:
     def unmute(self):
         self.is_muted = False
 
-    def get_transcriber_config(self) -> TranscriberConfig:
+    def get_transcriber_config(self) -> TranscriberConfigType:
         return self.transcriber_config
 
     async def ready(self):
@@ -49,14 +54,13 @@ class AbstractTranscriber:
             return audioop.lin2ulaw(linear_audio, sample_width)
 
 
-class BaseAsyncTranscriber(AsyncWorker, AbstractTranscriber):
+class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWorker):
     def __init__(
         self,
-        transcriber_config: TranscriberConfig,
+        transcriber_config: TranscriberConfigType,
     ):
-        self.input_queue: AsyncQueueType[bytes] = asyncio.Queue()
-        self.output_queue: AsyncQueueType[Transcription] = asyncio.Queue()
-        self.transcriber_config = transcriber_config
+        self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
+        self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
         AsyncWorker.__init__(self, self.input_queue, self.output_queue)
         AbstractTranscriber.__init__(self, transcriber_config)
 
@@ -73,13 +77,15 @@ class BaseAsyncTranscriber(AsyncWorker, AbstractTranscriber):
         AsyncWorker.terminate(self)
 
 
-class BaseThreadAsyncTranscriber(ThreadAsyncWorker, AbstractTranscriber):
+class BaseThreadAsyncTranscriber(
+    AbstractTranscriber[TranscriberConfigType], ThreadAsyncWorker
+):
     def __init__(
         self,
-        transcriber_config: TranscriberConfig,
+        transcriber_config: TranscriberConfigType,
     ):
-        self.input_queue: AsyncQueueType[bytes] = asyncio.Queue()
-        self.output_queue: AsyncQueueType[Transcription] = asyncio.Queue()
+        self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
+        self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
         ThreadAsyncWorker.__init__(self, self.input_queue, self.output_queue)
         AbstractTranscriber.__init__(self, transcriber_config)
 

@@ -37,12 +37,18 @@ We release updates to Vocode on a daily basis published to [PyPI](https://pypi.o
 
 If you submit a PR, we'd love to feature your contribution on Twitter so please include your handle in your PR/otherwise!
 
-## Linting
+## Linting and Typechecking
 
 We use [`black`](https://black.readthedocs.io/en/stable/) for linting. If you're using VSCode, code should auto-format automatically. Otherwise, run the following script before pushing:
 
 ```
 make lint_diff
+```
+
+We use [`mypy`](https://mypy-lang.org/) for typechecking. Full correctness in `vocode/` is required for merging a PR. Run the following script to run this locally:
+
+```
+make typecheck # or make typecheck_diff
 ```
 
 ## Testing

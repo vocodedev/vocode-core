@@ -1,7 +1,6 @@
 import io
 from typing import Optional
 import aiohttp
-import requests
 from pydub import AudioSegment
 
 from vocode import getenv
@@ -17,12 +16,12 @@ from vocode.streaming.models.message import BaseMessage
 COQUI_BASE_URL = "https://app.coqui.ai/api/v2/"
 
 
-class CoquiSynthesizer(BaseSynthesizer):
-    def __init__(self, config: CoquiSynthesizerConfig):
-        super().__init__(config)
-        self.api_key = config.api_key or getenv("COQUI_API_KEY")
-        self.voice_id = config.voice_id
-        self.voice_prompt = config.voice_prompt
+class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
+    def __init__(self, synthesizer_config: CoquiSynthesizerConfig):
+        super().__init__(synthesizer_config)
+        self.api_key = synthesizer_config.api_key or getenv("COQUI_API_KEY")
+        self.voice_id = synthesizer_config.voice_id
+        self.voice_prompt = synthesizer_config.voice_prompt
 
     async def create_speech(
         self,
@@ -37,7 +36,7 @@ class CoquiSynthesizer(BaseSynthesizer):
         headers = {"Authorization": f"Bearer {self.api_key}"}
 
         emotion = "Neutral"
-        if bot_sentiment.emotion:
+        if bot_sentiment is not None and bot_sentiment.emotion:
             emotion = bot_sentiment.emotion.capitalize()
 
         body = {
@@ -48,7 +47,7 @@ class CoquiSynthesizer(BaseSynthesizer):
 
         if self.voice_prompt:
             body["prompt"] = self.voice_prompt
-        else:
+        if self.voice_id:
             body["voice_id"] = self.voice_id
 
         async with aiohttp.ClientSession() as session:
@@ -59,20 +58,19 @@ class CoquiSynthesizer(BaseSynthesizer):
                 headers=headers,
                 timeout=aiohttp.ClientTimeout(total=15),
             ) as response:
-                response = requests.post(url, headers=headers, json=body)
                 sample = await response.json()
-            async with session.request(
-                "GET",
-                sample["audio_url"],
-            ) as response:
-                audio_segment: AudioSegment = AudioSegment.from_wav(
-                    io.BytesIO(await response.read())
-                )
+                async with session.request(
+                    "GET",
+                    sample["audio_url"],
+                ) as response:
+                    audio_segment: AudioSegment = AudioSegment.from_wav(
+                        io.BytesIO(await response.read())  # type: ignore
+                    )
 
-                output_bytes: bytes = audio_segment.raw_data
+                    output_bytes: bytes = audio_segment.raw_data
 
-                self.create_synthesis_result_from_wav(
-                    file=output_bytes,
-                    message=message,
-                    chunk_size=chunk_size,
-                )
+                    return self.create_synthesis_result_from_wav(
+                        file=output_bytes,
+                        message=message,
+                        chunk_size=chunk_size,
+                    )

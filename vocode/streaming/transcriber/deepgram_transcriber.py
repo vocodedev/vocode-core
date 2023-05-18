@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from typing import Optional
 import websockets
 from websockets.client import WebSocketClientProtocol
 import audioop
@@ -23,12 +24,12 @@ PUNCTUATION_TERMINATORS = [".", "!", "?"]
 NUM_RESTARTS = 5
 
 
-class DeepgramTranscriber(BaseAsyncTranscriber):
+class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
     def __init__(
         self,
         transcriber_config: DeepgramTranscriberConfig,
-        logger: logging.Logger = None,
-        api_key: str = None,
+        api_key: Optional[str] = None,
+        logger: Optional[logging.Logger] = None,
     ):
         super().__init__(transcriber_config)
         self.api_key = api_key or getenv("DEEPGRAM_API_KEY")
@@ -36,7 +37,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber):
             raise Exception(
                 "Please set DEEPGRAM_API_KEY environment variable or pass it as a parameter"
             )
-        self.transcriber_config = transcriber_config
         self._ended = False
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
