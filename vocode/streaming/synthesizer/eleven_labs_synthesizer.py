@@ -53,6 +53,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             "text": message.text,
             "voice_settings": voice.settings.dict() if voice.settings else None,
         }
+        if self.synthesizer_config.optimize_streaming_latency:
+            body[
+                "optimize_streaming_latency"
+            ] = self.synthesizer_config.optimize_streaming_latency
 
         async with aiohttp.ClientSession() as session:
             async with session.request(
