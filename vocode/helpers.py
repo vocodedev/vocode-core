@@ -13,6 +13,8 @@ from vocode.turn_based.output_device.speaker_output import (
     SpeakerOutput as TurnBasedSpeakerOutput,
 )
 import logging
+from enum import Enum
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -67,3 +69,50 @@ def create_microphone_input_and_speaker_output(
         output_device_info, sampling_rate=speaker_sampling_rate
     )
     return microphone_input, speaker_output
+
+class LatencyType(Enum):
+    TRANSCRIPTION = "transcription"
+    AGENT = "agent"
+    SYNTHESIS = "synthesis"
+
+class LatencyManager:
+    def __init__(self):
+        self.latencies = {
+            latency_type: [] for latency_type in LatencyType
+        }
+        self.averages = {}
+    
+    def measure_latency(self, latency_type, func, *args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        latency = time.time() - start_time
+        self.add_latency(latency_type, latency)
+        return result
+
+    def add_latency(self, latency_type, latency):
+        self.latencies[latency_type].append(latency)
+
+    def get_latency(self, latency_type):
+        return self.latencies[latency_type][-1]
+
+    def calculate_average_latency(self, latency_type):
+        latencies = self.latencies[latency_type]
+        if not latencies:
+            return 0.0
+        return sum(latencies) / len(latencies)
+
+    def calculate_average_latencies(self):
+        averages = {}
+        for latency_type in self.latencies:
+            average_latency = self.calculate_average_latency(latency_type)
+            averages[latency_type] = average_latency
+        self.averages = averages
+        return averages
+    
+    def calculate_total_average_latencies(self):
+        if not self.averages:
+            self.calculate_average_latencies()
+        return sum(self.averages.values()) / len(self.averages)
+        
+        
+        

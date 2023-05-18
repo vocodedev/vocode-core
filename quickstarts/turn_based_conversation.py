@@ -37,6 +37,7 @@ if __name__ == "__main__":
             voice_name="en-US-SteffanNeural",
         ),
         logger=logger,
+        show_latency=True
     )
     print("Starting conversation. Press Ctrl+C to exit.")
     while True:
@@ -46,4 +47,10 @@ if __name__ == "__main__":
             input("Press enter to end recording...")
             conversation.end_speech_and_respond()
         except KeyboardInterrupt:
+            latency_manager = conversation.get_latency_manager()
+            average_latencies = latency_manager.calculate_average_latencies()
+            logger.info("\nConversation ended. Average latencies:")
+            for latency_type in average_latencies:
+                logger.info(f"Average {latency_type.value} latency: {average_latencies[latency_type]} seconds")
+            logger.info(f"Total average latency: {latency_manager.calculate_total_average_latencies()} seconds")
             break
