@@ -12,7 +12,7 @@ class EchoAgent(BaseAgent[EchoAgentConfig]):
     ) -> Tuple[str, bool]:
         return human_input, False
 
-    async def generate_response(  # type: ignore
+    async def generate_response(
         self,
         human_input,
         conversation_id: str,

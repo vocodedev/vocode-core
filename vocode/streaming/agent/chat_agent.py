@@ -35,7 +35,7 @@ class ChatAgent(BaseAgent[ChatAgentConfigType]):
     ) -> Tuple[str, bool]:
         raise NotImplementedError
 
-    async def generate_response(
+    def generate_response(
         self,
         human_input,
         conversation_id: str,

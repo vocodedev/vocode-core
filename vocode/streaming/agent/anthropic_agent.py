@@ -78,7 +78,7 @@ class ChatAnthropicAgent(ChatAgent[ChatAnthropicAgentConfig]):
         self.logger.debug(f"LLM response: {text}")
         return text, False
 
-    async def generate_response(  # type: ignore
+    async def generate_response(
         self,
         human_input,
         conversation_id: str,

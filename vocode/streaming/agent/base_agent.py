@@ -30,7 +30,7 @@ class BaseAgent(Generic[AgentConfigType]):
     ) -> Tuple[Optional[str], bool]:
         raise NotImplementedError
 
-    async def generate_response(
+    def generate_response(
         self,
         human_input,
         conversation_id: str,

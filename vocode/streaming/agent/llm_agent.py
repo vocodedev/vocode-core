@@ -119,7 +119,7 @@ class LLMAgent(BaseAgent[LLMAgentConfig]):
         for item in l:
             yield item
 
-    async def generate_response(  # type: ignore
+    async def generate_response(
         self,
         human_input,
         conversation_id: str,
