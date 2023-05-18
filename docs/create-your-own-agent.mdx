@@ -35,7 +35,7 @@ You can implement this interface by subclassing `BaseAgent` to create your own a
 # Hosted
 
 Our library lets you easily host your agent so that the Vocode backend can use it to generate responses.
-Users will be responsible for implementing either a `RESTfulAgent` or a `WebSocketAgent`.
+Users will be responsible for implementing a `RESTfulAgent`.
 
 ## RESTful Implementation
 
@@ -55,25 +55,6 @@ class YourAgent(RESTfulAgent):
             return RESTfulAgentEnd()  ## ends the conversation
         else:
             return RESTfulAgentText(response=input)  ## responds with the input received
-```
-
-## WebSocket Implementation
-
-Here is an example implementation of a `WebSocketAgent` that just echoes back whatever input
-it receives. Note that the `respond` method is expecting a `WebSocketAgentMessage` return value.
-
-```python
-from vocode.streaming.user_implemented_agent.websocket_agent import WebSocketAgent
-from vocode.streaming.models.agent import WebSocketAgentMessage, WebSocketAgentTextMessage, WebSocketAgentStopMessage
-
-class YourAgent(WebSocketAgent):
-
-    # input: the transcript from the Conversation that the agent must respond to
-    async def respond(self, input: str, conversation_id: str) -> WebSocketAgentMessage:
-        if "bye" in input:
-            return WebSocketAgentStopMessage()  ## ends the conversation
-        else:
-            return WebSocketAgentTextMessage.from_text(input)  ## responds with the input received
 ```
 
 ## Run your agent
