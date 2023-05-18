@@ -26,7 +26,7 @@ class BarkSynthesizer(BaseSynthesizer):
         int_audio_arr = (audio_array * np.iinfo(np.int16).max).astype(np.int16)
 
         audio = io.BytesIO()
-        write_wav(audio, self.SAMPLE_RATE, int_audio_arr)  # type: ignore
-        audio_segment = AudioSegment.from_wav(audio)
+        write_wav(audio, self.SAMPLE_RATE, int_audio_arr)
+        audio_segment = AudioSegment.from_wav(audio)  # type: ignore
 
         return audio_segment

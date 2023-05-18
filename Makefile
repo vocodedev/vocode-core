@@ -10,10 +10,11 @@ synthesize:
 	poetry run python playground/streaming/synthesizer/synthesize.py
 
 PYTHON_FILES=.
-lint: PYTHON_FILES=.
+lint: PYTHON_FILES=vocode/
 lint_diff: PYTHON_FILES=$(shell git diff --name-only --diff-filter=d main | grep -E '\.py$$')
 
 lint lint_diff:
+	poetry run mypy $(PYTHON_FILES)
 	poetry run black $(PYTHON_FILES)
 
 test:

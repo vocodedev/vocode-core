@@ -1,4 +1,5 @@
 from __future__ import annotations
+import typing
 
 import sounddevice as sd
 import numpy as np
@@ -22,10 +23,19 @@ class MicrophoneInput(BaseInputDevice):
         microphone_gain: int = 1,
     ):
         self.device_info = device_info
-        sampling_rate: int = sampling_rate or (
-            self.device_info.get("default_samplerate", self.DEFAULT_SAMPLING_RATE)
+        super().__init__(
+            sampling_rate
+            or (
+                typing.cast(
+                    int,
+                    self.device_info.get(
+                        "default_samplerate", self.DEFAULT_SAMPLING_RATE
+                    ),
+                )
+            ),
+            AudioEncoding.LINEAR16,
+            chunk_size,
         )
-        super().__init__(sampling_rate, AudioEncoding.LINEAR16, chunk_size)
         self.stream = sd.InputStream(
             dtype=np.int16,
             channels=1,

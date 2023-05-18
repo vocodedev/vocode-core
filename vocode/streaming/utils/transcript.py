@@ -2,14 +2,9 @@ import time
 from typing import List
 from pydantic import BaseModel, Field
 from enum import Enum
-from vocode.streaming.models.events import TranscriptEvent
+from vocode.streaming.models.events import Sender, TranscriptEvent
 
 from vocode.streaming.utils.events_manager import EventsManager
-
-
-class Sender(str, Enum):
-    HUMAN = "human"
-    BOT = "bot"
 
 
 class Message(BaseModel):

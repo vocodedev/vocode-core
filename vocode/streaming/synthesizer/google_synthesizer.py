@@ -21,7 +21,7 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.utils import convert_wav
 
 
-class GoogleSynthesizer(BaseSynthesizer):
+class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
     OFFSET_SECONDS = 0.5
 
     def __init__(
@@ -84,7 +84,7 @@ class GoogleSynthesizer(BaseSynthesizer):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        response: self.tts.SynthesizeSpeechResponse = (
+        response: self.tts.SynthesizeSpeechResponse = (  # type: ignore
             await asyncio.get_event_loop().run_in_executor(
                 self.thread_pool_executor, self.synthesize, message.text
             )

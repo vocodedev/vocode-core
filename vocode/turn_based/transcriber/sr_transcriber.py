@@ -16,14 +16,17 @@ class SpeechRecognitionAPI(Enum):
     IBM = "ibm"
 
 
-
 class SpeechRecognitionTranscriber(BaseTranscriber):
     def __init__(self, api: SpeechRecognitionAPI = SpeechRecognitionAPI.GOOGLE):
         self.api = api
 
     def transcribe(self, audio_segment: AudioSegment) -> str:
         audio_data = audio_segment.raw_data
-        audio = sr.AudioData(audio_data, sample_rate=audio_segment.frame_rate, sample_width=audio_segment.sample_width)
+        audio = sr.AudioData(
+            audio_data,
+            sample_rate=audio_segment.frame_rate,
+            sample_width=audio_segment.sample_width,
+        )
 
         r = sr.Recognizer()
 
@@ -41,7 +44,9 @@ class SpeechRecognitionTranscriber(BaseTranscriber):
                     credentials_json = getenv("GOOGLE_CLOUD_SPEECH_CREDENTIALS")
                     if not credentials_json:
                         raise ValueError("Google Cloud Speech credentials not provided")
-                    text = r.recognize_google_cloud(audio, credentials_json=credentials_json)
+                    text = r.recognize_google_cloud(
+                        audio, credentials_json=credentials_json
+                    )
                 case SpeechRecognitionAPI.WIT:
                     api_key = getenv("WIT_AI_API_KEY")
                     if not api_key:
@@ -52,7 +57,7 @@ class SpeechRecognitionTranscriber(BaseTranscriber):
                     if not api_key:
                         raise ValueError("Bing API key not provided")
                     text = r.recognize_bing(audio, api_key)
-                    
+
                 case SpeechRecognitionAPI.AZURE:
                     api_key = getenv("AZURE_SPEECH_KEY")
                     region = getenv("AZURE_SPEECH_REGION")
@@ -66,19 +71,24 @@ class SpeechRecognitionTranscriber(BaseTranscriber):
                     client_key = getenv("HOUNDIFY_CLIENT_KEY")
                     if not client_id or not client_key:
                         raise ValueError("Houndify client ID or key not provided")
-                    text = r.recognize_houndify(audio, client_id=client_id, client_key=client_key)
+                    text = r.recognize_houndify(
+                        audio, client_id=client_id, client_key=client_key
+                    )
                 case SpeechRecognitionAPI.IBM:
                     username = getenv("IBM_USERNAME")
                     password = getenv("IBM_PASSWORD")
                     if not username or not password:
-                        raise ValueError("IBM Speech to Text username or password not provided")
+                        raise ValueError(
+                            "IBM Speech to Text username or password not provided"
+                        )
                     text = r.recognize_ibm(audio, username=username, password=password)
                 case _:
                     raise ValueError(f"Unsupported API: {self.api}")
         except sr.UnknownValueError:
             raise sr.UnknownValueError("Speech Recognition could not understand audio")
         except sr.RequestError as e:
-            raise sr.RequestError(f"Could not request results from Speech Recognition service.")
-
+            raise sr.RequestError(
+                f"Could not request results from Speech Recognition service."
+            )
 
         return text

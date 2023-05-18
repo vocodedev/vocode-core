@@ -14,7 +14,7 @@ class AsyncWorker:
     def __init__(
         self,
         input_queue: asyncio.Queue,
-        output_queue: Optional[asyncio.Queue],
+        output_queue: asyncio.Queue = asyncio.Queue(),
     ) -> None:
         self.worker_task: Optional[asyncio.Task] = None
         self.input_queue = input_queue
@@ -41,7 +41,7 @@ class ThreadAsyncWorker(AsyncWorker):
     def __init__(
         self,
         input_queue: asyncio.Queue,
-        output_queue: Optional[asyncio.Queue],
+        output_queue: asyncio.Queue = asyncio.Queue(),
     ) -> None:
         super().__init__(input_queue, output_queue)
         self.worker_thread: Optional[threading.Thread] = None
@@ -105,8 +105,8 @@ Payload = TypeVar("Payload")
 class InterruptibleEvent(Generic[Payload]):
     def __init__(
         self,
+        payload: Payload,
         is_interruptible: bool = True,
-        payload: Optional[Payload] = None,
         interruption_event: Optional[threading.Event] = None,
     ):
         self.interruption_event = interruption_event or threading.Event()
@@ -130,7 +130,7 @@ class InterruptibleWorker(AsyncWorker):
     def __init__(
         self,
         input_queue: asyncio.Queue[InterruptibleEvent],
-        output_queue: Optional[asyncio.Queue],
+        output_queue: asyncio.Queue = asyncio.Queue(),
         max_concurrency=2,
     ) -> None:
         super().__init__(input_queue, output_queue)
@@ -141,7 +141,7 @@ class InterruptibleWorker(AsyncWorker):
     async def _run_loop(self):
         # TODO Implement concurrency with max_nb_of_thread
         while True:
-            item: InterruptibleEvent = await self.input_queue.get()
+            item = await self.input_queue.get()
             if item.is_interrupted():
                 continue
             self.interruptible_event = item

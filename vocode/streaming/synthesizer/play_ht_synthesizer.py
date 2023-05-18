@@ -17,7 +17,7 @@ from vocode.streaming.synthesizer.base_synthesizer import (
 TTS_ENDPOINT = "https://play.ht/api/v2/tts/stream"
 
 
-class PlayHtSynthesizer(BaseSynthesizer):
+class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: PlayHtSynthesizerConfig,
@@ -66,7 +66,7 @@ class PlayHtSynthesizer(BaseSynthesizer):
             ) as response:
                 if not response.ok:
                     raise Exception(
-                        f"Play.ht API error: {response.status_code}, {response.text}"
+                        f"Play.ht API error: {response.status}, {response.text}"
                     )
 
                 audio_segment: AudioSegment = AudioSegment.from_mp3(
@@ -74,7 +74,7 @@ class PlayHtSynthesizer(BaseSynthesizer):
                 )
 
                 output_bytes_io = io.BytesIO()
-                audio_segment.export(output_bytes_io, format="wav")
+                audio_segment.export(output_bytes_io, format="wav")  # type: ignore
 
                 return self.create_synthesis_result_from_wav(
                     file=output_bytes_io,

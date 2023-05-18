@@ -38,7 +38,7 @@ class ChatGPTAgent(BaseAgent):
         self.memory = ConversationBufferMemory(return_messages=True)
         if initial_message:
             self.memory.chat_memory.add_ai_message(initial_message)
-        self.llm = ChatOpenAI(
+        self.llm = ChatOpenAI(  # type: ignore
             model_name=model_name,
             temperature=temperature,
             max_tokens=max_tokens,

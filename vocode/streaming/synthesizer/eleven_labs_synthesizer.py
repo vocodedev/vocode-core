@@ -18,22 +18,22 @@ ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
 
 
-class ElevenLabsSynthesizer(BaseSynthesizer):
+class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     def __init__(
         self,
-        config: ElevenLabsSynthesizerConfig,
+        synthesizer_config: ElevenLabsSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(config)
+        super().__init__(synthesizer_config)
 
         import elevenlabs
 
         self.elevenlabs = elevenlabs
 
-        self.api_key = config.api_key or getenv("ELEVEN_LABS_API_KEY")
-        self.voice_id = config.voice_id or ADAM_VOICE_ID
-        self.stability = config.stability
-        self.similarity_boost = config.similarity_boost
+        self.api_key = synthesizer_config.api_key or getenv("ELEVEN_LABS_API_KEY")
+        self.voice_id = synthesizer_config.voice_id or ADAM_VOICE_ID
+        self.stability = synthesizer_config.stability
+        self.similarity_boost = synthesizer_config.similarity_boost
         self.words_per_minute = 150
 
     async def create_speech(

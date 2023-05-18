@@ -18,7 +18,7 @@ class GPT4AllAgent(BaseAgent):
     async def respond(
         self,
         human_input,
+        conversation_id: str,
         is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
     ) -> Tuple[Optional[str], bool]:
         return (await self.turn_based_agent.respond_async(human_input)), False

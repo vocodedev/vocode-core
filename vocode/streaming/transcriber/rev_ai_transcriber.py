@@ -24,7 +24,7 @@ def getSeconds():
     return time.time()
 
 
-class RevAITranscriber(BaseAsyncTranscriber):
+class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
     def __init__(
         self,
         transcriber_config: RevAITranscriberConfig,
@@ -37,10 +37,10 @@ class RevAITranscriber(BaseAsyncTranscriber):
             raise Exception(
                 "Please set REV_AI_API_KEY environment variable or pass it as a parameter"
             )
-        self.transcriber_config = transcriber_config
         self.closed = False
         self.is_ready = True
         self.logger = logger or logging.getLogger(__name__)
+        self.last_signal_seconds = 0
 
     async def ready(self):
         return self.is_ready
@@ -48,7 +48,7 @@ class RevAITranscriber(BaseAsyncTranscriber):
     def get_rev_ai_url(self):
         codec = "audio/x-raw"
         layout = "interleaved"
-        rate = self.transcriber_config.sampling_rate
+        rate = self.get_transcriber_config().sampling_rate
         audio_format = "S16LE"
         channels = 1
 
@@ -82,7 +82,7 @@ class RevAITranscriber(BaseAsyncTranscriber):
                     except asyncio.exceptions.TimeoutError:
                         break
                     await ws.send(data)
-                ws.close()
+                await ws.close()
                 self.logger.debug("Terminating Rev.AI transcriber sender")
 
             async def receiver(ws: WebSocketClientProtocol):

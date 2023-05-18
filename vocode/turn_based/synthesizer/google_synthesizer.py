@@ -1,8 +1,6 @@
 import io
-import os
 from typing import Optional
 from pydub import AudioSegment
-import requests
 from vocode import getenv
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 from google.cloud import texttospeech_v1beta1 as tts
@@ -13,27 +11,29 @@ DEFAULT_PITCH = 0
 DEFAULT_SPEAKING_RATE = 1.2
 DEFAULT_SAMPLE_RATE = 24000
 DEFAULT_AUDIO_ENCODING = tts.AudioEncoding.LINEAR16
-DEFAULT_TIME_POINTING = [tts.SynthesizeSpeechRequest.TimepointType.TIMEPOINT_TYPE_UNSPECIFIED]
+DEFAULT_TIME_POINTING = [
+    tts.SynthesizeSpeechRequest.TimepointType.TIMEPOINT_TYPE_UNSPECIFIED
+]
+
 
 class GoogleSynthesizer(BaseSynthesizer):
     def __init__(
-        self, 
+        self,
         language_code: str = DEFAULT_LANGUAGE_CODE,
         voice_name: str = DEFAULT_VOICE_NAME,
         pitch: int = DEFAULT_PITCH,
-        speaking_rate: int = DEFAULT_SPEAKING_RATE,
+        speaking_rate: float = DEFAULT_SPEAKING_RATE,
         sample_rate_hertz: int = DEFAULT_SAMPLE_RATE,
-        audio_encoding: tts.AudioEncoding = DEFAULT_AUDIO_ENCODING,
+        audio_encoding=DEFAULT_AUDIO_ENCODING,
         effects_profile_id: Optional[str] = None,
         enable_time_pointing: Optional[list] = DEFAULT_TIME_POINTING,
-        ):
-        
+    ):
         credentials_path = getenv("GOOGLE_APPLICATION_CREDENTIALS")
         if not credentials_path:
             raise Exception(
                 "Please set GOOGLE_APPLICATION_CREDENTIALS environment variable"
             )
-            
+
         self.client = tts.TextToSpeechClient()
 
         self.voice = tts.VoiceSelectionParams(
@@ -59,8 +59,8 @@ class GoogleSynthesizer(BaseSynthesizer):
                 input=synthesis_input,
                 voice=self.voice,
                 audio_config=self.audio_config,
-                enable_time_pointing=self.enable_time_pointing
+                enable_time_pointing=self.enable_time_pointing,
             )
         )
 
-        return AudioSegment.from_wav(io.BytesIO(response.audio_content))
+        return AudioSegment.from_wav(io.BytesIO(response.audio_content))  # type: ignore

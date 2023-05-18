@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, validator
 from vocode.streaming.models.client_backend import OutputAudioConfig
@@ -170,5 +170,5 @@ class StreamElementsSynthesizerConfig(
 
 
 class BarkSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.BARK.value):
-    preload_kwargs = {}
-    generate_kwargs = {}
+    preload_kwargs: Dict[str, Any] = {}
+    generate_kwargs: Dict[str, Any] = {}

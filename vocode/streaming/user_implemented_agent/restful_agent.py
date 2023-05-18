@@ -1,3 +1,6 @@
+# type: ignore
+# to be deprecated
+
 from .base_agent import BaseAgent
 from ..models.agent import (
     RESTfulAgentInput,

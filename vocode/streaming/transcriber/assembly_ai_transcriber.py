@@ -20,7 +20,7 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 ASSEMBLY_AI_URL = "wss://api.assemblyai.com/v2/realtime/ws"
 
 
-class AssemblyAITranscriber(BaseAsyncTranscriber):
+class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
     def __init__(
         self,
         transcriber_config: AssemblyAITranscriberConfig,

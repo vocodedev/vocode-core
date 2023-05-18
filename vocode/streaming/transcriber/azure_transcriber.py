@@ -21,7 +21,7 @@ from vocode.streaming.transcriber.base_transcriber import (
 from vocode.streaming.models.transcriber import AzureTranscriberConfig
 
 
-class AzureTranscriber(BaseThreadAsyncTranscriber):
+class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
     def __init__(
         self,
         transcriber_config: AzureTranscriberConfig,

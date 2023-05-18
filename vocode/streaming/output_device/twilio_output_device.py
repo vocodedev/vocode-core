@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import base64
@@ -21,7 +23,7 @@ class TwilioOutputDevice(BaseOutputDevice):
         )
         self.ws = ws
         self.stream_sid = stream_sid
-        self.queue = asyncio.Queue()
+        self.queue: asyncio.Queue[str] = asyncio.Queue()
         self.process_task = asyncio.create_task(self.process())
         self.active = True
 
