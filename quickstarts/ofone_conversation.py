@@ -1,15 +1,10 @@
 import asyncio
+import json
 import logging
+import requests
 import signal
 from dotenv import load_dotenv
-from vocode.streaming.synthesizer.coqui_tts_synthesizer import CoquiTTSSynthesizer
 
-from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
-from vocode.streaming.synthesizer.gtts_synthesizer import GTTSSynthesizer
-from vocode.streaming.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
-from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
-from vocode.streaming.transcriber.google_transcriber import GoogleTranscriber
-from vocode.streaming.transcriber.whisper_cpp_transcriber import WhisperCPPTranscriber
 
 load_dotenv()
 
@@ -19,29 +14,25 @@ from vocode.helpers import create_microphone_input_and_speaker_output
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
-    GoogleTranscriberConfig,
-    WhisperCPPTranscriberConfig,
 )
 from vocode.streaming.models.agent import (
     ChatGPTAgentConfig,
-    CutOffResponse,
-    FillerAudioConfig,
-    RESTfulUserImplementedAgentConfig,
-    EchoAgentConfig,
-    LLMAgentConfig,
     ChatGPTAgentConfig,
+)
+from vocode.streaming.agent.web_socket_user_implemented_agent import (
+    WebSocketUserImplementedAgent,
+)
+from vocode.streaming.models.web_socket_agent import (
+    WebSocketUserImplementedAgentConfig,
+    WebSocketAgentMessage,
+    WebSocketAgentTextMessage,
+    WebSocketAgentTextStopMessage,
+    WebSocketAgentStopMessage,
 )
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
-    CoquiTTSSynthesizerConfig,
-    ElevenLabsSynthesizerConfig,
-    GTTSSynthesizerConfig,
-    GoogleSynthesizerConfig,
-    PlayHtSynthesizerConfig,
-    RimeSynthesizerConfig,
 )
-import vocode
 from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 
@@ -51,11 +42,35 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-async def main():
+async def on_response(message: WebSocketAgentMessage) -> None:
+    if isinstance(message, WebSocketAgentTextMessage):
+        print("Received text message: %s" % message.text)
+    elif isinstance(message, WebSocketAgentTextStopMessage):
+        print("Received text stop message: %s" % message.text)
+    elif isinstance(message, WebSocketAgentMessage):
+        print("Received stop message: %s" % message)
+    else:
+        print("Received unknown message type: %s" % message)
+
+
+async def main() -> None:
+    conversation_create_url = "https://adam-api.of.one/devices/744f0678-4f85-4572-976e-3b1eb88e81c7/conversations"
+
+    ofone_conversation = requests.post(
+        conversation_create_url,
+        timeout=10,
+        )
+    print("Created OfOne conversation %s" % ofone_conversation)
+    ofone_conversation_json = json.loads(ofone_conversation.text)
+    ofone_conversation_id = ofone_conversation_json["id"]["id"]
+    logging.info("Created OfOne conversation %s" % ofone_conversation_id)
+
     microphone_input, speaker_output = create_microphone_input_and_speaker_output(
         streaming=True, use_default_devices=True
     )
 
+    socket_url = "wss://adam-api.of.one/vocode/conversations/%s/agent" % ofone_conversation_id
+    logging.info("Connecting to %s" % socket_url)
     conversation = StreamingConversation(
         output_device=speaker_output,
         transcriber=DeepgramTranscriber(
@@ -63,11 +78,15 @@ async def main():
                 microphone_input, endpointing_config=PunctuationEndpointingConfig()
             )
         ),
-        agent=ChatGPTAgent(
-            ChatGPTAgentConfig(
-                initial_message=BaseMessage(text="What up"),
-                prompt_preamble="""The AI is having a pleasant conversation about life""",
-            )
+        agent=WebSocketUserImplementedAgent(
+            agent_config=WebSocketUserImplementedAgentConfig(
+                initial_message=BaseMessage(text=ofone_conversation_json["greeting"]),
+                respond=WebSocketUserImplementedAgentConfig.RouteConfig(
+                    url=socket_url,
+                ),
+                on_response=on_response
+            ),
+            logger=logger,
         ),
         synthesizer=AzureSynthesizer(
             AzureSynthesizerConfig.from_output_device(speaker_output)

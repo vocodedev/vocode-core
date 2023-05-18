@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from typing import Optional
 import websockets
 from websockets.client import WebSocketClientProtocol
 import audioop
@@ -27,8 +28,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber):
     def __init__(
         self,
         transcriber_config: DeepgramTranscriberConfig,
-        logger: logging.Logger = None,
-        api_key: str = None,
+        logger: Optional[logging.Logger] = None,
+        api_key: Optional[str] = None,
     ):
         super().__init__(transcriber_config)
         self.api_key = api_key or getenv("DEEPGRAM_API_KEY")

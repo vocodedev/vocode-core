@@ -1,41 +1,77 @@
+from enum import Enum
+import asyncio
 import logging
 import random
-from typing import AsyncGenerator, Generator, Optional, Tuple
+from typing import AsyncGenerator, Optional, Union
 from vocode.streaming.models.agent import (
     AgentConfig,
     ChatGPTAgentConfig,
     LLMAgentConfig,
 )
+from vocode.streaming.models.model import TypedModel
+from vocode.streaming.transcriber.base_transcriber import Transcription
+from vocode.streaming.utils.worker import AsyncWorker, InterruptibleEvent, QueueType, ThreadAsyncWorker
+
+# --- Agent Response Messages ---
 
 
-class BaseAgent:
+class AgentMessageResponseType(str, Enum):
+    BASE = "base_agent_message_response"
+    TEXT = "text_agent_message_response"
+    TEXT_AND_STOP = "text_and_stop_agent_message_response"
+    STOP = "stop_agent_message_response"
+
+
+class AgentResponseMessage(TypedModel, type=AgentMessageResponseType.BASE):
+    conversation_id: Optional[str] = None
+
+
+class TextAgentResponseMessage(TypedModel, type=AgentMessageResponseType.TEXT):
+    text: str
+
+
+class TextAndStopAgentResponseMessage(TypedModel, type=AgentMessageResponseType.TEXT_AND_STOP):
+    text: str
+
+
+class StopAgentResponseMessage(TypedModel, type=AgentMessageResponseType.STOP):
+    pass
+
+# --- Agent Responses ---
+
+
+class AgentResponse:
+    pass
+
+
+class OneShotAgentResponse(AgentResponse):
+    message: AgentResponseMessage
+
+    def __init__(self, message: AgentResponseMessage):
+        self.message = message
+
+
+class GeneratorAgentResponse(AgentResponse):
+    generator: AsyncGenerator[AgentResponseMessage, None]
+
+    def __init__(self, generator: AsyncGenerator[AgentResponseMessage, None]):
+        self.generator = generator
+
+# --- Abstract Agent ---
+
+
+class AbstractAgent:
     def __init__(
         self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
     ):
         self.agent_config = agent_config
+        self.logger = logger or logging.getLogger(__name__)
 
     def get_agent_config(self) -> AgentConfig:
         return self.agent_config
 
-    def start(self):
+    def receive_transcription(self, transcription: Transcription):
         pass
-
-    async def respond(
-        self,
-        human_input,
-        is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
-    ) -> Tuple[Optional[str], bool]:
-        raise NotImplementedError
-
-    async def generate_response(
-        self,
-        human_input,
-        is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
-    ) -> AsyncGenerator[str, None]:
-        """Returns a generator that yields a sentence at a time."""
-        raise NotImplementedError
 
     def update_last_bot_message_on_cut_off(self, message: str):
         """Updates the last bot message in the conversation history when the human cuts off the bot's response."""
@@ -49,5 +85,51 @@ class BaseAgent:
         if on_cut_off_messages:
             return random.choice(on_cut_off_messages).text
 
-    def terminate(self):
-        pass
+# --- Base Async Agent ---
+
+
+class BaseAsyncAgent(AsyncWorker, AbstractAgent):
+    def __init__(
+        self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
+    ):
+        self.input_queue: QueueType[InterruptibleEvent[Transcription]] = asyncio.Queue()
+        self.output_queue: QueueType[InterruptibleEvent[AgentResponse]] = asyncio.Queue()
+        self.agent_config = agent_config
+        self.logger = logger or logging.getLogger(__name__)
+        AsyncWorker.__init__(self, self.input_queue, self.output_queue)
+        AbstractAgent.__init__(self, agent_config, logger)
+
+    async def _run_loop(self) -> None:
+        raise NotImplementedError
+
+    def receive_transcription(self, transcription: Transcription) -> None:
+        self.send_nonblocking(transcription)
+
+    def terminate(self) -> None:
+        AsyncWorker.terminate(self)
+
+# --- Base Thread Async Agent ---
+
+
+class BaseThreadAsyncAgent(ThreadAsyncWorker, AbstractAgent):
+    def __init__(
+        self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
+    ):
+        self.input_queue: QueueType[Transcription] = asyncio.Queue()
+        self.output_queue: QueueType[AgentResponse] = asyncio.Queue()
+        self.agent_config = agent_config
+        self.logger = logger or logging.getLogger(__name__)
+        AsyncWorker.__init__(self, self.input_queue, self.output_queue)
+        AbstractAgent.__init__(self, agent_config, logger)
+
+    async def _run_loop(self) -> None:
+        raise NotImplementedError
+
+    def receive_transcription(self, transcription: Transcription) -> None:
+        self.send_nonblocking(transcription)
+
+    def terminate(self) -> None:
+        AsyncWorker.terminate(self)
+
+
+BaseAgent = Union[BaseAsyncAgent, BaseThreadAsyncAgent]
