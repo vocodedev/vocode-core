@@ -425,7 +425,6 @@ class StreamingConversation:
         transcriber: BaseTranscriber,
         agent: BaseAgent,
         synthesizer: BaseSynthesizer,
-        mute_mic_during_agent_response: bool = False,
         conversation_id: str = None,
         per_chunk_allowance_seconds: int = PER_CHUNK_ALLOWANCE_SECONDS,
         events_manager: Optional[EventsManager] = None,
@@ -437,7 +436,6 @@ class StreamingConversation:
         self.transcriber = transcriber
         self.agent = agent
         self.synthesizer = synthesizer
-        self.mute_mic_during_agent_response = mute_mic_during_agent_response
 
         # Queue setup
         self.transcriptions_worker_output_queue: AsyncQueueType[
@@ -657,9 +655,6 @@ class StreamingConversation:
             self.transcriber.mute()
         message_sent = message
         cut_off = False
-
-        if self.mute_mic_during_agent_response:
-            self.is_mic_muted = True
 
         chunk_size = seconds_per_chunk * get_chunk_size_per_second(
             self.synthesizer.get_synthesizer_config().audio_encoding,
