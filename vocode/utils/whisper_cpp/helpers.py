@@ -1,10 +1,11 @@
 import ctypes
 import re
+from typing import Tuple
 import numpy as np
 from pydub import AudioSegment
 
 
-def transcribe(whisper, params, ctx, audio_segment: AudioSegment) -> str:
+def transcribe(whisper, params, ctx, audio_segment: AudioSegment) -> Tuple[str, float]:
     if len(audio_segment) <= 100:
         return "", 0.0
     normalized = (

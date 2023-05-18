@@ -401,7 +401,7 @@ class StreamingConversation:
         transcriber: BaseTranscriber,
         agent: BaseAgent,
         synthesizer: BaseSynthesizer,
-        conversation_id: str = None,
+        conversation_id: Optional[str] = None,
         per_chunk_allowance_seconds: int = PER_CHUNK_ALLOWANCE_SECONDS,
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,

@@ -32,7 +32,7 @@ class ChatAnthropicAgent(ChatAgent):
     def __init__(
         self,
         agent_config: ChatAnthropicAgentConfig,
-        logger: logging.Logger = None,
+        logger: Optional[logging.Logger] = None,
         anthropic_api_key: Optional[str] = None,
     ):
         super().__init__(agent_config=agent_config, logger=logger)

@@ -1,5 +1,6 @@
 import asyncio
 import queue
+from typing import Optional
 import sounddevice as sd
 import numpy as np
 from vocode.streaming.models.audio_encoding import AudioEncoding
@@ -14,7 +15,7 @@ class BlockingSpeakerOutput(BaseOutputDevice, ThreadAsyncWorker):
     def __init__(
         self,
         device_info: dict,
-        sampling_rate: int = None,
+        sampling_rate: Optional[int] = None,
         audio_encoding: AudioEncoding = AudioEncoding.LINEAR16,
     ):
         self.device_info = device_info

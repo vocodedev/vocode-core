@@ -1,4 +1,5 @@
 import queue
+from typing import Optional
 import sounddevice as sd
 import numpy as np
 
@@ -12,7 +13,7 @@ class SpeakerOutput(BaseOutputDevice):
     def __init__(
         self,
         device_info: dict,
-        sampling_rate: int = None,
+        sampling_rate: Optional[int] = None,
         audio_encoding: AudioEncoding = AudioEncoding.LINEAR16,
     ):
         self.device_info = device_info
@@ -53,6 +54,6 @@ class SpeakerOutput(BaseOutputDevice):
     @classmethod
     def from_default_device(
         cls,
-        sampling_rate: int = None,
+        sampling_rate: Optional[int] = None,
     ):
         return cls(sd.query_devices(kind="output"), sampling_rate)

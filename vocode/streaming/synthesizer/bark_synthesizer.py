@@ -17,7 +17,7 @@ from vocode.streaming.models.message import BaseMessage
 
 class BarkSynthesizer(BaseSynthesizer):
     def __init__(
-        self, config: BarkSynthesizerConfig, logger: logging.Logger = None
+        self, config: BarkSynthesizerConfig, logger: Optional[logging.Logger] = None
     ) -> None:
         super().__init__(config)
 

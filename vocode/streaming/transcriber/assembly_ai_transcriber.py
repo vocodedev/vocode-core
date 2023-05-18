@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from typing import Optional
 import websockets
 import audioop
 import numpy as np
@@ -23,8 +24,8 @@ class AssemblyAITranscriber(BaseAsyncTranscriber):
     def __init__(
         self,
         transcriber_config: AssemblyAITranscriberConfig,
-        logger: logging.Logger = None,
-        api_key: str = None,
+        api_key: Optional[str] = None,
+        logger: Optional[logging.Logger] = None,
     ):
         super().__init__(transcriber_config)
         self.api_key = api_key or getenv("ASSEMBLY_AI_API_KEY")

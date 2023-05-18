@@ -21,7 +21,7 @@ class LLMAgent(BaseAgent):
     def __init__(
         self,
         agent_config: LLMAgentConfig,
-        logger: logging.Logger = None,
+        logger: Optional[logging.Logger] = None,
         sender="AI",
         recipient="Human",
         openai_api_key: Optional[str] = None,

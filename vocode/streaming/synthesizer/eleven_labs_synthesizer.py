@@ -68,12 +68,12 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
                     )
                 audio_data = await response.read()
                 audio_segment: AudioSegment = AudioSegment.from_mp3(
-                    io.BytesIO(audio_data)
+                    io.BytesIO(audio_data)  # type: ignore
                 )
 
                 output_bytes_io = io.BytesIO()
 
-                audio_segment.export(output_bytes_io, format="wav")
+                audio_segment.export(output_bytes_io, format="wav")  # type: ignore
 
                 return self.create_synthesis_result_from_wav(
                     file=output_bytes_io,

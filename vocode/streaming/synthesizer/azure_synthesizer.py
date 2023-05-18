@@ -29,8 +29,8 @@ NAMESPACES = {
     "": "https://www.w3.org/2001/10/synthesis",
 }
 
-ElementTree.register_namespace("", NAMESPACES.get(""))
-ElementTree.register_namespace("mstts", NAMESPACES.get("mstts"))
+ElementTree.register_namespace("", NAMESPACES[""])
+ElementTree.register_namespace("mstts", NAMESPACES["mstts"])
 
 
 class WordBoundaryEventPool:
@@ -57,9 +57,9 @@ class AzureSynthesizer(BaseSynthesizer):
     def __init__(
         self,
         synthesizer_config: AzureSynthesizerConfig,
-        logger: logging.Logger = None,
-        azure_speech_key: str = None,
-        azure_speech_region: str = None,
+        logger: Optional[logging.Logger] = None,
+        azure_speech_key: Optional[str] = None,
+        azure_speech_region: Optional[str] = None,
     ):
         super().__init__(synthesizer_config)
         self.synthesizer_config = synthesizer_config

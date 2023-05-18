@@ -42,7 +42,7 @@ class GTTSSynthesizer(BaseSynthesizer):
             self.thread_pool_executor, thread
         )
         audio_file.seek(0)
-        audio_segment: AudioSegment = AudioSegment.from_mp3(audio_file)
+        audio_segment: AudioSegment = AudioSegment.from_mp3(audio_file)  # type: ignore
         output_bytes_io = BytesIO()
         audio_segment.export(output_bytes_io, format="wav")
         return self.create_synthesis_result_from_wav(

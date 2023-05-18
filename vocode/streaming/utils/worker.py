@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import threading
 import janus
-from typing import Any
+from typing import Any, Optional
 from typing import TypeVar, Generic
 import logging
 
@@ -14,9 +14,9 @@ class AsyncWorker:
     def __init__(
         self,
         input_queue: asyncio.Queue,
-        output_queue: asyncio.Queue,
+        output_queue: Optional[asyncio.Queue],
     ) -> None:
-        self.worker_task: None | asyncio.Task = None
+        self.worker_task: Optional[asyncio.Task] = None
         self.input_queue = input_queue
         self.output_queue = output_queue
 
@@ -41,14 +41,14 @@ class ThreadAsyncWorker(AsyncWorker):
     def __init__(
         self,
         input_queue: asyncio.Queue,
-        output_queue: asyncio.Queue,
+        output_queue: Optional[asyncio.Queue],
     ) -> None:
         super().__init__(input_queue, output_queue)
-        self.worker_thread = None
-        self.input_janus_queue = janus.Queue()
-        self.output_janus_queue = janus.Queue()
+        self.worker_thread: Optional[threading.Thread] = None
+        self.input_janus_queue: janus.Queue = janus.Queue()
+        self.output_janus_queue: janus.Queue = janus.Queue()
 
-    def start(self) -> None:
+    def start(self) -> asyncio.Task:
         self.worker_thread = threading.Thread(target=self._run_loop)
         self.worker_thread.start()
         self.worker_task = asyncio.create_task(self.run_thread_forwarding())
@@ -106,8 +106,8 @@ class InterruptibleEvent(Generic[Payload]):
     def __init__(
         self,
         is_interruptible: bool = True,
-        payload: Payload = None,
-        interruption_event: threading.Event = None,
+        payload: Optional[Payload] = None,
+        interruption_event: Optional[threading.Event] = None,
     ):
         self.interruption_event = interruption_event or threading.Event()
         self.is_interruptible = is_interruptible
@@ -130,7 +130,7 @@ class InterruptibleWorker(AsyncWorker):
     def __init__(
         self,
         input_queue: asyncio.Queue[InterruptibleEvent],
-        output_queue: asyncio.Queue,
+        output_queue: Optional[asyncio.Queue],
         max_concurrency=2,
     ) -> None:
         super().__init__(input_queue, output_queue)

@@ -1,3 +1,4 @@
+from typing import Optional
 import sounddevice as sd
 import numpy as np
 from pydub import AudioSegment
@@ -11,7 +12,7 @@ class SpeakerOutput(BaseOutputDevice):
     def __init__(
         self,
         device_info: dict,
-        sampling_rate: int = None,
+        sampling_rate: Optional[int] = None,
     ):
         self.device_info = device_info
         self.sampling_rate = sampling_rate or int(
@@ -26,7 +27,7 @@ class SpeakerOutput(BaseOutputDevice):
         self.stream.start()
 
     @classmethod
-    def from_default_device(cls, sampling_rate: int = None):
+    def from_default_device(cls, sampling_rate: Optional[int] = None):
         return cls(sd.query_devices(kind="output"), sampling_rate)
 
     def send_audio(self, audio_segment: AudioSegment):

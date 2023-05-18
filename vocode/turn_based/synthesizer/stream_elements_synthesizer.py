@@ -20,4 +20,4 @@ class StreamElementsSynthesizer(BaseSynthesizer):
         response = requests.get(self.TTS_ENDPOINT, params=url_params)
         if not response.ok:
             raise ValueError(f"Failed to synthesize text: {text}")
-        return AudioSegment.from_mp3(io.BytesIO(response.content))
+        return AudioSegment.from_mp3(io.BytesIO(response.content))  # type: ignore

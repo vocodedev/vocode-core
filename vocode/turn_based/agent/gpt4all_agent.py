@@ -20,7 +20,7 @@ class GPT4AllAgent(BaseAgent):
         model_path: str,
         system_prompt: str,
         initial_message: Optional[str] = None,
-        logger: logging.Logger = None,
+        logger: Optional[logging.Logger] = None,
     ):
         from pygpt4all.models.gpt4all_j import GPT4All_J
 

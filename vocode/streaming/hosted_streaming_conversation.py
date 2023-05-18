@@ -1,3 +1,4 @@
+from typing import Optional
 import websockets
 from websockets.exceptions import ConnectionClosedOK
 from websockets.client import WebSocketClientProtocol
@@ -29,7 +30,7 @@ class HostedStreamingConversation:
         transcriber_config: TranscriberConfig,
         agent_config: AgentConfig,
         synthesizer_config: SynthesizerConfig,
-        id: str = None,
+        id: Optional[str] = None,
     ):
         self.id = id
         self.input_device = input_device

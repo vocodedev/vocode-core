@@ -21,8 +21,8 @@ class PlayHtSynthesizer(BaseSynthesizer):
     def __init__(
         self,
         synthesizer_config: PlayHtSynthesizerConfig,
-        api_key: str = None,
-        user_id: str = None,
+        api_key: Optional[str] = None,
+        user_id: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
     ):
         super().__init__(synthesizer_config)
@@ -70,7 +70,7 @@ class PlayHtSynthesizer(BaseSynthesizer):
                     )
 
                 audio_segment: AudioSegment = AudioSegment.from_mp3(
-                    io.BytesIO(await response.read())
+                    io.BytesIO(await response.read())  # type: ignore
                 )
 
                 output_bytes_io = io.BytesIO()

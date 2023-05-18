@@ -1,4 +1,5 @@
 import io
+from typing import Optional
 import numpy as np
 import logging
 from pydub import AudioSegment
@@ -8,7 +9,7 @@ from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 class BarkSynthesizer(BaseSynthesizer):
     def __init__(
-        self, logger: logging.Logger = None, silent: bool = False, **kwargs
+        self, logger: Optional[logging.Logger] = None, silent: bool = False, **kwargs
     ) -> None:
         from bark import SAMPLE_RATE, generate_audio, preload_models
 
@@ -25,7 +26,7 @@ class BarkSynthesizer(BaseSynthesizer):
         int_audio_arr = (audio_array * np.iinfo(np.int16).max).astype(np.int16)
 
         audio = io.BytesIO()
-        write_wav(audio, self.SAMPLE_RATE, int_audio_arr)
+        write_wav(audio, self.SAMPLE_RATE, int_audio_arr)  # type: ignore
         audio_segment = AudioSegment.from_wav(audio)
 
         return audio_segment

@@ -42,7 +42,7 @@ class StreamElementsSynthesizer(BaseSynthesizer):
                 timeout=aiohttp.ClientTimeout(total=15),
             ) as response:
                 audio_segment: AudioSegment = AudioSegment.from_mp3(
-                    io.BytesIO(await response.read())
+                    io.BytesIO(await response.read())  # type: ignore
                 )
                 output_bytes_io = io.BytesIO()
                 audio_segment.export(output_bytes_io, format="wav")

@@ -50,11 +50,11 @@ class CoquiTTSSynthesizer(BaseSynthesizer):
         buffer = io.BytesIO(audio_data_bytes)
 
         audio_segment: AudioSegment = AudioSegment.from_raw(
-            buffer, frame_rate=22050, channels=1, sample_width=2
+            buffer, frame_rate=22050, channels=1, sample_width=2  # type: ignore
         )
 
         output_bytes_io = io.BytesIO()
-        audio_segment.export(output_bytes_io, format="wav")
+        audio_segment.export(output_bytes_io, format="wav")  # type: ignore
         return self.create_synthesis_result_from_wav(
             file=output_bytes_io, message=message, chunk_size=chunk_size
         )
