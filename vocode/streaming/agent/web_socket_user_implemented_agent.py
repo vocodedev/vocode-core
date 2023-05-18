@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from vocode.streaming.transcriber.base_transcriber import Transcription
-from vocode.streaming.utils.worker import InterruptibleEvent, QueueType
+from vocode.streaming.utils.worker import InterruptibleEvent, AsyncQueueType
 import websockets
 from websockets.client import WebSocketClientProtocol
 
@@ -27,8 +27,8 @@ NUM_RESTARTS = 5
 
 
 class WebSocketUserImplementedAgent(BaseAsyncAgent):
-    input_queue: QueueType[InterruptibleEvent[Transcription]]
-    output_queue: QueueType[InterruptibleEvent[AgentResponse]]
+    input_queue: AsyncQueueType[InterruptibleEvent[Transcription]]
+    output_queue: AsyncQueueType[InterruptibleEvent[AgentResponse]]
 
     def __init__(
         self,

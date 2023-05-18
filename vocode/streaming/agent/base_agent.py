@@ -10,7 +10,7 @@ from vocode.streaming.models.agent import (
 )
 from vocode.streaming.models.model import TypedModel
 from vocode.streaming.transcriber.base_transcriber import Transcription
-from vocode.streaming.utils.worker import AsyncWorker, InterruptibleEvent, QueueType, ThreadAsyncWorker
+from vocode.streaming.utils.worker import AsyncWorker, InterruptibleEvent, AsyncQueueType, ThreadAsyncWorker
 
 # --- Agent Response Messages ---
 
@@ -95,8 +95,8 @@ class BaseAsyncAgent(AsyncWorker, AbstractAgent):
     def __init__(
         self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
     ):
-        self.input_queue: QueueType[InterruptibleEvent[Transcription]] = asyncio.Queue()
-        self.output_queue: QueueType[InterruptibleEvent[AgentResponse]] = asyncio.Queue()
+        self.input_queue: AsyncQueueType[InterruptibleEvent[Transcription]] = asyncio.Queue()
+        self.output_queue: AsyncQueueType[InterruptibleEvent[AgentResponse]] = asyncio.Queue()
         self.agent_config = agent_config
         self.logger = logger or logging.getLogger(__name__)
         AsyncWorker.__init__(self, self.input_queue, self.output_queue)
@@ -126,8 +126,8 @@ class BaseThreadAsyncAgent(ThreadAsyncWorker, AbstractAgent):
     def __init__(
         self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
     ):
-        self.input_queue: QueueType[Transcription] = asyncio.Queue()
-        self.output_queue: QueueType[AgentResponse] = asyncio.Queue()
+        self.input_queue: AsyncQueueType[Transcription] = asyncio.Queue()
+        self.output_queue: AsyncQueueType[AgentResponse] = asyncio.Queue()
         self.agent_config = agent_config
         self.logger = logger or logging.getLogger(__name__)
         ThreadAsyncWorker.__init__(self, self.input_queue, self.output_queue)
