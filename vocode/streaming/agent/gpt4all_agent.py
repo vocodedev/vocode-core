@@ -1,10 +1,10 @@
-from typing import Optional, Tuple
-from vocode.streaming.agent.base_agent import BaseAgent
+from vocode.streaming.agent.base_agent import BaseAsyncAgent, OneShotAgentResponse, TextAgentResponseMessage
 from vocode.streaming.models.agent import GPT4AllAgentConfig
+from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.turn_based.agent.gpt4all_agent import GPT4AllAgent as TurnBasedGPT4AllAgent
 
 
-class GPT4AllAgent(BaseAgent):
+class GPT4AllAgent(BaseAsyncAgent):
     def __init__(self, agent_config: GPT4AllAgentConfig):
         super().__init__(agent_config=agent_config)
         self.turn_based_agent = TurnBasedGPT4AllAgent(
@@ -15,10 +15,10 @@ class GPT4AllAgent(BaseAgent):
             else None,
         )
 
-    async def respond(
-        self,
-        human_input,
-        is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
-    ) -> Tuple[Optional[str], bool]:
-        return (await self.turn_based_agent.respond_async(human_input)), False
+    async def did_add_transcript_to_input_queue(self, transcription: Transcription):
+        await super().did_add_transcript_to_input_queue(transcription)
+        text_response = await self.turn_based_agent.respond_async(transcription.message)
+        agent_response = OneShotAgentResponse(
+            message=TextAgentResponseMessage(text=text_response)
+        )
+        self.add_agent_response_to_output_queue(agent_response)
