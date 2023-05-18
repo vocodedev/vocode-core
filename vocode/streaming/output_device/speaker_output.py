@@ -2,8 +2,6 @@ import queue
 import sounddevice as sd
 import numpy as np
 
-from vocode.streaming.utils.queues import SyncQueueType
-
 from .base_output_device import BaseOutputDevice
 from vocode.streaming.models.audio_encoding import AudioEncoding
 
@@ -32,7 +30,7 @@ class SpeakerOutput(BaseOutputDevice):
             callback=self.callback,
         )
         self.stream.start()
-        self.queue: SyncQueueType[np.ndarray] = queue.Queue()
+        self.queue: queue.Queue[np.ndarray] = queue.Queue()
 
     def callback(self, outdata: np.ndarray, frames, time, status):
         if self.queue.empty():

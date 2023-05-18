@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sounddevice as sd
 import numpy as np
 from typing import Optional
@@ -33,7 +35,7 @@ class MicrophoneInput(BaseInputDevice):
             callback=self._stream_callback,
         )
         self.stream.start()
-        self.queue = queue.Queue()
+        self.queue: queue.Queue[bytes] = queue.Queue()
         self.microphone_gain = microphone_gain
 
     def _stream_callback(self, in_data: np.ndarray, *_args):

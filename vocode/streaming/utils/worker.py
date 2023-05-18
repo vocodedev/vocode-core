@@ -1,11 +1,11 @@
+from __future__ import annotations
+
 import asyncio
 import threading
 import janus
 from typing import Any
 from typing import TypeVar, Generic
 import logging
-
-from vocode.streaming.utils.queues import AsyncQueueType
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +129,7 @@ class InterruptibleEvent(Generic[Payload]):
 class InterruptibleWorker(AsyncWorker):
     def __init__(
         self,
-        input_queue: AsyncQueueType[InterruptibleEvent],
+        input_queue: asyncio.Queue[InterruptibleEvent],
         output_queue: asyncio.Queue,
         max_concurrency=2,
     ) -> None:
