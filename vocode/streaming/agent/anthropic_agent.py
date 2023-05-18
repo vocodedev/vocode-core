@@ -1,20 +1,11 @@
 from typing import AsyncGenerator, Optional, Tuple
-from langchain import ConversationChain
 import logging
 
-from typing import Optional, Tuple
-
-from vocode.streaming.agent.utils import get_sentence_from_buffer
-
+import anthropic
+from langchain import ConversationChain
 from langchain import ConversationChain
 from langchain.schema import ChatMessage, AIMessage, HumanMessage
 from langchain.chat_models import ChatAnthropic
-import logging
-from vocode import getenv
-
-from vocode.streaming.models.agent import ChatAnthropicAgentConfig
-
-
 from langchain.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder,
@@ -22,21 +13,24 @@ from langchain.prompts import (
 )
 
 from vocode import getenv
-from vocode.streaming.agent.chat_agent import ChatAgent
+from vocode.streaming.agent.base_agent import AgentResponse, AgentResponseMessage, OneShotAgentResponse, TextAgentResponseMessage
+from vocode.streaming.agent.chat_agent import ChatAsyncAgent
+from vocode.streaming.agent.utils import get_sentence_from_buffer
 from vocode.streaming.models.agent import ChatAnthropicAgentConfig
+from vocode.streaming.transcriber.base_transcriber import Transcription
+from vocode.streaming.utils.worker import InterruptibleEvent
 
 SENTENCE_ENDINGS = [".", "!", "?"]
 
 
-class ChatAnthropicAgent(ChatAgent):
+class ChatAnthropicAgent(ChatAsyncAgent):
     def __init__(
         self,
         agent_config: ChatAnthropicAgentConfig,
-        logger: logging.Logger = None,
+        logger: Optional[logging.Logger] = None,
         anthropic_api_key: Optional[str] = None,
     ):
         super().__init__(agent_config=agent_config, logger=logger)
-        import anthropic
 
         anthropic_api_key = anthropic_api_key or getenv("ANTHROPIC_API_KEY")
         if not anthropic_api_key:
@@ -68,23 +62,26 @@ class ChatAnthropicAgent(ChatAgent):
             memory=self.memory, prompt=self.prompt, llm=self.llm
         )
 
-    async def respond(
-        self,
-        human_input,
-        is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
-    ) -> Tuple[str, bool]:
-        text = await self.conversation.apredict(input=human_input)
-        self.logger.debug(f"LLM response: {text}")
-        return text, False
+    async def receive_transcription(self, transcription: Transcription) -> None:
+        agent_response: AgentResponse
 
-    async def generate_response(
-        self,
-        human_input,
-        is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
-    ) -> AsyncGenerator[str, None]:
-        self.memory.chat_memory.messages.append(HumanMessage(content=human_input))
+        if self.agent_config.generate_responses:
+            generator = self._create_generator_response(transcription)
+            agent_response = GeneratorAgentResponse(generator=generator)
+        else:
+            text = await self.conversation.apredict(input=transcription.message)
+            self.logger.debug(f"LLM response: {text}")
+            message = TextAgentResponseMessage(text=text)
+            agent_response = OneShotAgentResponse(message=message)
+
+        event = InterruptibleEvent(
+            is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+            payload=agent_response,
+        )
+        self.output_queue.put_nowait(event)
+
+    async def _create_generator_response(self, transcription: Transcription) -> AsyncGenerator[AgentResponseMessage, None]:
+        self.memory.chat_memory.messages.append(HumanMessage(content=transcription.message))
 
         streamed_response = await self.anthropic_client.acompletion_stream(
             prompt=self.llm._convert_messages_to_prompt(
@@ -108,21 +105,21 @@ class ChatAnthropicAgent(ChatAgent):
             if sentence:
                 bot_memory_message.content = bot_memory_message.content + sentence
                 buffer = remainder
-                yield sentence
+                yield TextAgentResponseMessage(text=sentence)
             continue
 
-    def find_last_punctuation(self, buffer: str):
+    def _find_last_punctuation(self, buffer: str):
         indices = [buffer.rfind(ending) for ending in SENTENCE_ENDINGS]
         return indices and max(indices)
 
-    def get_sentence_from_buffer(self, buffer: str):
-        last_punctuation = self.find_last_punctuation(buffer)
+    def _get_sentence_from_buffer(self, buffer: str):
+        last_punctuation = self._find_last_punctuation(buffer)
         if last_punctuation:
             return buffer[: last_punctuation + 1], buffer[last_punctuation + 1 :]
         else:
             return None, None
 
-    def update_last_bot_message_on_cut_off(self, message: str):
+    def _update_last_bot_message_on_cut_off(self, message: str):
         for memory_message in self.memory.chat_memory.messages[::-1]:
             if (
                 isinstance(memory_message, ChatMessage)
