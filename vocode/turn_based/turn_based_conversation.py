@@ -52,5 +52,5 @@ class TurnBasedConversation:
         self.output_device.send_audio(synthesised_audio)
 
         if self.show_latency:
-            self.logger.info(f"Latency - Transcription: {self.latency_manager.get_latency(LatencyType.TRANSCRIPTION)} seconds, Agent: {self.latency_manager.get_latency(LatencyType.AGENT)} seconds, Synthesis: {self.latency_manager.get_latency(LatencyType.SYNTHESIS)} seconds")
+            self.latency_manager.log_latencies(self.logger)
         

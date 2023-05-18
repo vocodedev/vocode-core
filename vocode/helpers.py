@@ -113,6 +113,9 @@ class LatencyManager:
         if not self.averages:
             self.calculate_average_latencies()
         return sum(self.averages.values()) / len(self.averages)
+
+    def log_latencies(self, logger):
+        logger.debug(f"Latency - Transcription: {self.get_latency(LatencyType.TRANSCRIPTION)} seconds, Agent: {self.get_latency(LatencyType.AGENT)} seconds, Synthesis: {self.get_latency(LatencyType.SYNTHESIS)} seconds")
         
         
         
