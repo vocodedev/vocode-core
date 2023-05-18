@@ -17,6 +17,7 @@ from vocode.streaming.agent.bot_sentiment_analyser import (
 )
 from vocode.streaming.models.events import TranscriptCompleteEvent
 from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
@@ -399,7 +400,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
     def __init__(
         self,
         output_device: OutputDeviceType,
-        transcriber: BaseTranscriber,
+        transcriber: BaseTranscriber[TranscriberConfig],
         agent: BaseAgent,
         synthesizer: BaseSynthesizer,
         conversation_id: Optional[str] = None,

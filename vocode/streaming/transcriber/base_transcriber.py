@@ -102,4 +102,7 @@ class BaseThreadAsyncTranscriber(
         ThreadAsyncWorker.terminate(self)
 
 
-BaseTranscriber = Union[BaseAsyncTranscriber, BaseThreadAsyncTranscriber]
+BaseTranscriber = Union[
+    BaseAsyncTranscriber[TranscriberConfigType],
+    BaseThreadAsyncTranscriber[TranscriberConfigType],
+]

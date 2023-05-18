@@ -137,15 +137,3 @@ class RESTfulAgentText(RESTfulAgentOutput, type=RESTfulAgentOutputType.TEXT):
 
 class RESTfulAgentEnd(RESTfulAgentOutput, type=RESTfulAgentOutputType.END):
     pass
-
-
-class WebSocketUserImplementedAgentConfig(
-    AgentConfig, type=AgentType.WEBSOCKET_USER_IMPLEMENTED.value
-):
-    class RouteConfig(BaseModel):
-        url: str
-
-    respond: RouteConfig
-    generate_responses: bool = False
-    # generate_response: Optional[RouteConfig]
-    # send_message_on_cut_off: bool = False

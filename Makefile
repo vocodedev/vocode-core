@@ -10,7 +10,7 @@ synthesize:
 	poetry run python playground/streaming/synthesizer/synthesize.py
 
 PYTHON_FILES=.
-lint typecheck: PYTHON_FILES=vocode/
+lint typecheck: PYTHON_FILES=vocode/ quickstarts/ playground/
 lint_diff typecheck_diff: PYTHON_FILES=$(shell git diff --name-only --diff-filter=d main | grep -E '\.py$$')
 
 lint lint_diff:
