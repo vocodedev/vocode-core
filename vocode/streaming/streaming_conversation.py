@@ -48,6 +48,7 @@ from vocode.streaming.utils.worker import (
     InterruptibleWorker,
 )
 from vocode.streaming.utils.queues import AsyncQueueType, SyncQueueType
+from vocode.helpers import LatencyManager, LatencyType
 
 tracer = trace.get_tracer(__name__)
 SYNTHESIS_TRACE_NAME = "synthesis"
@@ -98,6 +99,9 @@ class StreamingConversation:
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
+                self.conversation.logger.debug("Human stopped speaking")
+                if self.conversation.latency_start_time is None:
+                    self.conversation.latency_start_time = time.time()
                 event = self.conversation.enqueue_interruptible_event(
                     payload=transcription
                 )
@@ -404,6 +408,7 @@ class StreamingConversation:
         per_chunk_allowance_seconds: int = PER_CHUNK_ALLOWANCE_SECONDS,
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
+        show_latency: bool = False,
     ):
         self.id = conversation_id or create_conversation_id()
         self.logger = logger or logging.getLogger(__name__)
@@ -470,6 +475,10 @@ class StreamingConversation:
         # tracing
         self.start_time: float = None
         self.end_time: float = None
+
+        self.show_latency = show_latency
+        self.latency_start_time = None
+        self.latency_manager = LatencyManager()
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
@@ -637,6 +646,11 @@ class StreamingConversation:
                     0,
                 )
             )
+            if chunk_idx == 0: 
+                if self.latency_start_time is not None:
+                    self.latency_manager.add_latency(LatencyType.STREAMING, time.time() - self.latency_start_time)
+                    self.latency_manager.log_streaming_latency(self.logger) if self.show_latency else None
+                    self.latency_start_time = None
             self.logger.debug(
                 "Sent chunk {} with size {}".format(chunk_idx, len(chunk_result.chunk))
             )
@@ -682,6 +696,7 @@ class StreamingConversation:
             self.logger.debug("Terminating filler audio worker")
             self.filler_audio_worker.terminate()
         self.logger.debug("Successfully terminated")
+        self.latency_manager.log_average_streaming_latency(self.logger)
 
     def is_active(self):
         return self.active
