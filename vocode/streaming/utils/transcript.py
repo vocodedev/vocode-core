@@ -28,6 +28,19 @@ class Transcript(BaseModel):
             for message in self.messages
         )
 
+    def to_dict(self) -> dict:
+        result = {
+            "start_time": self.start_time,
+            "messages": [],
+        }
+        for message in self.messages:
+            result["messages"].append({
+                'timestamp': message.timestamp,
+                'text': message.text,
+                'sender': message.sender.value,
+            })
+        return result
+
     def add_message(
         self,
         text: str,

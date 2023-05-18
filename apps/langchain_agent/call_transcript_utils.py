@@ -4,12 +4,13 @@ from typing import Optional
 CALL_TRANSCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "call_transcripts")
 
 
-def add_transcript(conversation_id: str, transcript: str) -> None:
+def add_transcript(conversation_id: str, transcript: dict) -> None:
     transcript_path = os.path.join(
         CALL_TRANSCRIPTS_DIR, "{}.txt".format(conversation_id)
     )
     with open(transcript_path, "a") as f:
-        f.write(transcript)
+        for message in transcript["messages"]:
+            f.write("{}: {}\n".format(message["sender"], message["text"]))
 
 
 def get_transcript(conversation_id: str) -> Optional[str]:

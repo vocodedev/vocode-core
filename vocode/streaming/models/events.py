@@ -37,5 +37,4 @@ class PhoneCallEndedEvent(Event, type=EventType.PHONE_CALL_ENDED):
 
 
 class TranscriptCompleteEvent(Event, type=EventType.TRANSCRIPT_COMPLETE):
-    from vocode.streaming.utils.transcript import Transcript
-    transcript: Transcript
+    transcript: dict
