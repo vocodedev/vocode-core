@@ -182,10 +182,6 @@ class StreamingConversation:
                 self.conversation.logger.debug("Responding to transcription")
                 await self.send_to_agent(transcription)
 
-                if should_stop:
-                    self.conversation.logger.debug("Agent requested to stop")
-                    self.conversation.mark_terminated()
-                    return
                 if goodbye_detected_task:
                     try:
                         goodbye_detected = await asyncio.wait_for(
@@ -538,7 +534,6 @@ class StreamingConversation:
                 else FillerAudioConfig()
             )
             await self.synthesizer.set_filler_audios(filler_audio_config)
-        self.agent.start()
         if mark_ready:
             await mark_ready()
         if self.agent.get_agent_config().initial_message:
