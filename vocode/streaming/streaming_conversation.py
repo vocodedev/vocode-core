@@ -658,11 +658,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     0,
                 )
             )
-            if chunk_idx == 0: 
-                if self.latency_start_time is not None:
-                    self.latency_manager.add_latency(LatencyType.STREAMING, time.time() - self.latency_start_time)
-                    self.latency_manager.log_streaming_latency(self.logger) if self.show_latency else None
-                    self.latency_start_time = None
+            if chunk_idx == 0 and self.latency_start_time is not None:
+                self.latency_manager.add_latency(LatencyType.STREAMING, time.time() - self.latency_start_time)
+                self.latency_manager.log_streaming_latency(self.logger) if self.show_latency else None
+                self.latency_start_time = None
             self.logger.debug(
                 "Sent chunk {} with size {}".format(chunk_idx, len(chunk_result.chunk))
             )

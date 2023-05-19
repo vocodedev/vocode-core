@@ -17,6 +17,7 @@ from vocode.turn_based.output_device.speaker_output import (
     SpeakerOutput as TurnBasedSpeakerOutput,
 )
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -109,5 +110,3 @@ def _create_microphone_input_and_speaker_output(
         output_device_info, sampling_rate=speaker_sampling_rate
     )
     return microphone_input, speaker_output  # type: ignore
-
-

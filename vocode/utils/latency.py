@@ -72,5 +72,3 @@ class LatencyManager:
     
     def log_average_streaming_latency(self, logger):
         logger.info(f"Average Streaming Latency: {self.calculate_average_latency(LatencyType.STREAMING)} seconds")
-        
-        
