@@ -33,7 +33,6 @@ def call_phone_number(input: str) -> str:
         config_manager=RedisConfigManager(),
         agent_config=ChatGPTAgentConfig(
             prompt_preamble=prompt,
-            end_conversation_on_goodbye=True,
             initial_message=BaseMessage(text=initial_message),
         ),
         logger=logging.Logger("call_phone_number"),
