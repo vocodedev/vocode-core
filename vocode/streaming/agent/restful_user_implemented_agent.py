@@ -34,7 +34,7 @@ class RESTfulUserImplementedAgent(BaseAsyncAgent):
     async def did_add_transcript_to_input_queue(self, transcription: Transcription):
         await super().did_add_transcript_to_input_queue(transcription)
         response_message = await self.get_response_message(transcription)
-        self.add_agent_response_to_output_queue(OneShotAgentResponse(message=response_message))
+        await self.add_agent_response_to_output_queue(OneShotAgentResponse(message=response_message))
 
     async def get_response_message(self, transcription: Transcription) -> AgentResponseMessage:
         config = self.agent_config.respond

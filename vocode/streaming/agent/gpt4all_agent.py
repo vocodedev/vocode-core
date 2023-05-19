@@ -21,4 +21,4 @@ class GPT4AllAgent(BaseAsyncAgent[GPT4AllAgentConfig]):
         agent_response = OneShotAgentResponse(
             message=TextAgentResponseMessage(text=text_response)
         )
-        self.add_agent_response_to_output_queue(agent_response)
+        await self.add_agent_response_to_output_queue(agent_response)

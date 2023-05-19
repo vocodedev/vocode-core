@@ -2,6 +2,7 @@ from typing import AsyncGenerator, Optional
 import logging
 
 import anthropic
+
 from langchain import ConversationChain
 from langchain import ConversationChain
 from langchain.schema import ChatMessage, AIMessage, HumanMessage
@@ -81,7 +82,7 @@ class ChatAnthropicAgent(ChatAgent[ChatAnthropicAgentConfig]):
             message = TextAgentResponseMessage(text=text)
             agent_response = OneShotAgentResponse(message=message)
 
-        self.add_agent_response_to_output_queue(response=agent_response)
+        await self.add_agent_response_to_output_queue(response=agent_response)
 
     async def _create_generator_response(self, transcription: Transcription) -> AsyncGenerator[AgentResponseMessage, None]:
         self.memory.chat_memory.messages.append(HumanMessage(content=transcription.message))

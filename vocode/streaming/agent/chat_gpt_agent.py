@@ -85,7 +85,7 @@ class ChatGPTAgent(ChatAgent[ChatGPTAgentConfig]):
         else:
             response_message = self._create_one_shot_response(transcription)
             agent_response = OneShotAgentResponse(message=response_message)
-        self.add_agent_response_to_output_queue(response=agent_response)
+        await self.add_agent_response_to_output_queue(response=agent_response)
 
     async def _create_generator_response(
         self,

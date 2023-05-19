@@ -1,5 +1,5 @@
 from vocode.streaming.agent.anthropic_agent import ChatAnthropicAgent
-from vocode.streaming.agent.base_agent import BaseAgent
+from vocode.streaming.agent.base_agent import AgentResponse, BaseAgent, GeneratorAgentResponse, OneShotAgentResponse, TextAgentResponseMessage, TextAndStopAgentResponseMessage
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.agent.echo_agent import EchoAgent
 from vocode.streaming.agent.gpt4all_agent import GPT4AllAgent
@@ -16,6 +16,7 @@ from vocode.streaming.models.agent import (
     LLMAgentConfig,
     RESTfulUserImplementedAgentConfig,
 )
+from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import create_conversation_id
 
 
@@ -25,20 +26,37 @@ if __name__ == "__main__":
 
     load_dotenv()
 
-    async def run_agent(agent: BaseAgent, generate_responses: bool):
-        conversation_id = create_conversation_id()
-        while True:
-            if generate_responses:
-                stream = agent.generate_response(
-                    input("Human: "), conversation_id=conversation_id
-                )
-                async for sentence in stream:
-                    print("AI:", sentence)
+    async def handle_agent_response(response: AgentResponse):
+        if isinstance(response, OneShotAgentResponse):
+            if isinstance(response.message, (TextAgentResponseMessage, TextAndStopAgentResponseMessage)):
+                print("AI: ", response.message)
             else:
-                response, _ = await agent.respond(
-                    input("Human: "), conversation_id=conversation_id
+                print("Invalid response type: ", response.message)
+        elif isinstance(response, GeneratorAgentResponse):
+            ai_response_sentence = ""
+            async for message in response.generator:
+                if isinstance(message, (TextAgentResponseMessage, TextAndStopAgentResponseMessage)):
+                    if ai_response_sentence == "":
+                        ai_response_sentence += message.text
+                    else:
+                        ai_response_sentence += " " + message.text
+                else:
+                    print("Invalid response message type: ", message)
+
+            print("AI: ", ai_response_sentence)
+
+    async def run_agent(agent: BaseAgent):
+        agent.set_on_agent_response(handle_agent_response)
+
+        while True:
+            command_line_input = input("Human: ")
+            transcription = Transcription(
+                message=command_line_input,
+                confidence=1.0,
+                is_final=True,
+                is_interrupt=False,
                 )
-                print("AI:", response)
+            await agent.add_transcript_to_input_queue(transcription=transcription)
 
     # replace with the agent you want to test
     agent = ChatGPTAgent(
@@ -46,4 +64,4 @@ if __name__ == "__main__":
             prompt_preamble="The assistant is having a pleasant conversation about life.",
         )
     )
-    asyncio.run(run_agent(agent=agent, generate_responses=True))
+    asyncio.run(run_agent(agent=agent))

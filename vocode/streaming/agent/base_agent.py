@@ -2,7 +2,7 @@ from enum import Enum
 import asyncio
 import logging
 import random
-from typing import AsyncGenerator, Generic, Optional, Union, TypeVar
+from typing import AsyncGenerator, Awaitable, Callable, Generic, Optional, Union, TypeVar
 from vocode.streaming.models.agent import (
     AgentConfig,
     ChatGPTAgentConfig,
@@ -102,6 +102,7 @@ class BaseAsyncAgent(AbstractAgent[AgentConfigType], AsyncWorker):
         self.output_queue: asyncio.Queue[InterruptibleEvent[AgentResponse]] = asyncio.Queue()
         self.agent_config = agent_config
         self.logger = logger or logging.getLogger(__name__)
+        self.on_agent_response: Optional[Callable[[AgentResponse], Awaitable[None]]] = None
         AsyncWorker.__init__(self, self.input_queue, self.output_queue)
         AbstractAgent.__init__(self, agent_config, logger)
 
@@ -109,15 +110,28 @@ class BaseAsyncAgent(AbstractAgent[AgentConfigType], AsyncWorker):
         pass
 
     async def add_transcript_to_input_queue(self, transcription: Transcription) -> None:
+        """
+        This adds the actual transcription to the input queue. If you override this method, you must
+        call the super implementation.
+        """
         self.send_nonblocking(transcription)
         await self.did_add_transcript_to_input_queue(transcription)
 
-    def add_agent_response_to_output_queue(self, response: AgentResponse) -> None:
+    async def add_agent_response_to_output_queue(self, response: AgentResponse) -> None:
+        """
+        This adds the agent response to the queue. If you override this method, you must call the super implementation.
+        """
         event = InterruptibleEvent(
             is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             payload=response,
         )
         self.output_queue.put_nowait(event)
+
+        if self.on_agent_response is not None:
+            await self.on_agent_response(response)
+
+    def set_on_agent_response(self, on_agent_response: Callable[[AgentResponse], Awaitable[None]]) -> None:
+        self.on_agent_response = on_agent_response
 
     def terminate(self) -> None:
         AsyncWorker.terminate(self)
@@ -133,6 +147,7 @@ class BaseThreadAsyncAgent(AbstractAgent[AgentConfigType], ThreadAsyncWorker):
         self.output_queue: asyncio.Queue[InterruptibleEvent[AgentResponse]] = asyncio.Queue()
         self.agent_config = agent_config
         self.logger = logger or logging.getLogger(__name__)
+        self.on_agent_response: Optional[Callable[[AgentResponse], Awaitable]] = None
         ThreadAsyncWorker.__init__(self, self.input_queue, self.output_queue)
         AbstractAgent.__init__(self, agent_config, logger)
 
@@ -140,15 +155,27 @@ class BaseThreadAsyncAgent(AbstractAgent[AgentConfigType], ThreadAsyncWorker):
         pass
 
     async def add_transcript_to_input_queue(self, transcription: Transcription) -> None:
+        """
+        This adds the actual transcription to the input queue. If you override this method, you must
+        call the super implementation.
+        """
         self.send_nonblocking(transcription)
         await self.did_add_transcript_to_input_queue(transcription)
 
-    def add_agent_response_to_output_queue(self, response: AgentResponse) -> None:
+    async def add_agent_response_to_output_queue(self, response: AgentResponse) -> None:
+        """
+        This adds the agent response to the queue. If you override this method, you must call the super implementation.
+        """
         event = InterruptibleEvent(
             is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             payload=response,
         )
         self.output_queue.put_nowait(event)
+        if self.on_agent_response is not None:
+            await self.on_agent_response(response)
+
+    def set_on_agent_response(self, on_agent_response: Callable[[AgentResponse], Awaitable]) -> None:
+        self.on_agent_response = on_agent_response
 
     def terminate(self) -> None:
         ThreadAsyncWorker.terminate(self)

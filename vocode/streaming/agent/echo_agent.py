@@ -8,7 +8,7 @@ class EchoAgent(BaseAsyncAgent):
         agent_response = OneShotAgentResponse(
             message=TextAgentResponseMessage(text=transcription.message)
         )
-        self.add_agent_response_to_output_queue(agent_response)
+        await self.add_agent_response_to_output_queue(agent_response)
 
     def update_last_bot_message_on_cut_off(self, message: str):
         pass
