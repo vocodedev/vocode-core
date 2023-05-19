@@ -23,9 +23,9 @@ class TwilioOutputDevice(BaseOutputDevice):
         )
         self.ws = ws
         self.stream_sid = stream_sid
+        self.active = True
         self.queue: asyncio.Queue[str] = asyncio.Queue()
         self.process_task = asyncio.create_task(self.process())
-        self.active = True
 
     async def process(self):
         while self.active:

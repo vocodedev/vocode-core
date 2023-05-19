@@ -15,6 +15,7 @@ class WebsocketOutputDevice(BaseOutputDevice):
         self.ws = ws
         self.active = True
         self.queue: asyncio.Queue[str] = asyncio.Queue()
+        self.process_task = asyncio.create_task(self.process())
 
     def mark_closed(self):
         self.active = False
@@ -28,3 +29,6 @@ class WebsocketOutputDevice(BaseOutputDevice):
         if self.active:
             audio_message = AudioMessage.from_bytes(chunk)
             self.queue.put_nowait(audio_message.json())
+
+    def terminate(self):
+        self.process_task.cancel()

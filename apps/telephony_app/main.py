@@ -19,7 +19,7 @@ logger.setLevel(logging.DEBUG)
 
 config_manager = RedisConfigManager()
 
-BASE_URL = os.getenv("BASE_URL")
+BASE_URL = os.environ["BASE_URL"]
 
 telephony_server = TelephonyServer(
     base_url=BASE_URL,

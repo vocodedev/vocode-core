@@ -10,7 +10,7 @@ from vocode.streaming.telephony.config_manager.redis_config_manager import (
 
 from speller_agent import SpellerAgentConfig
 
-BASE_URL = os.getenv("BASE_URL")
+BASE_URL = os.environ["BASE_URL"]
 
 config_manager = RedisConfigManager()
 
