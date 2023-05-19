@@ -68,9 +68,9 @@ class Call(StreamingConversation):
         self.twilio_client = create_twilio_client(self.twilio_config)
         super().__init__(
             TwilioOutputDevice(),
-            transcriber_factory.create_transcriber(transcriber_config),
-            agent_factory.create_agent(agent_config),
-            synthesizer_factory.create_synthesizer(synthesizer_config),
+            transcriber_factory.create_transcriber(transcriber_config, logger=logger),
+            agent_factory.create_agent(agent_config, logger=logger),
+            synthesizer_factory.create_synthesizer(synthesizer_config, logger=logger),
             conversation_id=conversation_id,
             per_chunk_allowance_seconds=0.01,
             events_manager=events_manager,
