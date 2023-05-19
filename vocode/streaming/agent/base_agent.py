@@ -28,15 +28,15 @@ class AgentResponseMessage(TypedModel, type=AgentMessageResponseType.BASE):
     conversation_id: Optional[str] = None
 
 
-class TextAgentResponseMessage(TypedModel, type=AgentMessageResponseType.TEXT):
+class TextAgentResponseMessage(AgentResponseMessage, type=AgentMessageResponseType.TEXT):
     text: str
 
 
-class TextAndStopAgentResponseMessage(TypedModel, type=AgentMessageResponseType.TEXT_AND_STOP):
+class TextAndStopAgentResponseMessage(AgentResponseMessage, type=AgentMessageResponseType.TEXT_AND_STOP):
     text: str
 
 
-class StopAgentResponseMessage(TypedModel, type=AgentMessageResponseType.STOP):
+class StopAgentResponseMessage(AgentResponseMessage, type=AgentMessageResponseType.STOP):
     pass
 
 # --- Agent Responses ---

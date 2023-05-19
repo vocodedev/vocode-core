@@ -35,11 +35,11 @@ class InboundCallUserAgentServer(InboundCallServer):
         self.app.post("/respond")(self.respond_rest)
 
     async def respond(
-        self, human_input, conversation_id
+        self, human_input
     ) -> Union[RESTfulAgentText, RESTfulAgentEnd]:
         raise NotImplementedError
 
     async def respond_rest(
         self, request: RESTfulAgentInput
     ) -> Union[RESTfulAgentText, RESTfulAgentEnd]:
-        return await self.respond(request.human_input, request.conversation_id)
+        return await self.respond(request.human_input)

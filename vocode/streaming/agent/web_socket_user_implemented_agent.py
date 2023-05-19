@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from vocode.streaming.transcriber.base_transcriber import Transcription
-from vocode.streaming.utils.worker import InterruptibleEvent, AsyncQueueType
+from vocode.streaming.utils.worker import InterruptibleEvent
 import websockets
 from websockets.client import WebSocketClientProtocol
 
@@ -18,6 +18,7 @@ from vocode.streaming.agent.base_agent import (
 )
 from vocode.streaming.models.websocket_agent import (
     WebSocketAgentMessage,
+    WebSocketAgentStopMessage,
     WebSocketAgentTextMessage,
     WebSocketAgentTextStopMessage,
     WebSocketUserImplementedAgentConfig,
@@ -58,12 +59,13 @@ class WebSocketUserImplementedAgent(BaseAsyncAgent):
         self.logger.info("OUTPUT: Handling incoming message from Socket Agent: %s", message)
 
         agent_response_message: AgentResponseMessage
-        if cast(WebSocketAgentTextMessage, message):
+
+        if isinstance(message, WebSocketAgentTextMessage):
             agent_response_message = TextAgentResponseMessage(text=message.data.text)
-        elif cast(WebSocketAgentTextStopMessage, message):
+        elif isinstance(message, WebSocketAgentTextStopMessage):
             agent_response_message = TextAndStopAgentResponseMessage(text=message.data.text)
             self.has_ended = True
-        elif cast(WebSocketAgentTextStopMessage, message):
+        elif isinstance(message, WebSocketAgentStopMessage):
             agent_response_message = StopAgentResponseMessage()
             self.has_ended = True
         else:
