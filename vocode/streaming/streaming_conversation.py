@@ -236,7 +236,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     should_stop = await self.respond(transcription)
                 if should_stop:
                     self.conversation.logger.debug("Agent requested to stop")
-                    self.conversation.mark_terminated()
+                    self.conversation.terminate()
                     return
                 if goodbye_detected_task:
                     try:
@@ -247,7 +247,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             self.conversation.logger.debug(
                                 "Goodbye detected, ending conversation"
                             )
-                            self.conversation.mark_terminated()
+                            self.conversation.terminate()
                             return
                     except asyncio.TimeoutError:
                         self.conversation.logger.debug("Goodbye detection timed out")
@@ -497,6 +497,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
             await self.synthesizer.set_filler_audios(self.filler_audio_config)
+        if self.agent.get_agent_config().end_conversation_on_goodbye:
+            await self.goodbye_model.initialize_embeddings()
         self.agent.start()
         if mark_ready:
             await mark_ready()
@@ -532,7 +534,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 or ALLOWED_IDLE_TIME
             ):
                 self.logger.debug("Conversation idle for too long, terminating")
-                self.mark_terminated()
+                self.terminate()
                 return
             await asyncio.sleep(15)
 
@@ -660,7 +662,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
     def mark_terminated(self):
         self.active = False
 
-    # must be called from the main thread
     def terminate(self):
         self.mark_terminated()
         self.events_manager.publish_event(
