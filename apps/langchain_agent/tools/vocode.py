@@ -27,9 +27,9 @@ def call_phone_number(input: str) -> str:
     """
     phone_number, prompt, initial_message = input.split("|", 2)
     call = OutboundCall(
-        base_url=os.getenv("TELEPHONY_SERVER_BASE_URL"),
+        base_url=os.environ["TELEPHONY_SERVER_BASE_URL"],
         to_phone=phone_number,
-        from_phone=os.getenv("OUTBOUND_CALLER_NUMBER"),
+        from_phone=os.environ["OUTBOUND_CALLER_NUMBER"],
         config_manager=RedisConfigManager(),
         agent_config=ChatGPTAgentConfig(
             prompt_preamble=prompt,
