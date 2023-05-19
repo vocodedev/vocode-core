@@ -483,7 +483,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
         self.show_latency = show_latency
-        self.latency_start_time = None
+        self.latency_start_time: Optional[float] = None
         self.latency_manager = LatencyManager()
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):

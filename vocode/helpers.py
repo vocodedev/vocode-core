@@ -123,10 +123,10 @@ DEFAULT_ROUNDING_DIGITS = 4
 
 class LatencyManager:
     def __init__(self, rounding_digits: int = DEFAULT_ROUNDING_DIGITS):
-        self.latencies = {
+        self.latencies: typing.Dict[LatencyType, List[float]] = {
             latency_type: [] for latency_type in LatencyType
         }
-        self.averages = {}
+        self.averages: typing.Dict[LatencyType, float] = {}
         self.rounding_digits = rounding_digits
     
     def measure_latency(self, latency_type, func, *args, **kwargs):
