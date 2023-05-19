@@ -349,8 +349,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.logger.debug("Synthesizing speech for message: %s", message)
             # TODO: also time the synthesis stream playback
             with tracer.start_as_current_span(
-                SYNTHESIS_TRACE_NAME,
-                {
+                name=SYNTHESIS_TRACE_NAME,
+                context={
                     "synthesizer": str(
                         self.conversation.synthesizer.get_synthesizer_config().type
                     )
@@ -463,11 +463,19 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.final_transcriptions_worker = self.FinalTranscriptionsWorker(
             self.transcriptions_worker_output_queue, self.agent_input_queue, self
         )
+        send_filler_audio = self.agent.get_agent_config().send_filler_audio
+        should_wait_for_filler_audio = False
+        if send_filler_audio is bool:
+            should_wait_for_filler_audio = send_filler_audio
+        else:
+            # Is this the proper fallback? Unsure what should happen here if it's a FillerAudioConfig instead of bool
+            should_wait_for_filler_audio = True
+
         self.agent_responses_worker = self.AgentResponsesWorker(
             input_queue=self.agent_output_queue,
             output_queue=self.agent_responses_output_queue,
             conversation=self,
-            should_wait_for_filler_audio=self.agent.get_agent_config().send_filler_audio
+            should_wait_for_filler_audio=should_wait_for_filler_audio
         )
         self.synthesis_results_worker = self.SynthesisResultsWorker(
             self.agent_responses_output_queue, self

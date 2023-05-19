@@ -101,8 +101,8 @@ class WebSocketUserImplementedAgent(BaseAsyncAgent[WebSocketUserImplementedAgent
                             self.logger.info("Request queue is empty")
 
                         transcription = await asyncio.wait_for(self.input_queue.get(), None)
-                        self.logger.info("Transcript name: %s", transcription.message)
-                        agent_request = WebSocketAgentTextMessage.from_text(transcription.message)
+                        self.logger.info("Transcript name: %s", transcription.payload.message)
+                        agent_request = WebSocketAgentTextMessage.from_text(transcription.payload.message)
                         agent_request_json = json.dumps(agent_request.to_json_dictionary())
                         self.logger.info(f"Sending data to web socket agent: {agent_request_json}")
                         if isinstance(agent_request, (StopAgentResponseMessage, TextAndStopAgentResponseMessage)):
