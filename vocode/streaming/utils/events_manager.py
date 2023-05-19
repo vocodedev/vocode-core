@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from typing import List
 
@@ -6,7 +8,7 @@ from vocode.streaming.models.events import Event, EventType
 
 class EventsManager:
     def __init__(self, subscriptions: List[EventType] = []):
-        self.queue = asyncio.Queue()
+        self.queue: asyncio.Queue[Event] = asyncio.Queue()
         self.subscriptions = set(subscriptions)
         self.active = False
 
@@ -18,7 +20,7 @@ class EventsManager:
         self.active = True
         while self.active:
             try:
-                event: Event = await self.queue.get()
+                event = await self.queue.get()
             except asyncio.QueueEmpty:
                 await asyncio.sleep(1)
             self.handle_event(event)
@@ -30,7 +32,7 @@ class EventsManager:
         self.active = False
         while True:
             try:
-                event: Event = self.queue.get_nowait()
+                event = self.queue.get_nowait()
                 self.handle_event(event)
             except asyncio.QueueEmpty:
                 break

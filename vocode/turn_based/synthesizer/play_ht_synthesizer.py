@@ -54,4 +54,4 @@ class PlayHtSynthesizer(BaseSynthesizer):
                 f"Play.ht API error: {response.status_code}, {response.text}"
             )
 
-        return AudioSegment.from_mp3(io.BytesIO(response.content))
+        return AudioSegment.from_mp3(io.BytesIO(response.content))  # type: ignore

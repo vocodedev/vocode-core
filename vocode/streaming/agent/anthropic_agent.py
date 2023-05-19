@@ -20,7 +20,7 @@ from vocode.streaming.agent.base_agent import (
     OneShotAgentResponse,
     TextAgentResponseMessage
 )
-from vocode.streaming.agent.chat_agent import ChatAsyncAgent
+from vocode.streaming.agent.chat_agent import ChatAgent
 from vocode.streaming.agent.utils import get_sentence_from_buffer
 from vocode.streaming.models.agent import ChatAnthropicAgentConfig
 from vocode.streaming.transcriber.base_transcriber import Transcription
@@ -28,7 +28,7 @@ from vocode.streaming.transcriber.base_transcriber import Transcription
 SENTENCE_ENDINGS = [".", "!", "?"]
 
 
-class ChatAnthropicAgent(ChatAsyncAgent):
+class ChatAnthropicAgent(ChatAgent[ChatAnthropicAgentConfig]):
     def __init__(
         self,
         agent_config: ChatAnthropicAgentConfig,

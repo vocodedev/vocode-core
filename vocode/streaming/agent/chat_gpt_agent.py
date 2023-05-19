@@ -19,14 +19,14 @@ import logging
 
 from vocode import getenv
 from vocode.streaming.agent.base_agent import AgentResponse, AgentResponseMessage, GeneratorAgentResponse, OneShotAgentResponse, TextAgentResponseMessage
-from vocode.streaming.agent.chat_agent import ChatAsyncAgent
+from vocode.streaming.agent.chat_agent import ChatAgent
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.agent.utils import stream_openai_response_async
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils.worker import InterruptibleEvent
 
 
-class ChatGPTAgent(ChatAsyncAgent):
+class ChatGPTAgent(ChatAgent[ChatGPTAgentConfig]):
     def __init__(
         self,
         agent_config: ChatGPTAgentConfig,
@@ -34,7 +34,6 @@ class ChatGPTAgent(ChatAsyncAgent):
         openai_api_key: Optional[str] = None,
     ):
         super().__init__(agent_config=agent_config, logger=logger)
-        self.agent_config = agent_config
         openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
         if not openai.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
@@ -57,7 +56,7 @@ class ChatGPTAgent(ChatAsyncAgent):
                 self.memory.chat_memory.add_ai_message(
                     agent_config.initial_message.text
                 )
-        self.llm = ChatOpenAI(
+        self.llm = ChatOpenAI(  # type: ignore
             model_name=self.agent_config.model_name,
             temperature=self.agent_config.temperature,
             max_tokens=self.agent_config.max_tokens,
@@ -88,7 +87,10 @@ class ChatGPTAgent(ChatAsyncAgent):
             agent_response = OneShotAgentResponse(message=response_message)
         self.add_agent_response_to_output_queue(response=agent_response)
 
-    async def _create_generator_response(self, transcription: Transcription) -> AsyncGenerator[AgentResponseMessage, None]:
+    async def _create_generator_response(
+        self,
+        transcription: Transcription
+    ) -> AsyncGenerator[AgentResponseMessage, None]:
         self.memory.chat_memory.messages.append(
             ChatMessage(role="user", content=transcription.message)
         )

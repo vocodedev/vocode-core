@@ -17,7 +17,7 @@ from vocode.streaming.utils import create_loop_in_thread
 
 
 # TODO: make this nonblocking so it can run in the main thread, see speech.async_client.SpeechAsyncClient
-class GoogleTranscriber(BaseThreadAsyncTranscriber):
+class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
     def __init__(
         self,
         transcriber_config: GoogleTranscriberConfig,

@@ -4,7 +4,7 @@ from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.turn_based.agent.gpt4all_agent import GPT4AllAgent as TurnBasedGPT4AllAgent
 
 
-class GPT4AllAgent(BaseAsyncAgent):
+class GPT4AllAgent(BaseAsyncAgent[GPT4AllAgentConfig]):
     def __init__(self, agent_config: GPT4AllAgentConfig):
         super().__init__(agent_config=agent_config)
         self.turn_based_agent = TurnBasedGPT4AllAgent(

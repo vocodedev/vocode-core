@@ -2,7 +2,7 @@ from enum import Enum
 import asyncio
 import logging
 import random
-from typing import AsyncGenerator, Optional, Union
+from typing import AsyncGenerator, Generic, Optional, Union, TypeVar
 from vocode.streaming.models.agent import (
     AgentConfig,
     ChatGPTAgentConfig,
@@ -10,9 +10,11 @@ from vocode.streaming.models.agent import (
 )
 from vocode.streaming.models.model import TypedModel
 from vocode.streaming.transcriber.base_transcriber import Transcription
-from vocode.streaming.utils.worker import AsyncWorker, InterruptibleEvent, AsyncQueueType, ThreadAsyncWorker
+from vocode.streaming.utils.worker import AsyncWorker, InterruptibleEvent, ThreadAsyncWorker
 
 # --- Agent Response Messages ---
+
+AgentConfigType = TypeVar("AgentConfigType", bound=AgentConfig)
 
 
 class AgentMessageResponseType(str, Enum):
@@ -60,9 +62,9 @@ class GeneratorAgentResponse(AgentResponse):
 # --- Abstract Agent ---
 
 
-class AbstractAgent:
+class AbstractAgent(Generic[AgentConfigType]):
     def __init__(
-        self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
+        self, agent_config: AgentConfigType, logger: Optional[logging.Logger] = None
     ):
         self.agent_config = agent_config
         self.logger = logger or logging.getLogger(__name__)
@@ -80,23 +82,24 @@ class AbstractAgent:
         """Updates the last bot message in the conversation history when the human cuts off the bot's response."""
         pass
 
-    def get_cut_off_response(self) -> Optional[str]:
+    def get_cut_off_response(self) -> str:
         assert isinstance(self.agent_config, LLMAgentConfig) or isinstance(
             self.agent_config, ChatGPTAgentConfig
         )
+        assert self.agent_config.cut_off_response is not None
         on_cut_off_messages = self.agent_config.cut_off_response.messages
-        if on_cut_off_messages:
-            return random.choice(on_cut_off_messages).text
+        assert len(on_cut_off_messages) > 0
+        return random.choice(on_cut_off_messages).text
 
 # --- Base Async Agent ---
 
 
-class BaseAsyncAgent(AsyncWorker, AbstractAgent):
+class BaseAsyncAgent(AbstractAgent[AgentConfigType], AsyncWorker):
     def __init__(
-        self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
+        self, agent_config: AgentConfigType, logger: Optional[logging.Logger] = None
     ):
-        self.input_queue: AsyncQueueType[InterruptibleEvent[Transcription]] = asyncio.Queue()
-        self.output_queue: AsyncQueueType[InterruptibleEvent[AgentResponse]] = asyncio.Queue()
+        self.input_queue: asyncio.Queue[InterruptibleEvent[Transcription]] = asyncio.Queue()
+        self.output_queue: asyncio.Queue[InterruptibleEvent[AgentResponse]] = asyncio.Queue()
         self.agent_config = agent_config
         self.logger = logger or logging.getLogger(__name__)
         AsyncWorker.__init__(self, self.input_queue, self.output_queue)
@@ -122,12 +125,12 @@ class BaseAsyncAgent(AsyncWorker, AbstractAgent):
 # --- Base Thread Async Agent ---
 
 
-class BaseThreadAsyncAgent(ThreadAsyncWorker, AbstractAgent):
+class BaseThreadAsyncAgent(AbstractAgent[AgentConfigType], ThreadAsyncWorker):
     def __init__(
-        self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
+        self, agent_config: AgentConfigType, logger: Optional[logging.Logger] = None
     ):
-        self.input_queue: AsyncQueueType[Transcription] = asyncio.Queue()
-        self.output_queue: AsyncQueueType[AgentResponse] = asyncio.Queue()
+        self.input_queue: asyncio.Queue[InterruptibleEvent[Transcription]] = asyncio.Queue()
+        self.output_queue: asyncio.Queue[InterruptibleEvent[AgentResponse]] = asyncio.Queue()
         self.agent_config = agent_config
         self.logger = logger or logging.getLogger(__name__)
         ThreadAsyncWorker.__init__(self, self.input_queue, self.output_queue)

@@ -16,7 +16,7 @@ load_dotenv()
 
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.helpers import create_microphone_input_and_speaker_output
+from vocode.helpers import create_streaming_microphone_input_and_speaker_output
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
@@ -53,15 +53,17 @@ logger.setLevel(logging.DEBUG)
 
 
 async def main():
-    microphone_input, speaker_output = create_microphone_input_and_speaker_output(
-        streaming=True, use_default_devices=False
-    )
+    (
+        microphone_input,
+        speaker_output,
+    ) = create_streaming_microphone_input_and_speaker_output(use_default_devices=False)
 
     conversation = StreamingConversation(
         output_device=speaker_output,
         transcriber=DeepgramTranscriber(
             DeepgramTranscriberConfig.from_input_device(
-                microphone_input, endpointing_config=PunctuationEndpointingConfig()
+                microphone_input,
+                endpointing_config=PunctuationEndpointingConfig(),
             )
         ),
         agent=ChatGPTAgent(

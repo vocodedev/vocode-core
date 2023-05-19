@@ -1,3 +1,4 @@
+from typing import Any, List, Tuple
 import pydantic
 
 
@@ -12,10 +13,10 @@ class BaseModel(pydantic.BaseModel):
 
 # Adapted from https://github.com/pydantic/pydantic/discussions/3091
 class TypedModel(BaseModel):
-    _subtypes_ = []
+    _subtypes_: List[Tuple[Any, Any]] = []
 
     def __init_subclass__(cls, type=None):
-        cls._subtypes_.append([type, cls])
+        cls._subtypes_.append((type, cls))
 
     @classmethod
     def get_cls(_cls, type):

@@ -13,7 +13,7 @@ from vocode.streaming.models.agent import LLMAgentConfig
 from vocode.streaming.transcriber.base_transcriber import Transcription
 
 
-class LLMAgent(BaseAsyncAgent):
+class LLMAgent(BaseAsyncAgent[LLMAgentConfig]):
     SENTENCE_ENDINGS = [".", "!", "?"]
 
     DEFAULT_PROMPT_TEMPLATE = "{history}\nHuman: {human_input}\nAI:"
@@ -27,7 +27,6 @@ class LLMAgent(BaseAsyncAgent):
         openai_api_key: Optional[str] = None,
     ):
         super().__init__(agent_config)
-        self.agent_config = agent_config
         self.prompt_template = (
             f"{agent_config.prompt_preamble}\n\n{self.DEFAULT_PROMPT_TEMPLATE}"
         )
@@ -45,7 +44,7 @@ class LLMAgent(BaseAsyncAgent):
         openai_api_key = openai_api_key or getenv("OPENAI_API_KEY")
         if not openai_api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
-        self.llm = OpenAI(
+        self.llm = OpenAI(  # type: ignore
             model_name=self.agent_config.model_name,
             temperature=self.agent_config.temperature,
             max_tokens=self.agent_config.max_tokens,

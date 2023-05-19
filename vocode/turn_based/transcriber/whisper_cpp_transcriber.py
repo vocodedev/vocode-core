@@ -15,7 +15,7 @@ class WhisperCPPTranscriber(BaseTranscriber):
 
         # whisper cpp
         # load library and model
-        libname = pathlib.Path().absolute() / self.libname
+        libname = pathlib.Path().absolute() / self.libname  # type: ignore
         self.whisper = ctypes.CDLL(libname)
 
         # tell Python what are the return types of the functions

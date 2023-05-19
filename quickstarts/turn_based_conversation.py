@@ -1,7 +1,7 @@
 import logging
 from dotenv import load_dotenv
 from vocode import getenv
-from vocode.helpers import create_microphone_input_and_speaker_output
+from vocode.helpers import create_turn_based_microphone_input_and_speaker_output
 from vocode.turn_based.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.turn_based.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
@@ -18,9 +18,10 @@ load_dotenv()
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
 if __name__ == "__main__":
-    microphone_input, speaker_output = create_microphone_input_and_speaker_output(
-        streaming=False, use_default_devices=False
-    )
+    (
+        microphone_input,
+        speaker_output,
+    ) = create_turn_based_microphone_input_and_speaker_output(use_default_devices=False)
 
     conversation = TurnBasedConversation(
         input_device=microphone_input,

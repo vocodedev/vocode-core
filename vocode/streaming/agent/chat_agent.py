@@ -1,17 +1,25 @@
 import logging
-from typing import Optional, Tuple, Generator
+from typing import Optional, TypeVar, Union
 
-from vocode.streaming.models.agent import AgentConfig
+from vocode.streaming.models.agent import (
+    ChatAnthropicAgentConfig,
+    ChatGPTAgentConfig,
+)
 from vocode.streaming.agent.base_agent import BaseAsyncAgent
 
 from langchain.schema import ChatMessage, AIMessage
 from langchain.memory import ConversationBufferMemory
 
 
-class ChatAsyncAgent(BaseAsyncAgent):
+ChatAgentConfigType = TypeVar(
+    "ChatAgentConfigType", bound=Union[ChatGPTAgentConfig, ChatAnthropicAgentConfig]
+)
+
+
+class ChatAgent(BaseAsyncAgent[ChatAgentConfigType]):
     def __init__(
         self,
-        agent_config: AgentConfig,
+        agent_config: ChatAgentConfigType,
         logger: Optional[logging.Logger] = None,
     ):
         super().__init__(agent_config)

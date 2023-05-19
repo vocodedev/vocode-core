@@ -15,20 +15,21 @@ from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
 
 
-class BarkSynthesizer(BaseSynthesizer):
+class BarkSynthesizer(BaseSynthesizer[BarkSynthesizerConfig]):
     def __init__(
-        self, config: BarkSynthesizerConfig, logger: logging.Logger = None
+        self,
+        synthesizer_config: BarkSynthesizerConfig,
+        logger: Optional[logging.Logger] = None,
     ) -> None:
-        super().__init__(config)
+        super().__init__(synthesizer_config)
 
         from bark import SAMPLE_RATE, generate_audio, preload_models
 
         self.SAMPLE_RATE = SAMPLE_RATE
         self.generate_audio = generate_audio
-        self.config = config
         self.logger = logger or logging.getLogger(__name__)
         self.logger.info("Loading Bark models")
-        preload_models(**self.config.preload_kwargs)
+        preload_models(**self.synthesizer_config.preload_kwargs)
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
     async def create_speech(
@@ -42,7 +43,7 @@ class BarkSynthesizer(BaseSynthesizer):
             self.thread_pool_executor,
             self.generate_audio,
             message.text,
-            **self.config.generate_kwargs
+            **self.synthesizer_config.generate_kwargs
         )
         int_audio_arr = (audio_array * np.iinfo(np.int16).max).astype(np.int16)
 

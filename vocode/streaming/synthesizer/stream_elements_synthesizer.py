@@ -14,16 +14,16 @@ from vocode.streaming.synthesizer.base_synthesizer import (
 )
 
 
-class StreamElementsSynthesizer(BaseSynthesizer):
+class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]):
     TTS_ENDPOINT = "https://api.streamelements.com/kappa/v2/speech"
 
     def __init__(
         self,
-        config: StreamElementsSynthesizerConfig,
+        synthesizer_config: StreamElementsSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(config)
-        self.voice = config.voice
+        super().__init__(synthesizer_config)
+        self.voice = synthesizer_config.voice
 
     async def create_speech(
         self,
@@ -42,10 +42,10 @@ class StreamElementsSynthesizer(BaseSynthesizer):
                 timeout=aiohttp.ClientTimeout(total=15),
             ) as response:
                 audio_segment: AudioSegment = AudioSegment.from_mp3(
-                    io.BytesIO(await response.read())
+                    io.BytesIO(await response.read())  # type: ignore
                 )
                 output_bytes_io = io.BytesIO()
-                audio_segment.export(output_bytes_io, format="wav")
+                audio_segment.export(output_bytes_io, format="wav")  # type: ignore
                 return self.create_synthesis_result_from_wav(
                     file=output_bytes_io,
                     message=message,

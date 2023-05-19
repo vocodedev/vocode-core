@@ -57,7 +57,7 @@ class CallConfig(BaseModel):
     transcriber_config: TranscriberConfig
     agent_config: AgentConfig
     synthesizer_config: SynthesizerConfig
-    twilio_config: Optional[TwilioConfig]
+    twilio_config: TwilioConfig
     twilio_sid: str
     twilio_from: Optional[str]
     twilio_to: Optional[str]

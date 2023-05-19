@@ -27,4 +27,4 @@ class RimeSynthesizer(BaseSynthesizer):
         }
         response = requests.post(RIME_BASE_URL, headers=headers, json=body, timeout=5)
         audio_file = io.BytesIO(base64.b64decode(response.json().get("audioContent")))
-        return AudioSegment.from_wav(audio_file)
+        return AudioSegment.from_wav(audio_file)  # type: ignore
