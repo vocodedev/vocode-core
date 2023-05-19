@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+from multiprocessing import context
 import queue
 import random
 import threading
-from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
+from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, cast
 import logging
 import time
 import typing
 
 from opentelemetry import trace
 from opentelemetry.trace import Span
+from opentelemetry import Context
 
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
@@ -348,13 +350,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async def _send_to_synthesizer(self, message: str, is_interruptible: bool) -> None:
             self.conversation.logger.debug("Synthesizing speech for message: %s", message)
             # TODO: also time the synthesis stream playback
+            context_values = context.Context()
+            context_values["synthesizer"] = str(
+                self.conversation.synthesizer.get_synthesizer_config().type
+            )
             with tracer.start_as_current_span(
                 name=SYNTHESIS_TRACE_NAME,
-                context={
-                    "synthesizer": str(
-                        self.conversation.synthesizer.get_synthesizer_config().type
-                    )
-                },
+                context=context_values,
             ):
                 synthesis_result = (
                     await self.conversation.synthesizer.create_speech(
@@ -465,7 +467,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         send_filler_audio = self.agent.get_agent_config().send_filler_audio
         should_wait_for_filler_audio = False
-        if send_filler_audio is bool:
+        if isinstance(send_filler_audio, bool):
             should_wait_for_filler_audio = send_filler_audio
         else:
             # Is this the proper fallback? Unsure what should happen here if it's a FillerAudioConfig instead of bool
