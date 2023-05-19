@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vocode"
-version = "0.1.107"
+version = "0.1.108"
 description = "The all-in-one voice SDK"
 authors = ["Ajay Raj <ajay@vocode.dev>"]
 license = "MIT License"
@@ -55,6 +55,7 @@ types-redis = "^4.5.5.2"
 
 [tool.mypy]
 ignore_missing_imports = "True"
+exclude = ["venv", ".venv"]
 
 [tool.poetry.extras]
 synthesizers = ["gtts", "google-cloud-texttospeech", "elevenlabs"]
