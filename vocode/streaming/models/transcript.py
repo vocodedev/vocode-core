@@ -1,5 +1,5 @@
 import time
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
 from enum import Enum
 from vocode.streaming.models.events import Sender, Event, EventType
@@ -11,6 +11,7 @@ class Message(BaseModel):
     text: str
     sender: Sender
     timestamp: float
+    metadata: dict = {}
 
     def to_string(self, include_timestamp: bool = False) -> str:
         if include_timestamp:
@@ -34,9 +35,10 @@ class Transcript(BaseModel):
         sender: Sender,
         events_manager: EventsManager,
         conversation_id: str,
+        metadata: Optional[dict] = None,
     ):
         timestamp = time.time()
-        self.messages.append(Message(text=text, sender=sender, timestamp=timestamp))
+        self.messages.append(Message(text=text, sender=sender, timestamp=timestamp, metadata=metadata or {}))
         events_manager.publish_event(
             TranscriptEvent(
                 text=text,
@@ -47,23 +49,25 @@ class Transcript(BaseModel):
         )
 
     def add_human_message(
-        self, text: str, events_manager: EventsManager, conversation_id: str
+        self, text: str, events_manager: EventsManager, conversation_id: str, metadata: Optional[dict] = None
     ):
         self.add_message(
             text=text,
             sender=Sender.HUMAN,
             events_manager=events_manager,
             conversation_id=conversation_id,
+            metadata=metadata,
         )
 
     def add_bot_message(
-        self, text: str, events_manager: EventsManager, conversation_id: str
+        self, text: str, events_manager: EventsManager, conversation_id: str, metadata: Optional[dict] = None
     ):
         self.add_message(
             text=text,
             sender=Sender.BOT,
             events_manager=events_manager,
             conversation_id=conversation_id,
+            metadata=metadata,
         )
 
 

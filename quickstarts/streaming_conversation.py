@@ -40,6 +40,9 @@ async def main():
             ChatGPTAgentConfig(
                 initial_message=BaseMessage(text="What up"),
                 prompt_preamble="""The AI is having a pleasant conversation about life""",
+                end_conversation_on_goodbye=True,
+                track_bot_sentiment=True,
+                send_filler_audio=True,
             )
         ),
         synthesizer=CachingSynthesizer(AzureSynthesizer(

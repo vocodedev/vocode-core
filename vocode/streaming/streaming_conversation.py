@@ -121,6 +121,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     text=transcription.message,
                     events_manager=self.conversation.events_manager,
                     conversation_id=self.conversation.id,
+                    metadata={"confidence": transcription.confidence, "is_interrupt": transcription.is_interrupt},
                 )
                 event = self.interruptible_event_factory.create(
                     AgentInput(
@@ -295,6 +296,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     text=message_sent,
                     events_manager=self.conversation.events_manager,
                     conversation_id=self.conversation.id,
+                    metadata={"sentiment":self.conversation.bot_sentiment},
                 )
             except asyncio.CancelledError:
                 pass
@@ -548,6 +550,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 conversation_id=self.id, transcript=self.transcript
             )
         )
+        transcript_name = f"cache/{int(self.transcript.start_time or 0)}.json"
+        with open(transcript_name, "w") as f:
+            f.write(self.transcript.json())
+
         if self.check_for_idle_task:
             self.logger.debug("Terminating check_for_idle Task")
             self.check_for_idle_task.cancel()
