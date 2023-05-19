@@ -502,16 +502,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent.start()
         if mark_ready:
             await mark_ready()
-        initial_message = self.agent.get_agent_config().initial_message
-        if initial_message is not None:
-            self.transcript.add_bot_message(
-                text=initial_message.text,
-                events_manager=self.events_manager,
-                conversation_id=self.id,
-            )
         if self.synthesizer.get_synthesizer_config().sentiment_config:
             self.update_bot_sentiment()
-        if self.agent.get_agent_config().initial_message:
+        initial_message = self.agent.get_agent_config().initial_message
+        if initial_message is not None:
             event = self.enqueue_interruptible_event(
                 self.agent.get_agent_config().initial_message,
                 is_interruptible=False,
