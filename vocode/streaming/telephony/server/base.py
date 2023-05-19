@@ -34,7 +34,7 @@ from vocode.streaming.models.telephony import (
 )
 
 from vocode.streaming.telephony.conversation.call import Call
-from vocode.streaming.telephony.templates import Templater
+from vocode.streaming.telephony.templater import Templater
 from vocode.streaming.telephony.twilio import create_twilio_client, end_twilio_call
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.factory import TranscriberFactory

@@ -1,5 +1,6 @@
 import os
 import sys
+import typing
 from dotenv import load_dotenv
 
 from tools.contacts import get_all_contacts
@@ -18,13 +19,13 @@ from langchain.agents import AgentType
 
 if __name__ == "__main__":
     # Redirect stdout to our custom class
-    sys.stdout = RedactPhoneNumbers(sys.stdout)
+    sys.stdout = typing.cast(typing.TextIO, RedactPhoneNumbers(sys.stdout))
 
     OBJECTIVE = (
         input("Objective: ")
         or "Find a random person in my contacts and tell them a joke"
     )
-    llm = ChatOpenAI(temperature=0, model_name="gpt-4")
+    llm = ChatOpenAI(temperature=0, model_name="gpt-4")  # type: ignore
     # Logging of LLMChains
     verbose = True
     agent = initialize_agent(
