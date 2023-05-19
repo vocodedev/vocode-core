@@ -15,6 +15,8 @@ class Transcription(BaseModel):
     confidence: float
     is_final: bool
     is_interrupt: bool = False
+    offset: int = 0
+    duration: int = 0
 
     def __str__(self):
         return f"Transcription({self.message}, {self.confidence}, {self.is_final})"
@@ -46,6 +48,15 @@ class AbstractTranscriber(Generic[TranscriberConfigType]):
             return linear_audio
         elif self.get_transcriber_config().audio_encoding == AudioEncoding.MULAW:
             return audioop.lin2ulaw(linear_audio, sample_width)
+    
+    def trim_audio(self, audio_buffer: bytearray, total_bytes: int, offset_ms: int, duration_ms: int):
+        offset_bytes = int(offset_ms * 2 * self.transcriber_config.sampling_rate / 1000)
+        duration_bytes = int(duration_ms * 2 * self.transcriber_config.sampling_rate / 1000)
+        if offset_bytes + duration_bytes > total_bytes:
+            duration_bytes = total_bytes - offset_bytes
+        # We may have discarded earlier audio so we need to adjust the offset
+        offset_bytes -= (total_bytes - len(audio_buffer))
+        return audio_buffer[offset_bytes:offset_bytes + duration_bytes]
 
 
 class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWorker):

@@ -19,6 +19,7 @@ from vocode.streaming.models.transcript import Transcript, TranscriptCompleteEve
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.synthesizer.caching_synthesizer import save_as_wav
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 
@@ -121,7 +122,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     text=transcription.message,
                     events_manager=self.conversation.events_manager,
                     conversation_id=self.conversation.id,
-                    metadata={"confidence": transcription.confidence, "is_interrupt": transcription.is_interrupt},
+                    metadata={
+                        "confidence": transcription.confidence, 
+                        "is_interrupt": transcription.is_interrupt, 
+                        "path": file_path,
+                        "duration": transcription.duration},
                 )
                 event = self.interruptible_event_factory.create(
                     AgentInput(
@@ -381,6 +386,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.end_time: Optional[float] = None
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
+        self.input_audio_buffer = bytearray()
+        self.total_audio_bytes = 0
         self.transcriber.start()
         self.transcriptions_worker.start()
         self.agent_responses_worker.start()
@@ -446,6 +453,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.bot_sentiment = new_bot_sentiment
 
     def receive_audio(self, chunk: bytes):
+        self.input_audio_buffer += chunk
+        self.total_audio_bytes += len(chunk)
         self.transcriber.send_audio(chunk)
 
     def warmup_synthesizer(self):
