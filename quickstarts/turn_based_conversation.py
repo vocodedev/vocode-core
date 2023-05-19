@@ -5,6 +5,7 @@ from vocode.helpers import create_turn_based_microphone_input_and_speaker_output
 from vocode.turn_based.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.turn_based.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
+from vocode.turn_based.transcriber.sr_transcriber import SpeechRecognitionAPI, SpeechRecognitionTranscriber
 from vocode.turn_based.transcriber.whisper_transcriber import WhisperTranscriber
 from vocode.turn_based.turn_based_conversation import TurnBasedConversation
 
@@ -26,7 +27,7 @@ if __name__ == "__main__":
     conversation = TurnBasedConversation(
         input_device=microphone_input,
         output_device=speaker_output,
-        transcriber=WhisperTranscriber(api_key=getenv("OPENAI_API_KEY")),
+        transcriber=SpeechRecognitionTranscriber(api=SpeechRecognitionAPI.AZURE),
         agent=ChatGPTAgent(
             system_prompt="The AI is having a pleasant conversation about life",
             initial_message="Hello!",

@@ -30,10 +30,9 @@ async def main():
 
     conversation = StreamingConversation(
         output_device=speaker_output,
-        transcriber=DeepgramTranscriber(
-            DeepgramTranscriberConfig.from_input_device(
-                microphone_input,
-                endpointing_config=PunctuationEndpointingConfig(),
+        transcriber=AzureTranscriber(
+            AzureTranscriberConfig.from_input_device(
+                microphone_input
             )
         ),
         agent=ChatGPTAgent(
