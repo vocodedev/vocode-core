@@ -19,6 +19,7 @@ def get_transcript(conversation_id: str) -> Optional[str]:
     if os.path.exists(transcript_path):
         with open(transcript_path, "r") as f:
             return f.read()
+    return None
 
 
 def delete_transcript(conversation_id: str) -> bool:

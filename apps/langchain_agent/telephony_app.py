@@ -34,7 +34,7 @@ class EventsManager(events_manager.EventsManager):
 
 config_manager = RedisConfigManager()
 
-BASE_URL = os.getenv("TELEPHONY_SERVER_BASE_URL")
+BASE_URL = os.environ["TELEPHONY_SERVER_BASE_URL"]
 
 telephony_server = TelephonyServer(
     base_url=BASE_URL,
