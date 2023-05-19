@@ -403,7 +403,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent.attach_transcript(self.transcript)
         if mark_ready:
             await mark_ready()
-        if self.synthesizer.get_synthesizer_config().sentiment_config:
+        if hasattr(self, "sentiment_config"):
             self.update_bot_sentiment()
         self.active = True
         if self.synthesizer.get_synthesizer_config().sentiment_config:
