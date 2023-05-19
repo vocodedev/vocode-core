@@ -51,7 +51,7 @@ from vocode.streaming.utils.worker import (
     InterruptibleEvent,
     InterruptibleWorker,
 )
-from vocode.helpers import LatencyManager, LatencyType
+from vocode.utils.latency import LatencyManager, LatencyType
 
 tracer = trace.get_tracer(__name__)
 SYNTHESIS_TRACE_NAME = "synthesis"

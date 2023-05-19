@@ -7,7 +7,7 @@ from vocode.turn_based.input_device.base_input_device import (
 from vocode.turn_based.output_device.base_output_device import BaseOutputDevice
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 from vocode.turn_based.transcriber.base_transcriber import BaseTranscriber
-from vocode.helpers import LatencyManager, LatencyType
+from vocode.utils.latency import LatencyManager, LatencyType
 
 
 class TurnBasedConversation:
