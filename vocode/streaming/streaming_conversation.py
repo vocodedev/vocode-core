@@ -375,7 +375,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             We allow TextAndStopAgentResponseMessage to be sent to the synthesizer, so we don't terminate.
             """
             if isinstance(agent_response_message, StopAgentResponseMessage):
-                self.conversation.terminate()
+                self.conversation.mark_terminated()
             elif isinstance(agent_response_message, (TextAgentResponseMessage, TextAndStopAgentResponseMessage)):
                 pass
             else:
@@ -532,6 +532,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
             await self.synthesizer.set_filler_audios(self.filler_audio_config)
+        if self.agent.get_agent_config().end_conversation_on_goodbye:
+            await self.goodbye_model.initialize_embeddings()
         if mark_ready:
             await mark_ready()
         initial_message = self.agent.get_agent_config().initial_message
@@ -701,7 +703,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
     def mark_terminated(self):
         self.active = False
 
-    # must be called from the main thread
     def terminate(self):
         self.mark_terminated()
         self.events_manager.publish_event(
