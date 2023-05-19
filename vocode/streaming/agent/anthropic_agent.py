@@ -4,7 +4,7 @@ import logging
 
 from typing import Optional, Tuple
 
-from vocode.streaming.agent.utils import get_sentence_from_buffer
+from vocode.streaming.agent.utils import find_last_punctuation, get_sentence_from_buffer
 
 from langchain import ConversationChain
 from langchain.schema import ChatMessage, AIMessage, HumanMessage
@@ -28,11 +28,11 @@ from vocode.streaming.models.agent import ChatAnthropicAgentConfig
 SENTENCE_ENDINGS = [".", "!", "?"]
 
 
-class ChatAnthropicAgent(ChatAgent):
+class ChatAnthropicAgent(ChatAgent[ChatAnthropicAgentConfig]):
     def __init__(
         self,
         agent_config: ChatAnthropicAgentConfig,
-        logger: logging.Logger = None,
+        logger: Optional[logging.Logger] = None,
         anthropic_api_key: Optional[str] = None,
     ):
         super().__init__(agent_config=agent_config, logger=logger)
@@ -71,8 +71,8 @@ class ChatAnthropicAgent(ChatAgent):
     async def respond(
         self,
         human_input,
+        conversation_id: str,
         is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
     ) -> Tuple[str, bool]:
         text = await self.conversation.apredict(input=human_input)
         self.logger.debug(f"LLM response: {text}")
@@ -81,8 +81,8 @@ class ChatAnthropicAgent(ChatAgent):
     async def generate_response(
         self,
         human_input,
+        conversation_id: str,
         is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
         self.memory.chat_memory.messages.append(HumanMessage(content=human_input))
 
@@ -110,17 +110,6 @@ class ChatAnthropicAgent(ChatAgent):
                 buffer = remainder
                 yield sentence
             continue
-
-    def find_last_punctuation(self, buffer: str):
-        indices = [buffer.rfind(ending) for ending in SENTENCE_ENDINGS]
-        return indices and max(indices)
-
-    def get_sentence_from_buffer(self, buffer: str):
-        last_punctuation = self.find_last_punctuation(buffer)
-        if last_punctuation:
-            return buffer[: last_punctuation + 1], buffer[last_punctuation + 1 :]
-        else:
-            return None, None
 
     def update_last_bot_message_on_cut_off(self, message: str):
         for memory_message in self.memory.chat_memory.messages[::-1]:

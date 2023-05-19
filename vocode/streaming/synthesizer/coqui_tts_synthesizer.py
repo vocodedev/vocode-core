@@ -14,17 +14,19 @@ from .base_synthesizer import BaseSynthesizer, SynthesisResult
 from vocode.streaming.models.synthesizer import CoquiTTSSynthesizerConfig
 
 
-class CoquiTTSSynthesizer(BaseSynthesizer):
+class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
     def __init__(
-        self, config: CoquiTTSSynthesizerConfig, logger: Optional[logging.Logger] = None
+        self,
+        synthesizer_config: CoquiTTSSynthesizerConfig,
+        logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(config)
+        super().__init__(synthesizer_config)
 
         from TTS.api import TTS
 
-        self.tts = TTS(**config.tts_kwargs)
-        self.speaker = config.speaker
-        self.language = config.language
+        self.tts = TTS(**synthesizer_config.tts_kwargs)
+        self.speaker = synthesizer_config.speaker
+        self.language = synthesizer_config.language
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
     async def create_speech(
@@ -50,11 +52,11 @@ class CoquiTTSSynthesizer(BaseSynthesizer):
         buffer = io.BytesIO(audio_data_bytes)
 
         audio_segment: AudioSegment = AudioSegment.from_raw(
-            buffer, frame_rate=22050, channels=1, sample_width=2
+            buffer, frame_rate=22050, channels=1, sample_width=2  # type: ignore
         )
 
         output_bytes_io = io.BytesIO()
-        audio_segment.export(output_bytes_io, format="wav")
+        audio_segment.export(output_bytes_io, format="wav")  # type: ignore
         return self.create_synthesis_result_from_wav(
             file=output_bytes_io, message=message, chunk_size=chunk_size
         )

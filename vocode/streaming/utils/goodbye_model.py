@@ -59,7 +59,7 @@ class GoodbyeModel:
         similarity_results = embedding @ self.goodbye_embeddings
         return np.max(similarity_results) > SIMILARITY_THRESHOLD
 
-    async def create_embedding(self, text) -> np.array:
+    async def create_embedding(self, text) -> np.ndarray:
         return np.array(
             (
                 await openai.Embedding.acreate(

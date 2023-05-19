@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 from vocode.turn_based.agent.base_agent import BaseAgent
 from vocode.turn_based.input_device.base_input_device import (
     BaseInputDevice,
@@ -17,7 +18,7 @@ class TurnBasedConversation:
         agent: BaseAgent,
         synthesizer: BaseSynthesizer,
         output_device: BaseOutputDevice,
-        logger: logging.Logger = None,
+        logger: Optional[logging.Logger] = None,
         show_latency: bool = True,
     ):
         self.input_device = input_device

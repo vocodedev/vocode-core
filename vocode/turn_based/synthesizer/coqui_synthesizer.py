@@ -26,4 +26,4 @@ class CoquiSynthesizer(BaseSynthesizer):
         assert response.ok, response.text
         sample = response.json()
         response = requests.get(sample["audio_url"])
-        return AudioSegment.from_wav(io.BytesIO(response.content))
+        return AudioSegment.from_wav(io.BytesIO(response.content))  # type: ignore

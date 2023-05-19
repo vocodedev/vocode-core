@@ -61,14 +61,13 @@ class Call(StreamingConversation):
     ):
         self.base_url = base_url
         self.config_manager = config_manager
-        self.output_device = TwilioOutputDevice()
         self.twilio_config = twilio_config or TwilioConfig(
             account_sid=getenv("TWILIO_ACCOUNT_SID"),
             auth_token=getenv("TWILIO_AUTH_TOKEN"),
         )
-        self.twilio_client = create_twilio_client(twilio_config)
+        self.twilio_client = create_twilio_client(self.twilio_config)
         super().__init__(
-            self.output_device,
+            TwilioOutputDevice(),
             transcriber_factory.create_transcriber(transcriber_config),
             agent_factory.create_agent(agent_config),
             synthesizer_factory.create_synthesizer(synthesizer_config),
@@ -109,6 +108,7 @@ class Call(StreamingConversation):
         )
 
     async def attach_ws_and_start(self, ws: WebSocket):
+        assert isinstance(self.output_device, TwilioOutputDevice)
         self.logger.debug("Trying to attach WS to outbound call")
         self.output_device.ws = ws
         self.logger.debug("Attached WS to outbound call")
@@ -132,6 +132,7 @@ class Call(StreamingConversation):
         self.tear_down()
 
     async def wait_for_twilio_start(self, ws: WebSocket):
+        assert isinstance(self.output_device, TwilioOutputDevice)
         while True:
             message = await ws.receive_text()
             if not message:
@@ -144,7 +145,7 @@ class Call(StreamingConversation):
                 self.output_device.stream_sid = data["start"]["streamSid"]
                 break
 
-    async def handle_ws_message(self, message) -> PhoneCallAction:
+    async def handle_ws_message(self, message) -> Optional[PhoneCallAction]:
         if message is None:
             return PhoneCallAction.CLOSE_WEBSOCKET
 
@@ -165,6 +166,7 @@ class Call(StreamingConversation):
             self.logger.debug(f"Media WS: Received event 'stop': {message}")
             self.logger.debug("Stopping...")
             return PhoneCallAction.CLOSE_WEBSOCKET
+        return None
 
     def mark_terminated(self):
         super().mark_terminated()

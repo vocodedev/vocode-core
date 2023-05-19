@@ -32,5 +32,5 @@ class CoquiTTSSynthesizer(BaseSynthesizer):
 
         # Create an AudioSegment from the buffer and set the appropriate frame rate, channels, and sample width
         return AudioSegment.from_raw(
-            buffer, frame_rate=22050, channels=1, sample_width=2
+            buffer, frame_rate=22050, channels=1, sample_width=2  # type: ignore
         )

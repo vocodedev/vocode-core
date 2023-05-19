@@ -20,14 +20,12 @@ from vocode.utils.whisper_cpp.whisper_params import WhisperFullParams
 WHISPER_CPP_SAMPLING_RATE = 16000
 
 
-class WhisperCPPTranscriber(BaseThreadAsyncTranscriber):
+class WhisperCPPTranscriber(BaseThreadAsyncTranscriber[WhisperCPPTranscriberConfig]):
     def __init__(
         self,
         transcriber_config: WhisperCPPTranscriberConfig,
     ):
         super().__init__(transcriber_config)
-
-        self.transcriber_config = transcriber_config
         self._ended = False
         self.buffer_size = round(
             transcriber_config.sampling_rate * transcriber_config.buffer_size_seconds
@@ -38,7 +36,7 @@ class WhisperCPPTranscriber(BaseThreadAsyncTranscriber):
         # whisper cpp
         # load library and model
         libname = pathlib.Path().absolute() / self.transcriber_config.libname
-        self.whisper = ctypes.CDLL(libname)
+        self.whisper = ctypes.CDLL(libname)  # type: ignore
 
         # tell Python what are the return types of the functions
         self.whisper.whisper_init_from_file.restype = ctypes.c_void_p
