@@ -48,15 +48,15 @@ def encode_as_wav(chunk: bytes, synthesizer_config: SynthesizerConfig) -> bytes:
     output_bytes_io.seek(0)
     return output_bytes_io.read()
 
+class ChunkResult:
+    def __init__(self, chunk: bytes, is_last_chunk: bool):
+        self.chunk = chunk
+        self.is_last_chunk = is_last_chunk
 
 tracer = trace.get_tracer(__name__)
 
 
 class SynthesisResult:
-    class ChunkResult:
-        def __init__(self, chunk: bytes, is_last_chunk: bool):
-            self.chunk = chunk
-            self.is_last_chunk = is_last_chunk
 
     def __init__(
         self,
@@ -65,6 +65,7 @@ class SynthesisResult:
     ):
         self.chunk_generator = chunk_generator
         self.get_message_up_to = get_message_up_to
+        self.cached_path: str = None
 
 
 class FillerAudio:
@@ -94,11 +95,11 @@ class FillerAudio:
         async def chunk_generator(chunk_transform=lambda x: x):
             for i in range(0, len(self.audio_data), chunk_size):
                 if i + chunk_size > len(self.audio_data):
-                    yield SynthesisResult.ChunkResult(
+                    yield ChunkResult(
                         chunk_transform(self.audio_data[i:]), True
                     )
                 else:
-                    yield SynthesisResult.ChunkResult(
+                    yield ChunkResult(
                         chunk_transform(self.audio_data[i : i + chunk_size]), False
                     )
 
@@ -199,11 +200,11 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         async def chunk_generator(output_bytes):
             for i in range(0, len(output_bytes), chunk_size):
                 if i + chunk_size > len(output_bytes):
-                    yield SynthesisResult.ChunkResult(
+                    yield ChunkResult(
                         chunk_transform(output_bytes[i:]), True
                     )
                 else:
-                    yield SynthesisResult.ChunkResult(
+                    yield ChunkResult(
                         chunk_transform(output_bytes[i : i + chunk_size]), False
                     )
 

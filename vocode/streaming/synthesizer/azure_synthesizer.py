@@ -13,6 +13,7 @@ from vocode.streaming.models.message import BaseMessage, SSMLMessage
 
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
+    ChunkResult,
     SynthesisResult,
     FILLER_PHRASES,
     FILLER_AUDIO_PATH,
@@ -232,22 +233,22 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 await asyncio.sleep(0)
             filled_size = audio_data_stream.read_data(audio_buffer)
             if filled_size != chunk_size:
-                yield SynthesisResult.ChunkResult(
+                yield ChunkResult(
                     chunk_transform(audio_buffer[offset:]), True
                 )
                 return
             else:
-                yield SynthesisResult.ChunkResult(
+                yield ChunkResult(
                     chunk_transform(audio_buffer[offset:]), False
                 )
             while True:
                 filled_size = audio_data_stream.read_data(audio_buffer)
                 if filled_size != chunk_size:
-                    yield SynthesisResult.ChunkResult(
+                    yield ChunkResult(
                         chunk_transform(audio_buffer[: filled_size - offset]), True
                     )
                     break
-                yield SynthesisResult.ChunkResult(chunk_transform(audio_buffer), False)
+                yield ChunkResult(chunk_transform(audio_buffer), False)
 
         word_boundary_event_pool = WordBoundaryEventPool()
         self.synthesizer.synthesis_word_boundary.connect(

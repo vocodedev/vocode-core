@@ -7,3 +7,4 @@ credentials.json
 *.npy
 *.bytes
 **/call_transcripts/*.txt
+cache/
