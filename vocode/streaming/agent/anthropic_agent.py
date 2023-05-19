@@ -114,7 +114,7 @@ class ChatAnthropicAgent(ChatAgent[ChatAnthropicAgentConfig]):
 
     def _find_last_punctuation(self, buffer: str):
         indices = [buffer.rfind(ending) for ending in SENTENCE_ENDINGS]
-        return indices and max(indices)
+        return indices and max(iter([indices]))
 
     def _get_sentence_from_buffer(self, buffer: str):
         last_punctuation = self._find_last_punctuation(buffer)

@@ -27,9 +27,9 @@ from vocode.streaming.models.websocket_agent import (
 NUM_RESTARTS = 5
 
 
-class WebSocketUserImplementedAgent(BaseAsyncAgent):
-    input_queue: AsyncQueueType[InterruptibleEvent[Transcription]]
-    output_queue: AsyncQueueType[InterruptibleEvent[AgentResponse]]
+class WebSocketUserImplementedAgent(BaseAsyncAgent[WebSocketUserImplementedAgentConfig]):
+    input_queue: asyncio.Queue[InterruptibleEvent[Transcription]]
+    output_queue: asyncio.Queue[InterruptibleEvent[AgentResponse]]
 
     def __init__(
         self,
@@ -71,15 +71,16 @@ class WebSocketUserImplementedAgent(BaseAsyncAgent):
         else:
             raise Exception("Unknown Socket message type")
 
-        agent_response = OneShotAgentResponse(agent_response_message)
+        # Why is it necessary to upcast here?
+        agent_response = cast(AgentResponse, OneShotAgentResponse(agent_response_message))
 
         # Change this to new agent response format
-        interruptibile_event = InterruptibleEvent(
+        interruptible_event = InterruptibleEvent(
             is_interruptible=self.get_agent_config().allow_agent_to_be_cut_off,
             payload=agent_response,
         )
         self.logger.info("Putting interruptible agent response event in output queue")
-        self.output_queue.put_nowait(interruptibile_event)
+        self.output_queue.put_nowait(interruptible_event)
 
     async def _process(self) -> None:
         extra_headers: dict[str, str] = {}

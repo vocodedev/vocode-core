@@ -303,7 +303,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 pass
 
         async def _handle_one_shot_response(self, agent_response: OneShotAgentResponse, is_interruptible: bool) -> None:
-            if self.conversation.agent.get_agent_config().send_filler_audio:
+            if self.conversation.agent.get_agent_config().send_filler_audio and self.conversation.filler_audio_worker is not None:
                 self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                 await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
 
@@ -323,7 +323,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             async for message in agent_response.generator:
                 if is_first_response:
                     is_first_response = False
-                    if interrupt_filler_audio_on_first_response:
+                    if interrupt_filler_audio_on_first_response and self.conversation.filler_audio_worker is not None:
                         self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
 
@@ -545,10 +545,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
         if self.synthesizer.get_synthesizer_config().sentiment_config:
             await self.update_bot_sentiment()
-        if self.agent.get_agent_config().initial_message:
+
+        initial_message = self.agent.get_agent_config().initial_message
+        if initial_message is not None:
             agent_response = OneShotAgentResponse(
                 message=TextAgentResponseMessage(
-                    text=self.agent.get_agent_config().initial_message.text,
+                    text=initial_message.text,
                 )
             )
             event = self.enqueue_interruptible_event(
