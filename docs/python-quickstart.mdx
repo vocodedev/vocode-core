@@ -44,7 +44,8 @@ vocode.setenv(
     AZURE_SPEECH_REGION="<your Azure region>",
 )
 ```
-For AZURE_SPEECH_REGION you should use the URL format.  For example, if you're using the "East US" region, the value should be "eastus".  See [Azure Region list](https://learn.microsoft.com/en-us/azure/cognitive-services/speech-service/rest-text-to-speech?tabs=streaming#prebuilt-neural-voices).
+
+For AZURE_SPEECH_REGION you should use the URL format. For example, if you're using the "East US" region, the value should be "eastus". See [Azure Region list](https://learn.microsoft.com/en-us/azure/cognitive-services/speech-service/rest-text-to-speech?tabs=streaming#prebuilt-neural-voices).
 
 We also offer a hosted solution where you don't need to worry about getting these credentials — see [below](#hosted).
 
@@ -113,62 +114,9 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-## Hosted
-
-Head to our [dashboard](https://app.vocode.dev) to get an API key.
-
-To use your API key, set the API key on the module as follows:
-
-```python
-import vocode
-vocode.api_key = '{YOUR_API_KEY}'
-```
-
-### `HostedStreamingConversation` example
-
-```python
-import asyncio
-import signal
-
-import vocode
-from vocode.streaming.hosted_streaming_conversation import HostedStreamingConversation
-from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.helpers import create_microphone_input_and_speaker_output
-from vocode.streaming.models.transcriber import (
-    DeepgramTranscriberConfig,
-    PunctuationEndpointingConfig,
-)
-from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-
-vocode.api_key = "{YOUR_API_KEY}"
-
-
-if __name__ == "__main__":
-    microphone_input, speaker_output = create_microphone_input_and_speaker_output(
-        streaming=True, use_default_devices=False
-    )
-
-    conversation = HostedStreamingConversation(
-        input_device=microphone_input,
-        output_device=speaker_output,
-        transcriber_config=DeepgramTranscriberConfig.from_input_device(
-            microphone_input,
-            endpointing_config=PunctuationEndpointingConfig(),
-        ),
-        agent_config=ChatGPTAgentConfig(
-            initial_message=BaseMessage(text="Hello!"),
-            prompt_preamble="Have a pleasant conversation about life",
-        ),
-        synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
-    )
-    # This allows you to stop the conversation with a KeyboardInterrupt
-    signal.signal(signal.SIGINT, lambda _0, _1: conversation.deactivate())
-    asyncio.run(conversation.start())
-```
-
 ## A note on echo cancellation
 
-As of now, there is no echo cancellation enabled for system audio conversation, so this works best with headphones, otherwise the bot audio feeds back into the input audio stream.
+As of now, there is no default echo cancellation enabled for system audio conversation, so this works best with headphones, otherwise the bot audio feeds back into the input audio stream. On some speakers
+(eg phone calls) this is handled by the device itself.
+
 Stay tuned for updates here, tracking in [this GitHub issue](https://github.com/vocodedev/vocode-python/issues/16).
