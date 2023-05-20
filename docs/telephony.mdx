@@ -88,11 +88,13 @@ pip install -r requirements.txt
 2. Run Redis with the default port of 6379.
 
 For example, using Homebrew:
+
 ```
 brew services start redis
 ```
 
 Or if you prefer to use Docker for this part:
+
 ```
 docker run -dp 6379:6379 -it redis/redis-stack:latest
 ```
@@ -153,11 +155,11 @@ class SpellerAgent(BaseAgent):
     def __init__(self, agent_config: SpellerAgentConfig):
         super().__init__(agent_config=agent_config)
 
-    def respond(
+    async def respond(
         self,
         human_input,
+        conversation_id: str,
         is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
     ) -> Tuple[Optional[str], bool]:
         return "".join(c + " " for c in human_input), False
 
@@ -170,6 +172,30 @@ class SpellerAgentFactory(AgentFactory):
 An `AgentFactory` instance is passed into the `TelephonyServer` in `telephony_app.py`.
 
 We provide a small set of agents with already created `AgentConfig`s, including, importantly, one that sets up ChatGPT with a configured prompt: see our `Python Quickstart` for more info.
+
+#### Accessing call information in your agent
+
+We store the `to` and `from` numbers in the [`ConfigManager`](https://github.com/vocodedev/vocode-python-sdk/blob/b37bf7a1172a917b641d0e70ba14756415e09b0b/apps/telephony_app/main.py#L20) - so
+if you'd like to access them in your agent, you can instantiate the manager to hook into the same Redis instance:
+
+```
+class SpellerAgent(BaseAgent):
+    def __init__(self, agent_config: SpellerAgentConfig):
+        super().__init__(agent_config=agent_config)
+        self.config_manager = RedisConfigManager()
+
+    async def respond(
+        self,
+        human_input,
+        conversation_id: str,
+        is_interrupt: bool = False,
+    ) -> Tuple[Optional[str], bool]:
+        call_config = self.config_manager.get_config(conversation_id)
+        if call_config is not None:
+            from_phone = call_config.twilio_from
+            to_phone = call_config.twilio_to
+        return "".join(c + " " for c in human_input), False
+```
 
 # Hosted
 
