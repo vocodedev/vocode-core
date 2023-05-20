@@ -2,48 +2,19 @@ import asyncio
 import logging
 import signal
 from dotenv import load_dotenv
-from vocode.streaming.synthesizer.coqui_tts_synthesizer import CoquiTTSSynthesizer
 
-from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
-from vocode.streaming.synthesizer.gtts_synthesizer import GTTSSynthesizer
-from vocode.streaming.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
-from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
-from vocode.streaming.transcriber.google_transcriber import GoogleTranscriber
-from vocode.streaming.transcriber.whisper_cpp_transcriber import WhisperCPPTranscriber
 
 load_dotenv()
 
-from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.helpers import create_streaming_microphone_input_and_speaker_output
-from vocode.streaming.models.transcriber import (
-    DeepgramTranscriberConfig,
-    PunctuationEndpointingConfig,
-    GoogleTranscriberConfig,
-    WhisperCPPTranscriberConfig,
-)
-from vocode.streaming.models.agent import (
-    ChatGPTAgentConfig,
-    CutOffResponse,
-    FillerAudioConfig,
-    RESTfulUserImplementedAgentConfig,
-    EchoAgentConfig,
-    LLMAgentConfig,
-    ChatGPTAgentConfig,
-)
+from vocode.streaming.transcriber import *
+from vocode.streaming.agent import *
+from vocode.streaming.synthesizer import *
+from vocode.streaming.models.transcriber import *
+from vocode.streaming.models.agent import *
+from vocode.streaming.models.synthesizer import *
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import (
-    AzureSynthesizerConfig,
-    CoquiTTSSynthesizerConfig,
-    ElevenLabsSynthesizerConfig,
-    GTTSSynthesizerConfig,
-    GoogleSynthesizerConfig,
-    PlayHtSynthesizerConfig,
-    RimeSynthesizerConfig,
-)
-import vocode
-from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 
 
 logging.basicConfig()
