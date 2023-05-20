@@ -3,6 +3,8 @@ import logging
 import signal
 from dotenv import load_dotenv
 
+from vocode.streaming.synthesizer.caching_synthesizer import CachingSynthesizer
+
 
 load_dotenv()
 
@@ -17,16 +19,15 @@ from vocode.streaming.models.synthesizer import *
 from vocode.streaming.models.message import BaseMessage
 
 
-logging.basicConfig()
+logging.basicConfig(format='%(relativeCreated)d - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-
 
 async def main():
     (
         microphone_input,
         speaker_output,
-    ) = create_streaming_microphone_input_and_speaker_output(use_default_devices=False)
+    ) = create_streaming_microphone_input_and_speaker_output(use_default_devices=True)
 
     conversation = StreamingConversation(
         output_device=speaker_output,
@@ -41,9 +42,9 @@ async def main():
                 prompt_preamble="""The AI is having a pleasant conversation about life""",
             )
         ),
-        synthesizer=AzureSynthesizer(
+        synthesizer=CachingSynthesizer(AzureSynthesizer(
             AzureSynthesizerConfig.from_output_device(speaker_output)
-        ),
+        )),
         logger=logger,
     )
     await conversation.start()
