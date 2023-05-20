@@ -1,7 +1,6 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import io
-from re import T
 import numpy as np
 import logging
 from typing import Optional
@@ -48,7 +47,7 @@ class BarkSynthesizer(BaseSynthesizer[BarkSynthesizerConfig]):
         int_audio_arr = (audio_array * np.iinfo(np.int16).max).astype(np.int16)
 
         output_bytes_io = io.BytesIO()
-        self.write_wav(output_bytes_io, self.SAMPLE_RATE, int_audio_arr)
+        write_wav(output_bytes_io, self.SAMPLE_RATE, int_audio_arr)
 
         return self.create_synthesis_result_from_wav(
             file=output_bytes_io,
