@@ -11,7 +11,7 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_SAMPLING_RATE,
 )
 from .audio_encoding import AudioEncoding
-from .model import BaseModel, TypedModel
+from .model import TypedModel
 
 
 class TranscriberType(str, Enum):

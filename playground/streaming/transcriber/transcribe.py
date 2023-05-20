@@ -4,7 +4,7 @@ from vocode.streaming.models.transcriber import (
     PunctuationEndpointingConfig,
 )
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber, Transcription
-from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
+from vocode.streaming.transcriber import *
 
 
 if __name__ == "__main__":
