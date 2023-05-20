@@ -47,15 +47,17 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
 
         self.push_stream = PushAudioInputStream(format)
 
-        config = speechsdk.audio.AudioConfig(stream=self.push_stream)
+        audio_config = speechsdk.audio.AudioConfig(stream=self.push_stream)
 
         speech_config = speechsdk.SpeechConfig(
             subscription=getenv("AZURE_SPEECH_KEY"),
             region=getenv("AZURE_SPEECH_REGION"),
         )
 
+        lang_config = speechsdk.languageconfig.SourceLanguageConfig(self.transcriber_config.language_code)
+
         self.speech = speechsdk.SpeechRecognizer(
-            speech_config=speech_config, audio_config=config
+            speech_config=speech_config, audio_config=audio_config, source_language_config=lang_config
         )
 
         self._ended = False

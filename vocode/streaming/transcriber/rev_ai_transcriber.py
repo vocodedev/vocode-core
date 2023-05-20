@@ -57,6 +57,7 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
         url_params_dict = {
             "access_token": self.api_key,
             "content_type": content_type,
+            "language": self.transcriber_config.language_code,
         }
 
         url_params_arr = [f"{key}={value}" for (key, value) in url_params_dict.items()]

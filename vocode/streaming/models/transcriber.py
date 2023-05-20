@@ -1,5 +1,6 @@
 from enum import Enum
-from typing import List, Optional
+import re
+from typing import Collection, List, Optional
 
 from pydantic import validator
 
@@ -48,6 +49,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     sampling_rate: int
     audio_encoding: AudioEncoding
     chunk_size: int
+    language_code: str = "en-US"
     endpointing_config: Optional[EndpointingConfig] = None
     downsampling: Optional[int] = None
     min_interrupt_confidence: Optional[float] = None
@@ -58,6 +60,22 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
         if v is not None and (v < 0 or v > 1):
             raise ValueError("must be between 0 and 1")
         return v
+    
+    @validator("language_code")
+    def language_code_must_be_supported(cls, v):
+        if not cls.supports_language(v):
+            raise ValueError(f"language code '{v}' not supported by {cls}")
+        return v
+
+    @classmethod
+    def supports_language(cls, lang: str, supported_langs: Optional[Collection[str]] = None):
+        """
+        Returns true if a given lang code is supported by provided collection of supported languages.
+        lang: BCP-47 lang code
+        """
+        supported_langs = supported_langs or ["en"]
+        return (lang in supported_langs or 
+                re.split(r"[-_]", lang)[0] in {re.split(r"[-_]", x)[0] for x in supported_langs})
 
     @classmethod
     def from_input_device(
@@ -100,20 +118,64 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
 
 
 class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM.value):
-    language: Optional[str] = None
     model: Optional[str] = None
     tier: Optional[str] = None
     version: Optional[str] = None
     keywords: Optional[list] = None
 
+    @classmethod
+    def supports_language(cls, lang: str):
+        # https://developers.deepgram.com/docs/language
+        return TranscriberConfig.supports_language(lang, {
+            "zh", "zh-CN", "zh-TW", "da", "nl", "en", "en-AU", "en-GB", "en-IN", "en-NZ", 
+            "en-US", "nl", "fr", "fr-CA", "de", "hi", "hi-Latn", "id", "it", "ja", "ko", 
+            "no", "pl", "pt", "pt-BR", "pt-PT", "ru", "es", "es-419", "sv", "ta", "tr", "uk"
+        })
 
 class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.value):
     model: Optional[str] = None
-    language_code: str = "en-US"
+
+    @classmethod
+    def supports_language(cls, lang: str):
+        # https://cloud.google.com/speech-to-text/docs/speech-to-text-supported-languages
+        return TranscriberConfig.supports_language(lang, {
+            "af-ZA", "sq-AL", "am-ET", "ar-DZ", "ar-BH", "ar-EG", "ar-IQ", "ar-IL", "ar-JO", "ar-KW", 
+            "ar-LB", "ar-MR", "ar-MA", "ar-OM", "ar-QA", "ar-SA", "ar-PS", "ar-TN", "ar-AE", "ar-YE", 
+            "hy-AM", "az-AZ", "eu-ES", "bn-BD", "bn-IN", "bs-BA", "bg-BG", "my-MM", "ca-ES", "yue-Hant-HK", 
+            "zh (cmn-Hans-CN)", "zh-TW (cmn-Hant-TW)", "hr-HR", "cs-CZ", "da-DK", "nl-BE", "nl-NL", 
+            "en-AU", "en-CA", "en-GH", "en-HK", "en-IN", "en-IE", "en-KE", "en-NZ", "en-NG", "en-PK", 
+            "en-PH", "en-SG", "en-ZA", "en-TZ", "en-GB", "en-US", "et-EE", "fil-PH", "fi-FI", "fr-BE", 
+            "fr-CA", "fr-FR", "fr-CH", "gl-ES", "ka-GE", "de-AT", "de-DE", "de-CH", "el-GR", "gu-IN", 
+            "iw-IL", "hi-IN", "hu-HU", "is-IS", "id-ID", "it-IT", "it-CH", "ja-JP", "jv-ID", "kn-IN", 
+            "kk-KZ", "km-KH", "ko-KR", "lo-LA", "lv-LV", "lt-LT", "mk-MK", "ms-MY", "ml-IN", "mr-IN", 
+            "mn-MN", "ne-NP", "no-NO", "fa-IR", "pl-PL", "pt-BR", "pt-PT", "pa-Guru-IN", "ro-RO", "ru-RU", 
+            "rw-RW", "sr-RS", "si-LK", "sk-SK", "sl-SI", "ss-latn-za", "st-ZA", "es-AR", "es-BO", "es-CL", 
+            "es-CO", "es-CR", "es-DO", "es-EC", "es-SV", "es-GT", "es-HN", "es-MX", "es-NI", "es-PA", "es-PY", 
+            "es-PE", "es-PR", "es-ES", "es-US", "es-UY", "es-VE", "su-ID", "sw-KE", "sw-TZ", "sv-SE", "ta-IN", 
+            "ta-MY", "ta-SG", "ta-LK", "te-IN", "th-TH", "tn-latn-za", "tr-TR", "ts-ZA", "uk-UA", "ur-IN", 
+            "ur-PK", "uz-UZ", "ve-ZA", "vi-VN", "xh-ZA", "zu-ZA"
+    })
 
 
 class AzureTranscriberConfig(TranscriberConfig, type=TranscriberType.AZURE.value):
-    pass
+    
+    @classmethod
+    def supports_language(cls, lang: str):
+        # https://learn.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support?tabs=stt
+        return TranscriberConfig.supports_language(lang, { 
+            "am-ET", "az-AZ", "bg-BG", "bn-IN", "bs-BA", "ca-ES", "cs-CZ", "cy-GB", "da-DK", 
+            "de-AT", "de-CH", "de-DE", "el-GR", "en-AU", "en-CA", "en-GB", "en-HK", "en-IE", 
+            "en-IN", "en-KE", "en-NG", "en-NZ", "en-PH", "en-SG", "en-TZ", "en-US", "en-ZA", 
+            "es-AR", "es-BO", "es-CL", "es-CO", "es-CR", "es-CU", "es-DO", "es-EC", "es-ES", 
+            "es-GQ", "es-GT", "es-HN", "es-MX", "es-NI", "es-PA", "es-PE", "es-PR", "es-PY", 
+            "es-SV", "es-US", "es-UY", "es-VE", "et-EE", "eu-ES", "fi-FI", f"il-PH", "fr-BE", 
+            "fr-CA", "fr-CH", "fr-FR", "ga-IE", "gl-ES", "gu-IN", "hi-IN", "hr-HR", "hu-HU", 
+            "hy-AM", "id-ID", "is-IS", "it-IT", "ja-JP", "jv-ID", "ka-GE", "kk-KZ", "km-KH", 
+            "kn-IN", "ko-KR", "lo-LA", "lt-LT", "lv-LV", "mk-MK", "ml-IN", "mn-MN", "mr-IN", 
+            "ms-MY", "mt-MT", "my-MM", "nb-NO", "ne-NP", "nl-BE", "nl-NL", "pl-PL", "pt-BR", 
+            "pt-PT", "ro-RO", "ru-RU", "si-LK", "sk-SK", "sl-SI", "so-SO", "sq-AL", "sr-RS", 
+            "sv-SE", "sw-KE", "sw-TZ", "ta-IN", "te-IN", "th-TH", "tr-TR", "uk-UA", "uz-UZ", 
+            "vi-VN", "wuu-CN", "yue-CN", "zh-CN", "zh-CN-sichuan", "zh-HK", "zh-TW", "zu-ZA"})
 
 
 class AssemblyAITranscriberConfig(
@@ -122,6 +184,11 @@ class AssemblyAITranscriberConfig(
     buffer_size_seconds: float = 0.1
     word_boost: Optional[List[str]] = None
 
+    @classmethod
+    def supports_language(cls, lang: str):
+        # https://airtable.com/embed/shr53TWU5reXkAmt2/tblf7O4cffFndmsCH
+        # Streaming only supports English
+        return TranscriberConfig.supports_language(lang, { "en" }) 
 
 class WhisperCPPTranscriberConfig(
     TranscriberConfig, type=TranscriberType.WHISPER_CPP.value
@@ -130,6 +197,21 @@ class WhisperCPPTranscriberConfig(
     libname: str
     fname_model: str
 
+    @classmethod
+    def supports_language(cls, lang: str):
+        # https://help.openai.com/en/articles/7031512-whisper-api-faq
+        return TranscriberConfig.supports_language(lang, {
+            "af", "ar", "hy", "az", "be", "bs", "bg", "ca", "zh", "hr", "cs", "da", "nl", "en", "et", "fi",
+            "fr", "gl", "de", "el", "he", "hi", "hu", "is", "id", "it", "ja", "kn", "kk", "ko", "lv", "lt",
+            "mk", "ms", "mr", "mi", "ne", "no", "fa", "pl", "pt", "ro", "ru", "sr", "sk", "sl", "es", "sw",
+            "sv", "tl", "ta", "th", "tr", "uk", "ur", "vi", "cy"})
 
 class RevAITranscriberConfig(TranscriberConfig, type=TranscriberType.REV_AI.value):
-    pass
+    
+    @classmethod
+    def supports_language(cls, lang: str):
+        # https://www.rev.ai/languages
+        # Only streaming languages are listed below
+        return TranscriberConfig.supports_language(lang, {
+            "en", "fr", "de", "it", "ko", "cmn", "zh-cmn", "pt", "es"
+        }) 
