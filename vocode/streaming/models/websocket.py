@@ -4,7 +4,7 @@ from typing import Optional
 
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
-from .model import BaseModel, TypedModel
+from .model import TypedModel
 from .transcriber import TranscriberConfig
 from .agent import AgentConfig
 from .synthesizer import SynthesizerConfig
