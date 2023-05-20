@@ -4,6 +4,7 @@ import queue
 from typing import Optional
 import threading
 
+from azure.cognitiveservices.speech import SpeechRecognitionEventArgs
 from azure.cognitiveservices.speech.audio import (
     AudioInputStream,
     PushAudioInputStream,
@@ -63,12 +64,12 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
         self._ended = False
         self.is_ready = False
 
-    def recognized_sentence_final(self, evt):
+    def recognized_sentence_final(self, evt: SpeechRecognitionEventArgs):
         self.output_janus_queue.sync_q.put_nowait(
             Transcription(message=evt.result.text, confidence=1.0, is_final=True)
         )
 
-    def recognized_sentence_stream(self, evt):
+    def recognized_sentence_stream(self, evt: SpeechRecognitionEventArgs):
         self.output_janus_queue.sync_q.put_nowait(
             Transcription(message=evt.result.text, confidence=1.0, is_final=False)
         )
