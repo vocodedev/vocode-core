@@ -38,10 +38,12 @@ class OutboundCall:
         synthesizer_config: Optional[SynthesizerConfig] = None,
         conversation_id: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
+        mobile_only: bool = True,
     ):
         self.base_url = base_url
         self.to_phone = to_phone
         self.from_phone = from_phone
+        self.mobile_only = mobile_only
         self.config_manager = config_manager
         self.agent_config = agent_config
         self.transcriber_config = transcriber_config or DeepgramTranscriberConfig(
@@ -98,7 +100,11 @@ class OutboundCall:
 
     def start(self):
         self.logger.debug("Starting outbound call")
-        self.validate_outbound_call(self.to_phone, self.from_phone)
+        self.validate_outbound_call(
+            to_phone=self.to_phone,
+            from_phone=self.from_phone,
+            mobile_only=self.mobile_only,
+        )
         self.twilio_sid = self.create_twilio_call(
             to_phone=self.to_phone,
             from_phone=self.from_phone,
