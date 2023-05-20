@@ -59,7 +59,8 @@
         "react-quickstart",
         "playground",
         "turn-based-conversation",
-        "language-support"
+        "language-support",
+        "tracing"
       ]
     },
     {

@@ -1,0 +1,37 @@
+---
+title: "Tracing"
+description: "Time components of your Vocode conversations"
+---
+
+At the top of `quickstarts/streaming_conversation.py`, include the following code:
+
+```
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter
+from opentelemetry.sdk.resources import Resource
+
+
+class PrintDurationSpanExporter(SpanExporter):
+    def __init__(self):
+        super().__init__()
+        self.spans = defaultdict(list)
+
+    def export(self, spans):
+        for span in spans:
+            duration_ns = span.end_time - span.start_time
+            duration_s = duration_ns / 1e9
+            self.spans[span.name].append(duration_s)
+
+    def shutdown(self):
+        for name, durations in self.spans.items():
+            print(f"{name}: {sum(durations) / len(durations)}")
+
+
+trace.set_tracer_provider(TracerProvider(resource=Resource.create({})))
+trace.get_tracer_provider().add_span_processor(
+    SimpleSpanProcessor(PrintDurationSpanExporter())
+)
+```
+
+This will print out stats about the conversation after it ends
