@@ -1,6 +1,7 @@
 import logging
 import os
 from fastapi import FastAPI
+from dotenv import load_dotenv
 
 from vocode.streaming.telephony.config_manager.redis_config_manager import (
     RedisConfigManager,
@@ -10,6 +11,8 @@ from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.telephony.server.base import InboundCallConfig, TelephonyServer
 
 from speller_agent import SpellerAgentFactory
+
+load_dotenv()
 
 app = FastAPI(docs_url=None)
 
