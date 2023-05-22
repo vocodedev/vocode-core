@@ -35,7 +35,12 @@ from vocode.streaming.constants import (
     PER_CHUNK_ALLOWANCE_SECONDS,
     ALLOWED_IDLE_TIME,
 )
-from vocode.streaming.agent.base_agent import BaseAgent
+from vocode.streaming.agent.base_agent import (
+    AgentResponse,
+    AgentResponseMessage,
+    AgentResponseType,
+    BaseAgent,
+)
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
@@ -80,7 +85,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         def __init__(
             self,
             input_queue: asyncio.Queue[Transcription],
-            output_queue: asyncio.Queue[InterruptibleEvent[Transcription]],
+            output_queue: asyncio.Queue[InterruptibleEvent[Tuple[Transcription, str]]],
             conversation: "StreamingConversation",
             interruptible_event_factory: InterruptibleEventFactory,
         ):
@@ -119,144 +124,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
                 event = self.interruptible_event_factory.create(transcription)
-                self.output_queue.put_nowait(event)
-
-    class FinalTranscriptionsWorker(InterruptibleWorker):
-        """
-        - Sends final transcriptions to the agent and publishes agent responses to the output queue
-        - Sends a task to the FillerAudioWorker if the agent config requires it
-        - Runs the goodbye model on the transcription and ends the conversation if goodbye is detected
-        """
-
-        def __init__(
-            self,
-            input_queue: asyncio.Queue[InterruptibleEvent[Transcription]],
-            output_queue: asyncio.Queue[InterruptibleEvent[BaseMessage]],
-            conversation: "StreamingConversation",
-            interruptible_event_factory: InterruptibleEventFactory,
-        ):
-            super().__init__(input_queue, output_queue)
-            self.input_queue = input_queue
-            self.output_queue = output_queue
-            self.conversation = conversation
-            self.interruptible_event_factory = interruptible_event_factory
-
-        def send_filler_audio(self):
-            self.conversation.logger.debug("Sending filler audio")
-            if self.conversation.synthesizer.filler_audios:
-                filler_audio = random.choice(
-                    self.conversation.synthesizer.filler_audios
-                )
-                self.conversation.logger.debug(f"Chose {filler_audio.message.text}")
-                self.produce_interruptible_event_nonblocking(
-                    filler_audio,
-                    is_interruptible=filler_audio.is_interruptible,
-                )
-            else:
-                self.conversation.logger.debug(
-                    "No filler audio available for synthesizer"
-                )
-
-        async def generate_responses(self, transcription: Transcription) -> bool:
-            agent_span = tracer.start_span(
-                AGENT_TRACE_NAME, {"generate_response": True}  # type: ignore
-            )
-            responses = self.conversation.agent.generate_response(
-                transcription.message,
-                is_interrupt=transcription.is_interrupt,
-                conversation_id=self.conversation.id,
-            )
-            is_first_response = True
-            async for response in responses:
-                if is_first_response:
-                    agent_span.end()
-                    if self.conversation.agent.get_agent_config().send_filler_audio:
-                        assert self.conversation.filler_audio_worker is not None
-                        self.conversation.filler_audio_worker.interrupt_current_filler_audio()
-                        await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
-                    is_first_response = False
-                self.produce_interruptible_event_nonblocking(
-                    BaseMessage(text=response),
-                    is_interruptible=self.conversation.agent.get_agent_config().allow_agent_to_be_cut_off,
-                )
-            # TODO: implement should_stop for generate_responses
-            return False
-
-        async def respond(self, transcription: Transcription) -> bool:
-            try:
-                with tracer.start_as_current_span(
-                    AGENT_TRACE_NAME, {"generate_response": False}  # type: ignore
-                ):
-                    response, should_stop = await self.conversation.agent.respond(
-                        transcription.message,
-                        is_interrupt=transcription.is_interrupt,
-                        conversation_id=self.conversation.id,
-                    )
-            except Exception as e:
-                self.conversation.logger.error(
-                    f"Error while generating response: {e}", exc_info=True
-                )
-                response = None
-                return True
-            if self.conversation.agent.get_agent_config().send_filler_audio:
-                assert self.conversation.filler_audio_worker is not None
-                self.conversation.filler_audio_worker.interrupt_current_filler_audio()
-                await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
-            if should_stop:
-                return True
-            if response:
-                self.produce_interruptible_event_nonblocking(
-                    BaseMessage(text=response),
-                    is_interruptible=self.conversation.agent.get_agent_config().allow_agent_to_be_cut_off,
-                )
-            else:
-                self.conversation.logger.debug("No response generated")
-            return False
-
-        async def process(self, item: InterruptibleEvent[Transcription]):
-            try:
-                transcription = item.payload
-                self.conversation.transcript.add_human_message(
-                    text=transcription.message,
-                    events_manager=self.conversation.events_manager,
-                    conversation_id=self.conversation.id,
-                )
-                goodbye_detected_task = None
-                if (
-                    self.conversation.agent.get_agent_config().end_conversation_on_goodbye
-                ):
-                    goodbye_detected_task = asyncio.create_task(
-                        self.conversation.goodbye_model.is_goodbye(
-                            transcription.message
-                        )
-                    )
-                if self.conversation.agent.get_agent_config().send_filler_audio:
-                    self.send_filler_audio()
-                self.conversation.logger.debug("Responding to transcription")
-                should_stop = False
-                if self.conversation.agent.get_agent_config().generate_responses:
-                    should_stop = await self.generate_responses(transcription)
-                else:
-                    should_stop = await self.respond(transcription)
-                if should_stop:
-                    self.conversation.logger.debug("Agent requested to stop")
-                    self.conversation.terminate()
-                    return
-                if goodbye_detected_task:
-                    try:
-                        goodbye_detected = await asyncio.wait_for(
-                            goodbye_detected_task, 0.1
-                        )
-                        if goodbye_detected:
-                            self.conversation.logger.debug(
-                                "Goodbye detected, ending conversation"
-                            )
-                            self.conversation.terminate()
-                            return
-                    except asyncio.TimeoutError:
-                        self.conversation.logger.debug("Goodbye detection timed out")
-            except asyncio.CancelledError:
-                pass
+                self.output_queue.put_nowait((event, self.conversation.id))
 
     class FillerAudioWorker(InterruptibleWorker):
         """
@@ -317,7 +185,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         def __init__(
             self,
-            input_queue: asyncio.Queue[InterruptibleEvent[BaseMessage]],
+            input_queue: asyncio.Queue[InterruptibleEvent[AgentResponse]],
             output_queue: asyncio.Queue[
                 InterruptibleEvent[Tuple[BaseMessage, SynthesisResult]]
             ],
@@ -337,17 +205,53 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
             )
 
-        async def process(self, item: InterruptibleEvent[BaseMessage]):
+        def send_filler_audio(self):
+            assert self.conversation.filler_audio_worker is not None
+            self.conversation.logger.debug("Sending filler audio")
+            if self.conversation.synthesizer.filler_audios:
+                filler_audio = random.choice(
+                    self.conversation.synthesizer.filler_audios
+                )
+                self.conversation.logger.debug(f"Chose {filler_audio.message.text}")
+                event = self.interruptible_event_factory.create(
+                    filler_audio,
+                    is_interruptible=filler_audio.is_interruptible,
+                )
+                self.conversation.filler_audio_worker.consume_nonblocking(event)
+            else:
+                self.conversation.logger.debug(
+                    "No filler audio available for synthesizer"
+                )
+
+        async def process(self, item: InterruptibleEvent[AgentResponse]):
             try:
                 agent_response = item.payload
+                if agent_response.type == AgentResponseType.FILLER_AUDIO:
+                    self.send_filler_audio()
+                    return
+                if agent_response.type == AgentResponseType.STOP:
+                    self.conversation.logger.debug("Agent requested to stop")
+                    self.conversation.terminate()
+                    return
+
+                agent_response_message = typing.cast(
+                    AgentResponseMessage, agent_response
+                )
+
+                if self.conversation.filler_audio_worker is not None:
+                    if (
+                        self.conversation.filler_audio_worker.interrupt_current_filler_audio()
+                    ):
+                        await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
+
                 self.conversation.logger.debug("Synthesizing speech for message")
                 synthesis_result = await self.conversation.synthesizer.create_speech(
-                    agent_response,
+                    agent_response_message.message,
                     self.chunk_size,
                     bot_sentiment=self.conversation.bot_sentiment,
                 )
                 self.produce_interruptible_event_nonblocking(
-                    (agent_response, synthesis_result),
+                    (agent_response_message.message, synthesis_result),
                     is_interruptible=item.is_interruptible,
                 )
             except asyncio.CancelledError:
@@ -413,12 +317,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.interruptible_event_factory = self.QueueingInterruptibleEventFactory(
             conversation=self
         )
-        self.final_transcriptions_queue: asyncio.Queue[
-            InterruptibleEvent[Transcription]
-        ] = asyncio.Queue()
-        self.agent_responses_queue: asyncio.Queue[
-            InterruptibleEvent[BaseMessage]
-        ] = asyncio.Queue()
+        self.agent.set_interruptible_event_factory(self.interruptible_event_factory)
         self.synthesis_results_queue: asyncio.Queue[
             InterruptibleEvent[Tuple[BaseMessage, SynthesisResult]]
         ] = asyncio.Queue()
@@ -427,18 +326,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
         ] = asyncio.Queue()
         self.transcriptions_worker = self.TranscriptionsWorker(
             input_queue=self.transcriber.output_queue,
-            output_queue=self.final_transcriptions_queue,
-            conversation=self,
-            interruptible_event_factory=self.interruptible_event_factory,
-        )
-        self.final_transcriptions_worker = self.FinalTranscriptionsWorker(
-            input_queue=self.final_transcriptions_queue,
-            output_queue=self.agent_responses_queue,
+            output_queue=self.agent.get_input_queue(),
             conversation=self,
             interruptible_event_factory=self.interruptible_event_factory,
         )
         self.agent_responses_worker = self.AgentResponsesWorker(
-            input_queue=self.agent_responses_queue,
+            input_queue=self.agent.get_output_queue(),
             output_queue=self.synthesis_results_queue,
             conversation=self,
             interruptible_event_factory=self.interruptible_event_factory,
@@ -467,8 +360,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.bot_sentiment_analyser = BotSentimentAnalyser(
                 emotions=self.sentiment_config.emotions
             )
-        if self.agent.get_agent_config().end_conversation_on_goodbye:
-            self.goodbye_model = GoodbyeModel()
 
         self.is_human_speaking = False
         self.active = False
@@ -486,7 +377,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
         self.transcriptions_worker.start()
-        self.final_transcriptions_worker.start()
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
         self.output_device.start()
@@ -505,20 +395,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
             await self.synthesizer.set_filler_audios(self.filler_audio_config)
-        if self.agent.get_agent_config().end_conversation_on_goodbye:
-            await self.goodbye_model.initialize_embeddings()
         self.agent.start()
         if mark_ready:
             await mark_ready()
         if self.synthesizer.get_synthesizer_config().sentiment_config:
             self.update_bot_sentiment()
-        initial_message = self.agent.get_agent_config().initial_message
-        if initial_message is not None:
-            event = self.interruptible_event_factory.create(
-                self.agent.get_agent_config().initial_message,
-                is_interruptible=False,
-            )
-            self.agent_responses_queue.put_nowait(event)
         self.active = True
         if self.synthesizer.get_synthesizer_config().sentiment_config:
             self.track_bot_sentiment_task = asyncio.create_task(
@@ -582,7 +463,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             except queue.Empty:
                 break
         self.agent_responses_worker.cancel_current_task()
-        self.final_transcriptions_worker.cancel_current_task()
         return num_interrupts > 0
 
     async def send_speech_to_output(
@@ -680,8 +560,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.logger.debug("Terminating transcriptions worker")
         self.transcriptions_worker.terminate()
         self.logger.debug("Terminating final transcriptions worker")
-        self.final_transcriptions_worker.terminate()
-        self.logger.debug("Terminating agent responses worker")
         self.agent_responses_worker.terminate()
         self.logger.debug("Terminating synthesis results worker")
         self.synthesis_results_worker.terminate()

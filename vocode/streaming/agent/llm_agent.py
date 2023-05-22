@@ -8,12 +8,12 @@ import logging
 import openai
 from vocode import getenv
 
-from vocode.streaming.agent.base_agent import BaseAgent
+from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 from vocode.streaming.agent.utils import stream_openai_response_async
 from vocode.streaming.models.agent import LLMAgentConfig
 
 
-class LLMAgent(BaseAgent[LLMAgentConfig]):
+class LLMAgent(RespondAgent[LLMAgentConfig]):
     SENTENCE_ENDINGS = [".", "!", "?"]
 
     DEFAULT_PROMPT_TEMPLATE = "{history}\nHuman: {human_input}\nAI:"
