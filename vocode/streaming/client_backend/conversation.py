@@ -91,6 +91,12 @@ class ConversationRouter(BaseRouter):
             self.sessions[start_message.session_id] = conversation
         await conversation.start(lambda: output_device.ws.send_text(ReadyMessage().json()))
         return conversation
+    
+    def del_conversation(self, conversation):
+        keys = list(self.sessions.keys())
+        for key in keys:
+            if self.sessions[key] == conversation:
+                del self.sessions[key]
 
     async def conversation(self, websocket: WebSocket):
         await websocket.accept()
@@ -115,6 +121,7 @@ class ConversationRouter(BaseRouter):
             audio_message = typing.cast(AudioMessage, message)
             conversation.receive_audio(audio_message.get_bytes())
         output_device.mark_closed()
+        self.del_conversation(conversation)
         conversation.terminate()
 
     def get_router(self) -> APIRouter:
