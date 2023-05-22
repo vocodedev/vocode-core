@@ -5,6 +5,7 @@ from fastapi import WebSocket
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.models.websocket import AudioMessage
+from vocode.streaming.models.websocket import AudioMessageExt
 
 
 class WebsocketOutputDevice(BaseOutputDevice):
@@ -29,6 +30,11 @@ class WebsocketOutputDevice(BaseOutputDevice):
         if self.active:
             audio_message = AudioMessage.from_bytes(chunk)
             self.queue.put_nowait(audio_message.json())
+
+    def send_nonblocking_ext(self, ext: dict):
+        if self.active:
+            audio_message_ext = AudioMessageExt.from_bytes(ext.chunk, ext.transcriber_message, ext.synthesizer_message)
+            self.queue.put_nowait(audio_message_ext.json())
 
     def terminate(self):
         self.process_task.cancel()

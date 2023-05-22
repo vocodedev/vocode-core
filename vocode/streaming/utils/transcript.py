@@ -65,3 +65,15 @@ class Transcript(BaseModel):
             events_manager=events_manager,
             conversation_id=conversation_id,
         )
+
+    def last_human_message(self):
+        for msg in reversed(self.messages):
+            if msg.sender == Sender.HUMAN:
+                return msg.text
+        return ""
+    
+    def last_bot_message(self):
+        for msg in reversed(self.messages):
+            if msg.sender == Sender.BOT:
+                return msg.text
+        return ""

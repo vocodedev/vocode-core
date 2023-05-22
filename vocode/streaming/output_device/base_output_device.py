@@ -11,6 +11,9 @@ class BaseOutputDevice:
 
     def send_nonblocking(self, chunk: bytes):
         raise NotImplemented
+    
+    def send_nonblocking_ext(self, ext: dict):
+        self.send_nonblocking(ext.chunk)
 
     def maybe_send_mark_nonblocking(self, message):
         pass

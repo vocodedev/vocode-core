@@ -14,6 +14,7 @@ class WebSocketMessageType(str, Enum):
     BASE = "websocket_base"
     START = "websocket_start"
     AUDIO = "websocket_audio"
+    AUDIO_EXT = "websocket_audio_ext"
     READY = "websocket_ready"
     STOP = "websocket_stop"
     AUDIO_CONFIG_START = "websocket_audio_config_start"
@@ -29,6 +30,23 @@ class AudioMessage(WebSocketMessage, type=WebSocketMessageType.AUDIO):
     @classmethod
     def from_bytes(cls, chunk: bytes):
         return cls(data=base64.b64encode(chunk).decode("utf-8"))
+
+    def get_bytes(self) -> bytes:
+        return base64.b64decode(self.data)
+
+
+class AudioMessageExt(WebSocketMessage, type=WebSocketMessageType.AUDIO_EXT):
+    data: str
+    human_message: str
+    bot_message: str
+
+    @classmethod
+    def from_bytes(cls, chunk: bytes, human_message, bot_message):
+        return cls(
+            data=base64.b64encode(chunk).decode("utf-8"),
+            human_message=human_message,
+            bot_message=bot_message
+        )
 
     def get_bytes(self) -> bytes:
         return base64.b64decode(self.data)

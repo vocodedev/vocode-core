@@ -633,7 +633,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
             if chunk_idx == 0:
                 if started_event:
                     started_event.set()
-            self.output_device.send_nonblocking(chunk_result.chunk)
+            self.output_device.send_nonblocking_ext({
+                "chunk": chunk_result.chunk,
+                "human_message": self.transcript.last_human_message(),
+                "bot_message": self.transcript.last_bot_message(),
+            })
             end_time = time.time()
             await asyncio.sleep(
                 max(
