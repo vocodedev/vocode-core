@@ -25,7 +25,7 @@ class WebsocketOutputDevice(BaseOutputDevice):
             message = await self.queue.get()
             await self.ws.send_text(message)
 
-    def send_nonblocking(self, chunk: bytes):
+    def consume_nonblocking(self, chunk: bytes):
         if self.active:
             audio_message = AudioMessage.from_bytes(chunk)
             self.queue.put_nowait(audio_message.json())

@@ -69,9 +69,9 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
 
     def send_audio(self, chunk):
         if not self.is_muted:
-            self.send_nonblocking(chunk)
+            self.consume_nonblocking(chunk)
         else:
-            self.send_nonblocking(self.create_silent_chunk(len(chunk)))
+            self.consume_nonblocking(self.create_silent_chunk(len(chunk)))
 
     def terminate(self):
         AsyncWorker.terminate(self)
@@ -94,9 +94,9 @@ class BaseThreadAsyncTranscriber(
 
     def send_audio(self, chunk):
         if not self.is_muted:
-            self.send_nonblocking(chunk)
+            self.consume_nonblocking(chunk)
         else:
-            self.send_nonblocking(self.create_silent_chunk(len(chunk)))
+            self.consume_nonblocking(self.create_silent_chunk(len(chunk)))
 
     def terminate(self):
         ThreadAsyncWorker.terminate(self)

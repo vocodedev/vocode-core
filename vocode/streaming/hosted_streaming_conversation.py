@@ -60,7 +60,7 @@ class HostedStreamingConversation:
             while self.active:
                 try:
                     audio = self.output_audio_queue.get(timeout=5)
-                    self.output_device.send_nonblocking(audio)
+                    self.output_device.consume_nonblocking(audio)
                 except queue.Empty:
                     continue
 
