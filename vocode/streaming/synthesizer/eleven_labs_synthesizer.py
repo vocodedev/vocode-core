@@ -34,6 +34,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.voice_id = synthesizer_config.voice_id or ADAM_VOICE_ID
         self.stability = synthesizer_config.stability
         self.similarity_boost = synthesizer_config.similarity_boost
+        self.model_id = synthesizer_config.model_id
+        self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
 
     async def create_speech(
@@ -47,16 +49,17 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             voice.settings = self.elevenlabs.VoiceSettings(
                 stability=self.stability, similarity_boost=self.similarity_boost
             )
-        url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
+        url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}/stream"
+        if self.optimize_streaming_latency:
+            assert 0 <= self.optimize_streaming_latency <= 4 
+            url += f"?optimize_streaming_latency={self.optimize_streaming_latency}"
         headers = {"xi-api-key": self.api_key}
         body = {
+            # change the model_id to "eleven_multilingual_v1" for multi-language support 
+            "model_id": self.model_id,
             "text": message.text,
             "voice_settings": voice.settings.dict() if voice.settings else None,
         }
-        if self.synthesizer_config.optimize_streaming_latency:
-            body[
-                "optimize_streaming_latency"
-            ] = self.synthesizer_config.optimize_streaming_latency
 
         async with aiohttp.ClientSession() as session:
             async with session.request(

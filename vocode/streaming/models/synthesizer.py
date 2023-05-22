@@ -106,6 +106,7 @@ class ElevenLabsSynthesizerConfig(
     stability: Optional[float]
     similarity_boost: Optional[float]
     optimize_streaming_latency: Optional[int]
+    model_id: Optional[str] = "eleven_monolingual_v1"
 
     @validator("voice_id")
     def set_name(cls, voice_id):
