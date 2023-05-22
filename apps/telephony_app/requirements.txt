@@ -1,4 +1,4 @@
 vocode==0.1.108
 redis
 twilio
-dotenv
+python-dotenv
