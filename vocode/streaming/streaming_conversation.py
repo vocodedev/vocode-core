@@ -23,10 +23,7 @@ from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.utils.transcript import Transcript
 
-from vocode.streaming.models.agent import (
-    FillerAudioConfig,
-    FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS,
-)
+from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.synthesizer import (
     SentimentConfig,
 )
@@ -36,6 +33,7 @@ from vocode.streaming.constants import (
     ALLOWED_IDLE_TIME,
 )
 from vocode.streaming.agent.base_agent import (
+    AgentInput,
     AgentResponse,
     AgentResponseMessage,
     AgentResponseType,
@@ -85,7 +83,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         def __init__(
             self,
             input_queue: asyncio.Queue[Transcription],
-            output_queue: asyncio.Queue[InterruptibleEvent[Tuple[Transcription, str]]],
+            output_queue: asyncio.Queue[InterruptibleEvent[AgentInput]],
             conversation: "StreamingConversation",
             interruptible_event_factory: InterruptibleEventFactory,
         ):
@@ -129,7 +127,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                 )
                 event = self.interruptible_event_factory.create(
-                    (transcription, self.conversation.id)
+                    AgentInput(
+                        transcription=transcription,
+                        conversation_id=self.conversation.id,
+                    )
                 )
                 self.output_queue.put_nowait(event)
 

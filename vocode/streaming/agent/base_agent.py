@@ -14,7 +14,7 @@ from vocode.streaming.models.agent import (
     LLMAgentConfig,
 )
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.model import TypedModel
+from vocode.streaming.models.model import BaseModel, TypedModel
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.utils.worker import (
@@ -25,6 +25,11 @@ from vocode.streaming.utils.worker import (
 
 tracer = trace.get_tracer(__name__)
 AGENT_TRACE_NAME = "agent"
+
+
+class AgentInput(BaseModel):
+    transcription: Transcription
+    conversation_id: str
 
 
 class AgentResponseType(str, Enum):
@@ -68,7 +73,7 @@ class AbstractAgent(Generic[AgentConfigType]):
     def get_cut_off_response(self) -> str:
         assert isinstance(self.agent_config, LLMAgentConfig) or isinstance(
             self.agent_config, ChatGPTAgentConfig
-        )
+        ), "Set cutoff response is only implemented in LLMAgent and ChatGPTAgent"
         assert self.agent_config.cut_off_response is not None
         on_cut_off_messages = self.agent_config.cut_off_response.messages
         assert len(on_cut_off_messages) > 0
@@ -83,7 +88,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
         logger: Optional[logging.Logger] = None,
     ):
         self.input_queue: asyncio.Queue[
-            InterruptibleEvent[Tuple[Transcription, str]]
+            InterruptibleEvent[AgentInput]
         ] = asyncio.Queue()
         self.output_queue: asyncio.Queue[
             InterruptibleEvent[AgentResponse]
@@ -116,7 +121,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
 
     def get_input_queue(
         self,
-    ) -> asyncio.Queue[InterruptibleEvent[Tuple[Transcription, str]]]:
+    ) -> asyncio.Queue[InterruptibleEvent[AgentInput]]:
         return self.input_queue
 
     def get_output_queue(self) -> asyncio.Queue[InterruptibleEvent[AgentResponse]]:
@@ -176,13 +181,13 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             self.logger.debug("No response generated")
         return False
 
-    async def process(self, item: InterruptibleEvent[Tuple[Transcription, str]]):
+    async def process(self, item: InterruptibleEvent[AgentInput]):
         try:
-            transcription, conversation_id = item.payload
+            agent_input = item.payload
             goodbye_detected_task = None
             if self.agent_config.end_conversation_on_goodbye:
                 goodbye_detected_task = self.create_goodbye_detection_task(
-                    transcription.message
+                    agent_input.transcription.message
                 )
             if self.agent_config.send_filler_audio:
                 self.produce_interruptible_event_nonblocking(AgentResponseFillerAudio())
@@ -190,10 +195,12 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             should_stop = False
             if self.agent_config.generate_responses:
                 should_stop = await self.handle_generate_response(
-                    transcription, conversation_id
+                    agent_input.transcription, agent_input.conversation_id
                 )
             else:
-                should_stop = await self.handle_respond(transcription, conversation_id)
+                should_stop = await self.handle_respond(
+                    agent_input.transcription, agent_input.conversation_id
+                )
             if should_stop:
                 self.logger.debug("Agent requested to stop")
                 self.produce_interruptible_event_nonblocking(AgentResponseStop())

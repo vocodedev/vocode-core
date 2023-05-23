@@ -4,23 +4,17 @@ import asyncio
 import audioop
 from typing import Generic, TypeVar, Union
 from vocode.streaming.models.audio_encoding import AudioEncoding
+from vocode.streaming.models.model import BaseModel
 
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
 
 
-class Transcription:
-    def __init__(
-        self,
-        message: str,
-        confidence: float,
-        is_final: bool,
-        is_interrupt: bool = False,
-    ):
-        self.message = message
-        self.confidence = confidence
-        self.is_final = is_final
-        self.is_interrupt = is_interrupt
+class Transcription(BaseModel):
+    message: str
+    confidence: float
+    is_final: bool
+    is_interrupt: bool = False
 
     def __str__(self):
         return f"Transcription({self.message}, {self.confidence}, {self.is_final})"
