@@ -141,6 +141,7 @@ class Call(StreamingConversation):
                         base_url=self.base_url, call_id=self.twilio_sid
                     )
                 )
+                return
         self.tear_down()
 
     async def wait_for_twilio_start(self, ws: WebSocket):
