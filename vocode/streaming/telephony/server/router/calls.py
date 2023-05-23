@@ -56,6 +56,7 @@ class CallsRouter(BaseRouter):
             synthesizer_factory=self.synthesizer_factory,
             events_manager=self.events_manager,
             logger=self.logger,
+            templater=self.templater,
         )
 
         await call.attach_ws_and_start(websocket)
