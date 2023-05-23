@@ -147,6 +147,7 @@ class InterruptibleWorker(AsyncWorker):
         self.max_concurrency = max_concurrency
         self.interruptible_event_factory = interruptible_event_factory
         self.current_task = None
+        self.interruptible_event = None
 
     def produce_interruptible_event_nonblocking(
         self, item: Any, is_interruptible: bool = True
