@@ -53,7 +53,6 @@ from vocode.streaming.utils.worker import (
 )
 
 tracer = trace.get_tracer(__name__)
-SYNTHESIS_TRACE_NAME = "synthesis"
 AGENT_TRACE_NAME = "agent"
 
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
@@ -335,22 +334,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             try:
                 agent_response = item.payload
                 self.conversation.logger.debug("Synthesizing speech for message")
-                # TODO: also time the synthesis stream playback
-                with tracer.start_as_current_span(
-                    SYNTHESIS_TRACE_NAME,
-                    {  # type: ignore
-                        "synthesizer": str(
-                            self.conversation.synthesizer.get_synthesizer_config().type
-                        )
-                    },
-                ):
-                    synthesis_result = (
-                        await self.conversation.synthesizer.create_speech(
-                            agent_response,
-                            self.chunk_size,
-                            bot_sentiment=self.conversation.bot_sentiment,
-                        )
-                    )
+                # TODO: time the synthesis stream playback
+                synthesis_result = await self.conversation.synthesizer.create_speech(
+                    agent_response,
+                    self.chunk_size,
+                    bot_sentiment=self.conversation.bot_sentiment,
+                )
                 event = self.conversation.enqueue_interruptible_event(
                     (agent_response, synthesis_result),
                     is_interruptible=item.is_interruptible,

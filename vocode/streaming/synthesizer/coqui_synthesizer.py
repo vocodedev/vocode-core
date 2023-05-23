@@ -7,10 +7,13 @@ from vocode import getenv
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
+    tracer,
 )
-from vocode.streaming.models.synthesizer import CoquiSynthesizerConfig
+from vocode.streaming.models.synthesizer import CoquiSynthesizerConfig, SynthesizerType
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
+
+from opentelemetry.context.context import Context
 
 
 COQUI_BASE_URL = "https://app.coqui.ai/api/v2/"
@@ -23,6 +26,9 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
         self.voice_id = synthesizer_config.voice_id
         self.voice_prompt = synthesizer_config.voice_prompt
 
+    @tracer.start_as_current_span(
+        "synthesis", Context(synthesizer=SynthesizerType.COQUI.value)
+    )
     async def create_speech(
         self,
         message: BaseMessage,
