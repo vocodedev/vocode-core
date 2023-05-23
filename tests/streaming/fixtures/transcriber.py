@@ -19,7 +19,7 @@ class TestAsyncTranscriber(BaseAsyncTranscriber):
         while True:
             try:
                 self.output_queue.put_nowait(
-                    Transcription("test", confidence=1, is_final=True)
+                    Transcription(message="test", confidence=1, is_final=True)
                 )
                 await asyncio.sleep(1)
             except asyncio.CancelledError:
