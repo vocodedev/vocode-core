@@ -1,4 +1,4 @@
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 import base64
 from enum import Enum
 import json
@@ -30,6 +30,7 @@ from vocode.streaming.telephony.config_manager.base_config_manager import (
 )
 from vocode.streaming.telephony.constants import DEFAULT_SAMPLING_RATE
 from vocode.streaming.telephony.twilio import create_twilio_client, end_twilio_call
+from vocode.streaming.telephony.templater import Templater
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
@@ -50,6 +51,7 @@ class Call(StreamingConversation):
         agent_config: AgentConfig,
         transcriber_config: TranscriberConfig,
         synthesizer_config: SynthesizerConfig,
+        templater: Templater,
         twilio_config: Optional[TwilioConfig] = None,
         twilio_sid: Optional[str] = None,
         conversation_id: Optional[str] = None,
@@ -61,6 +63,7 @@ class Call(StreamingConversation):
     ):
         self.base_url = base_url
         self.config_manager = config_manager
+        self.templater = templater
         self.twilio_config = twilio_config or TwilioConfig(
             account_sid=getenv("TWILIO_ACCOUNT_SID"),
             auth_token=getenv("TWILIO_AUTH_TOKEN"),
@@ -86,6 +89,7 @@ class Call(StreamingConversation):
         config_manager: BaseConfigManager,
         conversation_id: str,
         logger: logging.Logger,
+        templater: Templater,
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
@@ -105,6 +109,7 @@ class Call(StreamingConversation):
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
             events_manager=events_manager,
+            templater=templater,
         )
 
     async def attach_ws_and_start(self, ws: WebSocket):
@@ -124,11 +129,18 @@ class Call(StreamingConversation):
             self.events_manager.publish_event(
                 PhoneCallConnectedEvent(conversation_id=self.id)
             )
-            while self.active:
-                message = await ws.receive_text()
-                response = await self.handle_ws_message(message)
-                if response == PhoneCallAction.CLOSE_WEBSOCKET:
-                    break
+            try:
+                while self.active:
+                    message = await ws.receive_text()
+                    response = await self.handle_ws_message(message)
+                    if response == PhoneCallAction.CLOSE_WEBSOCKET:
+                        break
+            except WebSocketDisconnect:
+                twilio_call.update(
+                    twiml=self.templater.get_connection_twiml(
+                        base_url=self.base_url, call_id=self.twilio_sid
+                    )
+                )
         self.tear_down()
 
     async def wait_for_twilio_start(self, ws: WebSocket):
