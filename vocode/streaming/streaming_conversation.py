@@ -123,6 +123,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
+                self.conversation.transcript.add_human_message(
+                    text=transcription.message,
+                    events_manager=self.conversation.events_manager,
+                    conversation_id=self.conversation.id,
+                )
                 event = self.interruptible_event_factory.create(
                     (transcription, self.conversation.id)
                 )
