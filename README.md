@@ -64,7 +64,7 @@ import signal
 
 import vocode
 from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.helpers import create_microphone_input_and_speaker_output
+from vocode.helpers import create_streaming_microphone_input_and_speaker_output
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
@@ -86,7 +86,7 @@ vocode.setenv(
 
 
 async def main():
-    microphone_input, speaker_output = create_microphone_input_and_speaker_output(
+    microphone_input, speaker_output = create_streaming_microphone_input_and_speaker_output(
         streaming=True, use_default_devices=False
     )
 
@@ -136,7 +136,7 @@ import signal
 import vocode
 from vocode.streaming.hosted_streaming_conversation import HostedStreamingConversation
 from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.helpers import create_microphone_input_and_speaker_output
+from vocode.helpers import create_streaming_microphone_input_and_speaker_output
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
@@ -145,11 +145,11 @@ from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 
-vocode.api_key = "<your API key>"
+vocode.api_key = "<your server API key>"
 
 
 if __name__ == "__main__":
-    microphone_input, speaker_output = create_microphone_input_and_speaker_output(
+    microphone_input, speaker_output = create_streaming_microphone_input_and_speaker_output(
         streaming=True, use_default_devices=False
     )
 
