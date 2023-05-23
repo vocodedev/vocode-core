@@ -52,10 +52,6 @@ from vocode.streaming.utils.worker import (
     InterruptibleWorker,
 )
 
-tracer = trace.get_tracer(__name__)
-SYNTHESIS_TRACE_NAME = "synthesis"
-AGENT_TRACE_NAME = "agent"
-
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
 
 
@@ -142,9 +138,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
 
         async def generate_responses(self, transcription: Transcription) -> bool:
-            agent_span = tracer.start_span(
-                AGENT_TRACE_NAME, {"generate_response": True}  # type: ignore
-            )
             responses = self.conversation.agent.generate_response(
                 transcription.message,
                 is_interrupt=transcription.is_interrupt,
@@ -156,7 +149,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             is_first_response = True
             async for response in responses:
                 if is_first_response:
-                    agent_span.end()
                     if self.conversation.agent.get_agent_config().send_filler_audio:
                         assert self.conversation.filler_audio_worker is not None
                         self.conversation.filler_audio_worker.interrupt_current_filler_audio()
@@ -178,14 +170,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def respond(self, transcription: Transcription) -> bool:
             try:
-                with tracer.start_as_current_span(
-                    AGENT_TRACE_NAME, {"generate_response": False}  # type: ignore
-                ):
-                    response, should_stop = await self.conversation.agent.respond(
-                        transcription.message,
-                        is_interrupt=transcription.is_interrupt,
-                        conversation_id=self.conversation.id,
-                    )
+                response, should_stop = await self.conversation.agent.respond(
+                    transcription.message,
+                    is_interrupt=transcription.is_interrupt,
+                    conversation_id=self.conversation.id,
+                )
             except Exception as e:
                 self.conversation.logger.error(
                     f"Error while generating response: {e}", exc_info=True
@@ -335,22 +324,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             try:
                 agent_response = item.payload
                 self.conversation.logger.debug("Synthesizing speech for message")
-                # TODO: also time the synthesis stream playback
-                with tracer.start_as_current_span(
-                    SYNTHESIS_TRACE_NAME,
-                    {  # type: ignore
-                        "synthesizer": str(
-                            self.conversation.synthesizer.get_synthesizer_config().type
-                        )
-                    },
-                ):
-                    synthesis_result = (
-                        await self.conversation.synthesizer.create_speech(
-                            agent_response,
-                            self.chunk_size,
-                            bot_sentiment=self.conversation.bot_sentiment,
-                        )
-                    )
+                # TODO: time the synthesis stream playback
+                synthesis_result = await self.conversation.synthesizer.create_speech(
+                    agent_response,
+                    self.chunk_size,
+                    bot_sentiment=self.conversation.bot_sentiment,
+                )
                 event = self.conversation.enqueue_interruptible_event(
                     (agent_response, synthesis_result),
                     is_interruptible=item.is_interruptible,

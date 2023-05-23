@@ -9,9 +9,18 @@ from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.message import BaseMessage
 
-from .base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode.streaming.synthesizer.base_synthesizer import (
+    BaseSynthesizer,
+    SynthesisResult,
+    tracer,
+)
 
-from vocode.streaming.models.synthesizer import CoquiTTSSynthesizerConfig
+from vocode.streaming.models.synthesizer import (
+    CoquiTTSSynthesizerConfig,
+    SynthesizerType,
+)
+
+from opentelemetry.context.context import Context
 
 
 class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
@@ -29,6 +38,9 @@ class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
         self.language = synthesizer_config.language
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
+    @tracer.start_as_current_span(
+        "synthesis", Context(synthesizer=SynthesizerType.COQUI_TTS.value)
+    )
     async def create_speech(
         self,
         message: BaseMessage,

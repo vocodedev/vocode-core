@@ -8,10 +8,16 @@ from vocode import getenv
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
+    tracer,
 )
-from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
+from vocode.streaming.models.synthesizer import (
+    ElevenLabsSynthesizerConfig,
+    SynthesizerType,
+)
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
+
+from opentelemetry.context.context import Context
 
 
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
@@ -38,6 +44,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
 
+    @tracer.start_as_current_span(
+        "synthesis", Context(synthesizer=SynthesizerType.ELEVEN_LABS.value)
+    )
     async def create_speech(
         self,
         message: BaseMessage,

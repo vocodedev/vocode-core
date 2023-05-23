@@ -8,12 +8,20 @@ from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.message import BaseMessage
 
-from .base_synthesizer import BaseSynthesizer, SynthesisResult, encode_as_wav
+from vocode.streaming.synthesizer.base_synthesizer import (
+    BaseSynthesizer,
+    SynthesisResult,
+    encode_as_wav,
+    tracer,
+)
+
 from typing import Any, Optional
 import io
 import requests
 
-from vocode.streaming.models.synthesizer import RimeSynthesizerConfig
+from vocode.streaming.models.synthesizer import RimeSynthesizerConfig, SynthesizerType
+
+from opentelemetry.context.context import Context
 
 # https://rime.ai/docs/quickstart
 RIME_SAMPLING_RATE = 22050
@@ -30,6 +38,9 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         self.api_key = getenv("RIME_API_KEY")
         self.speaker = synthesizer_config.speaker
 
+    @tracer.start_as_current_span(
+        "synthesis", Context(synthesizer=SynthesizerType.RIME.value)
+    )
     async def create_speech(
         self,
         message: BaseMessage,
