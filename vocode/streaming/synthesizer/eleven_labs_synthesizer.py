@@ -49,17 +49,15 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             voice.settings = self.elevenlabs.VoiceSettings(
                 stability=self.stability, similarity_boost=self.similarity_boost
             )
-        url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}/stream"
+        url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
         if self.optimize_streaming_latency:
-            assert 0 <= self.optimize_streaming_latency <= 4 
             url += f"?optimize_streaming_latency={self.optimize_streaming_latency}"
         headers = {"xi-api-key": self.api_key}
         body = {
-            # change the model_id to "eleven_multilingual_v1" for multi-language support 
-            "model_id": self.model_id,
             "text": message.text,
             "voice_settings": voice.settings.dict() if voice.settings else None,
         }
+        if self.model_id: body["model_id"] = self.model_id
 
         async with aiohttp.ClientSession() as session:
             async with session.request(
