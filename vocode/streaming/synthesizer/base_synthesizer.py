@@ -14,6 +14,7 @@ import io
 import wave
 from nltk.tokenize import word_tokenize
 from nltk.tokenize.treebank import TreebankWordDetokenizer
+from opentelemetry import trace
 
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.agent import FillerAudioConfig
@@ -46,6 +47,9 @@ def encode_as_wav(chunk: bytes, synthesizer_config: SynthesizerConfig) -> bytes:
     in_memory_wav.writeframes(chunk)
     output_bytes_io.seek(0)
     return output_bytes_io.read()
+
+
+tracer = trace.get_tracer(__name__)
 
 
 class SynthesisResult:

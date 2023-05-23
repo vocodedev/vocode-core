@@ -8,10 +8,13 @@ from scipy.io.wavfile import write as write_wav
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
+    tracer,
 )
-from vocode.streaming.models.synthesizer import BarkSynthesizerConfig
+from vocode.streaming.models.synthesizer import BarkSynthesizerConfig, SynthesizerType
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
+
+from opentelemetry.context.context import Context
 
 
 class BarkSynthesizer(BaseSynthesizer[BarkSynthesizerConfig]):
@@ -31,6 +34,9 @@ class BarkSynthesizer(BaseSynthesizer[BarkSynthesizerConfig]):
         preload_models(**self.synthesizer_config.preload_kwargs)
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
+    @tracer.start_as_current_span(
+        "synthesis", Context(synthesizer=SynthesizerType.BARK.value)
+    )
     async def create_speech(
         self,
         message: BaseMessage,
