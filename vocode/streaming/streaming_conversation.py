@@ -56,9 +56,6 @@ from vocode.streaming.utils.worker import (
     InterruptibleWorker,
 )
 
-tracer = trace.get_tracer(__name__)
-AGENT_TRACE_NAME = "agent"
-
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
 
 
