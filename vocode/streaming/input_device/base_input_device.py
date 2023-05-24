@@ -11,5 +11,5 @@ class BaseInputDevice:
         self.audio_encoding = audio_encoding
         self.chunk_size = chunk_size
 
-    def get_audio(self) -> Optional[bytes]:
+    async def get_audio(self) -> bytes:
         raise NotImplementedError

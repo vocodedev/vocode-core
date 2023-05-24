@@ -1,5 +1,6 @@
 from __future__ import annotations
 import typing
+import janus
 
 import sounddevice as sd
 import numpy as np
@@ -45,7 +46,7 @@ class MicrophoneInput(BaseInputDevice):
             callback=self._stream_callback,
         )
         self.stream.start()
-        self.queue: queue.Queue[bytes] = queue.Queue()
+        self.queue: janus.Queue[bytes] = janus.Queue()
         self.microphone_gain = microphone_gain
 
     def _stream_callback(self, in_data: np.ndarray, *_args):
@@ -54,13 +55,10 @@ class MicrophoneInput(BaseInputDevice):
         else:
             in_data = in_data // (2 ^ self.microphone_gain)
         audio_bytes = in_data.tobytes()
-        self.queue.put_nowait(audio_bytes)
+        self.queue.sync_q.put_nowait(audio_bytes)
 
-    def get_audio(self) -> Optional[bytes]:
-        try:
-            return self.queue.get_nowait()
-        except queue.Empty:
-            return None
+    async def get_audio(self) -> bytes:
+        return await self.queue.async_q.get()
 
     @classmethod
     def from_default_device(cls, sampling_rate: Optional[int] = None):
