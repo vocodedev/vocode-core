@@ -9,7 +9,7 @@ class BaseOutputDevice:
     def start(self):
         pass
 
-    def send_nonblocking(self, chunk: bytes):
+    def consume_nonblocking(self, chunk: bytes):
         raise NotImplemented
 
     def maybe_send_mark_nonblocking(self, message):

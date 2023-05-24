@@ -1,10 +1,10 @@
 from typing import Optional, Tuple
-from vocode.streaming.agent.base_agent import BaseAgent
+from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 from vocode.streaming.models.agent import GPT4AllAgentConfig
 from vocode.turn_based.agent.gpt4all_agent import GPT4AllAgent as TurnBasedGPT4AllAgent
 
 
-class GPT4AllAgent(BaseAgent):
+class GPT4AllAgent(RespondAgent[GPT4AllAgentConfig]):
     def __init__(self, agent_config: GPT4AllAgentConfig):
         super().__init__(agent_config=agent_config)
         self.turn_based_agent = TurnBasedGPT4AllAgent(

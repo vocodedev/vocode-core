@@ -1,9 +1,9 @@
 from typing import AsyncGenerator, Generator, Optional, Tuple
-from vocode.streaming.agent.base_agent import BaseAgent
+from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 from vocode.streaming.models.agent import EchoAgentConfig
 
 
-class EchoAgent(BaseAgent[EchoAgentConfig]):
+class EchoAgent(RespondAgent[EchoAgentConfig]):
     async def respond(
         self,
         human_input,
