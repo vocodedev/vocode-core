@@ -46,7 +46,7 @@ if __name__ == "__main__":
                 speech_length_seconds = seconds_per_chunk * (
                     len(chunk_result.chunk) / chunk_size
                 )
-                output_device.send_nonblocking(chunk_result.chunk)
+                output_device.consume_nonblocking(chunk_result.chunk)
                 end_time = time.time()
                 await asyncio.sleep(
                     max(
