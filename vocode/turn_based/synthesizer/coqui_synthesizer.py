@@ -28,7 +28,7 @@ class CoquiSynthesizer(BaseSynthesizer):
         text_chunks = self.split_text(text)
         # Synthesize each chunk and concatenate the results
         audio_chunks = [self.synthesize_chunk(chunk) for chunk in text_chunks]
-        return sum(audio_chunks)
+        return sum(audio_chunks) # type: ignore
 
     def synthesize_chunk(self, text: str) -> AudioSegment:
         url, headers, body = self.get_request(text)
@@ -95,7 +95,7 @@ class CoquiSynthesizer(BaseSynthesizer):
                     # Return an AudioSegment object from the audio data
                     return AudioSegment.from_wav(io.BytesIO(audio_data))  # type: ignore
 
-    def get_request(self, text: str):
+    def get_request(self, text: str) -> tuple[str, dict[str, str], dict[str, str]]:
         url = COQUI_BASE_URL
         headers = {"Authorization": f"Bearer {self.api_key}"}
         body = {
