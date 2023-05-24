@@ -10,8 +10,11 @@ from telegram.ext import (
 from vocode.turn_based.transcriber.whisper_transcriber import WhisperTranscriber
 from vocode.turn_based.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.turn_based.synthesizer.coqui_synthesizer import CoquiSynthesizer
+
 # Optional alternative synthesizers:
-from vocode.turn_based.synthesizer.stream_elements_synthesizer import StreamElementsSynthesizer
+from vocode.turn_based.synthesizer.stream_elements_synthesizer import (
+    StreamElementsSynthesizer,
+)
 from vocode.turn_based.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 from vocode.turn_based.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
 from vocode.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
@@ -48,9 +51,7 @@ supported_classes = [
 SYNTH = CoquiSynthesizer()
 
 # Array of tuples (synthesizer's voice id, nickname, description if text to voice)
-DEFAULT_VOICES = [
-    ("d2bd7ccb-1b65-4005-9578-32c4e02d8ddf", "Coqui Default", None)
-]
+DEFAULT_VOICES = [("d2bd7ccb-1b65-4005-9578-32c4e02d8ddf", "Coqui Default", None)]
 
 # instructions to the language model responsible for generating response transcript.
 SYSTEM_PROMPT = "You are having a voice-to-voice conversation with a user. Always pretend you are a real human. Do not avoid or decline to answer questions because you are not human."
@@ -77,20 +78,26 @@ assert (
 for key, value in voice_attr_of.items():
     assert value in inspect.signature(key.__init__).parameters
 
+
 class InMemoryDB:
-  def __init__(self):
-    # Initialize an empty dictionary to store user data
-    self.db = {}
+    def __init__(self):
+        # Initialize an empty dictionary to store user data
+        self.db = {}
 
-  def __getitem__(self, chat_id):
-    # Return the user data for a given user id, or create a new one if not found
-    if chat_id not in self.db:
-      self.db[chat_id] = {"voices": DEFAULT_VOICES, "current_voice": DEFAULT_VOICES[0], "current_conversation": None}
-    return self.db[chat_id]
+    def __getitem__(self, chat_id):
+        # Return the user data for a given user id, or create a new one if not found
+        if chat_id not in self.db:
+            self.db[chat_id] = {
+                "voices": DEFAULT_VOICES,
+                "current_voice": DEFAULT_VOICES[0],
+                "current_conversation": None,
+            }
+        return self.db[chat_id]
 
-  def __setitem__(self, chat_id, user_data):
-    # Set the user data for a given user id
-    self.db[chat_id] = user_data
+    def __setitem__(self, chat_id, user_data):
+        # Set the user data for a given user id
+        self.db[chat_id] = user_data
+
 
 class VocodeBotResponder:
     def __init__(self, transcriber, system_prompt, synthesizer, db=None):
@@ -102,14 +109,18 @@ class VocodeBotResponder:
 
     def get_agent(self, chat_id):
         # Get current voice name and description from DB
-        _, voice_name, voice_description = self.db[chat_id].get("current_voice", (None, None, None))
+        _, voice_name, voice_description = self.db[chat_id].get(
+            "current_voice", (None, None, None)
+        )
 
         # Augment prompt based on available info
         prompt = self.system_prompt
         if voice_description != None:
             prompt += "The user described your voice as '{0}''. This is a demo of Coqui TTS's voice creation tool, so your responses are fun and relevant to that voice description."
         if voice_name != None:
-            prompt += "You are {prompt}. Act like {prompt} and identify yourself as {prompt}."
+            prompt += (
+                "You are {prompt}. Act like {prompt} and identify yourself as {prompt}."
+            )
 
         agent = ChatGPTAgent(
             system_prompt=self.system_prompt.format(voice_name),
@@ -120,12 +131,11 @@ class VocodeBotResponder:
             agent.memory = pickle.loads(convo_string)
 
         return agent
-    
+
     # input can be audio segment or text
     async def get_response(
         self, chat_id, input: Union[str, AudioSegment]
     ) -> Tuple[str, AudioSegment]:
-        
         # If input is audio, transcribe it
         if isinstance(input, AudioSegment):
             input = self.transcriber.transcribe(input)
@@ -134,7 +144,9 @@ class VocodeBotResponder:
         agent_response = self.get_agent(chat_id).respond(input)
 
         # Set current synthesizer voice from db
-        voice_id, _, voice_description = self.db[chat_id].get("current_voice", (None, None, None))
+        voice_id, _, voice_description = self.db[chat_id].get(
+            "current_voice", (None, None, None)
+        )
 
         # If we have a Coqui voice prompt, use that. Otherwise, set ID as synthesizer expects.
         if voice_description is not None:
@@ -153,7 +165,11 @@ class VocodeBotResponder:
     ):
         chat_id = update.effective_chat.id
         # Create user entry in DB
-        self.db[chat_id] = {"voices": DEFAULT_VOICES, "current_voice": DEFAULT_VOICES[0], "current_conversation": None}
+        self.db[chat_id] = {
+            "voices": DEFAULT_VOICES,
+            "current_voice": DEFAULT_VOICES[0],
+            "current_conversation": None,
+        }
         start_text = """
 I'm a voice chatbot, send a voice message to me and I'll send one back!" Use /help to see available commands.
 """
@@ -167,7 +183,9 @@ I'm a voice chatbot, send a voice message to me and I'll send one back!" Use /he
         chat_id = update.effective_chat.id
         # Accept text or voice messages
         if update.message.voice:
-            user_telegram_voice = await context.bot.get_file(update.message.voice.file_id)
+            user_telegram_voice = await context.bot.get_file(
+                update.message.voice.file_id
+            )
             bytes = await user_telegram_voice.download_as_bytearray()
             input = AudioSegment.from_file(
                 io.BytesIO(bytes), format="ogg", codec="libopus"
@@ -177,12 +195,12 @@ I'm a voice chatbot, send a voice message to me and I'll send one back!" Use /he
         else:
             # No audio or text, complain to user.
             await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="""
+                chat_id=update.effective_chat.id,
+                text="""
 Sorry, I only respond to commands, voice, or text messages. Use /help for more information.""",
             )
             return
-        
+
         # Get audio response from LLM/synth and reply
         agent_response, synth_response = await self.get_response(chat_id, input)
         out_voice = io.BytesIO()
@@ -203,8 +221,8 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
             )
             return
         new_voice_id = context.args[0]
-        
-        user_voices = self.db[chat_id]['voices']
+
+        user_voices = self.db[chat_id]["voices"]
         if len(user_voices) <= new_voice_id:
             await context.bot.send_message(
                 chat_id=chat_id,
@@ -214,8 +232,8 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
         else:
             self.db[chat_id]["current_voice"] = user_voices[new_voice_id]
             await context.bot.send_message(
-                    chat_id=chat_id, text="Voice changed successfully!"
-                )
+                chat_id=chat_id, text="Voice changed successfully!"
+            )
 
     async def handle_telegram_create_voice(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -233,29 +251,30 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
                 text="You must include a voice description.",
             )
             return
-        
+
         voice_description = " ".join(context.args)
 
         # Coqui voices are created at synthesis-time, so don't have an ID nor name.
         new_voice = (None, None, voice_description)
-        self.db[chat_id]['voices'].append(new_voice)
+        self.db[chat_id]["voices"].append(new_voice)
         self.db[chat_id]["current_voice"] = new_voice
 
-        # TODO: FIX LSIT AND SWITCH VOCIE ON CREATION
-
-        
         await context.bot.send_message(
-                chat_id=chat_id, text="Voice changed successfully!"
-            )
-            
+            chat_id=chat_id, text="Voice changed successfully!"
+        )
 
     async def handle_telegram_list_voices(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ):
         chat_id = update.effective_chat.id
-        user_voices = self.db[chat_id]['voices'] # array (id, name, description)
+        user_voices = self.db[chat_id]["voices"]  # array (id, name, description)
         # Make string table of id, name, description
-        voices = "\n".join([f"{id}: {name if name else ''}{f' - {description}' if description else ''}" for id, (internal_id, name, description) in enumerate(user_voices)])
+        voices = "\n".join(
+            [
+                f"{id}: {name if name else ''}{f' - {description}' if description else ''}"
+                for id, (internal_id, name, description) in enumerate(user_voices)
+            ]
+        )
         await context.bot.send_message(
             chat_id=chat_id, text=f"Available voices:\n{voices}"
         )
@@ -302,11 +321,15 @@ if __name__ == "__main__":
     voco = VocodeBotResponder(transcriber, SYSTEM_PROMPT, SYNTH)
     application = ApplicationBuilder().token(os.environ["TELEGRAM_BOT_KEY"]).build()
     application.add_handler(CommandHandler("start", voco.handle_telegram_start))
-    application.add_handler(MessageHandler(~filters.COMMAND, voco.handle_telegram_message))
+    application.add_handler(
+        MessageHandler(~filters.COMMAND, voco.handle_telegram_message)
+    )
     application.add_handler(CommandHandler("create", voco.handle_telegram_create_voice))
     application.add_handler(CommandHandler("voice", voco.handle_telegram_select_voice))
     application.add_handler(CommandHandler("list", voco.handle_telegram_list_voices))
     application.add_handler(CommandHandler("who", voco.handle_telegram_who))
     application.add_handler(CommandHandler("help", voco.handle_telegram_help))
-    application.add_handler(MessageHandler(filters.COMMAND, voco.handle_telegram_unknown_cmd))
+    application.add_handler(
+        MessageHandler(filters.COMMAND, voco.handle_telegram_unknown_cmd)
+    )
     application.run_polling()
