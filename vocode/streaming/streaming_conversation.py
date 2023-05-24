@@ -467,6 +467,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         num_interrupts += 1
             except queue.Empty:
                 break
+        self.agent.cancel_current_task()
         self.agent_responses_worker.cancel_current_task()
         return num_interrupts > 0
 
