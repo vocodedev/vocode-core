@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import asyncio
 import audioop
+from opentelemetry import trace, metrics
 from typing import Generic, TypeVar, Union
 from vocode.streaming.models.audio_encoding import AudioEncoding
 
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
 
+
+tracer = trace.get_tracer(__name__)
+meter = metrics.get_meter(__name__)
 
 class Transcription:
     def __init__(

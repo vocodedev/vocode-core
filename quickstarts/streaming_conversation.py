@@ -1,3 +1,36 @@
+from opentelemetry import trace, metrics
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter
+from opentelemetry.sdk.metrics.export import ConsoleMetricExporter, PeriodicExportingMetricReader
+from opentelemetry.sdk.resources import Resource
+from collections import defaultdict
+
+
+class PrintDurationSpanExporter(SpanExporter):
+    def __init__(self):
+        super().__init__()
+        self.spans = defaultdict(list)
+
+    def export(self, spans):
+        for span in spans:
+            duration_ns = span.end_time - span.start_time
+            duration_s = duration_ns / 1e9
+            self.spans[span.name].append(duration_s)
+
+    def shutdown(self):
+        for name, durations in self.spans.items():
+            print(f"{name}: {sum(durations) / len(durations)}")
+
+
+trace.set_tracer_provider(TracerProvider(resource=Resource.create({})))
+trace.get_tracer_provider().add_span_processor(
+    SimpleSpanProcessor(PrintDurationSpanExporter())
+)
+reader = PeriodicExportingMetricReader(ConsoleMetricExporter())
+provider = MeterProvider(metric_readers=[reader])
+metrics.set_meter_provider(provider)
+
 import asyncio
 import logging
 import signal
@@ -15,6 +48,7 @@ from vocode.streaming.models.transcriber import *
 from vocode.streaming.models.agent import *
 from vocode.streaming.models.synthesizer import *
 from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.input_device.file_input_device import FileInputDevice
 
 
 logging.basicConfig()
@@ -27,6 +61,7 @@ async def main():
         microphone_input,
         speaker_output,
     ) = create_streaming_microphone_input_and_speaker_output(use_default_devices=False)
+    # file_input = FileInputDevice("test.wav")
 
     conversation = StreamingConversation(
         output_device=speaker_output,
@@ -40,6 +75,7 @@ async def main():
             ChatGPTAgentConfig(
                 initial_message=BaseMessage(text="What up"),
                 prompt_preamble="""The AI is having a pleasant conversation about life""",
+                allow_agent_to_be_cut_off=False,
             )
         ),
         synthesizer=AzureSynthesizer(
