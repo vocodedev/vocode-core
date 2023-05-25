@@ -148,6 +148,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         async for response in responses:
             if is_first_response:
                 agent_span.end()
+                is_first_response = False
             self.produce_interruptible_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
