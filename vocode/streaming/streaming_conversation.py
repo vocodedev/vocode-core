@@ -8,6 +8,7 @@ from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 import logging
 import time
 import typing
+import re
 
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.action_agent import ActionAgent
@@ -56,6 +57,8 @@ from vocode.streaming.utils.worker import (
     InterruptibleEventFactory,
     InterruptibleWorker,
 )
+
+DTMF_INTENT_REGEX = re.compile(".*\*presses ([0-9])\*.*")
 
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
 
@@ -245,7 +248,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     ):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
 
-                self.conversation.logger.debug("Synthesizing speech for message")
+                self.conversation.logger.debug("Synthesizing speech for message: " + agent_response_message.message.text)
+
+                # Check if the message indicates that we should press a DTMF key.  If so, and if the conversation supports it, play that tone.
+                # This happens in addition to normal processing, which means we will play the tone and also speak the message.
+                self.conversation.logger.debug("Checking if message shows intent to press DTMF key: %s" % agent_response_message.message.text)
+                match = DTMF_INTENT_REGEX.match(agent_response_message.message.text.lower())
+                if match and match.group(1):
+                    dtmf_key = match.group(1)
+                    self.conversation.logger.debug("Detected intent to press DTMF key: %s" % dtmf_key)
+                    if hasattr(self.conversation, "play_dtmf"):
+                        self.conversation.play_dtmf(dtmf_key)
+                else:
+                    self.conversation.logger.debug("Did not detect intent to press DTMF key")
+
                 synthesis_result = await self.conversation.synthesizer.create_speech(
                     agent_response_message.message,
                     self.chunk_size,

@@ -30,6 +30,7 @@ from vocode.streaming.telephony.config_manager.base_config_manager import (
 )
 from vocode.streaming.telephony.constants import DEFAULT_SAMPLING_RATE
 from vocode.streaming.telephony.utils import create_twilio_client, end_twilio_call
+from vocode.streaming.telephony.templater import Templater
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
@@ -78,6 +79,8 @@ class Call(StreamingConversation):
         )
         self.twilio_sid = twilio_sid
         self.latest_media_timestamp = 0
+        self.twilio_call = None
+        self.templater = Templater()
 
     @staticmethod
     def from_call_config(
@@ -113,11 +116,11 @@ class Call(StreamingConversation):
         self.output_device.ws = ws
         self.logger.debug("Attached WS to outbound call")
 
-        twilio_call = self.twilio_client.calls(self.twilio_sid).fetch()
+        self.twilio_call = self.twilio_client.calls(self.twilio_sid).fetch()
 
-        if twilio_call.answered_by in ("machine_start", "fax"):
-            self.logger.info(f"Call answered by {twilio_call.answered_by}")
-            twilio_call.update(status="completed")
+        if self.twilio_call.answered_by in ("machine_start", "fax"):
+            self.logger.info(f"Call answered by {self.twilio_call.answered_by}")
+            self.twilio_call.update(status="completed")
         else:
             await self.wait_for_twilio_start(ws)
             await super().start()
@@ -179,3 +182,18 @@ class Call(StreamingConversation):
     def tear_down(self):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
         self.terminate()
+
+    def play_dtmf(self, dtmf_key: str):
+        # Twilio does not support playing DTMF tones as a wav file through the <Stream>.
+        # The workaround is to use Twilio's own <Play> verb to play the DTMF tones.  However, this causes the
+        # websocket to be closed.  So, as part of the same action we also need to re-establish the websocket.
+        # Reference:
+        # https://stackoverflow.com/questions/73129566/sending-dtmf-through-a-stream/76325543
+        self.logger.debug(f"Call.play_dtmf {dtmf_key}")
+        # twiml = self.templater.get_play_digits_twiml(digits=dtmf_key)
+        twiml = self.templater.get_play_digits_and_connect_call_twiml(
+            call_id=self.twilio_sid,
+            base_url=self.base_url,
+            digits=dtmf_key)
+        self.logger.debug(f"twiml: {twiml}")
+        self.twilio_call.update(twiml=twiml)
