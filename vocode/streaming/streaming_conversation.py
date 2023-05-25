@@ -288,6 +288,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
                 )
                 self.conversation.logger.debug("Message sent: {}".format(message_sent))
+                if cut_off:
+                    self.conversation.agent.update_last_bot_message_on_cut_off(
+                        message_sent
+                    )
                 self.conversation.transcript.add_bot_message(
                     text=message_sent,
                     events_manager=self.conversation.events_manager,
@@ -396,7 +400,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
             await self.synthesizer.set_filler_audios(self.filler_audio_config)
-        self.agent.attach_transcript(self.transcript)
         self.agent.start()
         if mark_ready:
             await mark_ready()
