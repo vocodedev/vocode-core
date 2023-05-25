@@ -1,5 +1,9 @@
 from typing import AsyncGenerator, AsyncIterable, Callable, List, Optional
+
+from click import prompt
 from openai.openai_object import OpenAIObject
+from vocode.streaming.models.events import Sender
+from vocode.streaming.utils.transcript import Transcript
 
 SENTENCE_ENDINGS = [".", "!", "?"]
 
@@ -41,3 +45,20 @@ def get_sentence_from_buffer(buffer: str):
         return buffer[: last_punctuation + 1], buffer[last_punctuation + 1 :]
     else:
         return None, None
+
+
+def format_openai_chat_messages_from_transcript(
+    transcript: Transcript, prompt_preamble: Optional[str] = None
+) -> List[dict]:
+    return (
+        [{"role": "system", "content": prompt_preamble}]
+        if prompt_preamble
+        else []
+        + [
+            {
+                "role": "user" if message.sender == Sender.BOT else "assistant",
+                "content": message.text,
+            }
+            for message in transcript.messages
+        ]
+    )

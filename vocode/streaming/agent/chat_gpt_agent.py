@@ -10,7 +10,10 @@ import logging
 from vocode import getenv
 from vocode.streaming.agent.chat_agent import ChatAgent
 from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.agent.utils import stream_openai_response_async
+from vocode.streaming.agent.utils import (
+    format_openai_chat_messages_from_transcript,
+    stream_openai_response_async,
+)
 from vocode.streaming.models.events import Sender
 
 
@@ -33,7 +36,14 @@ class ChatGPTAgent(ChatAgent[ChatGPTAgentConfig]):
         self.is_first_response = True
 
     def create_first_response(self, first_prompt):
-        return self.conversation.predict(input=first_prompt)
+        return openai.ChatCompletion.create(
+            model=self.agent_config.model_name,
+            messages=[
+                [{"role": "system", "content": self.agent_config.prompt_preamble}]
+                if self.agent_config.prompt_preamble
+                else [] + [{"role": "user", "content": first_prompt}]
+            ],
+        )
 
     async def respond(  # type: ignore
         self,
@@ -53,13 +63,9 @@ class ChatGPTAgent(ChatAgent[ChatGPTAgentConfig]):
         else:
             chat_completion = await openai.ChatCompletion.acreate(
                 model=self.agent_config.model_name,
-                messages=[
-                    {
-                        "role": "user" if message.sender == Sender.BOT else "assistant",
-                        "content": message.text,
-                    }
-                    for message in self.transcript.messages
-                ],
+                messages=format_openai_chat_messages_from_transcript(
+                    self.transcript, self.agent_config.prompt_preamble
+                ),
                 max_tokens=self.agent_config.max_tokens,
                 temperature=self.agent_config.temperature,
             )
@@ -78,18 +84,11 @@ class ChatGPTAgent(ChatAgent[ChatGPTAgentConfig]):
             yield cut_off_response
             return
         assert self.transcript is not None
-        prompt_messages = [
-            {"role": "system", "content": self.agent_config.prompt_preamble}
-        ] + [
-            {
-                "role": "user" if message.sender == Sender.BOT else "assistant",
-                "content": message.text,
-            }
-            for message in self.transcript.messages
-        ]
         stream = await openai.ChatCompletion.acreate(
             model=self.agent_config.model_name,
-            messages=prompt_messages,
+            messages=format_openai_chat_messages_from_transcript(
+                self.transcript, self.agent_config.prompt_preamble
+            ),
             max_tokens=self.agent_config.max_tokens,
             temperature=self.agent_config.temperature,
             stream=True,
