@@ -401,6 +401,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
             await self.synthesizer.set_filler_audios(self.filler_audio_config)
         self.agent.start()
+        self.agent.attach_transcript(self.transcript)
         if mark_ready:
             await mark_ready()
         if self.synthesizer.get_synthesizer_config().sentiment_config:
