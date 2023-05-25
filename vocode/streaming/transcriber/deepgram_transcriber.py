@@ -11,7 +11,6 @@ from vocode import getenv
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
     Transcription,
-    tracer,
     meter
 )
 from vocode.streaming.models.transcriber import (
@@ -42,6 +41,24 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self._ended = False
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
+
+        self.avg_latency_hist = meter.create_histogram(
+            name="transcriber.deepgram.avg_latency",
+            unit="seconds",
+        )
+        self.max_latency_hist = meter.create_histogram(
+            name="transcriber.deepgram.max_latency",
+            unit="seconds",
+        )
+        self.min_latency_hist = meter.create_histogram(
+            name="transcriber.deepgram.min_latency",
+            unit="seconds",
+        )
+        self.duration_hist = meter.create_histogram(
+            name="transcriber.deepgram.duration",
+            unit="seconds",
+        )
+        self.audio_cursor = 0
 
     async def _run_loop(self):
         restarts = 0
@@ -150,27 +167,14 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         return data["duration"]
 
     async def process(self):
-        audio_cursor = 0
+        self.audio_cursor = 0
         extra_headers = {"Authorization": f"Token {self.api_key}"}
-        histogram = meter.create_histogram(
-            name="transcriber.deepgram",
-            unit="seconds",
-        )
-        max_latency_hist = meter.create_histogram(
-            name="transcriber.deepgram.max_latency",
-            unit="seconds",
-        )
-        min_latency_hist = meter.create_histogram(
-            name="transcriber.deepgram.min_latency",
-            unit="seconds",
-        )
 
         async with websockets.connect(
             self.get_deepgram_url(), extra_headers=extra_headers
         ) as ws:
 
             async def sender(ws: WebSocketClientProtocol):  # sends audio to websocket
-                nonlocal audio_cursor
                 while not self._ended:
                     try:
                         data = await asyncio.wait_for(self.input_queue.get(), 5)
@@ -178,14 +182,13 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         break
                     num_channels = 1
                     sample_width = 2
-                    audio_cursor += len(data) / (self.transcriber_config.sampling_rate * num_channels * sample_width)
+                    self.audio_cursor += len(data) / (self.transcriber_config.sampling_rate * num_channels * sample_width)
                     await ws.send(data)
                 self.logger.debug("Terminating Deepgram transcriber sender")
 
             async def receiver(ws: WebSocketClientProtocol):
                 buffer = ""
                 time_silent = 0
-                nonlocal audio_cursor
                 transcript_cursor = 0.
                 while not self._ended:
                     try:
@@ -198,15 +201,16 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         not "is_final" in data
                     ):  # means we've finished receiving transcriptions
                         break
-                    cur_max_latency = audio_cursor - transcript_cursor
+                    cur_max_latency = self.audio_cursor - transcript_cursor
                     transcript_cursor = data['start'] + data['duration']
-                    cur_min_latency = audio_cursor - transcript_cursor
+                    cur_min_latency = self.audio_cursor - transcript_cursor
                     
-                    histogram.record((cur_min_latency + cur_max_latency) / 2, {"duration": data['duration']})
+                    self.avg_latency_hist.record((cur_min_latency + cur_max_latency) / 2 * data['duration'])
+                    self.duration_hist.record(data['duration'])
 
                     # Log max and min latencies
-                    max_latency_hist.record(cur_max_latency)
-                    min_latency_hist.record(max(cur_min_latency, 0))
+                    self.max_latency_hist.record(cur_max_latency)
+                    self.min_latency_hist.record(max(cur_min_latency, 0))
 
                     is_final = data["is_final"]
                     speech_final = self.is_speech_final(buffer, data, time_silent)
@@ -235,7 +239,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         time_silent = self.calculate_time_silent(data)
                     else:
                         time_silent += data["duration"]
-                    print(f'Measuring... Audio cursor = {audio_cursor:.3f}, Transcript cursor = {transcript_cursor:.3f}')
                 self.logger.debug("Terminating Deepgram transcriber receiver")
 
             await asyncio.gather(sender(ws), receiver(ws))
