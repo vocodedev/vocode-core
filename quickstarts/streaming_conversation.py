@@ -2,7 +2,8 @@ from opentelemetry import trace, metrics
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter
-from opentelemetry.sdk.metrics.export import ConsoleMetricExporter, PeriodicExportingMetricReader
+from opentelemetry.sdk.metrics.export import ConsoleMetricExporter, InMemoryMetricReader, PeriodicExportingMetricReader
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.sdk.resources import Resource
 from collections import defaultdict
 
@@ -24,10 +25,11 @@ class PrintDurationSpanExporter(SpanExporter):
 
 
 trace.set_tracer_provider(TracerProvider(resource=Resource.create({})))
+span_exporter = InMemorySpanExporter()
 trace.get_tracer_provider().add_span_processor(
-    SimpleSpanProcessor(PrintDurationSpanExporter())
+    SimpleSpanProcessor(span_exporter)
 )
-reader = PeriodicExportingMetricReader(ConsoleMetricExporter())
+reader = InMemoryMetricReader()
 provider = MeterProvider(metric_readers=[reader])
 metrics.set_meter_provider(provider)
 
@@ -61,13 +63,13 @@ async def main():
         microphone_input,
         speaker_output,
     ) = create_streaming_microphone_input_and_speaker_output(use_default_devices=False)
-    # file_input = FileInputDevice("test.wav")
+    file_input = FileInputDevice("test3.wav")
 
     conversation = StreamingConversation(
         output_device=speaker_output,
         transcriber=DeepgramTranscriber(
             DeepgramTranscriberConfig.from_input_device(
-                microphone_input,
+                file_input,
                 endpointing_config=PunctuationEndpointingConfig(),
             )
         ),
@@ -85,9 +87,16 @@ async def main():
     )
     await conversation.start()
     print("Conversation started, press Ctrl+C to end")
-    signal.signal(signal.SIGINT, lambda _0, _1: conversation.terminate())
+    def thing():
+        conversation.terminate()
+        metric_results = reader.get_metrics_data()
+        trace_results = span_exporter.get_finished_spans()
+        print(metric_results)
+        print("**************")
+        print(trace_results)
+    signal.signal(signal.SIGINT, lambda _0, _1: thing())
     while conversation.is_active():
-        chunk = microphone_input.get_audio()
+        chunk = file_input.get_audio()
         if chunk:
             conversation.receive_audio(chunk)
         await asyncio.sleep(0)
