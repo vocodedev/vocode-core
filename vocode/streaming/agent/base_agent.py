@@ -17,7 +17,7 @@ from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.model import BaseModel, TypedModel
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
-from vocode.streaming.utils.transcript import Transcript
+from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.utils.worker import (
     InterruptibleEvent,
     InterruptibleEventFactory,

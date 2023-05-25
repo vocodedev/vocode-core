@@ -4,7 +4,7 @@ from typing import AsyncGenerator, AsyncIterable, Callable, List, Optional
 from click import prompt
 from openai.openai_object import OpenAIObject
 from vocode.streaming.models.events import Sender
-from vocode.streaming.utils.transcript import Transcript
+from vocode.streaming.models.transcript import Transcript
 
 SENTENCE_ENDINGS = [".", "!", "?"]
 
