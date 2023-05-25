@@ -60,7 +60,7 @@ class HostedStreamingConversation:
             while self.active:
                 try:
                     audio = self.output_audio_queue.get(timeout=5)
-                    self.output_device.send_nonblocking(audio)
+                    self.output_device.consume_nonblocking(audio)
                 except queue.Empty:
                     continue
 
@@ -83,7 +83,7 @@ class HostedStreamingConversation:
                 await self.wait_for_ready()
                 self.logger.info("Listening...press Ctrl+C to stop")
                 while self.active:
-                    data = self.input_device.get_audio()
+                    data = await self.input_device.get_audio()
                     if data:
                         try:
                             await ws.send(AudioMessage.from_bytes(data).json())

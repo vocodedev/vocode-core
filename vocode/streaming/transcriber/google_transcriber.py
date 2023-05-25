@@ -100,7 +100,9 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
         confidence = top_choice.confidence
 
         self.output_janus_queue.sync_q.put_nowait(
-            Transcription(message, confidence, result.is_final)
+            Transcription(
+                message=message, confidence=confidence, is_final=result.is_final
+            )
         )
 
     def generator(self):

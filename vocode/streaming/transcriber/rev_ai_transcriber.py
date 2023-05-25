@@ -123,15 +123,17 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
                     confidence = 1.0
                     if is_done:
                         self.output_queue.put_nowait(
-                            Transcription(buffer, confidence, True)
+                            Transcription(
+                                message=buffer, confidence=confidence, is_final=True
+                            )
                         )
                         buffer = ""
                     else:
                         self.output_queue.put_nowait(
                             Transcription(
-                                buffer,
-                                confidence,
-                                False,
+                                message=buffer,
+                                confidence=confidence,
+                                is_final=False,
                             )
                         )
 

@@ -104,10 +104,8 @@ async def main():
     print("Conversation started, press Ctrl+C to end")
     signal.signal(signal.SIGINT, lambda _0, _1: conversation.terminate())
     while conversation.is_active():
-        chunk = microphone_input.get_audio()
-        if chunk:
-            conversation.receive_audio(chunk)
-        await asyncio.sleep(0)
+        chunk = await microphone_input.get_audio()
+        conversation.receive_audio(chunk)
 
 
 if __name__ == "__main__":

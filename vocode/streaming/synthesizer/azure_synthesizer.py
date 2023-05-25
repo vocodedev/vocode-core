@@ -6,6 +6,7 @@ import re
 from typing import Any, List, Optional, Tuple
 from xml.etree import ElementTree
 from vocode import getenv
+from opentelemetry.context.context import Context
 
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage, SSMLMessage
@@ -17,8 +18,9 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     FILLER_AUDIO_PATH,
     FillerAudio,
     encode_as_wav,
+    tracer,
 )
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig, SynthesizerType
 from vocode.streaming.models.audio_encoding import AudioEncoding
 
 import azure.cognitiveservices.speech as speechsdk
@@ -209,6 +211,9 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 return ssml_fragment.split(">")[-1]
         return message
 
+    @tracer.start_as_current_span(
+        "synthesis", Context(synthesizer=SynthesizerType.AZURE.value)
+    )
     async def create_speech(
         self,
         message: BaseMessage,
