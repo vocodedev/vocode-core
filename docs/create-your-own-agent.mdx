@@ -23,10 +23,6 @@ class BaseAgent:
     ) -> Generator[str, None, None]:
         """Returns a generator that yields the agent's response one sentence at a time."""
         raise NotImplementedError
-
-    def update_last_bot_message_on_cut_off(self, message: str):
-        """Updates the last bot message in the agent's state when the human cuts off the bot's response."""
-        pass
 ```
 
 You can implement this interface by subclassing `BaseAgent` to create your own agent.

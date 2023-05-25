@@ -148,10 +148,3 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
             response_buffer += sentence
             self.memory[-1] = self.get_memory_entry(human_input, response_buffer)
             yield sentence
-
-    def update_last_bot_message_on_cut_off(self, message: str):
-        last_message = self.memory[-1]
-        new_last_message = (
-            last_message.split("\n", 1)[0] + f"\n{self.sender}: {message}"
-        )
-        self.memory[-1] = new_last_message

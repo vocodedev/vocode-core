@@ -17,6 +17,7 @@ from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.model import BaseModel, TypedModel
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
+from vocode.streaming.utils.transcript import Transcript
 from vocode.streaming.utils.worker import (
     InterruptibleEvent,
     InterruptibleEventFactory,
@@ -66,10 +67,6 @@ class AbstractAgent(Generic[AgentConfigType]):
     def get_agent_config(self) -> AgentConfig:
         return self.agent_config
 
-    def update_last_bot_message_on_cut_off(self, message: str):
-        """Updates the last bot message in the conversation history when the human cuts off the bot's response."""
-        pass
-
     def get_cut_off_response(self) -> str:
         assert isinstance(self.agent_config, LLMAgentConfig) or isinstance(
             self.agent_config, ChatGPTAgentConfig
@@ -107,6 +104,10 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
             self.goodbye_model_initialize_task = asyncio.create_task(
                 self.goodbye_model.initialize_embeddings()
             )
+        self.transcript: Optional[Transcript] = None
+
+    def attach_transcript(self, transcript: Transcript):
+        self.transcript = transcript
 
     def start(self):
         super().start()

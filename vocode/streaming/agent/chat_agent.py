@@ -11,6 +11,8 @@ from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 from langchain.schema import ChatMessage, AIMessage
 from langchain.memory import ConversationBufferMemory
 
+from vocode.streaming.models.events import Sender
+
 
 ChatAgentConfigType = TypeVar(
     "ChatAgentConfigType", bound=Union[ChatGPTAgentConfig, ChatAnthropicAgentConfig]
@@ -25,7 +27,6 @@ class ChatAgent(RespondAgent[ChatAgentConfigType]):
     ):
         super().__init__(agent_config)
         self.logger = logger or logging.getLogger(__name__)
-        self.memory = ConversationBufferMemory(return_messages=True)
 
     async def respond(
         self,
@@ -42,12 +43,3 @@ class ChatAgent(RespondAgent[ChatAgentConfigType]):
         is_interrupt: bool = False,
     ) -> AsyncGenerator[str, None]:
         raise NotImplementedError
-
-    def update_last_bot_message_on_cut_off(self, message: str):
-        for memory_message in self.memory.chat_memory.messages[::-1]:
-            if (
-                isinstance(memory_message, ChatMessage)
-                and memory_message.role == "assistant"
-            ) or isinstance(memory_message, AIMessage):
-                memory_message.content = message
-                return
