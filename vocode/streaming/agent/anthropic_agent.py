@@ -40,8 +40,10 @@ class ChatAnthropicAgent(ChatAgent[ChatAnthropicAgentConfig]):
         conversation_id: str,
         is_interrupt: bool = False,
     ) -> Tuple[str, bool]:
+        prompt = format_anthropic_chat_messages_from_transcript(self.transcript)
+
         text = await self.anthropic_client.acompletion(
-            prompt=format_anthropic_chat_messages_from_transcript(self.transcript),
+            prompt=prompt,
             stop_sequences=[anthropic.HUMAN_PROMPT],
             model=self.agent_config.model_name,
             max_tokens_to_sample=self.agent_config.max_tokens_to_sample,

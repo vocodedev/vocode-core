@@ -144,7 +144,7 @@ name = "anthropic"
 version = "0.2.9"
 description = "Library for accessing the anthropic API"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "anthropic-0.2.9-py3-none-any.whl", hash = "sha256:e7cce215cf6c446de29280deb31b07b5587993d48e84850eaad3fc69bd1fec0a"},
@@ -1076,14 +1076,14 @@ files = [
 
 [[package]]
 name = "httpcore"
-version = "0.17.1"
+version = "0.17.2"
 description = "A minimal low-level HTTP client."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "httpcore-0.17.1-py3-none-any.whl", hash = "sha256:628e768aaeec1f7effdc6408ba1c3cdbd7487c1fc570f7d66844ec4f003e1ca4"},
-    {file = "httpcore-0.17.1.tar.gz", hash = "sha256:caf508597c525f9b8bfff187e270666309f63115af30f7d68b16143a403c8356"},
+    {file = "httpcore-0.17.2-py3-none-any.whl", hash = "sha256:5581b9c12379c4288fe70f43c710d16060c10080617001e6b22a3b6dbcbefd36"},
+    {file = "httpcore-0.17.2.tar.gz", hash = "sha256:125f8375ab60036db632f34f4b627a9ad085048eef7cb7d2616fea0f739f98af"},
 ]
 
 [package.dependencies]
@@ -1098,14 +1098,14 @@ socks = ["socksio (>=1.0.0,<2.0.0)"]
 
 [[package]]
 name = "httpx"
-version = "0.24.0"
+version = "0.24.1"
 description = "The next generation HTTP client."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "httpx-0.24.0-py3-none-any.whl", hash = "sha256:447556b50c1921c351ea54b4fe79d91b724ed2b027462ab9a329465d147d5a4e"},
-    {file = "httpx-0.24.0.tar.gz", hash = "sha256:507d676fc3e26110d41df7d35ebd8b3b8585052450f4097401c9be59d928c63e"},
+    {file = "httpx-0.24.1-py3-none-any.whl", hash = "sha256:06781eb9ac53cde990577af654bd990a4949de37a28bdb4a230d434f3a30b9bd"},
+    {file = "httpx-0.24.1.tar.gz", hash = "sha256:5853a43053df830c20f8110c5e69fe44d035d850b2dfe795e196f00fdb774bdd"},
 ]
 
 [package.dependencies]
@@ -2607,7 +2607,7 @@ name = "tokenizers"
 version = "0.13.3"
 description = "Fast and Customizable Tokenizers"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 files = [
     {file = "tokenizers-0.13.3-cp310-cp310-macosx_10_11_x86_64.whl", hash = "sha256:f3835c5be51de8c0a092058a4d4380cb9244fb34681fd0a295fbf0a52a5fdf33"},
@@ -3141,8 +3141,8 @@ docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker
 testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)"]
 
 [extras]
-agents = ["anthropic"]
-all = ["anthropic", "elevenlabs", "google-cloud-speech", "google-cloud-texttospeech", "gtts", "redis", "twilio"]
+agents = []
+all = ["elevenlabs", "google-cloud-speech", "google-cloud-texttospeech", "gtts", "redis", "twilio"]
 synthesizers = ["elevenlabs", "google-cloud-texttospeech", "gtts"]
 telephony = ["redis", "twilio"]
 transcribers = ["google-cloud-speech"]
@@ -3150,4 +3150,4 @@ transcribers = ["google-cloud-speech"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<3.12"
-content-hash = "8c6a759d1004bd7a2a11f45f070497ed51e517a4bfe2fe35b8929ab7d8da6007"
+content-hash = "0c6f11d97067f1c3dee50081e1b14ede86a3478c64fa05f2c8bb85ee4501a22d"

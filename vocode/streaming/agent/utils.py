@@ -52,17 +52,14 @@ def format_openai_chat_messages_from_transcript(
     transcript: Transcript, prompt_preamble: Optional[str] = None
 ) -> List[dict]:
     return (
-        [{"role": "system", "content": prompt_preamble}]
-        if prompt_preamble
-        else []
-        + [
-            {
-                "role": "user" if message.sender == Sender.BOT else "assistant",
-                "content": message.text,
-            }
-            for message in transcript.messages
-        ]
-    )
+        [{"role": "system", "content": prompt_preamble}] if prompt_preamble else []
+    ) + [
+        {
+            "role": "assistant" if message.sender == Sender.BOT else "user",
+            "content": message.text,
+        }
+        for message in transcript.messages
+    ]
 
 
 def format_anthropic_chat_messages_from_transcript(transcript: Transcript) -> str:
