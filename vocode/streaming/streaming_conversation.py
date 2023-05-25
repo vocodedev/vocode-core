@@ -15,13 +15,12 @@ from opentelemetry.trace import Span
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
-from vocode.streaming.models.events import TranscriptCompleteEvent
+from vocode.streaming.models.transcript import Transcript, TranscriptCompleteEvent
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
-from vocode.streaming.utils.transcript import Transcript
 
 from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.synthesizer import (
@@ -546,7 +545,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.mark_terminated()
         self.events_manager.publish_event(
             TranscriptCompleteEvent(
-                conversation_id=self.id, transcript=self.transcript.to_string()
+                conversation_id=self.id, transcript=self.transcript
             )
         )
         if self.check_for_idle_task:
