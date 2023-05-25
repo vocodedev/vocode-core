@@ -8,16 +8,16 @@ from typing import AsyncGenerator, Optional, Tuple
 import logging
 
 from vocode import getenv
-from vocode.streaming.agent.chat_agent import ChatAgent
+from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
     stream_openai_response_async,
 )
-from vocode.streaming.models.events import Sender
+from vocode.streaming.utils.transcript import Transcript
 
 
-class ChatGPTAgent(ChatAgent[ChatGPTAgentConfig]):
+class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def __init__(
         self,
         agent_config: ChatGPTAgentConfig,
@@ -39,13 +39,19 @@ class ChatGPTAgent(ChatAgent[ChatGPTAgentConfig]):
         return openai.ChatCompletion.create(
             model=self.agent_config.model_name,
             messages=[
-                [{"role": "system", "content": self.agent_config.prompt_preamble}]
-                if self.agent_config.prompt_preamble
-                else [] + [{"role": "user", "content": first_prompt}]
+                (
+                    [{"role": "system", "content": self.agent_config.prompt_preamble}]
+                    if self.agent_config.prompt_preamble
+                    else []
+                )
+                + [{"role": "user", "content": first_prompt}]
             ],
         )
 
-    async def respond(  # type: ignore
+    def attach_transcript(self, transcript: Transcript):
+        self.transcript = transcript
+
+    async def respond(
         self,
         human_input,
         conversation_id: str,
