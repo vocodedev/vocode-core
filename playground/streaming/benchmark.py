@@ -6,6 +6,7 @@
 import re
 import argparse
 import asyncio
+import logging
 from tqdm import tqdm
 from opentelemetry import trace, metrics
 from opentelemetry.sdk.metrics import MeterProvider
@@ -25,6 +26,62 @@ from vocode.streaming.models.transcriber import (
 )
 from vocode.streaming.transcriber import DeepgramTranscriber, AssemblyAITranscriber
 
+logger = logging.getLogger(__name__)
+
+# Create the parser
+parser = argparse.ArgumentParser(
+    description="Benchmark Vocode's transcribers, agents, and synthesizers."
+)
+
+parser.add_argument(
+    "--transcribers",
+    type=str,
+    nargs="+",
+    default=["deepgram", "assemblyai"],
+    choices=["deepgram", "assemblyai"],
+    help="The list of transcribers to benchmark",
+)
+parser.add_argument(
+    "--agents",
+    type=str,
+    nargs="+",
+    default=["openai_gpt-3.5-turbo"],
+    choices=["openai_gpt-3.5-turbo"],
+    help="The list of agents to benchmark",
+)
+parser.add_argument(
+    "--synthesizers",
+    type=str,
+    nargs="+",
+    default=["elevenlabs"],
+    choices=["elevenlabs"],
+    help="The list of synthesizers to benchmark",
+)
+parser.add_argument(
+    "--audio",
+    type=str,
+    default="test3.wav",
+    help="Path to the audio file to transcribe",
+)
+args = parser.parse_args()
+
+
+def get_transcriber(transcriber_name, file_input):
+    if transcriber_name == "deepgram":
+        transcriber = DeepgramTranscriber(
+            DeepgramTranscriberConfig.from_input_device(
+                file_input,
+                endpointing_config=PunctuationEndpointingConfig(),
+            )
+        )
+    elif transcriber_name == "assemblyai":
+        transcriber = AssemblyAITranscriber(
+            AssemblyAITranscriberConfig.from_input_device(
+                file_input,
+            )
+        )
+    return transcriber
+
 
 trace.set_tracer_provider(TracerProvider(resource=Resource.create({})))
 span_exporter = InMemorySpanExporter()
@@ -42,22 +99,9 @@ async def main():
     file_input = FileInputDevice(
         "test3.wav", chunk_size=chunk_size, silent_duration=0.01, skip_initial_load=True
     )
-    transcribers = []
-    transcriber = DeepgramTranscriber(
-        DeepgramTranscriberConfig.from_input_device(
-            file_input,
-            endpointing_config=PunctuationEndpointingConfig(),
-        )
-    )
-    transcribers.append(transcriber)
-    transcriber = AssemblyAITranscriber(
-        AssemblyAITranscriberConfig.from_input_device(
-            file_input,
-        )
-    )
-    transcribers.append(transcriber)
 
-    for transcriber in transcribers:
+    for transcriber_name in args.transcribers:
+        transcriber = get_transcriber(transcriber_name, file_input)
         file_input.load()
         transcriber_task = transcriber.start()
 
@@ -70,7 +114,11 @@ async def main():
         send_audio = asyncio.create_task(send_audio_task())
 
         # `get` from `transcriber.output_queue` until it's empty for 3 seconds
-        pbar = tqdm("Transcribing", total=file_input.duration, unit="chunk")
+        pbar = tqdm(
+            desc=f"{transcriber_name.title()} Transcribing",
+            total=file_input.duration,
+            unit="chunk",
+        )
         while True:
             try:
                 transcription = await asyncio.wait_for(
@@ -79,7 +127,9 @@ async def main():
                 # update the progress bar status
                 pbar.update(round(transcriber.audio_cursor - pbar.n, 2))
             except asyncio.TimeoutError:
-                print("Transcriber queue is empty, computing metrics...")
+                logger.debug(
+                    f"[Transcriber: {transcriber_name}] Transcriber queue is empty, stopping transcription..."
+                )
                 send_audio.cancel()
                 break
         pbar.update(pbar.total - pbar.n)
