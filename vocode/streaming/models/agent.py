@@ -113,7 +113,6 @@ class RESTfulUserImplementedAgentConfig(
     respond: EndpointConfig
     generate_responses: bool = False
     # generate_response: Optional[EndpointConfig]
-    # update_last_bot_message_on_cut_off: Optional[EndpointConfig]
 
 
 class RESTfulAgentInput(BaseModel):
