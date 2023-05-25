@@ -1,8 +1,8 @@
 from vocode.streaming.models.audio_encoding import AudioEncoding
 import janus
 from vocode.streaming.input_device.base_input_device import BaseInputDevice
-from typing import Optional
 import wave
+import struct
 import numpy as np
 
 
@@ -35,7 +35,6 @@ class FileInputDevice(BaseInputDevice):
                     + f"{self.DEFAULT_SAMPLING_RATE} is supported."
                 )
 
-            self.audio_chunk_queue = []
             for _ in range(self.total_chunks):
                 chunk_data = wave_file.readframes(chunk_size)
                 self.queue.sync_q.put_nowait(chunk_data)
@@ -46,8 +45,8 @@ class FileInputDevice(BaseInputDevice):
     def generate_silent_chunk(self, duration: float) -> bytes:
         num_samples = int(self.sampling_rate * duration)
         samples = np.zeros(num_samples, dtype=np.int16)
-        silent_wave = wave.struct.pack("<" + "h" * len(samples), *samples)
+        silent_wave = struct.pack("<" + "h" * len(samples), *samples)
         return silent_wave
 
-    async def get_audio(self) -> Optional[bytes]:
+    async def get_audio(self) -> bytes:
         return await self.queue.async_q.get()
