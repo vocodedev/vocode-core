@@ -1,3 +1,4 @@
+import anthropic
 from typing import AsyncGenerator, AsyncIterable, Callable, List, Optional
 
 from click import prompt
@@ -62,3 +63,16 @@ def format_openai_chat_messages_from_transcript(
             for message in transcript.messages
         ]
     )
+
+
+def format_anthropic_chat_messages_from_transcript(transcript: Transcript) -> str:
+    formatted_messages = [
+        f"{anthropic.HUMAN_PROMPT} {message.text}"
+        if message.sender == Sender.BOT
+        else f"{anthropic.AI_PROMPT} {message.text}"
+        for message in transcript.messages
+    ]
+
+    formatted_messages.append(f"{anthropic.AI_PROMPT}")
+
+    return "".join(formatted_messages)
