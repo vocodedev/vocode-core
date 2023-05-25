@@ -10,6 +10,7 @@ from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.telephony.server.base import InboundCallConfig, TelephonyServer
 
 from speller_agent import SpellerAgentFactory
+import sys
 
 app = FastAPI(docs_url=None)
 
@@ -22,8 +23,14 @@ config_manager = RedisConfigManager()
 BASE_URL = os.getenv("BASE_URL")
 
 if not BASE_URL:
-    http_tunnel = ngrok.connect(3000)
-    BASE_URL = http_tunnel.public_url.replace("https://", "")
+    ngrok_auth = os.environ.get("NGROK_AUTH_TOKEN")
+    if ngrok_auth is not None:
+        ngrok.set_auth_token(ngrok_auth)
+    port = sys.argv[sys.argv.index("--port") + 1] if "--port" in sys.argv else 3000
+
+    # Open a ngrok tunnel to the dev server
+    BASE_URL = ngrok.connect(port).public_url.replace("https://", "")
+    logger.info("ngrok tunnel \"{}\" -> \"http://127.0.0.1:{}\"".format(BASE_URL, port))
 
 telephony_server = TelephonyServer(
     base_url=BASE_URL,
