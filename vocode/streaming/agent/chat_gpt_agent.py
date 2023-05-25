@@ -14,7 +14,7 @@ from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
     stream_openai_response_async,
 )
-from vocode.streaming.utils.transcript import Transcript
+from vocode.streaming.models.transcript import Transcript
 
 
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
