@@ -1,3 +1,4 @@
 vocode==0.1.108
 redis
 twilio
+pyngrok==6.0.0
