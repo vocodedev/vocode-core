@@ -1,7 +1,7 @@
 import asyncio
 import typing
 from dotenv import load_dotenv
-from vocode.streaming.utils.transcript import Transcript
+from vocode.streaming.models.transcript import Transcript
 
 load_dotenv()
 
