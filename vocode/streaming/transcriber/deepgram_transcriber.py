@@ -11,7 +11,7 @@ from vocode import getenv
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
     Transcription,
-    meter
+    meter,
 )
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
@@ -182,14 +182,18 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         break
                     num_channels = 1
                     sample_width = 2
-                    self.audio_cursor += len(data) / (self.transcriber_config.sampling_rate * num_channels * sample_width)
+                    self.audio_cursor += len(data) / (
+                        self.transcriber_config.sampling_rate
+                        * num_channels
+                        * sample_width
+                    )
                     await ws.send(data)
                 self.logger.debug("Terminating Deepgram transcriber sender")
 
             async def receiver(ws: WebSocketClientProtocol):
                 buffer = ""
                 time_silent = 0
-                transcript_cursor = 0.
+                transcript_cursor = 0.0
                 while not self._ended:
                     try:
                         msg = await ws.recv()
@@ -202,11 +206,13 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     ):  # means we've finished receiving transcriptions
                         break
                     cur_max_latency = self.audio_cursor - transcript_cursor
-                    transcript_cursor = data['start'] + data['duration']
+                    transcript_cursor = data["start"] + data["duration"]
                     cur_min_latency = self.audio_cursor - transcript_cursor
-                    
-                    self.avg_latency_hist.record((cur_min_latency + cur_max_latency) / 2 * data['duration'])
-                    self.duration_hist.record(data['duration'])
+
+                    self.avg_latency_hist.record(
+                        (cur_min_latency + cur_max_latency) / 2 * data["duration"]
+                    )
+                    self.duration_hist.record(data["duration"])
 
                     # Log max and min latencies
                     self.max_latency_hist.record(cur_max_latency)
