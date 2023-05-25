@@ -40,7 +40,7 @@ class SpeakerOutput(BaseOutputDevice):
         data = self.queue.get()
         outdata[:, 0] = data
 
-    def send_nonblocking(self, chunk):
+    def consume_nonblocking(self, chunk):
         chunk_arr = np.frombuffer(chunk, dtype=np.int16)
         for i in range(0, chunk_arr.shape[0], self.blocksize):
             block = np.zeros(self.blocksize, dtype=np.int16)

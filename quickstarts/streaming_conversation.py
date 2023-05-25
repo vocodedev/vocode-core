@@ -96,10 +96,8 @@ async def main():
         print(trace_results)
     signal.signal(signal.SIGINT, lambda _0, _1: thing())
     while conversation.is_active():
-        chunk = file_input.get_audio()
-        if chunk:
-            conversation.receive_audio(chunk)
-        await asyncio.sleep(0)
+        chunk = await microphone_input.get_audio()
+        conversation.receive_audio(chunk)
 
 
 if __name__ == "__main__":

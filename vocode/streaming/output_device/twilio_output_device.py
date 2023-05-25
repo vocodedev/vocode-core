@@ -32,7 +32,7 @@ class TwilioOutputDevice(BaseOutputDevice):
             message = await self.queue.get()
             await self.ws.send_text(message)
 
-    def send_nonblocking(self, chunk: bytes):
+    def consume_nonblocking(self, chunk: bytes):
         twilio_message = {
             "event": "media",
             "streamSid": self.stream_sid,

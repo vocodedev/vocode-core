@@ -230,6 +230,8 @@ The `OutboundCall` class provides a simple abstraction for creating outbound cal
 
 ### Example: Making an outbound call
 
+Prior to running this script to initiate an outbound call, you still need the `TelephonyServer` from above to be running.
+
 ```python
 import os
 from vocode.streaming.telephony.hosted.outbound_call import OutboundCall
@@ -262,6 +264,50 @@ if __name__ == '__main__':
     input("Press enter to end the call...")
     call.end()
 ```
+
+### How outbound calls work
+
+Here's what happens under the hood for an outbound call.
+
+The `OutboundCall` calls Twilio to initiate the call, giving it a URL to call after the call is initiated:
+```
+        twilio_call = self.twilio_client.calls.create(
+            url=f"https://{self.base_url}/twiml/initiate_call/{self.conversation_id}",
+```
+
+In your main.py you create and start a `TelephonyServer`.  The TelephonyServer itself includes a couple of routers:
+* `TwiMLRouter`
+* `CallsRouter`
+
+`TwiMLRouter` includes the matching route:
+```
+        self.router.add_api_route(
+            "/twiml/initiate_call/{id}", self.call_twiml, methods=["POST"]
+        )
+```
+
+This route returns the template `connect_call.xml` which uses TwiML to tell Twilio to establish a websocket with a given URL:
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Connect>
+    <Stream url="wss://{{ base_url }}/connect_call/{{ id }}" />
+  </Connect>
+</Response>
+```
+
+CallsRouter includes that second route:
+```
+ self.router.websocket("/connect_call/{id}")(self.connect_call)
+```
+
+This is where we get the websocket connection.  We then create the `Call` object and start it:
+```
+await call.attach_ws_and_start(websocket)
+```
+
+The `Call` is a kind of `StreamingConversation` that manages the various pieces: transcriber, synthesizer, agent, etc.
+
 
 ## Inbound Calls
 

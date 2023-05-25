@@ -81,7 +81,9 @@ class WhisperCPPTranscriber(BaseThreadAsyncTranscriber[WhisperCPPTranscriberConf
                 )
                 in_memory_wav, audio_buffer = self.create_new_buffer()
                 self.output_queue.put_nowait(
-                    Transcription(message_buffer, confidence, is_final)
+                    Transcription(
+                        message=message_buffer, confidence=confidence, is_final=is_final
+                    )
                 )
                 if is_final:
                     message_buffer = ""

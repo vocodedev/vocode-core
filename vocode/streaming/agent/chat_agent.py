@@ -6,7 +6,7 @@ from vocode.streaming.models.agent import (
     ChatAnthropicAgentConfig,
     ChatGPTAgentConfig,
 )
-from vocode.streaming.agent.base_agent import BaseAgent
+from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 
 from langchain.schema import ChatMessage, AIMessage
 from langchain.memory import ConversationBufferMemory
@@ -17,7 +17,7 @@ ChatAgentConfigType = TypeVar(
 )
 
 
-class ChatAgent(BaseAgent[ChatAgentConfigType]):
+class ChatAgent(RespondAgent[ChatAgentConfigType]):
     def __init__(
         self,
         agent_config: ChatAgentConfigType,
