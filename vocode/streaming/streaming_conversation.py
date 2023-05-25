@@ -15,13 +15,12 @@ from opentelemetry.trace import Span
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
-from vocode.streaming.utils.transcript import TranscriptCompleteEvent
+from vocode.streaming.models.transcript import Transcript, TranscriptCompleteEvent
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
-from vocode.streaming.utils.transcript import Transcript
 
 from vocode.streaming.models.agent import (
     FillerAudioConfig,

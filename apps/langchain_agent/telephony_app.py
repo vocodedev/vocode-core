@@ -3,7 +3,7 @@ import os
 import typing
 from fastapi import FastAPI
 from vocode.streaming.models.events import Event, EventType
-from vocode.streaming.utils.transcript import TranscriptCompleteEvent
+from vocode.streaming.models.transcript import TranscriptCompleteEvent
 from vocode.streaming.utils import events_manager
 
 from vocode.streaming.telephony.config_manager.redis_config_manager import (
