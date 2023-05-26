@@ -13,6 +13,7 @@ from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, Fille
 
 
 def save_as_wav(path, audio_data: bytes, config: Union[SynthesizerConfig, TranscriberConfig]):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as f:
         wav_file = wave.open(f, "wb")
         wav_file.setnchannels(1)
