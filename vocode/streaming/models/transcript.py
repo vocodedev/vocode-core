@@ -45,6 +45,7 @@ class Transcript(BaseModel):
                 sender=sender,
                 timestamp=time.time(),
                 conversation_id=conversation_id,
+                metadata=metadata,
             )
         )
 
