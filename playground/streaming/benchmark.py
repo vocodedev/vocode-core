@@ -24,14 +24,36 @@ from vocode.streaming.input_device.file_input_device import FileInputDevice
 from vocode.streaming.agent import ChatGPTAgent, ChatAnthropicAgent
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.agent import ChatGPTAgentConfig, ChatAnthropicAgentConfig
-from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
+from vocode.streaming.models.synthesizer import (
+    AzureSynthesizerConfig,
+    BarkSynthesizerConfig,
+    CoquiSynthesizerConfig,
+    CoquiTTSSynthesizerConfig,
+    ElevenLabsSynthesizerConfig,
+    GTTSSynthesizerConfig,
+    GoogleSynthesizerConfig,
+    PlayHtSynthesizerConfig,
+    RimeSynthesizerConfig,
+    StreamElementsSynthesizerConfig,
+)
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     AssemblyAITranscriberConfig,
     PunctuationEndpointingConfig,
 )
 from vocode.streaming.output_device.file_output_device import FileOutputDevice
-from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
+from vocode.streaming.synthesizer import (
+    AzureSynthesizer,
+    BarkSynthesizer,
+    CoquiSynthesizer,
+    CoquiTTSSynthesizer,
+    ElevenLabsSynthesizer,
+    GTTSSynthesizer,
+    GoogleSynthesizer,
+    PlayHtSynthesizer,
+    RimeSynthesizer,
+    StreamElementsSynthesizer,
+)
 from vocode.streaming.transcriber import DeepgramTranscriber, AssemblyAITranscriber
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import get_chunk_size_per_second
@@ -45,9 +67,29 @@ parser = argparse.ArgumentParser(
     description="Benchmark Vocode's transcribers, agents, and synthesizers."
 )
 
+synthesizer_classes = {
+    "elevenlabs": (ElevenLabsSynthesizer, ElevenLabsSynthesizerConfig),
+    "azure": (AzureSynthesizer, AzureSynthesizerConfig),
+    "bark": (BarkSynthesizer, BarkSynthesizerConfig),
+    "coqui": (CoquiSynthesizer, CoquiSynthesizerConfig),
+    "coquitts": (CoquiTTSSynthesizer, CoquiTTSSynthesizerConfig),
+    "google": (GoogleSynthesizer, GoogleSynthesizerConfig),
+    "gtts": (GTTSSynthesizer, GTTSSynthesizerConfig),
+    "playht": (PlayHtSynthesizer, PlayHtSynthesizerConfig),
+    "rime": (RimeSynthesizer, RimeSynthesizerConfig),
+    "streamelements": (StreamElementsSynthesizer, StreamElementsSynthesizerConfig),
+}
+
+synthesizer_classes = {
+    k: v
+    for k, v in synthesizer_classes.items()
+    if k in ["elevenlabs", "google", "azure", "gtts", "bark"]
+}
+
+
 transcriber_choices = ["deepgram", "assemblyai"]
 agent_choices = ["openai_gpt-3.5-turbo", "anthropic_claude-v1"]
-synthesizer_choices = ["elevenlabs"]
+synthesizer_choices = list(synthesizer_classes)
 
 parser.add_argument(
     "--transcribers",
@@ -189,11 +231,14 @@ async def run_synthesizers():
         )
 
     for synthesizer_name in args.synthesizers:
-        if synthesizer_name == "elevenlabs":
-            file_output = create_file_output_device(synthesizer_name)
-            synthesizer = ElevenLabsSynthesizer(
-                ElevenLabsSynthesizerConfig.from_output_device(file_output)
-            )
+        file_output = create_file_output_device(synthesizer_name)
+        synthesizer_class, synthesizer_config_class = synthesizer_classes[
+            synthesizer_name
+        ]
+        extra_config = {}
+        synthesizer = synthesizer_class(
+            synthesizer_config_class.from_output_device(file_output, **extra_config)
+        )
 
         chunk_size = get_chunk_size_per_second(
             synthesizer.get_synthesizer_config().audio_encoding,
