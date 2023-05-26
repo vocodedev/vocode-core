@@ -26,15 +26,15 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
         self.voice_id = synthesizer_config.voice_id
         self.voice_prompt = synthesizer_config.voice_prompt
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.COQUI.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        create_speech_span = tracer.start_span(
+            "synthesizer.create_total", Context(synthesizer=SynthesizerType.COQUI.value)
+        )
         url = COQUI_BASE_URL + "samples"
         if self.voice_prompt:
             url = f"{url}/from-prompt/"
@@ -75,6 +75,7 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
 
                     output_bytes: bytes = audio_segment.raw_data
 
+                    create_speech_span.end()
                     return self.create_synthesis_result_from_wav(
                         file=output_bytes,
                         message=message,

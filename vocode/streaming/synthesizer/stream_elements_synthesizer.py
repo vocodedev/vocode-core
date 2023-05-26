@@ -31,15 +31,16 @@ class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]
         super().__init__(synthesizer_config)
         self.voice = synthesizer_config.voice
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.STREAM_ELEMENTS.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        create_speech_span = tracer.start_span(
+            "synthesizer.create_total",
+            Context(synthesizer=SynthesizerType.STREAM_ELEMENTS.value),
+        )
         url_params = {
             "voice": self.voice,
             "text": message.text,
@@ -55,6 +56,8 @@ class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]
                 )
                 output_bytes_io = io.BytesIO()
                 audio_segment.export(output_bytes_io, format="wav")  # type: ignore
+
+                create_speech_span.end()
                 return self.create_synthesis_result_from_wav(
                     file=output_bytes_io,
                     message=message,

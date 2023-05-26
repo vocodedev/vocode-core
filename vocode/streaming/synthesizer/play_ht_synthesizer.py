@@ -37,15 +37,16 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
                 "You must set the PLAY_HT_API_KEY and PLAY_HT_USER_ID environment variables"
             )
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.PLAY_HT.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        create_speech_span = tracer.start_span(
+            "synthesizer.create_total",
+            Context(synthesizer=SynthesizerType.PLAY_HT.value),
+        )
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "X-User-ID": self.user_id,
@@ -82,6 +83,7 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
                 output_bytes_io = io.BytesIO()
                 audio_segment.export(output_bytes_io, format="wav")  # type: ignore
 
+                create_speech_span.end()
                 return self.create_synthesis_result_from_wav(
                     file=output_bytes_io,
                     message=message,

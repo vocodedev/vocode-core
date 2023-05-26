@@ -34,15 +34,15 @@ class BarkSynthesizer(BaseSynthesizer[BarkSynthesizerConfig]):
         preload_models(**self.synthesizer_config.preload_kwargs)
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.BARK.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        create_speech_span = tracer.start_span(
+            "synthesizer.create_total", Context(synthesizer=SynthesizerType.BARK.value)
+        )
         self.logger.debug("Bark synthesizing audio")
         audio_array = await asyncio.get_event_loop().run_in_executor(
             self.thread_pool_executor,
@@ -55,6 +55,7 @@ class BarkSynthesizer(BaseSynthesizer[BarkSynthesizerConfig]):
         output_bytes_io = io.BytesIO()
         write_wav(output_bytes_io, self.SAMPLE_RATE, int_audio_arr)
 
+        create_speech_span.end()
         return self.create_synthesis_result_from_wav(
             file=output_bytes_io,
             message=message,

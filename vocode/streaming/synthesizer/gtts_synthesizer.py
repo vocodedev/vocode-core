@@ -29,15 +29,15 @@ class GTTSSynthesizer(BaseSynthesizer):
         self.gTTS = gTTS
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.GTTS.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        create_speech_span = tracer.start_span(
+            "synthesizer.create_total", Context(synthesizer=SynthesizerType.GTTS.value)
+        )
         audio_file = BytesIO()
 
         def thread():
@@ -51,6 +51,7 @@ class GTTSSynthesizer(BaseSynthesizer):
         audio_segment: AudioSegment = AudioSegment.from_mp3(audio_file)  # type: ignore
         output_bytes_io = BytesIO()
         audio_segment.export(output_bytes_io, format="wav")  # type: ignore
+        create_speech_span.end()
         return self.create_synthesis_result_from_wav(
             file=output_bytes_io,
             message=message,

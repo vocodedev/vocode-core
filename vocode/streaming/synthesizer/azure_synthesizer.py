@@ -211,15 +211,15 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 return ssml_fragment.split(">")[-1]
         return message
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.AZURE.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        create_speech_span = tracer.start_span(
+            "synthesizer.create_total", Context(synthesizer=SynthesizerType.AZURE.value)
+        )
         # offset = int(self.OFFSET_MS * (self.synthesizer_config.sampling_rate / 1000))
         offset = 0
         self.logger.debug(f"Synthesizing message: {message}")
@@ -268,6 +268,8 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             )
         else:
             output_generator = chunk_generator(audio_data_stream)
+
+        create_speech_span.end()
         return SynthesisResult(
             output_generator,
             lambda seconds: self.get_message_up_to(

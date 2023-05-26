@@ -44,15 +44,16 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.ELEVEN_LABS.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        create_speech_span = tracer.start_span(
+            "synthesizer.create_total",
+            Context(synthesizer=SynthesizerType.ELEVEN_LABS.value),
+        )
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
@@ -66,7 +67,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             "text": message.text,
             "voice_settings": voice.settings.dict() if voice.settings else None,
         }
-        if self.model_id: body["model_id"] = self.model_id
+        if self.model_id:
+            body["model_id"] = self.model_id
 
         async with aiohttp.ClientSession() as session:
             async with session.request(
@@ -89,6 +91,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
                 audio_segment.export(output_bytes_io, format="wav")  # type: ignore
 
+                create_speech_span.end()
                 return self.create_synthesis_result_from_wav(
                     file=output_bytes_io,
                     message=message,

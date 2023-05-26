@@ -38,15 +38,15 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         self.api_key = getenv("RIME_API_KEY")
         self.speaker = synthesizer_config.speaker
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.RIME.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        create_speech_span = tracer.start_span(
+            "synthesizer.create_total", Context(synthesizer=SynthesizerType.RIME.value)
+        )
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -70,6 +70,7 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
                 data = await response.json()
                 audio_file = io.BytesIO(base64.b64decode(data.get("audioContent")))
 
+                create_speech_span.end()
                 return self.create_synthesis_result_from_wav(
                     file=audio_file, message=message, chunk_size=chunk_size
                 )

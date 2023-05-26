@@ -80,15 +80,16 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
         )
 
     # TODO: make this nonblocking, see speech.TextToSpeechAsyncClient
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.GOOGLE.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        create_speech_span = tracer.start_span(
+            "synthesizer.create_total",
+            Context(synthesizer=SynthesizerType.GOOGLE.value),
+        )
         response: self.tts.SynthesizeSpeechResponse = (  # type: ignore
             await asyncio.get_event_loop().run_in_executor(
                 self.thread_pool_executor, self.synthesize, message.text
@@ -106,6 +107,7 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
         in_memory_wav.writeframes(response.audio_content[real_offset:-real_offset])
         output_bytes_io.seek(0)
 
+        create_speech_span.end()
         return self.create_synthesis_result_from_wav(
             file=output_bytes_io,
             message=message,
