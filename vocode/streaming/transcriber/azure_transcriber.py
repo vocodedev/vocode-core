@@ -65,13 +65,14 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
         self.is_ready = False
 
     def recognized_sentence_final(self, evt: SpeechRecognitionEventArgs):
+        self.logger.debug("RECOGNITION FINAL on {}".format(evt))
         self.output_janus_queue.sync_q.put_nowait(
-            Transcription(evt.result.text, 1.0, True, False, evt.result.offset // 10000, evt.result.duration // 10000)
+            Transcription(message=evt.result.text, confidence=1.0, is_final=True, offset=evt.result.offset // 10000, duration=evt.result.duration // 10000)
         )
 
     def recognized_sentence_stream(self, evt: SpeechRecognitionEventArgs):
         self.output_janus_queue.sync_q.put_nowait(
-            Transcription(evt.result.text, 1.0, False, False, evt.result.offset // 10000, evt.result.duration // 10000)
+            Transcription(message=evt.result.text, confidence=1.0, is_final=False, offset=evt.result.offset // 10000, duration=evt.result.duration // 10000)
         )
 
     def _run_loop(self):
