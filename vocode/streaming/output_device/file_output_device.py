@@ -1,4 +1,5 @@
 import wave
+import queue
 import numpy as np
 
 from .base_output_device import BaseOutputDevice
@@ -16,11 +17,8 @@ class FileOutputDevice(BaseOutputDevice):
     ):
         super().__init__(sampling_rate, audio_encoding)
         self.blocksize = self.sampling_rate
-        wav = wave.open(file_path, "wb")
-        wav.setnchannels(1)  # Mono channel
-        wav.setsampwidth(2)  # 16-bit samples
-        wav.setframerate(sampling_rate)
-        self.wav = wav
+        self.file_path = file_path
+        self.queue: queue.Queue[np.ndarray] = queue.Queue()
 
     def consume_nonblocking(self, chunk):
         chunk_arr = np.frombuffer(chunk, dtype=np.int16)
@@ -28,8 +26,16 @@ class FileOutputDevice(BaseOutputDevice):
             block = np.zeros(self.blocksize, dtype=np.int16)
             size = min(self.blocksize, chunk_arr.shape[0] - i)
             block[:size] = chunk_arr[i : i + size]
-            # write the chunk to the wave file
-            self.wav.writeframes(block)
+            self.queue.put_nowait(block)
 
     def terminate(self):
-        self.wav.close()
+        with wave.open(self.file_path, "wb") as wav:
+            wav.setnchannels(1)  # Mono channel
+            wav.setsampwidth(2)  # 16-bit samples
+            wav.setframerate(self.sampling_rate)
+            while True:
+                try:
+                    block = self.queue.get()
+                    wav.writeframes(block)
+                except queue.Empty:
+                    break
