@@ -4,7 +4,10 @@ import logging
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils.worker import InterruptibleEvent
 import websockets
-from websockets.client import WebSocketClientProtocol
+from websockets.client import (
+    connect,
+    WebSocketClientProtocol,
+)
 
 from typing import Awaitable, Callable, Optional, cast
 from vocode.streaming.agent.base_agent import (
@@ -80,8 +83,7 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
         socket_url = self.get_agent_config().respond.url
         self.logger.info("Connecting to web socket agent %s", socket_url)
 
-        # type: ignore[attr-defined]
-        async with websockets.connect(
+        async with connect(
             socket_url,
             extra_headers=extra_headers
         ) as ws:
