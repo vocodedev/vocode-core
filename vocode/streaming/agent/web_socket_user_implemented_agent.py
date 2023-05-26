@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from typing import Dict
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils.worker import InterruptibleEvent
 import websockets
@@ -79,7 +80,7 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
         self.output_queue.put_nowait(interruptible_event)
 
     async def _process(self) -> None:
-        extra_headers: dict[str, str] = {}
+        extra_headers: Dict[str, str] = {}
         socket_url = self.get_agent_config().respond.url
         self.logger.info("Connecting to web socket agent %s", socket_url)
 
