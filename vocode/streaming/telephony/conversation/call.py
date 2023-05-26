@@ -81,6 +81,7 @@ class Call(StreamingConversation):
         self.latest_media_timestamp = 0
         self.twilio_call = None
         self.templater = Templater()
+        self.playing_dtmf = False
 
     @staticmethod
     def from_call_config(
@@ -166,9 +167,13 @@ class Call(StreamingConversation):
             self.latest_media_timestamp = int(media["timestamp"])
             self.receive_audio(chunk)
         elif data["event"] == "stop":
-            self.logger.debug(f"Media WS: Received event 'stop': {message}")
-            self.logger.debug("Stopping...")
-            return PhoneCallAction.CLOSE_WEBSOCKET
+            if self.playing_dtmf:
+                self.logger.debug(f"Media WS: Received event 'stop' but we are currently playing_dtmf: {message}")
+                self.playing_dtmf = False
+            else:
+                self.logger.debug(f"Media WS: Received event 'stop': {message}")
+                self.logger.debug("Stopping...")
+                return PhoneCallAction.CLOSE_WEBSOCKET
         return None
 
     def mark_terminated(self):
@@ -185,11 +190,15 @@ class Call(StreamingConversation):
 
     def play_dtmf(self, dtmf_key: str):
         # Twilio does not support playing DTMF tones as a wav file through the <Stream>.
-        # The workaround is to use Twilio's own <Play> verb to play the DTMF tones.  However, this causes the
-        # websocket to be closed.  So, as part of the same action we also need to re-establish the websocket.
+        # The workaround is to use Twilio's own <Play> verb to play the DTMF tones.
+        # However, this causes the websocket to get a "stop" event.  So, just before playing the tone, we set
+        # a flag so we'll know that the websocket's closing is not an indication that the call should end (as
+        # is normally the case).  Also, we include an additional <Connect> as part of the same request, so as
+        # to re-establish the websocket connection.
         # Reference:
         # https://stackoverflow.com/questions/73129566/sending-dtmf-through-a-stream/76325543
         self.logger.debug(f"Call.play_dtmf {dtmf_key}")
+        self.playing_dtmf = True
         # twiml = self.templater.get_play_digits_twiml(digits=dtmf_key)
         twiml = self.templater.get_play_digits_and_connect_call_twiml(
             call_id=self.twilio_sid,
