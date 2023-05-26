@@ -158,11 +158,11 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         estimated_output_seconds = (
             size_of_output / self.synthesizer_config.sampling_rate
         )
-        if len(message.text) == 0:
-            return 1
-        else:
-            estimated_output_seconds_per_char = estimated_output_seconds / len(message.text)
-            return message.text[: int(seconds / estimated_output_seconds_per_char)]
+        if not message.text:
+            return message.text
+
+        estimated_output_seconds_per_char = estimated_output_seconds / len(message.text)
+        return message.text[: int(seconds / estimated_output_seconds_per_char)]
 
     def get_message_cutoff_from_voice_speed(
         self, message: BaseMessage, seconds: int, words_per_minute: int
