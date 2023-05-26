@@ -30,9 +30,11 @@ from vocode.streaming.models.transcriber import (
     AssemblyAITranscriberConfig,
     PunctuationEndpointingConfig,
 )
+from vocode.streaming.output_device.file_output_device import FileOutputDevice
 from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 from vocode.streaming.transcriber import DeepgramTranscriber, AssemblyAITranscriber
 from vocode.streaming.transcriber.base_transcriber import Transcription
+from vocode.streaming.utils import get_chunk_size_per_second
 from vocode.streaming.utils.worker import InterruptibleEvent
 
 logger = logging.getLogger(__name__)
@@ -80,7 +82,7 @@ parser.add_argument(
 parser.add_argument(
     "--synthesizer_text",
     type=str,
-    default="The only thing we have to fear is fear itself.",
+    default="Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it, “and what is the use of a book,” thought Alice “without pictures or conversations?”",
     help="The text for synthesizers to synthesize",
 )
 parser.add_argument(
@@ -181,16 +183,39 @@ async def run_agents():
 
 
 async def run_synthesizers():
+    def create_file_output_device(synthesizer_name):
+        return FileOutputDevice(
+            f"{synthesizer_name}.wav",
+        )
+
     for synthesizer_name in args.synthesizers:
         if synthesizer_name == "elevenlabs":
+            file_output = create_file_output_device(synthesizer_name)
             synthesizer = ElevenLabsSynthesizer(
-                ElevenLabsSynthesizerConfig.from_output_device()
+                ElevenLabsSynthesizerConfig.from_output_device(file_output)
             )
-        synthesizer_task = synthesizer.start()
-        audio = await synthesizer.output_queue.get()
-        logger.debug(
-            f"[Synthesizer: {synthesizer_name}] Got audio of length {len(audio)}"
+
+        chunk_size = get_chunk_size_per_second(
+            synthesizer.get_synthesizer_config().audio_encoding,
+            synthesizer.get_synthesizer_config().sampling_rate,
         )
+        import time
+
+        start = time.time()
+        print("About to start synthesis")
+        synthesis_result = await synthesizer.create_speech(
+            message=BaseMessage(text=args.synthesizer_text), chunk_size=chunk_size
+        )
+        print(f"Synthesis took {time.time() - start} seconds")
+        chunk_generator = synthesis_result.chunk_generator
+
+        with tqdm(desc=f"{synthesizer_name.title()} Synthesizing") as pbar:
+            while True:
+                pbar.update(1)
+                chunk_result = await chunk_generator.__anext__()
+                file_output.consume_nonblocking(chunk_result.chunk)
+                if chunk_result.is_last_chunk:
+                    break
 
 
 async def run_transcribers():
