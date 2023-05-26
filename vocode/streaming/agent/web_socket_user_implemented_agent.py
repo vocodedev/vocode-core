@@ -80,6 +80,7 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
         socket_url = self.get_agent_config().respond.url
         self.logger.info("Connecting to web socket agent %s", socket_url)
 
+        # type: ignore[attr-defined]
         async with websockets.connect(
             socket_url,
             extra_headers=extra_headers
