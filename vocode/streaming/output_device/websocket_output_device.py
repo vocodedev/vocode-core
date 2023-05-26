@@ -13,8 +13,11 @@ class WebsocketOutputDevice(BaseOutputDevice):
     ):
         super().__init__(sampling_rate, audio_encoding)
         self.ws = ws
-        self.active = True
+        self.active = False
         self.queue: asyncio.Queue[str] = asyncio.Queue()
+
+    def start(self):
+        self.active = True
         self.process_task = asyncio.create_task(self.process())
 
     def mark_closed(self):
