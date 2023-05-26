@@ -60,9 +60,9 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
         agent_response: AgentResponse
 
         if isinstance(message, WebSocketAgentTextMessage):
-            agent_response = AgentResponseMessage(message=BaseMessage(text=message.data.text))
+            agent_response = cast(AgentResponse, AgentResponseMessage(message=BaseMessage(text=message.data.text)))
         elif isinstance(message, WebSocketAgentStopMessage):
-            agent_response = AgentResponseStop()
+            agent_response = cast(AgentResponse, AgentResponseStop())
             self.has_ended = True
         else:
             raise Exception("Unknown Socket message type")
