@@ -51,8 +51,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         create_speech_span = tracer.start_span(
-            "synthesizer.create_total",
-            Context(synthesizer=SynthesizerType.ELEVEN_LABS.value),
+            f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_total",
         )
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:

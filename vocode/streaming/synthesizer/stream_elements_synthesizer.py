@@ -38,8 +38,7 @@ class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         create_speech_span = tracer.start_span(
-            "synthesizer.create_total",
-            Context(synthesizer=SynthesizerType.STREAM_ELEMENTS.value),
+            f"synthesizer.{SynthesizerType.STREAM_ELEMENTS.value.split('_', 1)[-1]}.create_total",
         )
         url_params = {
             "voice": self.voice,

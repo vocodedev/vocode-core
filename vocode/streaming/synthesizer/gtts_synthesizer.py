@@ -36,7 +36,7 @@ class GTTSSynthesizer(BaseSynthesizer):
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         create_speech_span = tracer.start_span(
-            "synthesizer.create_total", Context(synthesizer=SynthesizerType.GTTS.value)
+            f"synthesizer.{SynthesizerType.GTTS.value.split('_', 1)[-1]}.create_total"
         )
         audio_file = BytesIO()
 

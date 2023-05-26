@@ -44,8 +44,7 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         create_speech_span = tracer.start_span(
-            "synthesizer.create_total",
-            Context(synthesizer=SynthesizerType.PLAY_HT.value),
+            f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.create_total",
         )
         headers = {
             "Authorization": f"Bearer {self.api_key}",

@@ -41,14 +41,14 @@ class BarkSynthesizer(BaseSynthesizer[BarkSynthesizerConfig]):
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         create_speech_span = tracer.start_span(
-            "synthesizer.create_total", Context(synthesizer=SynthesizerType.BARK.value)
+            f"synthesizer.{SynthesizerType.BARK.value.split('_', 1)[-1]}.create_total",
         )
         self.logger.debug("Bark synthesizing audio")
         audio_array = await asyncio.get_event_loop().run_in_executor(
             self.thread_pool_executor,
             self.generate_audio,
             message.text,
-            **self.synthesizer_config.generate_kwargs
+            **self.synthesizer_config.generate_kwargs,
         )
         int_audio_arr = (audio_array * np.iinfo(np.int16).max).astype(np.int16)
 

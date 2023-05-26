@@ -33,7 +33,7 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         create_speech_span = tracer.start_span(
-            "synthesizer.create_total", Context(synthesizer=SynthesizerType.COQUI.value)
+            f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.create_total"
         )
         url = COQUI_BASE_URL + "samples"
         if self.voice_prompt:

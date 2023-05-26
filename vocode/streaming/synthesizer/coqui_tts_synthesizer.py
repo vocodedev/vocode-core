@@ -45,8 +45,7 @@ class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         create_speech_span = tracer.start_span(
-            "synthesizer.create_total",
-            Context(synthesizer=SynthesizerType.COQUI_TTS.value),
+            f"synthesizer.{SynthesizerType.COQUI_TTS.value.split('_', 1)[-1]}.create_total",
         )
         tts = self.tts
         audio_data = await asyncio.get_event_loop().run_in_executor(

@@ -218,7 +218,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         create_speech_span = tracer.start_span(
-            "synthesizer.create_total", Context(synthesizer=SynthesizerType.AZURE.value)
+            f"synthesizer.{SynthesizerType.AZURE.value.split('_', 1)[-1]}.create_total",
         )
         # offset = int(self.OFFSET_MS * (self.synthesizer_config.sampling_rate / 1000))
         offset = 0
