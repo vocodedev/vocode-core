@@ -453,6 +453,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.debug("Bot sentiment: %s", new_bot_sentiment)
             self.bot_sentiment = new_bot_sentiment
 
+    async def receive_message(self, message: str):
+        transcripion = Transcription(
+            message=message,
+            confidence=1.0,
+            is_final=True,
+        )
+        await self.transcriptions_worker.process(transcripion)
+
     def receive_audio(self, chunk: bytes):
         self.input_audio_buffer += chunk
         self.total_audio_bytes += len(chunk)
