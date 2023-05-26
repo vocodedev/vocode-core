@@ -24,11 +24,13 @@ from vocode.streaming.input_device.file_input_device import FileInputDevice
 from vocode.streaming.agent import ChatGPTAgent, ChatAnthropicAgent
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.agent import ChatGPTAgentConfig, ChatAnthropicAgentConfig
+from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     AssemblyAITranscriberConfig,
     PunctuationEndpointingConfig,
 )
+from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 from vocode.streaming.transcriber import DeepgramTranscriber, AssemblyAITranscriber
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils.worker import InterruptibleEvent
@@ -74,6 +76,12 @@ parser.add_argument(
     type=str,
     default="test3.wav",
     help="Path to the audio file to transcribe",
+)
+parser.add_argument(
+    "--synthesizer_text",
+    type=str,
+    default="The only thing we have to fear is fear itself.",
+    help="The text for synthesizers to synthesize",
 )
 parser.add_argument(
     "--agent_prompt_preamble",
@@ -172,6 +180,19 @@ async def run_agents():
                 break
 
 
+async def run_synthesizers():
+    for synthesizer_name in args.synthesizers:
+        if synthesizer_name == "elevenlabs":
+            synthesizer = ElevenLabsSynthesizer(
+                ElevenLabsSynthesizerConfig.from_output_device()
+            )
+        synthesizer_task = synthesizer.start()
+        audio = await synthesizer.output_queue.get()
+        logger.debug(
+            f"[Synthesizer: {synthesizer_name}] Got audio of length {len(audio)}"
+        )
+
+
 async def run_transcribers():
     sample_rate = 44100
     chunk_size = 2048
@@ -224,6 +245,8 @@ async def main():
         await run_agents()
     if args.transcribers:
         await run_transcribers()
+    if args.synthesizers:
+        await run_synthesizers()
 
     trace_results = span_exporter.get_finished_spans()
     final_spans = {}
