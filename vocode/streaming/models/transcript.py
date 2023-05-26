@@ -76,6 +76,7 @@ class TranscriptEvent(Event, type=EventType.TRANSCRIPT):
     text: str
     sender: Sender
     timestamp: float
+    metadata: dict = {}
 
     def to_string(self, include_timestamp: bool = False) -> str:
         if include_timestamp:
