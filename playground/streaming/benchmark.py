@@ -1,9 +1,4 @@
-# In this file, write a script that calls multiple transcribers on an audio
-# file. Use opentelemetry to get all the stats and then display them in a
-# table. Will need a span and metric exporter to save all the data to a
-# dictionary or something.
-
-from collections import defaultdict
+import os
 import re
 import json
 import argparse
@@ -150,12 +145,20 @@ parser.add_argument(
     default="benchmark_results.json",
     help="The file to save the benchmark JSON results to",
 )
+parser.add_argument(
+    "--results_dir",
+    type=str,
+    default="benchmark_results",
+    help="The directory to save the text-to-speech output and JSON results to",
+)
 args = parser.parse_args()
 if args.all:
     print("--all is set! Running all supported transcribers, agents, and synthesizers.")
     args.transcribers = transcriber_choices
     args.agents = agent_choices
     args.synthesizers = synthesizer_choices
+
+os.makedirs(args.results_dir, exist_ok=True)
 
 
 def get_transcriber(transcriber_name, file_input):
@@ -227,7 +230,7 @@ async def run_agents():
 async def run_synthesizers():
     def create_file_output_device(synthesizer_name):
         return FileOutputDevice(
-            f"{synthesizer_name}.wav",
+            os.path.join(args.results_dir, f"{synthesizer_name}.wav"),
         )
 
     for synthesizer_name in args.synthesizers:
@@ -349,7 +352,7 @@ async def main():
     else:
         final_results = final_spans
     if args.results_file:
-        with open(args.results_file, "w") as f:
+        with open(os.path.join(args.results_dir, args.results_file), "w") as f:
             json.dump(final_results, f, indent=4)
 
 
