@@ -48,7 +48,7 @@ supported_classes = [
 # Required environment variables containing API key: OPENAI_API_KEY, TELEGRAM_BOT_KEY, and your Vocode synthesizers classes corresponding API key variable
 
 # Your chosen synthesizer provider's corresponding Vocode turn_based class instance
-SYNTH = CoquiSynthesizer()
+SYNTH = CoquiSynthesizer(xtts=True)
 
 # Array of tuples (synthesizer's voice id, nickname, description if text to voice)
 DEFAULT_VOICES = [("d2bd7ccb-1b65-4005-9578-32c4e02d8ddf", "Coqui Default", None)]
@@ -141,7 +141,8 @@ class VocodeBotResponder:
             input = self.transcriber.transcribe(input)
 
         # Get agent response
-        agent_response = self.get_agent(chat_id).respond(input)
+        agent = self.get_agent(chat_id)
+        agent_response = agent.respond(input)
 
         # Set current synthesizer voice from db
         voice_id, _, voice_description = self.db[chat_id].get(
@@ -158,6 +159,8 @@ class VocodeBotResponder:
         synth_response = await self.synthesizer.async_synthesize(agent_response)
 
         # Save conversation to DB
+        self.db[chat_id]["current_conversation"] = pickle.dumps(agent.memory)
+
         return agent_response, synth_response
 
     async def handle_telegram_start(
@@ -231,6 +234,7 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
             return
         else:
             self.db[chat_id]["current_voice"] = user_voices[new_voice_id]
+            self.db[chat_id]["current_conversation"] = None
             await context.bot.send_message(
                 chat_id=chat_id, text="Voice changed successfully!"
             )
@@ -283,7 +287,9 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ):
         chat_id = update.effective_chat.id
-        _, name, description = self.get_current_voice(chat_id)
+        _, name, description = _, voice_name, voice_description = self.db[chat_id].get(
+            "current_voice", (None, None, None)
+        )
         current = name if name else description
         await context.bot.send_message(
             chat_id=chat_id,

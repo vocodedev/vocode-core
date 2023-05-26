@@ -17,10 +17,12 @@ class CoquiSynthesizer(BaseSynthesizer):
         self,
         voice_id: Optional[str] = None,
         voice_prompt: Optional[str] = None,
+        xtts: bool = False,
         api_key: Optional[str] = None,
     ):
         self.voice_id = voice_id or DEFAULT_SPEAKER_ID
         self.voice_prompt = voice_prompt
+        self.xtts = xtts
         self.api_key = getenv("COQUI_API_KEY", api_key)
 
     def synthesize(self, text: str) -> AudioSegment:
@@ -83,7 +85,7 @@ class CoquiSynthesizer(BaseSynthesizer):
         # Create an aiohttp session and post the request asynchronously using await
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=body) as response:
-                assert response.status == 201, await response.text()
+                assert response.status == 201, await response.text() + url + str(headers) + str(body)
                 sample = await response.json()
                 audio_url = sample["audio_url"]
 
@@ -97,17 +99,25 @@ class CoquiSynthesizer(BaseSynthesizer):
 
     def get_request(self, text: str) -> tuple[str, dict[str, str], dict[str, str]]:
         url = COQUI_BASE_URL
-        headers = {"Authorization": f"Bearer {self.api_key}"}
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json", "Accept": "application/json"}
         body = {
             "text": text,
-            "name": "unnamed",
+            "speed": 1,
         }
 
-        # If we have a voice prompt, use that instead of the voice ID
-        if self.voice_prompt is not None:
-            url += "samples/from-prompt/"
-            body["prompt"] = self.voice_prompt
+        if self.xtts:
+            # If we have a voice prompt, use that instead of the voice ID
+            if self.voice_prompt is not None:
+                url += "samples/xtts/render-from-prompt/"
+                body["prompt"] = self.voice_prompt
+            else:
+                url += "samples/xtts/render/"
+                body["voice_id"] = self.voice_id
         else:
-            url += "samples"
-            body["speaker_id"] = self.voice_id
+            if self.voice_prompt is not None:
+                url += "samples/from-prompt/"
+                body["prompt"] = self.voice_prompt
+            else:
+                url += "samples"
+                body["voice_id"] = self.voice_id
         return url, headers, body
