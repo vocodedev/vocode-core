@@ -5,6 +5,7 @@
 
 from collections import defaultdict
 import re
+import json
 import argparse
 import asyncio
 import logging
@@ -90,6 +91,12 @@ parser.add_argument(
     "--all",
     action="store_true",
     help="Run all supported transcribers, agents, and synthesizers. Ignores other arguments.",
+)
+parser.add_argument(
+    "--results_file",
+    type=str,
+    default="benchmark_results.json",
+    help="The file to save the benchmark JSON results to",
 )
 args = parser.parse_args()
 if args.all:
@@ -219,12 +226,12 @@ async def main():
         await run_transcribers()
 
     trace_results = span_exporter.get_finished_spans()
-    spans = defaultdict(list)
+    final_spans = {}
     for span in trace_results:
         duration_ns = span.end_time - span.start_time
         duration_s = duration_ns / 1e9
-        spans[span.name].append(duration_s)
-    print(spans)
+        assert span.name not in final_spans, "Duplicate span name"
+        final_spans[span.name] = duration_s
 
     scope_metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics
     if len(scope_metrics) > 0:
@@ -233,19 +240,24 @@ async def main():
         metric_results = {
             metric.name: metric.data.data_points[0] for metric in metric_results
         }
-        final_results = {}
+        final_metrics = {}
         for metric_name, raw_metric in metric_results.items():
             if re.match(r"transcriber.*\.min_latency", metric_name):
-                final_results[metric_name] = raw_metric.min
+                final_metrics[metric_name] = raw_metric.min
             if re.match(r"transcriber.*\.max_latency", metric_name):
-                final_results[metric_name] = raw_metric.max
+                final_metrics[metric_name] = raw_metric.max
             if re.match(r"transcriber.*\.avg_latency", metric_name):
                 transcriber_str = metric_name.split(".")[1]
-                final_results[metric_name] = (
+                final_metrics[metric_name] = (
                     raw_metric.sum
                     / metric_results[f"transcriber.{transcriber_str}.duration"].sum
                 )
-        print(final_results)
+        final_results = {**final_spans, **final_metrics}
+    else:
+        final_results = final_spans
+    if args.results_file:
+        with open(args.results_file, "w") as f:
+            json.dump(final_results, f, indent=4)
 
 
 if __name__ == "__main__":
