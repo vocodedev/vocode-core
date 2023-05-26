@@ -42,7 +42,7 @@ class Transcript(BaseModel):
         events_manager.publish_event(
             TranscriptEvent(
                 text=text,
-                sender=Sender.HUMAN,
+                sender=sender,
                 timestamp=time.time(),
                 conversation_id=conversation_id,
             )
