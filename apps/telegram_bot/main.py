@@ -116,19 +116,19 @@ class VocodeBotResponder:
         # Augment prompt based on available info
         prompt = self.system_prompt
         if voice_description != None:
-            prompt += "The user described your voice as '{0}''. This is a demo of Coqui TTS's voice creation tool, so your responses are fun and relevant to that voice description."
+            prompt += " Pretend to be {0}. This is a demo of Coqui TTS's voice creation tool, so your responses are fun, always in character, and relevant to that voice description.".format(voice_description)
         if voice_name != None:
             prompt += (
-                "You are {prompt}. Act like {prompt} and identify yourself as {prompt}."
+                " Pretend to be {0}. Act like {0} and identify yourself as {0}.".format(voice_name)
             )
+        print("System prompt: ", prompt)
 
-        agent = ChatGPTAgent(
-            system_prompt=self.system_prompt.format(voice_name),
-        )
         # Load saved conversation if it exists
-        if self.db[chat_id]["current_conversation"]:
-            convo_string = self.db[chat_id]["current_conversation"]
-            agent.memory = pickle.loads(convo_string)
+        convo_string = self.db[chat_id]["current_conversation"]
+        agent = ChatGPTAgent(
+            system_prompt=prompt,
+            memory=pickle.loads(convo_string) if convo_string else None
+        )
 
         return agent
 
@@ -234,6 +234,7 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
             return
         else:
             self.db[chat_id]["current_voice"] = user_voices[new_voice_id]
+            # Reset conversation
             self.db[chat_id]["current_conversation"] = None
             await context.bot.send_message(
                 chat_id=chat_id, text="Voice changed successfully!"
@@ -262,6 +263,8 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
         new_voice = (None, None, voice_description)
         self.db[chat_id]["voices"].append(new_voice)
         self.db[chat_id]["current_voice"] = new_voice
+        # Reset conversation
+        self.db[chat_id]["current_conversation"] = None
 
         await context.bot.send_message(
             chat_id=chat_id, text="Voice changed successfully!"

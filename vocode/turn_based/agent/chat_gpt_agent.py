@@ -23,6 +23,7 @@ class ChatGPTAgent(BaseAgent):
         model_name: str = "gpt-3.5-turbo",
         temperature: float = 0.7,
         max_tokens: int = 100,
+        memory: Optional[ConversationBufferMemory] = None,
     ):
         super().__init__(initial_message=initial_message)
         openai.api_key = getenv("OPENAI_API_KEY", api_key)
@@ -35,7 +36,7 @@ class ChatGPTAgent(BaseAgent):
                 HumanMessagePromptTemplate.from_template("{input}"),
             ]
         )
-        self.memory = ConversationBufferMemory(return_messages=True)
+        self.memory = memory if memory else ConversationBufferMemory(return_messages=True)
         if initial_message:
             self.memory.chat_memory.add_ai_message(initial_message)
         self.llm = ChatOpenAI(  # type: ignore
