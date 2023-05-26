@@ -8,6 +8,7 @@ from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 import logging
 import time
 import typing
+import os
 
 from opentelemetry import trace
 from opentelemetry.trace import Span
@@ -559,7 +560,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 conversation_id=self.id, transcript=self.transcript
             )
         )
-        transcript_name = f"cache/{int(self.transcript.start_time or 0)}.json"
+        transcript_name = f"cache/{self.id}.json"
+        os.makedirs("cache", exist_ok=True)
         with open(transcript_name, "w") as f:
             f.write(self.transcript.json())
 
