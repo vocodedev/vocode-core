@@ -119,6 +119,18 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
+                file_path = f"cache/transcript_{len(self.conversation.transcript.messages)}.wav"
+                save_as_wav(
+                    file_path, 
+                    self.conversation.transcriber.trim_audio(
+                        self.conversation.input_audio_buffer, 
+                        self.conversation.total_audio_bytes, 
+                        transcription.offset,
+                        transcription.duration), 
+                    self.conversation.transcriber.transcriber_config
+                )
+                # Empty buffer to save space
+                self.conversation.input_audio_buffer = bytearray()
                 self.conversation.transcript.add_human_message(
                     text=transcription.message,
                     events_manager=self.conversation.events_manager,
