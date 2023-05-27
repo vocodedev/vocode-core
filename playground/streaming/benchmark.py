@@ -268,7 +268,8 @@ async def run_synthesizers():
             synthesizer.get_synthesizer_config().sampling_rate,
         )
 
-        if synthesizer_name in STREAMING_SYNTHESIZERS:
+        current_synthesizer_is_streaming = synthesizer_name in STREAMING_SYNTHESIZERS
+        if current_synthesizer_is_streaming:
             total_synthesis_span = tracer.start_span(
                 f"synthesizer.{synthesizer_name}.create_total"
             )
@@ -276,9 +277,20 @@ async def run_synthesizers():
                 f"synthesizer.{synthesizer_name}.create_first"
             )
 
-        synthesis_result = await synthesizer.create_speech(
-            message=BaseMessage(text=args.synthesizer_text), chunk_size=chunk_size
-        )
+        try:
+            synthesis_result = await synthesizer.create_speech(
+                message=BaseMessage(text=args.synthesizer_text), chunk_size=chunk_size
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                f"[Synthesizer: {synthesizer_name}] Timed out while synthesizing. Skipping {synthesizer_name}..."
+            )
+            continue
+        except Exception as e:
+            logger.error(
+                f"[Synthesizer: {synthesizer_name}] Exception while synthesizing: {e}. Skipping {synthesizer_name}..."
+            )
+            continue
         chunk_generator = synthesis_result.chunk_generator
 
         with tqdm(desc=f"{synthesizer_name.title()} Synthesizing") as pbar:
@@ -286,14 +298,14 @@ async def run_synthesizers():
             while True:
                 pbar.update(1)
                 chunk_result = await chunk_generator.__anext__()
-                if first_chunk:
+                if current_synthesizer_is_streaming and first_chunk:
                     first_chunk = False
                     first_synthesis_span.end()
                 file_output.consume_nonblocking(chunk_result.chunk)
                 if chunk_result.is_last_chunk:
                     break
 
-        if synthesizer_name in STREAMING_SYNTHESIZERS:
+        if current_synthesizer_is_streaming:
             total_synthesis_span.end()
 
 
@@ -357,7 +369,7 @@ async def main():
     for span in trace_results:
         duration_ns = span.end_time - span.start_time
         duration_s = duration_ns / 1e9
-        assert span.name not in final_spans, "Duplicate span name"
+        assert span.name not in final_spans, f"Duplicate span name: {span.name}"
         final_spans[span.name] = duration_s
 
     scope_metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics
