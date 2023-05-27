@@ -93,8 +93,8 @@ STREAMING_SYNTHESIZERS = ["azure"]
 
 transcriber_choices = ["deepgram", "assemblyai"]
 agent_choices = [
-    "openai_gpt-3.5-turbo",
-    "openai_gpt-4",
+    "gpt_gpt-3.5-turbo",
+    "gpt_gpt-4",
     "anthropic_claude-v1",
     "anthropic_claude-instant-v1",
 ]
@@ -211,7 +211,7 @@ metrics.set_meter_provider(provider)
 async def run_agents():
     for agent_name in tqdm(args.agents, desc="Agents"):
         company, model_name = agent_name.split("_")
-        if company == "openai":
+        if company == "gpt":
             agent = ChatGPTAgent(
                 ChatGPTAgentConfig(
                     initial_message=None,
@@ -401,7 +401,7 @@ async def main():
                     / metric_results[f"transcriber.{transcriber_str}.duration"].sum
                 )
             if re.match(r"agent.*\.total_characters", metric_name):
-                agent_str = metric_name.split(".")[1]
+                agent_str = metric_name.split(".", 1)[1].rsplit(".", 1)[0]
                 final_metrics[f"agent.{agent_str}.characters_per_second"] = (
                     raw_metric.value / final_spans[f"agent.{agent_str}.generate_total"]
                 )
