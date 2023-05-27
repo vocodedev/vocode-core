@@ -8,7 +8,7 @@ from tqdm import tqdm
 from opentelemetry import trace, metrics
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.metrics.export import (
     InMemoryMetricReader,
 )
@@ -36,6 +36,7 @@ from vocode.streaming.models.transcriber import (
     AssemblyAITranscriberConfig,
     PunctuationEndpointingConfig,
 )
+from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.output_device.file_output_device import FileOutputDevice
 from vocode.streaming.synthesizer import (
     AzureSynthesizer,
@@ -56,6 +57,8 @@ from vocode.streaming.utils.worker import InterruptibleEvent
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+tracer = trace.get_tracer(__name__)
+
 
 # Create the parser
 parser = argparse.ArgumentParser(
@@ -76,10 +79,11 @@ synthesizer_classes = {
 }
 
 synthesizer_classes = {
-    k: v
-    for k, v in synthesizer_classes.items()
-    if k in ["elevenlabs", "google", "azure", "gtts", "bark"]
+    k: v for k, v in synthesizer_classes.items() if k not in ["coquitts", "bark"]
 }
+
+# These synthesizers stream output so they need to be traced within this file.
+STREAMING_SYNTHESIZERS = ["azure"]
 
 
 transcriber_choices = ["deepgram", "assemblyai"]
@@ -90,24 +94,24 @@ parser.add_argument(
     "--transcribers",
     type=str,
     nargs="*",
-    default=["deepgram", "assemblyai"],
-    choices=transcriber_choices,
+    default=[],
+    choices=transcriber_choices + ["all"],
     help="The list of transcribers to benchmark",
 )
 parser.add_argument(
     "--agents",
     type=str,
     nargs="*",
-    default=["openai_gpt-3.5-turbo"],
-    choices=agent_choices,
+    default=[],
+    choices=agent_choices + ["all"],
     help="The list of agents to benchmark. Each agent should be of the form <company>_<model_name>.",
 )
 parser.add_argument(
     "--synthesizers",
     type=str,
     nargs="*",
-    default=["elevenlabs"],
-    choices=synthesizer_choices,
+    default=[],
+    choices=synthesizer_choices + ["all"],
     help="The list of synthesizers to benchmark",
 )
 parser.add_argument(
@@ -156,6 +160,13 @@ if args.all:
     print("--all is set! Running all supported transcribers, agents, and synthesizers.")
     args.transcribers = transcriber_choices
     args.agents = agent_choices
+    args.synthesizers = synthesizer_choices
+
+if "all" in args.transcribers:
+    args.transcribers = transcriber_choices
+if "all" in args.agents:
+    args.agents = agent_choices
+if "all" in args.synthesizers:
     args.synthesizers = synthesizer_choices
 
 os.makedirs(args.results_dir, exist_ok=True)
@@ -207,6 +218,7 @@ async def run_agents():
                     model_name=model_name,
                 )
             )
+        agent.attach_transcript(Transcript())
         agent_task = agent.start()
         message = AgentInput(
             transcription=Transcription(
@@ -239,6 +251,10 @@ async def run_synthesizers():
             synthesizer_name
         ]
         extra_config = {}
+        if synthesizer_name == "playht":
+            extra_config["voice_id"] = "larry"
+        elif synthesizer_name == "rime":
+            extra_config["speaker"] = "young_male_unmarked-1"
         synthesizer = synthesizer_class(
             synthesizer_config_class.from_output_device(file_output, **extra_config)
         )
@@ -249,21 +265,33 @@ async def run_synthesizers():
         )
         import time
 
-        start = time.time()
-        print("About to start synthesis")
+        if synthesizer_name in STREAMING_SYNTHESIZERS:
+            total_synthesis_span = tracer.start_span(
+                f"synthesizer.{synthesizer_name}.create_total"
+            )
+            first_synthesis_span = tracer.start_span(
+                f"synthesizer.{synthesizer_name}.create_first"
+            )
+
         synthesis_result = await synthesizer.create_speech(
             message=BaseMessage(text=args.synthesizer_text), chunk_size=chunk_size
         )
-        print(f"Synthesis took {time.time() - start} seconds")
         chunk_generator = synthesis_result.chunk_generator
 
         with tqdm(desc=f"{synthesizer_name.title()} Synthesizing") as pbar:
+            first_chunk = True
             while True:
                 pbar.update(1)
                 chunk_result = await chunk_generator.__anext__()
+                if first_chunk:
+                    first_chunk = False
+                    first_synthesis_span.end()
                 file_output.consume_nonblocking(chunk_result.chunk)
                 if chunk_result.is_last_chunk:
                     break
+
+        if synthesizer_name in STREAMING_SYNTHESIZERS:
+            total_synthesis_span.end()
 
 
 async def run_transcribers():
@@ -332,7 +360,6 @@ async def main():
     scope_metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics
     if len(scope_metrics) > 0:
         metric_results = scope_metrics[0].metrics
-        print(metric_results)
         metric_results = {
             metric.name: metric.data.data_points[0] for metric in metric_results
         }
@@ -351,6 +378,7 @@ async def main():
         final_results = {**final_spans, **final_metrics}
     else:
         final_results = final_spans
+    print(json.dumps(final_results, indent=4))
     if args.results_file:
         with open(os.path.join(args.results_dir, args.results_file), "w") as f:
             json.dump(final_results, f, indent=4)
