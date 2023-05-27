@@ -141,7 +141,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
     async def handle_generate_response(
         self, transcription: Transcription, conversation_id: str
     ) -> bool:
-        tracer_name_start = f"{AGENT_TRACE_NAME}.{self.agent_config.type}"
+        tracer_name_start = f"{AGENT_TRACE_NAME}.{self.agent_config.type}-{self.agent_config.model_name}"
         agent_span = tracer.start_span(
             f"{tracer_name_start}.generate_total"  # type: ignore
         )
@@ -170,7 +170,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         self, transcription: Transcription, conversation_id: str
     ) -> bool:
         try:
-            with tracer.start_as_current_span(f"{AGENT_TRACE_NAME}.{self.agent_config.type}.respond_total"):
+            with tracer.start_as_current_span(
+                f"{AGENT_TRACE_NAME}.{self.agent_config.type}.respond_total"
+            ):
                 response, should_stop = await self.respond(
                     transcription.message,
                     is_interrupt=transcription.is_interrupt,
