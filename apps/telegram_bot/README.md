@@ -4,6 +4,7 @@
 
 1. Set up the configuration for your telegram bot in `main.py`.
 2. Set up an .env file using the template
+3. Create a Telegram Bot token and link using The Bot Father: https://t.me/botfather
 
 ```
 cp .env.template .env
@@ -23,12 +24,13 @@ docker build -t vocode-telegram-bot .
 docker run --env-file=.env -p 3000:3000 -t vocode-telegram-bot
 ```
 
-Now you have a client backend hosted at localhost:3000 to pass into the Vocode React SDK. You'll likely need to tunnel port 3000 to ngrok / host your server in order to use it in the React SDK.
-
+Now you have a telegram bot running. Visit the link you chose during the Telegram bot creation process
+.
 ## Non-docker setup
 
 `main.py` is just a simple python script, so you can run it with:
 
 ```
-python main.py
+poetry install
+poetry run python main.py
 ```

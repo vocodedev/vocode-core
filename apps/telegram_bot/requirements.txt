@@ -1,8 +1,0 @@
-numpy>=1.22.2,<2.0.0
-Flask>=2.2.0,<3.0.0
-urllib3>=1.26.12,<2.0.0
-pydub>=0.25.1,<1.0.0
-python-telegram-bot==20.3
-telegram==0.0.1
-elevenlabs>=0.2.6,<0.3.0
-vocode==0.1.110
