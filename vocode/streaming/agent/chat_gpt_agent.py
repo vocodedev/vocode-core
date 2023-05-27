@@ -1,6 +1,6 @@
 import logging
 
-from typing import Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import openai
 from typing import AsyncGenerator, Optional, Tuple
@@ -41,12 +41,13 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         )
         self.is_first_response = True
 
-    def get_chat_parameters(self, messages: Optional[str] = None):
+    def get_chat_parameters(self, messages: Optional[List] = None):
+        assert self.transcript is not None
         messages = messages or format_openai_chat_messages_from_transcript(
             self.transcript, self.agent_config.prompt_preamble
         )
 
-        parameters = {
+        parameters: Dict[str, Any] = {
             "messages": messages,
             "max_tokens": self.agent_config.max_tokens,
             "temperature": self.agent_config.temperature,

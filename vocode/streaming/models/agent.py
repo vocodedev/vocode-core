@@ -49,9 +49,9 @@ class WebhookConfig(BaseModel):
 
 
 class AzureOpenAIConfig(BaseModel):
-    api_type: Optional[str] = AZURE_OPENAI_DEFAULT_API_TYPE
+    api_type: str = AZURE_OPENAI_DEFAULT_API_TYPE
     api_version: Optional[str] = AZURE_OPENAI_DEFAULT_API_VERSION
-    engine: Optional[str] = AZURE_OPENAI_DEFAULT_ENGINE
+    engine: str = AZURE_OPENAI_DEFAULT_ENGINE
 
 
 class AgentConfig(TypedModel, type=AgentType.BASE.value):
