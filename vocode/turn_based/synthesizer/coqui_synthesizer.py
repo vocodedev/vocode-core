@@ -1,4 +1,5 @@
 import io
+import re
 from typing import Optional, List
 from pydub import AudioSegment
 import requests
@@ -43,22 +44,27 @@ class CoquiSynthesizer(BaseSynthesizer):
         return AudioSegment.from_wav(io.BytesIO(response.content))  # type: ignore
 
     def split_text(self, text: str) -> List[str]:
-        # This method splits a long text into smaller chunks of less than 250 characters
-        # It tries to preserve the sentence boundaries and avoid splitting words
+        sentence_enders = re.compile('[.!?]')
+        # Split the text into sentences using the regular expression
+        sentences = sentence_enders.split(text)
         chunks = []
-        start = 0
-        end = MAX_TEXT_LENGTH
-        while start < len(text):
-            # Find the last space or punctuation before the end position
-            while end > start and end < len(text) and not (text[end] in ".?!"):
-                end -= 1
-            # If no space or punctuation is found, just split at the end position
-            if end == start:
-                end = start + MAX_TEXT_LENGTH
-            # Add the chunk to the list and update the start and end positions
-            chunks.append(text[start:end])
-            start = end
-            end = min(start + MAX_TEXT_LENGTH, len(text))
+        current_chunk = ""
+        for sentence in sentences:
+            # Strip leading and trailing whitespace from the sentence
+            sentence = sentence.strip()
+            # If the sentence is empty, skip it
+            if not sentence:
+                continue
+            # Concatenate the current chunk and the sentence, and add a period to the end
+            proposed_chunk = current_chunk + sentence
+            if len(proposed_chunk) > 250:
+                chunks.append(current_chunk.strip())
+                current_chunk = sentence + "."
+            else:
+                current_chunk = proposed_chunk + "."
+        # If there is a current chunk at the end, add it to the list of chunks
+        if current_chunk:
+            chunks.append(current_chunk.strip())
         return chunks
 
     async def async_synthesize(self, text: str) -> AudioSegment:
