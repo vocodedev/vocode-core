@@ -1,9 +1,29 @@
 import wave
-import queue
+from asyncio import Queue
+import asyncio
 import numpy as np
 
 from .base_output_device import BaseOutputDevice
 from vocode.streaming.models.audio_encoding import AudioEncoding
+from vocode.streaming.utils.worker import ThreadAsyncWorker
+
+
+class FileWriterWorker(ThreadAsyncWorker):
+    def __init__(self, input_queue: Queue, wave) -> None:
+        super().__init__(input_queue)
+        self.wav = wave
+
+    def _run_loop(self):
+        while True:
+            try:
+                block = self.input_janus_queue.sync_q.get()
+                self.wav.writeframes(block)
+            except asyncio.CancelledError:
+                return
+
+    def terminate(self):
+        super().terminate()
+        self.wav.close()
 
 
 class FileOutputDevice(BaseOutputDevice):
@@ -17,8 +37,16 @@ class FileOutputDevice(BaseOutputDevice):
     ):
         super().__init__(sampling_rate, audio_encoding)
         self.blocksize = self.sampling_rate
-        self.file_path = file_path
-        self.queue: queue.Queue[np.ndarray] = queue.Queue()
+        self.queue: Queue[np.ndarray] = Queue()
+
+        wav = wave.open(file_path, "wb")
+        wav.setnchannels(1)  # Mono channel
+        wav.setsampwidth(2)  # 16-bit samples
+        wav.setframerate(self.sampling_rate)
+        self.wav = wav
+
+        self.thread_worker = FileWriterWorker(self.queue, wav)
+        self.thread_worker.start()
 
     def consume_nonblocking(self, chunk):
         chunk_arr = np.frombuffer(chunk, dtype=np.int16)
@@ -29,13 +57,4 @@ class FileOutputDevice(BaseOutputDevice):
             self.queue.put_nowait(block)
 
     def terminate(self):
-        with wave.open(self.file_path, "wb") as wav:
-            wav.setnchannels(1)  # Mono channel
-            wav.setsampwidth(2)  # 16-bit samples
-            wav.setframerate(self.sampling_rate)
-            while True:
-                try:
-                    block = self.queue.get()
-                    wav.writeframes(block)
-                except queue.Empty:
-                    break
+        self.thread_worker.terminate()
