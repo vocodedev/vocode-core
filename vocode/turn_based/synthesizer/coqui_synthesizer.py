@@ -31,7 +31,7 @@ class CoquiSynthesizer(BaseSynthesizer):
         text_chunks = self.split_text(text)
         # Synthesize each chunk and concatenate the results
         audio_chunks = [self.synthesize_chunk(chunk) for chunk in text_chunks]
-        return sum(audio_chunks) # type: ignore
+        return sum(audio_chunks)  # type: ignore
 
     def synthesize_chunk(self, text: str) -> AudioSegment:
         url, headers, body = self.get_request(text)
@@ -44,7 +44,7 @@ class CoquiSynthesizer(BaseSynthesizer):
         return AudioSegment.from_wav(io.BytesIO(response.content))  # type: ignore
 
     def split_text(self, text: str) -> List[str]:
-        sentence_enders = re.compile('[.!?]')
+        sentence_enders = re.compile("[.!?]")
         # Split the text into sentences using the regular expression
         sentences = sentence_enders.split(text)
         chunks = []
@@ -83,7 +83,7 @@ class CoquiSynthesizer(BaseSynthesizer):
         audio_chunks = await asyncio.gather(*tasks)
 
         # Concatenate and return the results
-        return sum(audio_chunks)
+        return sum(audio_chunks)  # type: ignore
 
     async def async_synthesize_chunk(self, text: str) -> AudioSegment:
         url, headers, body = self.get_request(text)
@@ -91,7 +91,9 @@ class CoquiSynthesizer(BaseSynthesizer):
         # Create an aiohttp session and post the request asynchronously using await
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=body) as response:
-                assert response.status == 201, await response.text() + url + str(headers) + str(body)
+                assert response.status == 201, (
+                    await response.text() + url + str(headers) + str(body)
+                )
                 sample = await response.json()
                 audio_url = sample["audio_url"]
 
@@ -105,7 +107,11 @@ class CoquiSynthesizer(BaseSynthesizer):
 
     def get_request(self, text: str) -> tuple[str, dict[str, str], dict[str, str]]:
         url = COQUI_BASE_URL
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json", "Accept": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
         body = {
             "text": text,
             "speed": 1,
