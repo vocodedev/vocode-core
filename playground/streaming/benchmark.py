@@ -56,6 +56,8 @@ from vocode.streaming.utils import get_chunk_size_per_second
 from vocode.streaming.utils.worker import InterruptibleEvent
 
 logger = logging.getLogger(__name__)
+logging.basicConfig()
+
 logger.setLevel(logging.DEBUG)
 tracer = trace.get_tracer(__name__)
 
@@ -79,7 +81,9 @@ synthesizer_classes = {
 }
 
 synthesizer_classes = {
-    k: v for k, v in synthesizer_classes.items() if k not in ["coquitts", "bark"]
+    k: v
+    for k, v in synthesizer_classes.items()
+    if k not in ["coqui", "coquitts", "bark"]
 }
 
 # These synthesizers stream output so they need to be traced within this file.
@@ -87,7 +91,7 @@ STREAMING_SYNTHESIZERS = ["azure"]
 
 
 transcriber_choices = ["deepgram", "assemblyai"]
-agent_choices = ["openai_gpt-3.5-turbo", "anthropic_claude-v1"]
+agent_choices = ["openai_gpt-3.5-turbo", "openai_gpt-4", "anthropic_claude-v1"]
 synthesizer_choices = list(synthesizer_classes)
 
 parser.add_argument(
@@ -129,7 +133,7 @@ parser.add_argument(
 parser.add_argument(
     "--agent_prompt_preamble",
     type=str,
-    default="The AI is having a pleasant conversation about life",
+    default="The AI is having a very short and pleasant conversation about life",
     help="The prompt preamble to use for the agent",
 )
 parser.add_argument(
@@ -230,7 +234,7 @@ async def run_agents():
 
         while True:
             try:
-                message = await asyncio.wait_for(agent.output_queue.get(), timeout=5)
+                message = await asyncio.wait_for(agent.output_queue.get(), timeout=15)
                 logger.debug(
                     f"[Agent: {agent_name}] Response from API: {message.payload.message.text}"
                 )
@@ -263,7 +267,6 @@ async def run_synthesizers():
             synthesizer.get_synthesizer_config().audio_encoding,
             synthesizer.get_synthesizer_config().sampling_rate,
         )
-        import time
 
         if synthesizer_name in STREAMING_SYNTHESIZERS:
             total_synthesis_span = tracer.start_span(
