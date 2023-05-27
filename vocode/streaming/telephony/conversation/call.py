@@ -119,7 +119,7 @@ class Call(StreamingConversation):
 
         self.twilio_call = self.twilio_client.calls(self.twilio_sid).fetch()
 
-        if self.twilio_call.answered_by in ("machine_start", "fax"):
+        if self.twilio_call is not None and self.twilio_call.answered_by in ("machine_start", "fax"):
             self.logger.info(f"Call answered by {self.twilio_call.answered_by}")
             self.twilio_call.update(status="completed")
         else:
@@ -205,4 +205,7 @@ class Call(StreamingConversation):
             base_url=self.base_url,
             digits=dtmf_key)
         self.logger.debug(f"twiml: {twiml}")
-        self.twilio_call.update(twiml=twiml)
+        if self.twilio_call is None:
+            self.logger.error("twilio_call is None")
+        else:
+            self.twilio_call.update(twiml=twiml)
