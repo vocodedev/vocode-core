@@ -167,22 +167,22 @@ class Call(StreamingConversation):
             self.latest_media_timestamp = int(media["timestamp"])
             self.receive_audio(chunk)
         elif data["event"] == "stop":
-            if self.playing_dtmf:
-                self.logger.debug(f"Media WS: Received event 'stop' but we are currently playing_dtmf: {message}")
-                self.playing_dtmf = False
-            else:
-                self.logger.debug(f"Media WS: Received event 'stop': {message}")
-                self.logger.debug("Stopping...")
-                return PhoneCallAction.CLOSE_WEBSOCKET
+            self.logger.debug(f"Media WS: Received event 'stop': {message}")
+            self.logger.debug("Stopping...")
+            return PhoneCallAction.CLOSE_WEBSOCKET
         return None
 
     def mark_terminated(self):
         super().mark_terminated()
-        end_twilio_call(
-            self.twilio_client,
-            self.twilio_sid,
-        )
-        self.config_manager.delete_config(self.id)
+        if self.playing_dtmf:
+            self.logger.debug("Not ending call because we're playing DTMF tones")
+        else:
+            self.logger.debug("Ending call")
+            end_twilio_call(
+                self.twilio_client,
+                self.twilio_sid,
+            )
+            self.config_manager.delete_config(self.id)
 
     def tear_down(self):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
@@ -201,7 +201,7 @@ class Call(StreamingConversation):
         self.playing_dtmf = True
         # twiml = self.templater.get_play_digits_twiml(digits=dtmf_key)
         twiml = self.templater.get_play_digits_and_connect_call_twiml(
-            call_id=self.twilio_sid,
+            call_id=self.id,
             base_url=self.base_url,
             digits=dtmf_key)
         self.logger.debug(f"twiml: {twiml}")
