@@ -60,6 +60,7 @@ logging.basicConfig()
 
 logger.setLevel(logging.DEBUG)
 tracer = trace.get_tracer(__name__)
+meter = metrics.get_meter(__name__)
 
 
 # Create the parser
@@ -91,7 +92,12 @@ STREAMING_SYNTHESIZERS = ["azure"]
 
 
 transcriber_choices = ["deepgram", "assemblyai"]
-agent_choices = ["openai_gpt-3.5-turbo", "openai_gpt-4", "anthropic_claude-v1"]
+agent_choices = [
+    "openai_gpt-3.5-turbo",
+    "openai_gpt-4",
+    "anthropic_claude-v1",
+    "anthropic_claude-instant-v1",
+]
 synthesizer_choices = list(synthesizer_classes)
 
 parser.add_argument(
@@ -232,9 +238,13 @@ async def run_agents():
         )
         await agent.input_queue.put(InterruptibleEvent(message))
 
+        length_meter = meter.create_counter(
+            f"agent.agent_chat_{company}-{model_name}.total_characters"
+        )
         while True:
             try:
                 message = await asyncio.wait_for(agent.output_queue.get(), timeout=15)
+                length_meter.add(len(message.payload.message.text))
                 logger.debug(
                     f"[Agent: {agent_name}] Response from API: {message.payload.message.text}"
                 )
@@ -390,6 +400,12 @@ async def main():
                     raw_metric.sum
                     / metric_results[f"transcriber.{transcriber_str}.duration"].sum
                 )
+            if re.match(r"agent.*\.total_characters", metric_name):
+                agent_str = metric_name.split(".")[1]
+                final_metrics[f"agent.{agent_str}.characters_per_second"] = (
+                    raw_metric.value / final_spans[f"agent.{agent_str}.generate_total"]
+                )
+
         final_results = {**final_spans, **final_metrics}
     else:
         final_results = final_spans
