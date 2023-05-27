@@ -139,6 +139,7 @@ class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value
     api_key: Optional[str] = None
     voice_id: Optional[str] = COQUI_DEFAULT_SPEAKER_ID
     voice_prompt: Optional[str] = None
+    xtts: Optional[bool] = False
     sentiment_config = SentimentConfig(
         emotions=["neutral", "happy", "sad", "surprise", "angry", "dull"]
     )

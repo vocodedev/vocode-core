@@ -5,6 +5,7 @@ import typing
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
     CoquiTTSSynthesizerConfig,
+    CoquiSynthesizerConfig,
     ElevenLabsSynthesizerConfig,
     GTTSSynthesizerConfig,
     GoogleSynthesizerConfig,
@@ -24,6 +25,7 @@ from vocode.streaming.synthesizer.stream_elements_synthesizer import (
     StreamElementsSynthesizer,
 )
 from vocode.streaming.synthesizer.coqui_tts_synthesizer import CoquiTTSSynthesizer
+from vocode.streaming.synthesizer.coqui_synthesizer import CoquiSynthesizer
 
 
 class SynthesizerFactory:
@@ -60,6 +62,11 @@ class SynthesizerFactory:
         elif synthesizer_config.type == SynthesizerType.STREAM_ELEMENTS:
             return StreamElementsSynthesizer(
                 typing.cast(StreamElementsSynthesizerConfig, synthesizer_config),
+                logger=logger,
+            )
+        elif synthesizer_config.type == SynthesizerType.COQUI:
+            return CoquiSynthesizer(
+                typing.cast(CoquiSynthesizerConfig, synthesizer_config),
                 logger=logger,
             )
         elif synthesizer_config.type == SynthesizerType.COQUI_TTS:
