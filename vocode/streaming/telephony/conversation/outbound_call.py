@@ -39,9 +39,11 @@ class OutboundCall:
         conversation_id: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
         mobile_only: bool = True,
+        digits: Optional[str] = None, # Keys to press when the call connects, see send_digits https://www.twilio.com/docs/voice/api/call-resource#create-a-call-resource
     ):
         self.base_url = base_url
         self.to_phone = to_phone
+        self.digits = digits
         self.from_phone = from_phone
         self.mobile_only = mobile_only
         self.config_manager = config_manager
@@ -109,6 +111,7 @@ class OutboundCall:
             to_phone=self.to_phone,
             from_phone=self.from_phone,
             record=self.twilio_config.record,
+            digits=self.digits,
         )
         call_config = CallConfig(
             transcriber_config=self.transcriber_config,
