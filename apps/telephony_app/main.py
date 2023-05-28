@@ -12,6 +12,12 @@ from vocode.streaming.telephony.server.base import InboundCallConfig, TelephonyS
 from speller_agent import SpellerAgentFactory
 import sys
 
+# if running from python, this will load the local .env
+# docker-compose will load the .env file by itself
+from dotenv import load_dotenv
+
+load_dotenv()
+
 app = FastAPI(docs_url=None)
 
 logging.basicConfig()
@@ -20,7 +26,7 @@ logger.setLevel(logging.DEBUG)
 
 config_manager = RedisConfigManager()
 
-BASE_URL = os.environ["BASE_URL"]
+BASE_URL = os.getenv("BASE_URL")
 
 if not BASE_URL:
     ngrok_auth = os.environ.get("NGROK_AUTH_TOKEN")
@@ -30,7 +36,10 @@ if not BASE_URL:
 
     # Open a ngrok tunnel to the dev server
     BASE_URL = ngrok.connect(port).public_url.replace("https://", "")
-    logger.info("ngrok tunnel \"{}\" -> \"http://127.0.0.1:{}\"".format(BASE_URL, port))
+    logger.info('ngrok tunnel "{}" -> "http://127.0.0.1:{}"'.format(BASE_URL, port))
+
+if not BASE_URL:
+    raise ValueError("BASE_URL must be set in environment if not using pyngrok")
 
 telephony_server = TelephonyServer(
     base_url=BASE_URL,
