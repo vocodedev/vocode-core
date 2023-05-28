@@ -404,7 +404,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if mark_ready:
             await mark_ready()
         if self.synthesizer.get_synthesizer_config().sentiment_config:
-            self.update_bot_sentiment()
+            await self.update_bot_sentiment()
         self.active = True
         if self.synthesizer.get_synthesizer_config().sentiment_config:
             self.track_bot_sentiment_task = asyncio.create_task(
@@ -544,9 +544,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
     def terminate(self):
         self.mark_terminated()
         self.events_manager.publish_event(
-            TranscriptCompleteEvent(
-                conversation_id=self.id, transcript=self.transcript
-            )
+            TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
         )
         if self.check_for_idle_task:
             self.logger.debug("Terminating check_for_idle Task")
