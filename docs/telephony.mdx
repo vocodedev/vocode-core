@@ -99,13 +99,7 @@ Or if you prefer to use Docker for this part:
 docker run -dp 6379:6379 -it redis/redis-stack:latest
 ```
 
-3. Load the environment variables
-
-```
-source .env
-```
-
-4. Run the server with `uvicorn` (should be already installed in step 1).
+3. Run the server with `uvicorn` (should be already installed in step 1).
 
 ```
 uvicorn main:app --port 3000
@@ -270,16 +264,19 @@ if __name__ == '__main__':
 Here's what happens under the hood for an outbound call.
 
 The `OutboundCall` calls Twilio to initiate the call, giving it a URL to call after the call is initiated:
+
 ```
         twilio_call = self.twilio_client.calls.create(
             url=f"https://{self.base_url}/twiml/initiate_call/{self.conversation_id}",
 ```
 
-In your main.py you create and start a `TelephonyServer`.  The TelephonyServer itself includes a couple of routers:
-* `TwiMLRouter`
-* `CallsRouter`
+In your main.py you create and start a `TelephonyServer`. The TelephonyServer itself includes a couple of routers:
+
+- `TwiMLRouter`
+- `CallsRouter`
 
 `TwiMLRouter` includes the matching route:
+
 ```
         self.router.add_api_route(
             "/twiml/initiate_call/{id}", self.call_twiml, methods=["POST"]
@@ -287,6 +284,7 @@ In your main.py you create and start a `TelephonyServer`.  The TelephonyServer i
 ```
 
 This route returns the template `connect_call.xml` which uses TwiML to tell Twilio to establish a websocket with a given URL:
+
 ```
 <?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -297,17 +295,18 @@ This route returns the template `connect_call.xml` which uses TwiML to tell Twil
 ```
 
 CallsRouter includes that second route:
+
 ```
  self.router.websocket("/connect_call/{id}")(self.connect_call)
 ```
 
-This is where we get the websocket connection.  We then create the `Call` object and start it:
+This is where we get the websocket connection. We then create the `Call` object and start it:
+
 ```
 await call.attach_ws_and_start(websocket)
 ```
 
 The `Call` is a kind of `StreamingConversation` that manages the various pieces: transcriber, synthesizer, agent, etc.
-
 
 ## Inbound Calls
 
