@@ -21,7 +21,7 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_CHUNK_SIZE,
     DEFAULT_SAMPLING_RATE,
 )
-from vocode.streaming.telephony.twilio import create_twilio_client
+from vocode.streaming.telephony.utils import create_twilio_client
 from vocode.streaming.utils import create_conversation_id
 
 
@@ -39,7 +39,9 @@ class OutboundCall:
         conversation_id: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
         mobile_only: bool = True,
-        digits: Optional[str] = None, # Keys to press when the call connects, see send_digits https://www.twilio.com/docs/voice/api/call-resource#create-a-call-resource
+        digits: Optional[
+            str
+        ] = None,  # Keys to press when the call connects, see send_digits https://www.twilio.com/docs/voice/api/call-resource#create-a-call-resource
     ):
         self.base_url = base_url
         self.to_phone = to_phone
