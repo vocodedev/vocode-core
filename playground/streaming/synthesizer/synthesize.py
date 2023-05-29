@@ -1,9 +1,12 @@
 import time
+import argparse
 from typing import Optional
+from collections import defaultdict
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
+    ElevenLabsSynthesizerConfig,
     GoogleSynthesizerConfig,
     PlayHtSynthesizerConfig,
     RimeSynthesizerConfig,
@@ -19,6 +22,38 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
 
     load_dotenv()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--trace", action="store_true", help="Log latencies and other statistics"
+    )
+    args = parser.parse_args()
+    if args.trace:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter
+        from opentelemetry.sdk.resources import Resource
+
+        class PrintDurationSpanExporter(SpanExporter):
+            def __init__(self):
+                super().__init__()
+                self.spans = defaultdict(list)
+
+            def export(self, spans):
+                for span in spans:
+                    duration_ns = span.end_time - span.start_time
+                    duration_s = duration_ns / 1e9
+                    self.spans[span.name].append(duration_s)
+
+            def shutdown(self):
+                for name, durations in self.spans.items():
+                    print(f"{name}: {sum(durations) / len(durations)}")
+
+        trace.set_tracer_provider(TracerProvider(resource=Resource.create({})))
+        span_exporter = PrintDurationSpanExporter()
+        trace.get_tracer_provider().add_span_processor(
+            SimpleSpanProcessor(span_exporter)
+        )
 
     seconds_per_chunk = 1
 
@@ -74,17 +109,21 @@ if __name__ == "__main__":
         return message_sent, cut_off
 
     async def main():
-        while True:
-            message_sent, _ = await speak(
-                synthesizer=synthesizer,
-                output_device=speaker_output,
-                message=BaseMessage(text=input("Enter speech to synthesize: ")),
-            )
-            print("Message sent: ", message_sent)
+        try:
+            while True:
+                message_sent, _ = await speak(
+                    synthesizer=synthesizer,
+                    output_device=speaker_output,
+                    message=BaseMessage(text=input("Enter speech to synthesize: ")),
+                )
+                print("Message sent: ", message_sent)
+        except KeyboardInterrupt:
+            print("Interrupted, exiting")
 
     speaker_output = SpeakerOutput.from_default_device()
 
     # replace with the synthesizer you want to test
+    # Note: --trace will not work with AzureSynthesizer
     synthesizer = AzureSynthesizer(
         AzureSynthesizerConfig.from_output_device(speaker_output)
     )
