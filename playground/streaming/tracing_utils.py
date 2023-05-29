@@ -1,6 +1,7 @@
 import re
 from collections import defaultdict
 from threading import RLock
+from typing import Optional
 from opentelemetry.sdk.trace.export import SpanExporter
 from opentelemetry.sdk.metrics.export import MetricReader
 from opentelemetry.sdk.metrics.export import MetricsData
@@ -31,7 +32,7 @@ class SpecificStatisticsReader(MetricReader):
     def __init__(self) -> None:
         super().__init__()
         self._lock = RLock()
-        self._metrics_data = None
+        self._metrics_data: Optional[MetricsData] = None
 
     def get_metrics_data(self):
         """Reads and returns current metrics from the SDK"""
