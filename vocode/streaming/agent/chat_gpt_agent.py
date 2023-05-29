@@ -14,6 +14,7 @@ from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
     stream_openai_response_async,
 )
+from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcript import Transcript
 
 
@@ -56,11 +57,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> Tuple[str, bool]:
+    ) -> Tuple[BaseMessage, bool]:
         assert self.transcript is not None
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
-            return cut_off_response, False
+            return BaseMessage(text=cut_off_response), False
         self.logger.debug("LLM responding to human input")
         if self.is_first_response and self.first_response:
             self.logger.debug("First response is cached")
@@ -77,17 +78,17 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             )
             text = chat_completion.choices[0].message.content
         self.logger.debug(f"LLM response: {text}")
-        return text, False
+        return BaseMessage(text=text), False
 
     async def generate_response(
         self,
         human_input: str,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[BaseMessage, None]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
-            yield cut_off_response
+            yield BaseMessage(text=cut_off_response)
             return
         assert self.transcript is not None
         stream = await openai.ChatCompletion.acreate(
@@ -103,4 +104,4 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             stream,
             get_text=lambda choice: choice.get("delta", {}).get("content"),
         ):
-            yield message
+            yield BaseMessage(text=message)

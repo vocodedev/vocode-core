@@ -1,3 +1,4 @@
+from vocode.streaming.models.message import BaseMessage
 from .base_agent import BaseAgent, RespondAgent
 from ..models.agent import (
     RESTfulUserImplementedAgentConfig,
@@ -30,7 +31,7 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> Tuple[Optional[str], bool]:
+    ) -> Tuple[Optional[BaseMessage], bool]:
         config = self.agent_config.respond
         try:
             async with aiohttp.ClientSession() as session:
@@ -50,7 +51,7 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
                     output_response = None
                     should_stop = False
                     if output.type == RESTfulAgentOutputType.TEXT:
-                        output_response = cast(RESTfulAgentText, output).response
+                        output_response = BaseMessage(text=cast(RESTfulAgentText, output).response, metadata=output.metadata) 
                     elif output.type == RESTfulAgentOutputType.END:
                         should_stop = True
                     return output_response, should_stop

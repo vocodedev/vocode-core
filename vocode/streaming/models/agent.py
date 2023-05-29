@@ -127,12 +127,10 @@ class RESTfulAgentOutputType(str, Enum):
 
 
 class RESTfulAgentOutput(TypedModel, type=RESTfulAgentOutputType.BASE):
-    pass
-
+    metadata: dict = {}
 
 class RESTfulAgentText(RESTfulAgentOutput, type=RESTfulAgentOutputType.TEXT):
     response: str
-
 
 class RESTfulAgentEnd(RESTfulAgentOutput, type=RESTfulAgentOutputType.END):
     pass

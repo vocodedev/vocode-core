@@ -10,7 +10,7 @@ class MessageType(str, Enum):
 
 class BaseMessage(TypedModel, type=MessageType.BASE):
     text: str
-
+    metadata: dict = {}
 
 class SSMLMessage(BaseMessage, type=MessageType.SSML):
     ssml: str

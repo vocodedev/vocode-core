@@ -154,7 +154,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             if is_first_response:
                 agent_span.end()
             self.produce_interruptible_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=response)),
+                AgentResponseMessage(message=response),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
         # TODO: implement should_stop for generate_responses
@@ -178,7 +178,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             return True
         if response:
             self.produce_interruptible_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=response)),
+                AgentResponseMessage(message=response),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
             return should_stop
@@ -231,7 +231,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> Tuple[Optional[str], bool]:
+    ) -> Tuple[Optional[BaseMessage], bool]:
         raise NotImplementedError
 
     def generate_response(
@@ -239,5 +239,5 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[BaseMessage, None]:
         raise NotImplementedError

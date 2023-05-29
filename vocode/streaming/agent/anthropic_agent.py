@@ -26,6 +26,8 @@ from vocode import getenv
 from vocode.streaming.models.agent import ChatAnthropicAgentConfig
 from langchain.memory import ConversationBufferMemory
 
+from vocode.streaming.models.message import BaseMessage
+
 SENTENCE_ENDINGS = [".", "!", "?"]
 
 
@@ -75,17 +77,17 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> Tuple[str, bool]:
+    ) -> Tuple[BaseMessage, bool]:
         text = await self.conversation.apredict(input=human_input)
         self.logger.debug(f"LLM response: {text}")
-        return text, False
+        return BaseMessage(text=text), False
 
     async def generate_response(
         self,
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[BaseMessage, None]:
         self.memory.chat_memory.messages.append(HumanMessage(content=human_input))
 
         streamed_response = await self.anthropic_client.acompletion_stream(
@@ -110,7 +112,7 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
             if sentence:
                 bot_memory_message.content = bot_memory_message.content + sentence
                 buffer = remainder
-                yield sentence
+                yield BaseMessage(text=sentence)
             continue
 
     def update_last_bot_message_on_cut_off(self, message: str):
