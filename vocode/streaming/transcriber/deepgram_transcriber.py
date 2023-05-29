@@ -59,7 +59,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self._ended = False
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
-        self.audio_cursor = 0
+        self.audio_cursor = 0.
 
     async def _run_loop(self):
         restarts = 0
@@ -168,7 +168,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         return data["duration"]
 
     async def process(self):
-        self.audio_cursor = 0
+        self.audio_cursor = 0.
         extra_headers = {"Authorization": f"Token {self.api_key}"}
 
         async with websockets.connect(

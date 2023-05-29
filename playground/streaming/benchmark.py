@@ -86,7 +86,7 @@ synthesizer_classes = {
 synthesizer_classes = {
     k: v
     for k, v in synthesizer_classes.items()
-    if k not in ["coqui", "coquitts", "bark"]
+    if k not in ["coqui", "coquitts"]
 }
 
 # These synthesizers stream output so they need to be traced within this file.
@@ -499,6 +499,7 @@ async def main():
             final_results = json.load(f)
 
     if args.create_graphs or args.just_graphs:
+        logger.info("Creating graphs from benchmark results...")
         results_split = []
         for name, value in final_results.items():
             name = name.split(".", 1)
@@ -520,6 +521,8 @@ async def main():
             plt.tight_layout()
             plt.savefig(os.path.join(graph_dir, f"{graph_title}.png"))
             plt.clf()
+    
+    print("Benchmarking complete!")
 
 
 if __name__ == "__main__":
