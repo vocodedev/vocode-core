@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict
 import logging
 
 from fastapi import APIRouter, HTTPException, WebSocket
@@ -39,7 +39,7 @@ class CallsRouter(BaseRouter):
         self.router = APIRouter()
         self.router.websocket("/connect_call/{id}")(self.connect_call)
 
-        self.calls: dict[str, Call] = {}
+        self.calls: Dict[str, Call] = {}
 
     async def connect_call(self, websocket: WebSocket, id: str):
         await websocket.accept()
