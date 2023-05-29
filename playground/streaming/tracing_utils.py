@@ -3,6 +3,7 @@ from collections import defaultdict
 from threading import RLock
 from opentelemetry.sdk.trace.export import SpanExporter
 from opentelemetry.sdk.metrics.export import MetricReader
+from opentelemetry.sdk.metrics.export import MetricsData
 
 
 class PrintDurationSpanExporter(SpanExporter):
@@ -42,7 +43,7 @@ class SpecificStatisticsReader(MetricReader):
 
     def _receive_metrics(
         self,
-        metrics_data: "opentelemetry.sdk.metrics.export.MetricsData",
+        metrics_data: MetricsData,
         timeout_millis: float = 10_000,
         **kwargs,
     ) -> None:

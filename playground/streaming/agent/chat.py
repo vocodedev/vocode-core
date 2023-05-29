@@ -108,7 +108,7 @@ if __name__ == "__main__":
 
         trace.set_tracer_provider(TracerProvider(resource=Resource.create({})))
         span_exporter = PrintDurationSpanExporter()
-        trace.get_tracer_provider().add_span_processor(
+        trace.get_tracer_provider().add_span_processor(  # type: ignore
             SimpleSpanProcessor(span_exporter)
         )
 
