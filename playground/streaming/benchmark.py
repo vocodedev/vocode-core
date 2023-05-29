@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import logging
 from tqdm import tqdm
+import sounddevice as sd
 from opentelemetry import trace, metrics
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.trace import TracerProvider
@@ -18,6 +19,7 @@ from opentelemetry.sdk.resources import Resource
 from vocode.streaming.agent.base_agent import AgentInput
 from vocode.streaming.input_device.file_input_device import FileInputDevice
 from vocode.streaming.agent import ChatGPTAgent, ChatAnthropicAgent
+from vocode.streaming.input_device.microphone_input import MicrophoneInput
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.agent import ChatGPTAgentConfig, ChatAnthropicAgentConfig
 from vocode.streaming.models.synthesizer import (
@@ -84,9 +86,7 @@ synthesizer_classes = {
 }
 
 synthesizer_classes = {
-    k: v
-    for k, v in synthesizer_classes.items()
-    if k not in ["coqui", "coquitts"]
+    k: v for k, v in synthesizer_classes.items() if k not in ["coqui", "coquitts"]
 }
 
 # These synthesizers stream output so they need to be traced within this file.
@@ -131,6 +131,12 @@ parser.add_argument(
     type=str,
     default="test3.wav",
     help="Path to the audio file to transcribe",
+)
+parser.add_argument(
+    "--transcriber_use_mic",
+    action="store_true",
+    help="Use the microphone as the input device for the transcriber. "
+    + "Overrides --transcriber_audio. Be silent for ≈5 seconds to end transcription.",
 )
 parser.add_argument(
     "--synthesizer_text",
@@ -396,39 +402,54 @@ async def run_transcribers():
     sample_rate = 44100
     chunk_size = 2048
     sleep_time = chunk_size / sample_rate
-    file_input = FileInputDevice(
-        args.transcriber_audio,
-        chunk_size=chunk_size,
-        silent_duration=0.01,
-        skip_initial_load=True,
-    )
+    if args.transcriber_use_mic:
+        input_device_info = sd.query_devices(kind="input")
+        input_device = MicrophoneInput(input_device_info)
+    else:
+        input_device = FileInputDevice(
+            args.transcriber_audio,
+            chunk_size=chunk_size,
+            silent_duration=0.01,
+            skip_initial_load=True,
+        )
 
     for transcriber_cycle_idx in tqdm(
         range(args.transcriber_num_cycles), desc="Transcriber Cycles"
     ):
         for transcriber_name in tqdm(args.transcribers, desc="Transcribers"):
-            transcriber = get_transcriber(transcriber_name, file_input)
-            file_input.load()
+            transcriber = get_transcriber(transcriber_name, input_device)
+            if not args.transcriber_use_mic:
+                input_device.load()
             transcriber_task = transcriber.start()
 
-            async def send_audio_task():
-                while not file_input.is_done():
-                    chunk = await file_input.get_audio()
-                    transcriber.send_audio(chunk)
-                    await asyncio.sleep(sleep_time)
+            if args.transcriber_use_mic:
 
-            send_audio = asyncio.create_task(send_audio_task())
+                async def record_audio_task():
+                    while True:
+                        chunk = await input_device.get_audio()
+                        transcriber.send_audio(chunk)
 
-            # `get` from `transcriber.output_queue` until it's empty for 3 seconds
+                send_audio = asyncio.create_task(record_audio_task())
+            else:
+
+                async def send_audio_task():
+                    while not input_device.is_done():
+                        chunk = await input_device.get_audio()
+                        transcriber.send_audio(chunk)
+                        await asyncio.sleep(sleep_time)
+
+                send_audio = asyncio.create_task(send_audio_task())
+
+            # `get` from `transcriber.output_queue` until it's empty for 5 seconds
             pbar = tqdm(
                 desc=f"{transcriber_name.title()} Transcribing",
-                total=file_input.duration,
+                total=input_device.duration if not args.transcriber_use_mic else None,
                 unit="chunk",
             )
             while True:
                 try:
                     transcription = await asyncio.wait_for(
-                        transcriber.output_queue.get(), timeout=6
+                        transcriber.output_queue.get(), timeout=5
                     )
                     # update the progress bar status
                     pbar.update(round(transcriber.audio_cursor - pbar.n, 2))
@@ -438,7 +459,8 @@ async def run_transcribers():
                     )
                     send_audio.cancel()
                     break
-            pbar.update(pbar.total - pbar.n)
+            if not args.transcriber_use_mic:
+                pbar.update(pbar.total - pbar.n)
             transcriber.terminate()
 
 
@@ -521,7 +543,7 @@ async def main():
             plt.tight_layout()
             plt.savefig(os.path.join(graph_dir, f"{graph_title}.png"))
             plt.clf()
-    
+
     print("Benchmarking complete!")
 
 
