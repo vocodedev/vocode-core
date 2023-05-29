@@ -1,3 +1,4 @@
+from collections import defaultdict
 import os
 import re
 import json
@@ -149,6 +150,24 @@ parser.add_argument(
     help="The initial message sent to the agent (this is a transcribed sentence that the agent should respond to).",
 )
 parser.add_argument(
+    "--transcriber_num_cycles",
+    type=int,
+    default=1,
+    help="The number of transcriber runs to perform. Results are averaged over the runs.",
+)
+parser.add_argument(
+    "--synthesizer_num_cycles",
+    type=int,
+    default=1,
+    help="The number of synthesizer runs to perform. Results are averaged over the runs.",
+)
+parser.add_argument(
+    "--agent_num_cycles",
+    type=int,
+    default=1,
+    help="The number of agent runs to perform. Results are averaged over the runs.",
+)
+parser.add_argument(
     "--all",
     action="store_true",
     help="Run all supported transcribers, agents, and synthesizers. Ignores other arguments.",
@@ -210,113 +229,128 @@ metrics.set_meter_provider(provider)
 
 async def run_agents():
     for agent_name in tqdm(args.agents, desc="Agents"):
-        company, model_name = agent_name.split("_")
-        if company == "gpt":
-            agent = ChatGPTAgent(
-                ChatGPTAgentConfig(
-                    initial_message=None,
-                    prompt_preamble=args.agent_prompt_preamble,
-                    allow_agent_to_be_cut_off=False,
-                    model_name=model_name,
-                )
-            )
-        elif company == "anthropic":
-            agent = ChatAnthropicAgent(
-                ChatAnthropicAgentConfig(
-                    initial_message=None,
-                    allow_agent_to_be_cut_off=False,
-                    model_name=model_name,
-                )
-            )
-        agent.attach_transcript(Transcript())
-        agent_task = agent.start()
-        message = AgentInput(
-            transcription=Transcription(
-                message=args.agent_first_input, confidence=1.0, is_final=True
-            ),
-            conversation_id=0,
-        )
-        await agent.input_queue.put(InterruptibleEvent(message))
+        for agent_run_idx in tqdm(range(args.agent_num_cycles), desc="Agent Cycles"):
+            company, model_name = agent_name.split("_")
 
-        length_meter = meter.create_counter(
-            f"agent.agent_chat_{company}-{model_name}.total_characters"
-        )
-        while True:
-            try:
-                message = await asyncio.wait_for(agent.output_queue.get(), timeout=15)
-                length_meter.add(len(message.payload.message.text))
-                logger.debug(
-                    f"[Agent: {agent_name}] Response from API: {message.payload.message.text}"
+            length_meter = meter.create_counter(
+                f"agent.agent_chat_{company}-{model_name}.total_characters",
+            )
+
+            if company == "gpt":
+                agent = ChatGPTAgent(
+                    ChatGPTAgentConfig(
+                        initial_message=None,
+                        prompt_preamble=args.agent_prompt_preamble,
+                        allow_agent_to_be_cut_off=False,
+                        model_name=model_name,
+                    )
                 )
-            except asyncio.TimeoutError:
-                logger.debug(f"[Agent: {agent_name}] Agent queue is empty, stopping...")
-                break
+            elif company == "anthropic":
+                agent = ChatAnthropicAgent(
+                    ChatAnthropicAgentConfig(
+                        initial_message=None,
+                        allow_agent_to_be_cut_off=False,
+                        model_name=model_name,
+                    )
+                )
+            agent.attach_transcript(Transcript())
+            agent_task = agent.start()
+            message = AgentInput(
+                transcription=Transcription(
+                    message=args.agent_first_input, confidence=1.0, is_final=True
+                ),
+                conversation_id=0,
+            )
+            await agent.input_queue.put(InterruptibleEvent(message))
+
+            while True:
+                try:
+                    message = await asyncio.wait_for(
+                        agent.output_queue.get(), timeout=15
+                    )
+                    length_meter.add(len(message.payload.message.text))
+                    logger.debug(
+                        f"[Agent: {agent_name}] Response from API: {message.payload.message.text}"
+                    )
+                except asyncio.TimeoutError:
+                    logger.debug(
+                        f"[Agent: {agent_name}] Agent queue is empty, stopping..."
+                    )
+                    break
 
 
 async def run_synthesizers():
-    def create_file_output_device(synthesizer_name):
+    def create_file_output_device(synthesizer_name, extra_info=""):
         return FileOutputDevice(
-            os.path.join(args.results_dir, f"{synthesizer_name}.wav"),
+            os.path.join(args.results_dir, f"{synthesizer_name}{extra_info}.wav"),
         )
 
-    for synthesizer_name in args.synthesizers:
-        file_output = create_file_output_device(synthesizer_name)
-        synthesizer_class, synthesizer_config_class = synthesizer_classes[
-            synthesizer_name
-        ]
-        extra_config = {}
-        if synthesizer_name == "playht":
-            extra_config["voice_id"] = "larry"
-        elif synthesizer_name == "rime":
-            extra_config["speaker"] = "young_male_unmarked-1"
-        synthesizer = synthesizer_class(
-            synthesizer_config_class.from_output_device(file_output, **extra_config)
-        )
-
-        chunk_size = get_chunk_size_per_second(
-            synthesizer.get_synthesizer_config().audio_encoding,
-            synthesizer.get_synthesizer_config().sampling_rate,
-        )
-
-        current_synthesizer_is_streaming = synthesizer_name in STREAMING_SYNTHESIZERS
-        if current_synthesizer_is_streaming:
-            total_synthesis_span = tracer.start_span(
-                f"synthesizer.{synthesizer_name}.create_total"
+    for synthesizer_cycle_idx in tqdm(
+        range(args.synthesizer_num_cycles), desc="Synthesizer Cycles"
+    ):
+        for synthesizer_name in args.synthesizers:
+            file_output = create_file_output_device(
+                synthesizer_name, f"-run={synthesizer_cycle_idx}"
             )
-            first_synthesis_span = tracer.start_span(
-                f"synthesizer.{synthesizer_name}.create_first"
+            synthesizer_class, synthesizer_config_class = synthesizer_classes[
+                synthesizer_name
+            ]
+            extra_config = {}
+            if synthesizer_name == "playht":
+                extra_config["voice_id"] = "larry"
+            elif synthesizer_name == "rime":
+                extra_config["speaker"] = "young_male_unmarked-1"
+            synthesizer = synthesizer_class(
+                synthesizer_config_class.from_output_device(file_output, **extra_config)
             )
 
-        try:
-            synthesis_result = await synthesizer.create_speech(
-                message=BaseMessage(text=args.synthesizer_text), chunk_size=chunk_size
+            chunk_size = get_chunk_size_per_second(
+                synthesizer.get_synthesizer_config().audio_encoding,
+                synthesizer.get_synthesizer_config().sampling_rate,
             )
-        except asyncio.TimeoutError:
-            logger.error(
-                f"[Synthesizer: {synthesizer_name}] Timed out while synthesizing. Skipping {synthesizer_name}..."
-            )
-            continue
-        except Exception as e:
-            logger.error(
-                f"[Synthesizer: {synthesizer_name}] Exception while synthesizing: {e}. Skipping {synthesizer_name}..."
-            )
-            continue
-        chunk_generator = synthesis_result.chunk_generator
 
-        with tqdm(desc=f"{synthesizer_name.title()} Synthesizing") as pbar:
-            first_chunk = True
-            while True:
-                pbar.update(1)
-                chunk_result = await chunk_generator.__anext__()
-                if current_synthesizer_is_streaming and first_chunk:
-                    first_chunk = False
-                    first_synthesis_span.end()
-                file_output.consume_nonblocking(chunk_result.chunk)
-                if chunk_result.is_last_chunk:
-                    break
+            current_synthesizer_is_streaming = (
+                synthesizer_name in STREAMING_SYNTHESIZERS
+            )
+            if current_synthesizer_is_streaming:
+                total_synthesis_span = tracer.start_span(
+                    f"synthesizer.{synthesizer_name}.create_total"
+                )
+                first_synthesis_span = tracer.start_span(
+                    f"synthesizer.{synthesizer_name}.create_first"
+                )
 
-        if current_synthesizer_is_streaming:
-            total_synthesis_span.end()
+            try:
+                synthesis_result = await synthesizer.create_speech(
+                    message=BaseMessage(text=args.synthesizer_text),
+                    chunk_size=chunk_size,
+                )
+            except asyncio.TimeoutError:
+                logger.error(
+                    f"[Synthesizer: {synthesizer_name}] Timed out while synthesizing. Skipping {synthesizer_name}..."
+                )
+                continue
+            except Exception as e:
+                logger.error(
+                    f"[Synthesizer: {synthesizer_name}] Exception while synthesizing: {e}. Skipping {synthesizer_name}..."
+                )
+                continue
+            chunk_generator = synthesis_result.chunk_generator
+
+            with tqdm(desc=f"{synthesizer_name.title()} Synthesizing") as pbar:
+                first_chunk = True
+                while True:
+                    pbar.update(1)
+                    chunk_result = await chunk_generator.__anext__()
+                    if current_synthesizer_is_streaming and first_chunk:
+                        first_chunk = False
+                        first_synthesis_span.end()
+                    file_output.consume_nonblocking(chunk_result.chunk)
+                    if chunk_result.is_last_chunk:
+                        break
+
+            if current_synthesizer_is_streaming:
+                total_synthesis_span.end()
 
 
 async def run_transcribers():
@@ -330,40 +364,43 @@ async def run_transcribers():
         skip_initial_load=True,
     )
 
-    for transcriber_name in tqdm(args.transcribers, desc="Transcribers"):
-        transcriber = get_transcriber(transcriber_name, file_input)
-        file_input.load()
-        transcriber_task = transcriber.start()
+    for transcriber_cycle_idx in tqdm(
+        range(args.transcriber_num_cycles), desc="Transcriber Cycles"
+    ):
+        for transcriber_name in tqdm(args.transcribers, desc="Transcribers"):
+            transcriber = get_transcriber(transcriber_name, file_input)
+            file_input.load()
+            transcriber_task = transcriber.start()
 
-        async def send_audio_task():
-            while not file_input.is_done():
-                chunk = await file_input.get_audio()
-                transcriber.send_audio(chunk)
-                await asyncio.sleep(sleep_time)
+            async def send_audio_task():
+                while not file_input.is_done():
+                    chunk = await file_input.get_audio()
+                    transcriber.send_audio(chunk)
+                    await asyncio.sleep(sleep_time)
 
-        send_audio = asyncio.create_task(send_audio_task())
+            send_audio = asyncio.create_task(send_audio_task())
 
-        # `get` from `transcriber.output_queue` until it's empty for 3 seconds
-        pbar = tqdm(
-            desc=f"{transcriber_name.title()} Transcribing",
-            total=file_input.duration,
-            unit="chunk",
-        )
-        while True:
-            try:
-                transcription = await asyncio.wait_for(
-                    transcriber.output_queue.get(), timeout=3
-                )
-                # update the progress bar status
-                pbar.update(round(transcriber.audio_cursor - pbar.n, 2))
-            except asyncio.TimeoutError:
-                logger.debug(
-                    f"[Transcriber: {transcriber_name}] Transcriber queue is empty, stopping transcription..."
-                )
-                send_audio.cancel()
-                break
-        pbar.update(pbar.total - pbar.n)
-        transcriber.terminate()
+            # `get` from `transcriber.output_queue` until it's empty for 3 seconds
+            pbar = tqdm(
+                desc=f"{transcriber_name.title()} Transcribing",
+                total=file_input.duration,
+                unit="chunk",
+            )
+            while True:
+                try:
+                    transcription = await asyncio.wait_for(
+                        transcriber.output_queue.get(), timeout=6
+                    )
+                    # update the progress bar status
+                    pbar.update(round(transcriber.audio_cursor - pbar.n, 2))
+                except asyncio.TimeoutError:
+                    logger.debug(
+                        f"[Transcriber: {transcriber_name}] Transcriber queue is empty, stopping transcription..."
+                    )
+                    send_audio.cancel()
+                    break
+            pbar.update(pbar.total - pbar.n)
+            transcriber.terminate()
 
 
 async def main():
@@ -375,12 +412,11 @@ async def main():
         await run_synthesizers()
 
     trace_results = span_exporter.get_finished_spans()
-    final_spans = {}
+    final_spans = defaultdict(list)
     for span in trace_results:
         duration_ns = span.end_time - span.start_time
         duration_s = duration_ns / 1e9
-        assert span.name not in final_spans, f"Duplicate span name: {span.name}"
-        final_spans[span.name] = duration_s
+        final_spans[span.name].append(duration_s)
 
     scope_metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics
     if len(scope_metrics) > 0:
@@ -402,10 +438,14 @@ async def main():
                 )
             if re.match(r"agent.*\.total_characters", metric_name):
                 agent_str = metric_name.split(".", 1)[1].rsplit(".", 1)[0]
-                final_metrics[f"agent.{agent_str}.characters_per_second"] = (
-                    raw_metric.value / final_spans[f"agent.{agent_str}.generate_total"]
+                final_metrics[
+                    f"agent.{agent_str}.characters_per_second"
+                ] = raw_metric.value / sum(
+                    final_spans[f"agent.{agent_str}.generate_total"]
                 )
 
+    final_spans = {k: sum(v) / len(v) for k, v in final_spans.items()}
+    if len(scope_metrics) > 0:
         final_results = {**final_spans, **final_metrics}
     else:
         final_results = final_spans

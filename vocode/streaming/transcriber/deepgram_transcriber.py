@@ -25,6 +25,24 @@ PUNCTUATION_TERMINATORS = [".", "!", "?"]
 NUM_RESTARTS = 5
 
 
+avg_latency_hist = meter.create_histogram(
+    name="transcriber.deepgram.avg_latency",
+    unit="seconds",
+)
+max_latency_hist = meter.create_histogram(
+    name="transcriber.deepgram.max_latency",
+    unit="seconds",
+)
+min_latency_hist = meter.create_histogram(
+    name="transcriber.deepgram.min_latency",
+    unit="seconds",
+)
+duration_hist = meter.create_histogram(
+    name="transcriber.deepgram.duration",
+    unit="seconds",
+)
+
+
 class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
     def __init__(
         self,
@@ -41,23 +59,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self._ended = False
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
-
-        self.avg_latency_hist = meter.create_histogram(
-            name="transcriber.deepgram.avg_latency",
-            unit="seconds",
-        )
-        self.max_latency_hist = meter.create_histogram(
-            name="transcriber.deepgram.max_latency",
-            unit="seconds",
-        )
-        self.min_latency_hist = meter.create_histogram(
-            name="transcriber.deepgram.min_latency",
-            unit="seconds",
-        )
-        self.duration_hist = meter.create_histogram(
-            name="transcriber.deepgram.duration",
-            unit="seconds",
-        )
         self.audio_cursor = 0
 
     async def _run_loop(self):
@@ -209,14 +210,14 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     transcript_cursor = data["start"] + data["duration"]
                     cur_min_latency = self.audio_cursor - transcript_cursor
 
-                    self.avg_latency_hist.record(
+                    avg_latency_hist.record(
                         (cur_min_latency + cur_max_latency) / 2 * data["duration"]
                     )
-                    self.duration_hist.record(data["duration"])
+                    duration_hist.record(data["duration"])
 
                     # Log max and min latencies
-                    self.max_latency_hist.record(cur_max_latency)
-                    self.min_latency_hist.record(max(cur_min_latency, 0))
+                    max_latency_hist.record(cur_max_latency)
+                    min_latency_hist.record(max(cur_min_latency, 0))
 
                     is_final = data["is_final"]
                     speech_final = self.is_speech_final(buffer, data, time_silent)

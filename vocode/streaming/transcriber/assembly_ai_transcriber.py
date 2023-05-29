@@ -21,6 +21,24 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 ASSEMBLY_AI_URL = "wss://api.assemblyai.com/v2/realtime/ws"
 
 
+avg_latency_hist = meter.create_histogram(
+    name="transcriber.assemblyai.avg_latency",
+    unit="seconds",
+)
+max_latency_hist = meter.create_histogram(
+    name="transcriber.assemblyai.max_latency",
+    unit="seconds",
+)
+min_latency_hist = meter.create_histogram(
+    name="transcriber.assemblyai.min_latency",
+    unit="seconds",
+)
+duration_hist = meter.create_histogram(
+    name="transcriber.assemblyai.duration",
+    unit="seconds",
+)
+
+
 class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
     def __init__(
         self,
@@ -40,23 +58,6 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
             raise Exception("Assembly AI endpointing config not supported yet")
 
         self.buffer = bytearray()
-
-        self.avg_latency_hist = meter.create_histogram(
-            name="transcriber.assemblyai.avg_latency",
-            unit="seconds",
-        )
-        self.max_latency_hist = meter.create_histogram(
-            name="transcriber.assemblyai.max_latency",
-            unit="seconds",
-        )
-        self.min_latency_hist = meter.create_histogram(
-            name="transcriber.assemblyai.min_latency",
-            unit="seconds",
-        )
-        self.duration_hist = meter.create_histogram(
-            name="transcriber.assemblyai.duration",
-            unit="seconds",
-        )
         self.audio_cursor = 0
 
     async def ready(self):
@@ -148,14 +149,14 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
                         cur_min_latency = self.audio_cursor - transcript_cursor
                         duration = data["audio_end"] / 1000 - data["audio_start"] / 1000
 
-                        self.avg_latency_hist.record(
+                        avg_latency_hist.record(
                             (cur_min_latency + cur_max_latency) / 2 * duration
                         )
-                        self.duration_hist.record(duration)
+                        duration_hist.record(duration)
 
                         # Log max and min latencies
-                        self.max_latency_hist.record(cur_max_latency)
-                        self.min_latency_hist.record(max(cur_min_latency, 0))
+                        max_latency_hist.record(cur_max_latency)
+                        min_latency_hist.record(max(cur_min_latency, 0))
 
                         self.output_queue.put_nowait(
                             Transcription(
