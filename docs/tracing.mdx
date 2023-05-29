@@ -14,7 +14,9 @@ For example, to compare DeepGram to AssemblyAI, you can run the following comman
 where `sample.wav` is the audio file you want to transcribe. Alternatively, you
 can specify `transcriber_use_mic` instead of `--transcriber_audio` to use your
 microphone as the audio source. Additionally, you can add the `--create_graphs`
-option to generate bar charts of the results.
+option to generate bar charts of the results. Generating graphs requires
+[matplotlib](https://matplotlib.org/), which you can install with
+`poetry add matplotlib` or `pip install matplotlib`.
 
 By default all results (synthesized audio files, JSON data export, and graphs)
 are saved in the `benchmark_results` directory in the root of the project. You
