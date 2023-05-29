@@ -9,7 +9,7 @@ You can run it with `python playground/streaming/benchmark.py --help` to see the
 The script individually tests the transcribers, agents, and synthesizers that you
 specify with the `--transcribers`, `--agents`, and `--synthesizers` flags, respectively.
 
-For example, to compare DeepGram to AssemblyAI, you can run the following command:
+For example, to compare Deepgram to AssemblyAI, you can run the following command:
 `python playground/streaming/benchmark.py --transcribers deepgram assemblyai --transcriber_audio sample.wav`
 where `sample.wav` is the audio file you want to transcribe. Alternatively, you
 can specify `transcriber_use_mic` instead of `--transcriber_audio` to use your
@@ -35,6 +35,10 @@ When testing agents, you can set the prompt preamble with the `--agent_prompt_pr
 argument and the first input with the `--agent_first_input` option. For
 synthesizers, you can specify the synthesized text with the `--synthesizer_text`
 option.
+
+Supported Transcribers: Deepgram, AssemblyAI
+Supported Agents: All OpenAI, All Anthropic
+Supported Synthesizers: ElevenLabs, PlayHT, Google, Azure, GTTS, Bark, Rime, Stream Elements
 
 
 # Small Manual Example
