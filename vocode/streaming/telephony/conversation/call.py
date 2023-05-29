@@ -29,7 +29,7 @@ from vocode.streaming.telephony.config_manager.base_config_manager import (
     BaseConfigManager,
 )
 from vocode.streaming.telephony.constants import DEFAULT_SAMPLING_RATE
-from vocode.streaming.telephony.twilio import create_twilio_client, end_twilio_call
+from vocode.streaming.telephony.utils import create_twilio_client, end_twilio_call
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
