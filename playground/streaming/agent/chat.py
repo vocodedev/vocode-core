@@ -1,5 +1,6 @@
 import asyncio
 import typing
+import argparse
 from dotenv import load_dotenv
 from vocode.streaming.models.transcript import Transcript
 
@@ -92,4 +93,23 @@ async def agent_main():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--trace", action="store_true", help="Log latencies and other statistics"
+    )
+    args = parser.parse_args()
+
+    if args.trace:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.resources import Resource
+        from playground.streaming.tracing_utils import PrintDurationSpanExporter
+
+        trace.set_tracer_provider(TracerProvider(resource=Resource.create({})))
+        span_exporter = PrintDurationSpanExporter()
+        trace.get_tracer_provider().add_span_processor(
+            SimpleSpanProcessor(span_exporter)
+        )
+
     asyncio.run(agent_main())
