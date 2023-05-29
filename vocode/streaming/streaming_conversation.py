@@ -302,6 +302,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         ):
             try:
                 message, synthesis_result = item.payload
+                metadata = message.metadata or {}
                 message_sent, cut_off = await self.conversation.send_speech_to_output(
                     message.text,
                     synthesis_result,
@@ -313,11 +314,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.agent.update_last_bot_message_on_cut_off(
                         message_sent
                     )
+                    metadata["cut_off"] = True
+
+                if self.conversation.bot_sentiment:
+                    metadata["sentiment"] = self.conversation.bot_sentiment
                 self.conversation.transcript.add_bot_message(
                     text=message_sent,
                     events_manager=self.conversation.events_manager,
                     conversation_id=self.conversation.id,
-                    metadata={"sentiment":self.conversation.bot_sentiment},
+                    metadata=metadata,
                 )
             except asyncio.CancelledError:
                 pass
