@@ -111,7 +111,9 @@ class Call(StreamingConversation):
             events_manager=events_manager,
         )
 
-    async def attach_ws_and_start(self, ws: WebSocket):
+    async def attach_ws_and_start(self, ws: WebSocket, initial_connection: bool = True):
+        self.playing_dtmf = False # Reset the state
+
         assert isinstance(self.output_device, TwilioOutputDevice)
         self.logger.debug("Trying to attach WS to outbound call")
         self.output_device.ws = ws
@@ -119,21 +121,23 @@ class Call(StreamingConversation):
 
         self.twilio_call = self.twilio_client.calls(self.twilio_sid).fetch()
 
-        if self.twilio_call is not None and self.twilio_call.answered_by in ("machine_start", "fax"):
+        if initial_connection and self.twilio_call is not None and self.twilio_call.answered_by in ("machine_start", "fax"):
             self.logger.info(f"Call answered by {self.twilio_call.answered_by}")
             self.twilio_call.update(status="completed")
         else:
             await self.wait_for_twilio_start(ws)
-            await super().start()
-            self.events_manager.publish_event(
-                PhoneCallConnectedEvent(conversation_id=self.id)
-            )
+            if initial_connection:
+                await super().start()
+                self.events_manager.publish_event(
+                    PhoneCallConnectedEvent(conversation_id=self.id)
+                )
             while self.active:
                 message = await ws.receive_text()
                 response = await self.handle_ws_message(message)
                 if response == PhoneCallAction.CLOSE_WEBSOCKET:
                     break
-        self.tear_down()
+        if not self.playing_dtmf:
+            self.tear_down()
 
     async def wait_for_twilio_start(self, ws: WebSocket):
         assert isinstance(self.output_device, TwilioOutputDevice)
@@ -174,15 +178,12 @@ class Call(StreamingConversation):
 
     def mark_terminated(self):
         super().mark_terminated()
-        if self.playing_dtmf:
-            self.logger.debug("Not ending call because we're playing DTMF tones")
-        else:
-            self.logger.debug("Ending call")
-            end_twilio_call(
-                self.twilio_client,
-                self.twilio_sid,
-            )
-            self.config_manager.delete_config(self.id)
+        self.logger.debug("Ending call")
+        end_twilio_call(
+            self.twilio_client,
+            self.twilio_sid,
+        )
+        self.config_manager.delete_config(self.id)
 
     def tear_down(self):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
