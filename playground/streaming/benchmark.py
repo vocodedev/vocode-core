@@ -67,7 +67,7 @@ meter = metrics.get_meter(__name__)
 # Create the parser
 parser = argparse.ArgumentParser(
     description="Benchmark Vocode's transcribers, agents, and synthesizers.\n"
-    + "Example usage: python playground/streaming/benchmark.py --all --all_num_cycles 3"
+    + "Example usage: python playground/streaming/benchmark.py --all --all_num_cycles 3 --create_graphs"
 )
 
 synthesizer_classes = {
@@ -180,6 +180,17 @@ parser.add_argument(
     help="Run all supported transcribers, agents, and synthesizers. Ignores other arguments.",
 )
 parser.add_argument(
+    "--create_graphs",
+    action="store_true",
+    help="Create graphs from the benchmark results. Requires matplotlib.",
+)
+parser.add_argument(
+    "--just_graphs",
+    action="store_true",
+    help="Skips computing statistics. Loads the last saved benchmark result "
+    + "JSON file and creates graphs from it.",
+)
+parser.add_argument(
     "--results_file",
     type=str,
     default="benchmark_results.json",
@@ -209,6 +220,22 @@ if args.all_num_cycles is not None:
     args.transcriber_num_cycles = args.all_num_cycles
     args.agent_num_cycles = args.all_num_cycles
     args.synthesizer_num_cycles = args.all_num_cycles
+
+if args.create_graphs:
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print(
+            "ERROR: The --create_graphs flag requires matplotlib. Please "
+            + "install matplotlib and try again."
+        )
+        exit(1)
+
+if args.just_graphs:
+    print(
+        "--just_graphs is set! Skipping computing statistics and instead "
+        + "generating graphs from the last saved benchmark result JSON file."
+    )
 
 os.makedirs(args.results_dir, exist_ok=True)
 
@@ -416,55 +443,83 @@ async def run_transcribers():
 
 
 async def main():
-    if args.agents:
-        await run_agents()
-    if args.transcribers:
-        await run_transcribers()
-    if args.synthesizers:
-        await run_synthesizers()
+    result_file_path = os.path.join(args.results_dir, args.results_file)
+    if not args.just_graphs:
+        if args.agents:
+            await run_agents()
+        if args.transcribers:
+            await run_transcribers()
+        if args.synthesizers:
+            await run_synthesizers()
 
-    trace_results = span_exporter.get_finished_spans()
-    final_spans = defaultdict(list)
-    for span in trace_results:
-        duration_ns = span.end_time - span.start_time
-        duration_s = duration_ns / 1e9
-        final_spans[span.name].append(duration_s)
+        trace_results = span_exporter.get_finished_spans()
+        final_spans = defaultdict(list)
+        for span in trace_results:
+            duration_ns = span.end_time - span.start_time
+            duration_s = duration_ns / 1e9
+            final_spans[span.name].append(duration_s)
 
-    scope_metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics
-    if len(scope_metrics) > 0:
-        metric_results = scope_metrics[0].metrics
-        metric_results = {
-            metric.name: metric.data.data_points[0] for metric in metric_results
-        }
-        final_metrics = {}
-        for metric_name, raw_metric in metric_results.items():
-            if re.match(r"transcriber.*\.min_latency", metric_name):
-                final_metrics[metric_name] = raw_metric.min
-            if re.match(r"transcriber.*\.max_latency", metric_name):
-                final_metrics[metric_name] = raw_metric.max
-            if re.match(r"transcriber.*\.avg_latency", metric_name):
-                transcriber_str = metric_name.split(".")[1]
-                final_metrics[metric_name] = (
-                    raw_metric.sum
-                    / metric_results[f"transcriber.{transcriber_str}.duration"].sum
-                )
-            if re.match(r"agent.*\.total_characters", metric_name):
-                agent_str = metric_name.split(".", 1)[1].rsplit(".", 1)[0]
-                final_metrics[
-                    f"agent.{agent_str}.characters_per_second"
-                ] = raw_metric.value / sum(
-                    final_spans[f"agent.{agent_str}.generate_total"]
-                )
+        scope_metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics
+        if len(scope_metrics) > 0:
+            metric_results = scope_metrics[0].metrics
+            metric_results = {
+                metric.name: metric.data.data_points[0] for metric in metric_results
+            }
+            final_metrics = {}
+            for metric_name, raw_metric in metric_results.items():
+                if re.match(r"transcriber.*\.min_latency", metric_name):
+                    final_metrics[metric_name] = raw_metric.min
+                if re.match(r"transcriber.*\.max_latency", metric_name):
+                    final_metrics[metric_name] = raw_metric.max
+                if re.match(r"transcriber.*\.avg_latency", metric_name):
+                    transcriber_str = metric_name.split(".")[1]
+                    final_metrics[metric_name] = (
+                        raw_metric.sum
+                        / metric_results[f"transcriber.{transcriber_str}.duration"].sum
+                    )
+                if re.match(r"agent.*\.total_characters", metric_name):
+                    agent_str = metric_name.split(".", 1)[1].rsplit(".", 1)[0]
+                    final_metrics[
+                        f"agent.{agent_str}.characters_per_second"
+                    ] = raw_metric.value / sum(
+                        final_spans[f"agent.{agent_str}.generate_total"]
+                    )
 
-    final_spans = {k: sum(v) / len(v) for k, v in final_spans.items()}
-    if len(scope_metrics) > 0:
-        final_results = {**final_spans, **final_metrics}
+        final_spans = {k: sum(v) / len(v) for k, v in final_spans.items()}
+        if len(scope_metrics) > 0:
+            final_results = {**final_spans, **final_metrics}
+        else:
+            final_results = final_spans
+        print(json.dumps(final_results, indent=4))
+        if args.results_file:
+            with open(result_file_path, "w") as f:
+                json.dump(final_results, f, indent=4)
     else:
-        final_results = final_spans
-    print(json.dumps(final_results, indent=4))
-    if args.results_file:
-        with open(os.path.join(args.results_dir, args.results_file), "w") as f:
-            json.dump(final_results, f, indent=4)
+        with open(result_file_path, "r") as f:
+            final_results = json.load(f)
+
+    if args.create_graphs or args.just_graphs:
+        results_split = []
+        for name, value in final_results.items():
+            name = name.split(".", 1)
+            new_name = name[1].rsplit(".", 1)
+            results_split.append((name[0], *new_name, value))
+
+        graph_data = defaultdict(lambda: defaultdict(list))
+        for category, name, metric, value in results_split:
+            graph_data[f"{category} - {metric}"]["labels"].append(name)
+            graph_data[f"{category} - {metric}"]["values"].append(value)
+
+        graph_dir = os.path.join(args.results_dir, "graphs")
+        os.makedirs(graph_dir, exist_ok=True)
+
+        for graph_title, data in graph_data.items():
+            plt.title(graph_title)
+            plt.bar(data["labels"], data["values"])
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.savefig(os.path.join(graph_dir, f"{graph_title}.png"))
+            plt.clf()
 
 
 if __name__ == "__main__":
