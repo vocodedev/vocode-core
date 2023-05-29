@@ -60,20 +60,15 @@ class SpecificStatisticsReader(MetricReader):
             for metric_name, raw_metric in metric_results.items():
                 if re.match(r"transcriber.*\.min_latency", metric_name):
                     final_metrics[metric_name] = raw_metric.min
-                if re.match(r"transcriber.*\.max_latency", metric_name):
+                elif re.match(r"transcriber.*\.max_latency", metric_name):
                     final_metrics[metric_name] = raw_metric.max
-                if re.match(r"transcriber.*\.avg_latency", metric_name):
+                elif re.match(r"transcriber.*\.avg_latency", metric_name):
                     transcriber_str = metric_name.split(".")[1]
                     final_metrics[metric_name] = (
                         raw_metric.sum
                         / metric_results[f"transcriber.{transcriber_str}.duration"].sum
                     )
-                # if re.match(r"agent.*\.total_characters", metric_name):
-                #     agent_str = metric_name.split(".", 1)[1].rsplit(".", 1)[0]
-                #     final_metrics[
-                #         f"agent.{agent_str}.characters_per_second"
-                #     ] = raw_metric.value / sum(
-                #         final_spans[f"agent.{agent_str}.generate_total"]
-                #     )
+                else:
+                    final_metrics[metric_name] = raw_metric.value
             for key, value in final_metrics.items():
                 print(f"{key}: {value}")
