@@ -265,7 +265,7 @@ def get_transcriber(transcriber_name, file_input):
 
 trace.set_tracer_provider(TracerProvider(resource=Resource.create({})))
 span_exporter = InMemorySpanExporter()
-trace.get_tracer_provider().add_span_processor(SimpleSpanProcessor(span_exporter))
+trace.get_tracer_provider().add_span_processor(SimpleSpanProcessor(span_exporter))  # type: ignore
 
 reader = InMemoryMetricReader()
 provider = MeterProvider(metric_readers=[reader])
