@@ -66,7 +66,8 @@ meter = metrics.get_meter(__name__)
 
 # Create the parser
 parser = argparse.ArgumentParser(
-    description="Benchmark Vocode's transcribers, agents, and synthesizers."
+    description="Benchmark Vocode's transcribers, agents, and synthesizers.\n"
+    + "Example usage: python playground/streaming/benchmark.py --all --all_num_cycles 3"
 )
 
 synthesizer_classes = {
@@ -162,6 +163,12 @@ parser.add_argument(
     help="The number of synthesizer runs to perform. Results are averaged over the runs.",
 )
 parser.add_argument(
+    "--all_num_cycles",
+    type=int,
+    default=None,
+    help="The number of transcriber, agent, and synthesizer runs to perform. Overrides all other num_cycle arguments.",
+)
+parser.add_argument(
     "--agent_num_cycles",
     type=int,
     default=1,
@@ -197,6 +204,11 @@ if "all" in args.agents:
     args.agents = agent_choices
 if "all" in args.synthesizers:
     args.synthesizers = synthesizer_choices
+
+if args.all_num_cycles is not None:
+    args.transcriber_num_cycles = args.all_num_cycles
+    args.agent_num_cycles = args.all_num_cycles
+    args.synthesizer_num_cycles = args.all_num_cycles
 
 os.makedirs(args.results_dir, exist_ok=True)
 
