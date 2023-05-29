@@ -67,17 +67,16 @@ class GoodbyeModel:
     async def create_embedding(self, text) -> np.ndarray:
         params = {
             "input": text,
-            "model": "text-embedding-ada-002",
         }
 
         engine = getenv("AZURE_OPENAI_TEXT_EMBEDDING_ENGINE")
         if engine is not None:
             params["engine"] = engine
+        else:
+            params["model"] = "text-embedding-ada-002"
 
         return np.array(
-            (
-                await openai.Embedding.acreate(**params)
-            )["data"][0]["embedding"]
+            (await openai.Embedding.acreate(**params))["data"][0]["embedding"]
         )
 
 
