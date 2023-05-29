@@ -44,7 +44,7 @@ supported_classes = [
 # Required environment variables containing API key: OPENAI_API_KEY, TELEGRAM_BOT_KEY, and your Vocode synthesizers classes corresponding API key variable
 
 # Your chosen synthesizer provider's corresponding Vocode turn_based class instance
-SYNTH = CoquiSynthesizer(xtts=True)
+SYNTH = CoquiSynthesizer(use_xtts=True)
 
 # Array of tuples (synthesizer's voice id, nickname, description if text to voice)
 DEFAULT_VOICES = [(None, "Coqui Default", None)]

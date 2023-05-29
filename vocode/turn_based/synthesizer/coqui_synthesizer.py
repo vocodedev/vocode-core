@@ -18,12 +18,12 @@ class CoquiSynthesizer(BaseSynthesizer):
         self,
         voice_id: Optional[str] = None,
         voice_prompt: Optional[str] = None,
-        xtts: bool = False,
+        use_xtts: bool = False,
         api_key: Optional[str] = None,
     ):
         self.voice_id = voice_id or DEFAULT_SPEAKER_ID
         self.voice_prompt = voice_prompt
-        self.xtts = xtts
+        self.use_xtts = use_xtts
         self.api_key = getenv("COQUI_API_KEY", api_key)
 
     def synthesize(self, text: str) -> AudioSegment:
@@ -117,7 +117,7 @@ class CoquiSynthesizer(BaseSynthesizer):
             "speed": 1,
         }
 
-        if self.xtts:
+        if self.use_xtts:
             # If we have a voice prompt, use that instead of the voice ID
             if self.voice_prompt is not None:
                 url += "samples/xtts/render-from-prompt/"
