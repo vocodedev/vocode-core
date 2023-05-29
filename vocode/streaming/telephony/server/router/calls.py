@@ -39,11 +39,13 @@ class CallsRouter(BaseRouter):
         self.router = APIRouter()
         self.router.websocket("/connect_call/{id}")(self.connect_call)
 
-        self.calls = {}
+        self.calls: dict[str, Call] = {}
 
     async def connect_call(self, websocket: WebSocket, id: str):
         await websocket.accept()
         self.logger.debug("Phone WS connection opened for chat {}".format(id))
+
+        call: Call
 
         if id in self.calls:
             self.logger.debug("Connecting new websocket for existing Call with id {}".format(id))
@@ -54,7 +56,7 @@ class CallsRouter(BaseRouter):
             if not call_config:
                 raise HTTPException(status_code=400, detail="No active phone call")
 
-            call: Call = Call.from_call_config(
+            call = Call.from_call_config(
                 base_url=self.base_url,
                 call_config=call_config,
                 config_manager=self.config_manager,
