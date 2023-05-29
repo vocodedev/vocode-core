@@ -25,6 +25,7 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
                 "Use the WebSocket user implemented agent to stream responses"
             )
         self.logger = logger or logging.getLogger(__name__)
+        self.client_session = aiohttp.ClientSession()
 
     async def respond(
         self,
@@ -33,8 +34,9 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
         is_interrupt: bool = False,
     ) -> Tuple[Optional[BaseMessage], bool]:
         config = self.agent_config.respond
+        body = None
         try:
-            async with aiohttp.ClientSession() as session:
+            async with self.client_session as session:
                 payload = RESTfulAgentInput(
                     human_input=human_input, conversation_id=conversation_id
                 ).dict()
@@ -44,10 +46,9 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
                     json=payload,
                     timeout=aiohttp.ClientTimeout(total=15),
                 ) as response:
-                    assert response.status == 200
-                    output: RESTfulAgentOutput = RESTfulAgentOutput.parse_obj(
-                        await response.json()
-                    )
+                    body = await response.json()
+                    response.raise_for_status()  # Raises an exception for non-2xx status codes
+                    output: RESTfulAgentOutput = RESTfulAgentOutput.parse_obj(body)
                     output_response = None
                     should_stop = False
                     if output.type == RESTfulAgentOutputType.TEXT:
@@ -56,5 +57,5 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
                         should_stop = True
                     return output_response, should_stop
         except Exception as e:
-            self.logger.error(f"Error in response from RESTful agent: {e}")
+            self.logger.exception(f"Error in response from RESTful agent: {body}")
             return None, True
