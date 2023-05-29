@@ -14,13 +14,6 @@ class WebSocketAgentMessageType(str, Enum):
 class WebSocketAgentMessage(TypedModel, type=WebSocketAgentMessageType.BASE):
     conversation_id: Optional[str] = None
 
-    # TODO: Find a better way to serialize this to JSON
-    def to_json_dictionary(self) -> dict:
-        return {
-            "type": self.type,
-            "conversation_id": self.conversation_id,
-        }
-
 
 class WebSocketAgentTextMessage(
     WebSocketAgentMessage, type=WebSocketAgentMessageType.TEXT
@@ -29,13 +22,6 @@ class WebSocketAgentTextMessage(
         text: str
 
     data: Payload
-
-    def to_json_dictionary(self) -> dict:
-        properties = super().to_json_dictionary()
-        properties["data"] = {
-            "text": self.data.text,
-        }
-        return properties
 
     @classmethod
     def from_text(cls, text: str, conversation_id: Optional[str] = None):
