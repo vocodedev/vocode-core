@@ -68,7 +68,8 @@ class ConversationRouter(BaseRouter):
         conversation: StreamingConversation = self.sessions.get(start_message.session_id)
         if conversation is None:
             return None
-        conversation.restart(output_device, lambda: output_device.ws.send_text(ReadyMessage().json()))
+        self.logger.debug(f"get_conversation restart...")
+        await conversation.restart(output_device, lambda: output_device.ws.send_text(ReadyMessage().json()))
         return conversation
         
     async def new_conversation(
@@ -104,14 +105,15 @@ class ConversationRouter(BaseRouter):
             await websocket.receive_json()
         )
         self.logger.debug(f"Conversation started")
+        # self.logger.debug(start_message.dict())
         output_device = WebsocketOutputDevice(
             websocket,
             start_message.output_audio_config.sampling_rate,
             start_message.output_audio_config.audio_encoding,
         )
-        conversation = self.get_conversation(output_device, start_message)
+        conversation = await self.get_conversation(output_device, start_message)
         if conversation is None:
-            conversation = self.new_conversation(output_device, start_message)
+            conversation = await self.new_conversation(output_device, start_message)
         while conversation.is_active():
             message: WebSocketMessage = WebSocketMessage.parse_obj(
                 await websocket.receive_json()
