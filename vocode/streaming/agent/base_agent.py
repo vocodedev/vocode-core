@@ -5,8 +5,10 @@ from enum import Enum
 import logging
 import random
 from typing import AsyncGenerator, Generator, Generic, Optional, Tuple, TypeVar, Union
+import typing
 from opentelemetry import trace
 from opentelemetry.trace import Span
+from vocode.streaming.models.actions import ActionOutput
 
 from vocode.streaming.models.agent import (
     AgentConfig,
@@ -28,9 +30,22 @@ tracer = trace.get_tracer(__name__)
 AGENT_TRACE_NAME = "agent"
 
 
-class AgentInput(BaseModel):
-    transcription: Transcription
+class AgentInputType(str, Enum):
+    BASE = "agent_input_base"
+    TRANSCRIPTION = "agent_input_transcription"
+    ACTION_RESULT = "agent_input_action_result"
+
+
+class AgentInput(TypedModel, type=AgentInputType.BASE.value):
     conversation_id: str
+
+
+class TranscriptionAgentInput(AgentInput, type=AgentInputType.TRANSCRIPTION.value):
+    transcription: Transcription
+
+
+class ActionResultAgentInput(AgentInput, type=AgentInputType.ACTION_RESULT.value):
+    action_output: ActionOutput
 
 
 class AgentResponseType(str, Enum):
@@ -187,12 +202,22 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         return False
 
     async def process(self, item: InterruptibleEvent[AgentInput]):
+        assert self.transcript is not None
         try:
             agent_input = item.payload
+            if agent_input.type != AgentInputType.TRANSCRIPTION:
+                return
+            transcription = typing.cast(
+                TranscriptionAgentInput, agent_input
+            ).transcription
+            self.transcript.add_human_message(
+                text=transcription.message,
+                conversation_id=agent_input.conversation_id,
+            )
             goodbye_detected_task = None
             if self.agent_config.end_conversation_on_goodbye:
                 goodbye_detected_task = self.create_goodbye_detection_task(
-                    agent_input.transcription.message
+                    transcription.message
                 )
             if self.agent_config.send_filler_audio:
                 self.produce_interruptible_event_nonblocking(AgentResponseFillerAudio())
@@ -200,11 +225,11 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             should_stop = False
             if self.agent_config.generate_responses:
                 should_stop = await self.handle_generate_response(
-                    agent_input.transcription, agent_input.conversation_id
+                    transcription, agent_input.conversation_id
                 )
             else:
                 should_stop = await self.handle_respond(
-                    agent_input.transcription, agent_input.conversation_id
+                    transcription, agent_input.conversation_id
                 )
             if should_stop:
                 self.logger.debug("Agent requested to stop")
