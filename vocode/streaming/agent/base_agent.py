@@ -156,8 +156,20 @@ class RespondAgent(BaseAgent[AgentConfigType]):
     async def handle_generate_response(
         self, transcription: Transcription, conversation_id: str
     ) -> bool:
+        optional_model_name = (
+            f"-{self.agent_config.model_name}"
+            if hasattr(self.agent_config, "model_name")
+            else ""
+        )
+        tracer_name_start = (
+            f"{AGENT_TRACE_NAME}.{self.agent_config.type}{optional_model_name}"
+        )
+
         agent_span = tracer.start_span(
-            AGENT_TRACE_NAME, {"generate_response": True}  # type: ignore
+            f"{tracer_name_start}.generate_total"  # type: ignore
+        )
+        agent_span_first = tracer.start_span(
+            f"{tracer_name_start}.generate_first"  # type: ignore
         )
         responses = self.generate_response(
             transcription.message,
@@ -167,12 +179,14 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         is_first_response = True
         async for response in responses:
             if is_first_response:
-                agent_span.end()
+                agent_span_first.end()
+                is_first_response = False
             self.produce_interruptible_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
         # TODO: implement should_stop for generate_responses
+        agent_span.end()
         return False
 
     async def handle_respond(
@@ -180,7 +194,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
     ) -> bool:
         try:
             with tracer.start_as_current_span(
-                AGENT_TRACE_NAME, {"generate_response": False}  # type: ignore
+                f"{AGENT_TRACE_NAME}.{self.agent_config.type}.respond_total"
             ):
                 response, should_stop = await self.respond(
                     transcription.message,

@@ -31,9 +31,6 @@ class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]
         super().__init__(synthesizer_config)
         self.voice = synthesizer_config.voice
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.STREAM_ELEMENTS.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
@@ -44,19 +41,31 @@ class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]
             "voice": self.voice,
             "text": message.text,
         }
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.STREAM_ELEMENTS.value.split('_', 1)[-1]}.create_total",
+        )
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 self.TTS_ENDPOINT,
                 params=url_params,
                 timeout=aiohttp.ClientTimeout(total=15),
             ) as response:
+                read_response = await response.read()
+                create_speech_span.end()
+                convert_span = tracer.start_span(
+                    f"synthesizer.{SynthesizerType.STREAM_ELEMENTS.value.split('_', 1)[-1]}.convert",
+                )
+
                 audio_segment: AudioSegment = AudioSegment.from_mp3(
-                    io.BytesIO(await response.read())  # type: ignore
+                    io.BytesIO(read_response)  # type: ignore
                 )
                 output_bytes_io = io.BytesIO()
                 audio_segment.export(output_bytes_io, format="wav")  # type: ignore
-                return self.create_synthesis_result_from_wav(
+
+                result = self.create_synthesis_result_from_wav(
                     file=output_bytes_io,
                     message=message,
                     chunk_size=chunk_size,
                 )
+                convert_span.end()
+                return result
