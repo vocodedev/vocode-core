@@ -52,6 +52,7 @@
         "telephony",
         "create-your-own-agent",
         "langchain-agent",
+        "action-agents",
         "local-conversation",
         "events-manager",
         "using-synthesizers",
