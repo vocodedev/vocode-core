@@ -76,8 +76,8 @@ synthesizer_classes = {
     "elevenlabs": (ElevenLabsSynthesizer, ElevenLabsSynthesizerConfig),
     "azure": (AzureSynthesizer, AzureSynthesizerConfig),
     "bark": (BarkSynthesizer, BarkSynthesizerConfig),
-    "coqui": (CoquiSynthesizer, CoquiSynthesizerConfig),
-    "coquitts": (CoquiTTSSynthesizer, CoquiTTSSynthesizerConfig),
+    # "coqui": (CoquiSynthesizer, CoquiSynthesizerConfig),
+    # "coquitts": (CoquiTTSSynthesizer, CoquiTTSSynthesizerConfig),
     "google": (GoogleSynthesizer, GoogleSynthesizerConfig),
     "gtts": (GTTSSynthesizer, GTTSSynthesizerConfig),
     "playht": (PlayHtSynthesizer, PlayHtSynthesizerConfig),
@@ -85,9 +85,6 @@ synthesizer_classes = {
     "streamelements": (StreamElementsSynthesizer, StreamElementsSynthesizerConfig),
 }
 
-synthesizer_classes = {
-    k: v for k, v in synthesizer_classes.items() if k not in ["coqui", "coquitts"]
-}
 
 # These synthesizers stream output so they need to be traced within this file.
 STREAMING_SYNTHESIZERS = ["azure"]
