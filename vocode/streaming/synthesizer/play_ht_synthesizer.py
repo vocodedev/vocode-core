@@ -74,17 +74,22 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
                     raise Exception(
                         f"Play.ht API error: {response.status}, {response.text}"
                     )
-
+                read_response = await response.read()
+                create_speech_span.end()
+                convert_span = tracer.start_span(
+                    f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.convert",
+                )
                 audio_segment: AudioSegment = AudioSegment.from_mp3(
-                    io.BytesIO(await response.read())  # type: ignore
+                    io.BytesIO(read_response)  # type: ignore
                 )
 
                 output_bytes_io = io.BytesIO()
                 audio_segment.export(output_bytes_io, format="wav")  # type: ignore
 
-                create_speech_span.end()
-                return self.create_synthesis_result_from_wav(
+                result = self.create_synthesis_result_from_wav(
                     file=output_bytes_io,
                     message=message,
                     chunk_size=chunk_size,
                 )
+                convert_span.end()
+                return result

@@ -94,6 +94,10 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
                 self.thread_pool_executor, self.synthesize, message.text
             )
         )
+        create_speech_span.end()
+        convert_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.GOOGLE.value.split('_', 1)[-1]}.convert",
+        )
         output_sample_rate = response.audio_config.sample_rate_hertz
 
         real_offset = int(GoogleSynthesizer.OFFSET_SECONDS * output_sample_rate)
@@ -106,9 +110,10 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
         in_memory_wav.writeframes(response.audio_content[real_offset:-real_offset])
         output_bytes_io.seek(0)
 
-        create_speech_span.end()
-        return self.create_synthesis_result_from_wav(
+        result = self.create_synthesis_result_from_wav(
             file=output_bytes_io,
             message=message,
             chunk_size=chunk_size,
         )
+        convert_span.end()
+        return result

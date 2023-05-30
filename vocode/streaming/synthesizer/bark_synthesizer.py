@@ -50,14 +50,20 @@ class BarkSynthesizer(BaseSynthesizer[BarkSynthesizerConfig]):
             message.text,
             **self.synthesizer_config.generate_kwargs,
         )
+        create_speech_span.end()
+        convert_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.BARK.value.split('_', 1)[-1]}.convert",
+        )
         int_audio_arr = (audio_array * np.iinfo(np.int16).max).astype(np.int16)
 
         output_bytes_io = io.BytesIO()
         write_wav(output_bytes_io, self.SAMPLE_RATE, int_audio_arr)
 
-        create_speech_span.end()
-        return self.create_synthesis_result_from_wav(
+        result = self.create_synthesis_result_from_wav(
             file=output_bytes_io,
             message=message,
             chunk_size=chunk_size,
         )
+
+        convert_span.end()
+        return result

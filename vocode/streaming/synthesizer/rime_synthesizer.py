@@ -68,9 +68,15 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
                         f"Rime API error: {response.status}, {await response.text()}"
                     )
                 data = await response.json()
+                create_speech_span.end()
+                convert_span = tracer.start_span(
+                    f"synthesizer.{SynthesizerType.RIME.value.split('_', 1)[-1]}.convert",
+                )
+
                 audio_file = io.BytesIO(base64.b64decode(data.get("audioContent")))
 
-                create_speech_span.end()
-                return self.create_synthesis_result_from_wav(
+                result = self.create_synthesis_result_from_wav(
                     file=audio_file, message=message, chunk_size=chunk_size
                 )
+                convert_span.end()
+                return result

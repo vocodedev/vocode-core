@@ -69,15 +69,21 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
                     "GET",
                     sample["audio_url"],
                 ) as response:
+                    read_response = await response.read()
+                    create_speech_span.end()
+                    convert_span = tracer.start_span(
+                        f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.convert",
+                    )
                     audio_segment: AudioSegment = AudioSegment.from_wav(
-                        io.BytesIO(await response.read())  # type: ignore
+                        io.BytesIO(read_response)  # type: ignore
                     )
 
                     output_bytes: bytes = audio_segment.raw_data
 
-                    create_speech_span.end()
-                    return self.create_synthesis_result_from_wav(
+                    result = self.create_synthesis_result_from_wav(
                         file=output_bytes,
                         message=message,
                         chunk_size=chunk_size,
                     )
+                    convert_span.end()
+                    return result

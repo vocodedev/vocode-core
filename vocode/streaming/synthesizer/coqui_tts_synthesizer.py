@@ -55,6 +55,10 @@ class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
             self.speaker,
             self.language,
         )
+        create_speech_span.end()
+        convert_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.COQUI_TTS.value.split('_', 1)[-1]}.convert",
+        )
         audio_data = np.array(audio_data)
 
         # Convert the NumPy array to bytes
@@ -69,7 +73,10 @@ class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
 
         output_bytes_io = io.BytesIO()
         audio_segment.export(output_bytes_io, format="wav")  # type: ignore
-        create_speech_span.end()
-        return self.create_synthesis_result_from_wav(
+
+        result = self.create_synthesis_result_from_wav(
             file=output_bytes_io, message=message, chunk_size=chunk_size
         )
+
+        convert_span.end()
+        return result

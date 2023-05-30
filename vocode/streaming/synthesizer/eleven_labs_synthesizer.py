@@ -82,6 +82,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                         f"ElevenLabs API returned {response.status} status code"
                     )
                 audio_data = await response.read()
+                create_speech_span.end()
+                convert_span = tracer.start_span(
+                    f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.convert",
+                )
                 audio_segment: AudioSegment = AudioSegment.from_mp3(
                     io.BytesIO(audio_data)  # type: ignore
                 )
@@ -90,9 +94,11 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
                 audio_segment.export(output_bytes_io, format="wav")  # type: ignore
 
-                create_speech_span.end()
-                return self.create_synthesis_result_from_wav(
+                result = self.create_synthesis_result_from_wav(
                     file=output_bytes_io,
                     message=message,
                     chunk_size=chunk_size,
                 )
+                convert_span.end()
+
+                return result
