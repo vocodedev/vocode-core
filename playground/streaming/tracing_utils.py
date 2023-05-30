@@ -7,6 +7,7 @@ from opentelemetry.sdk.trace.export import SpanExporter
 from opentelemetry.sdk.metrics.export import MetricReader
 from opentelemetry.sdk.metrics.export import MetricsData
 
+NANOSECONDS_PER_SECOND = 1e9
 
 class PrintDurationSpanExporter(SpanExporter):
     def __init__(self):
@@ -16,7 +17,7 @@ class PrintDurationSpanExporter(SpanExporter):
     def export(self, spans):
         for span in spans:
             duration_ns = span.end_time - span.start_time
-            duration_s = duration_ns / 1e9
+            duration_s = duration_ns / NANOSECONDS_PER_SECOND
             self.spans[span.name].append(duration_s)
 
     def shutdown(self):
