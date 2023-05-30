@@ -89,18 +89,11 @@ async def run_agent(agent: BaseAgent):
 async def agent_main():
     transcript = Transcript()
     # Replace with your agent!
-    # agent = ChatGPTAgent(
-    #     ChatGPTAgentConfig(
-    #         prompt_preamble="The assistant is having a pleasant conversation about life.",
-    #         end_conversation_on_goodbye=True,
-    #         generate_responses=True,
-    #     )
-    # )
-    agent = ActionAgent(
-        ActionAgentConfig(
-            actions=[ActionType.NYLAS_SEND_EMAIL],
-            model_name="gpt-4",
-            send_filler_audio=FillerAudioConfig(use_typing_noise=True),
+    agent = ChatGPTAgent(
+        ChatGPTAgentConfig(
+            prompt_preamble="The assistant is having a pleasant conversation about life.",
+            end_conversation_on_goodbye=True,
+            generate_responses=True,
         )
     )
 
