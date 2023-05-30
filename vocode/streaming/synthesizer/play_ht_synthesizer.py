@@ -8,11 +8,14 @@ import requests
 from vocode import getenv
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import PlayHtSynthesizerConfig
+from vocode.streaming.models.synthesizer import PlayHtSynthesizerConfig, SynthesizerType
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
+    tracer,
 )
+
+from opentelemetry.context.context import Context
 
 TTS_ENDPOINT = "https://play.ht/api/v2/tts/stream"
 
@@ -34,6 +37,9 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
                 "You must set the PLAY_HT_API_KEY and PLAY_HT_USER_ID environment variables"
             )
 
+    @tracer.start_as_current_span(
+        "synthesis", Context(synthesizer=SynthesizerType.PLAY_HT.value)
+    )
     async def create_speech(
         self,
         message: BaseMessage,

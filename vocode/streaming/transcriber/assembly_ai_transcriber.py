@@ -115,7 +115,11 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
                     )
                     if "text" in data and data["text"]:
                         self.output_queue.put_nowait(
-                            Transcription(data["text"], data["confidence"], is_final)
+                            Transcription(
+                                message=data["text"],
+                                confidence=data["confidence"],
+                                is_final=is_final,
+                            )
                         )
 
             await asyncio.gather(sender(ws), receiver(ws))

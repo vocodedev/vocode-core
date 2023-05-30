@@ -7,11 +7,17 @@ from typing import Optional
 import requests
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import StreamElementsSynthesizerConfig
+from vocode.streaming.models.synthesizer import (
+    StreamElementsSynthesizerConfig,
+    SynthesizerType,
+)
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
+    tracer,
 )
+
+from opentelemetry.context.context import Context
 
 
 class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]):
@@ -25,6 +31,9 @@ class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]
         super().__init__(synthesizer_config)
         self.voice = synthesizer_config.voice
 
+    @tracer.start_as_current_span(
+        "synthesis", Context(synthesizer=SynthesizerType.STREAM_ELEMENTS.value)
+    )
     async def create_speech(
         self,
         message: BaseMessage,

@@ -3,7 +3,6 @@ from concurrent.futures import ThreadPoolExecutor
 import io
 import logging
 import os
-from re import T
 import wave
 from typing import Any, Optional
 
@@ -15,10 +14,13 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
     encode_as_wav,
+    tracer,
 )
-from vocode.streaming.models.synthesizer import GoogleSynthesizerConfig
+from vocode.streaming.models.synthesizer import GoogleSynthesizerConfig, SynthesizerType
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.utils import convert_wav
+
+from opentelemetry.context.context import Context
 
 
 class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
@@ -78,6 +80,9 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
         )
 
     # TODO: make this nonblocking, see speech.TextToSpeechAsyncClient
+    @tracer.start_as_current_span(
+        "synthesis", Context(synthesizer=SynthesizerType.GOOGLE.value)
+    )
     async def create_speech(
         self,
         message: BaseMessage,

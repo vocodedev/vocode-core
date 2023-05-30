@@ -2,7 +2,7 @@ import time
 from typing import List
 from pydantic import BaseModel, Field
 from enum import Enum
-from vocode.streaming.models.events import Sender, TranscriptEvent
+from vocode.streaming.models.events import Sender, Event, EventType
 
 from vocode.streaming.utils.events_manager import EventsManager
 
@@ -40,7 +40,7 @@ class Transcript(BaseModel):
         events_manager.publish_event(
             TranscriptEvent(
                 text=text,
-                sender=Sender.HUMAN,
+                sender=sender,
                 timestamp=time.time(),
                 conversation_id=conversation_id,
             )
@@ -66,14 +66,17 @@ class Transcript(BaseModel):
             conversation_id=conversation_id,
         )
 
-    def last_human_message(self):
-        for msg in reversed(self.messages):
-            if msg.sender == Sender.HUMAN:
-                return msg.text
-        return ""
-    
-    def last_bot_message(self):
-        for msg in reversed(self.messages):
-            if msg.sender == Sender.BOT:
-                return msg.text
-        return ""
+
+class TranscriptEvent(Event, type=EventType.TRANSCRIPT):
+    text: str
+    sender: Sender
+    timestamp: float
+
+    def to_string(self, include_timestamp: bool = False) -> str:
+        if include_timestamp:
+            return f"{self.sender.name}: {self.text} ({self.timestamp})"
+        return f"{self.sender.name}: {self.text}"
+
+
+class TranscriptCompleteEvent(Event, type=EventType.TRANSCRIPT_COMPLETE):
+    transcript: Transcript
