@@ -23,6 +23,8 @@ def call_phone_number(input: str) -> str:
     The prompt should instruct the bot with what to do on the call and be in the 3rd person,
     like 'the assistant is performing this task' instead of 'perform this task'.
 
+    should only use this tool once it has found an adequate phone number to call.
+
     for example, `+15555555555|the assistant is explaining the meaning of life|i'm going to tell you the meaning of life` will call +15555555555, say 'i'm going to tell you the meaning of life', and instruct the assistant to tell the human what the meaning of life is.
     """
     phone_number, prompt, initial_message = input.split("|", 2)
