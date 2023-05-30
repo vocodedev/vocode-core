@@ -9,12 +9,13 @@ import logging
 import time
 import typing
 
-from opentelemetry import trace
-from opentelemetry.trace import Span
+from vocode.streaming.action.worker import ActionsWorker
+from vocode.streaming.agent.action_agent import ActionAgent
 
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
+from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.transcript import Transcript, TranscriptCompleteEvent
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import TranscriberConfig
@@ -37,6 +38,7 @@ from vocode.streaming.agent.base_agent import (
     AgentResponseMessage,
     AgentResponseType,
     BaseAgent,
+    TranscriptionAgentInput,
 )
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
@@ -117,13 +119,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
-                self.conversation.transcript.add_human_message(
-                    text=transcription.message,
-                    events_manager=self.conversation.events_manager,
-                    conversation_id=self.conversation.id,
-                )
                 event = self.interruptible_event_factory.create(
-                    AgentInput(
+                    TranscriptionAgentInput(
                         transcription=transcription,
                         conversation_id=self.conversation.id,
                     )
@@ -293,7 +290,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                 self.conversation.transcript.add_bot_message(
                     text=message_sent,
-                    events_manager=self.conversation.events_manager,
                     conversation_id=self.conversation.id,
                 )
             except asyncio.CancelledError:
@@ -340,6 +336,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
             conversation=self,
             interruptible_event_factory=self.interruptible_event_factory,
         )
+        self.actions_worker = None
+        if isinstance(self.agent, ActionAgent):
+            self.actions_worker = ActionsWorker(
+                input_queue=self.agent.actions_queue,
+                output_queue=self.agent.get_input_queue(),
+                interruptible_event_factory=self.interruptible_event_factory,
+                action_factory=self.agent.action_factory,
+            )
         self.synthesis_results_worker = self.SynthesisResultsWorker(
             input_queue=self.synthesis_results_queue, conversation=self
         )
@@ -354,6 +358,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.events_task: Optional[asyncio.Task] = None
         self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
         self.transcript = Transcript()
+        self.transcript.attach_events_manager(self.events_manager)
         self.bot_sentiment = None
         if self.agent.get_agent_config().track_bot_sentiment:
             self.sentiment_config = (
@@ -384,8 +389,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
         self.output_device.start()
-        if self.filler_audio_worker:
+        if self.filler_audio_worker is not None:
             self.filler_audio_worker.start()
+        if self.actions_worker is not None:
+            self.actions_worker.start()
         is_ready = await self.transcriber.ready()
         if not is_ready:
             raise Exception("Transcriber startup failed")
@@ -567,9 +574,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent_responses_worker.terminate()
         self.logger.debug("Terminating synthesis results worker")
         self.synthesis_results_worker.terminate()
-        if self.filler_audio_worker:
+        if self.filler_audio_worker is not None:
             self.logger.debug("Terminating filler audio worker")
             self.filler_audio_worker.terminate()
+        if self.actions_worker is not None:
+            self.logger.debug("Terminating actions worker")
+            self.actions_worker.terminate()
         self.logger.debug("Successfully terminated")
 
     def is_active(self):
