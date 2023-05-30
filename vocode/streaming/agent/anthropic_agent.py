@@ -3,8 +3,9 @@ from langchain import ConversationChain
 import logging
 
 from typing import Optional, Tuple
+from vocode.streaming.agent.base_agent import RespondAgent
 
-from vocode.streaming.agent.utils import find_last_punctuation, get_sentence_from_buffer
+from vocode.streaming.agent.utils import get_sentence_from_buffer
 
 from langchain import ConversationChain
 from langchain.schema import ChatMessage, AIMessage, HumanMessage
@@ -22,13 +23,13 @@ from langchain.prompts import (
 )
 
 from vocode import getenv
-from vocode.streaming.agent.chat_agent import ChatAgent
 from vocode.streaming.models.agent import ChatAnthropicAgentConfig
+from langchain.memory import ConversationBufferMemory
 
 SENTENCE_ENDINGS = [".", "!", "?"]
 
 
-class ChatAnthropicAgent(ChatAgent[ChatAnthropicAgentConfig]):
+class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
     def __init__(
         self,
         agent_config: ChatAnthropicAgentConfig,
@@ -64,6 +65,7 @@ class ChatAnthropicAgent(ChatAgent[ChatAnthropicAgentConfig]):
             else None
         )
 
+        self.memory = ConversationBufferMemory(return_messages=True)
         self.conversation = ConversationChain(
             memory=self.memory, prompt=self.prompt, llm=self.llm
         )

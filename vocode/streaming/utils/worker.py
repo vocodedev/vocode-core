@@ -24,8 +24,11 @@ class AsyncWorker:
         self.worker_task = asyncio.create_task(self._run_loop())
         return self.worker_task
 
-    def send_nonblocking(self, item):
+    def consume_nonblocking(self, item):
         self.input_queue.put_nowait(item)
+
+    def produce_nonblocking(self, item):
+        self.output_queue.put_nowait(item)
 
     async def _run_loop(self):
         raise NotImplementedError
@@ -126,17 +129,31 @@ class InterruptibleEvent(Generic[Payload]):
         return self.is_interruptible and self.interruption_event.is_set()
 
 
+class InterruptibleEventFactory:
+    def create(self, payload: Any, is_interruptible: bool = True) -> InterruptibleEvent:
+        return InterruptibleEvent(payload, is_interruptible=is_interruptible)
+
+
 class InterruptibleWorker(AsyncWorker):
     def __init__(
         self,
         input_queue: asyncio.Queue[InterruptibleEvent],
         output_queue: asyncio.Queue = asyncio.Queue(),
+        interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
         max_concurrency=2,
     ) -> None:
         super().__init__(input_queue, output_queue)
         self.input_queue = input_queue
         self.max_concurrency = max_concurrency
+        self.interruptible_event_factory = interruptible_event_factory
         self.current_task = None
+        self.interruptible_event = None
+
+    def produce_interruptible_event_nonblocking(
+        self, item: Any, is_interruptible: bool = True
+    ):
+        interruptible_event = self.interruptible_event_factory.create(item)
+        return super().produce_nonblocking(interruptible_event)
 
     async def _run_loop(self):
         # TODO Implement concurrency with max_nb_of_thread

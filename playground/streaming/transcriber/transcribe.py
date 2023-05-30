@@ -31,9 +31,7 @@ if __name__ == "__main__":
         asyncio.create_task(print_output(transcriber))
         print("Start speaking...press Ctrl+C to end. ")
         while True:
-            chunk = microphone_input.get_audio()
-            if chunk:
-                transcriber.send_audio(chunk)
-            await asyncio.sleep(0)
+            chunk = await microphone_input.get_audio()
+            transcriber.send_audio(chunk)
 
     asyncio.run(listen())

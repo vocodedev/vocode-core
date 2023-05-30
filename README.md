@@ -23,17 +23,21 @@ We're actively looking for community maintainers, so please reach out if interes
 - ➡️ 📞 [Set up a phone number that responds with a LLM-based agent](https://docs.vocode.dev/telephony#inbound-calls)
 - 📞 ➡️ [Send out phone calls from your phone number managed by an LLM-based agent](https://docs.vocode.dev/telephony#outbound-calls)
 - 🧑‍💻 [Dial into a Zoom call](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/telephony/hosted/zoom_dial_in.py)
+- 🤖 [Use an outbound call to a real phone number in a Langchain agent](https://docs.vocode.dev/langchain-agent)
 - Out of the box integrations with:
   - Transcription services, including:
     - [Deepgram](https://deepgram.com/)
     - [AssemblyAI](https://www.assemblyai.com/)
     - [Google Cloud](https://cloud.google.com/speech-to-text)
+    - [Whisper.cpp](https://github.com/ggerganov/whisper.cpp)
+    - [Microsoft Azure](https://azure.microsoft.com/en-us/products/cognitive-services/speech-to-text)
     - [Whisper](https://openai.com/blog/introducing-chatgpt-and-whisper-apis)
     - [RevAI](https://www.rev.ai/)
   - LLMs, including:
     - [ChatGPT](https://openai.com/blog/chatgpt)
     - [GPT-4](https://platform.openai.com/docs/models/gpt-4)
-    - [Anthropic](https://www.anthropic.com/) - coming soon!
+    - [Anthropic](https://www.anthropic.com/)
+    - [GPT4All](https://github.com/nomic-ai/gpt4all)
   - Synthesis services, including:
     - [Rime.ai](https://rime.ai)
     - [Microsoft Azure](https://azure.microsoft.com/en-us/products/cognitive-services/text-to-speech/)
@@ -41,6 +45,10 @@ We're actively looking for community maintainers, so please reach out if interes
     - [Play.ht](https://play.ht)
     - [Eleven Labs](https://elevenlabs.io/)
     - [Coqui](https://coqui.ai/)
+    - [Coqui (OSS)](https://github.com/coqui-ai/TTS)
+    - [gTTS](https://gtts.readthedocs.io/)
+    - [StreamElements](https://streamelements.com/)
+    - [Bark](https://github.com/suno-ai/bark)
 
 Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)!
 
@@ -55,26 +63,23 @@ And we'd love to talk to you on [Discord](https://discord.gg/NaU4mMgcnC)!
 # 🚀 Quickstart (Self-hosted)
 
 ```bash
-pip install 'vocode[io]'
+pip install 'vocode'
 ```
 
 ```python
 import asyncio
+import logging
 import signal
-
-import vocode
 from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.helpers import create_microphone_input_and_speaker_output
-from vocode.streaming.models.transcriber import (
-    DeepgramTranscriberConfig,
-    PunctuationEndpointingConfig,
-)
-from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.streaming.models.agent import ChatGPTAgentConfig
+from vocode.helpers import create_streaming_microphone_input_and_speaker_output
+from vocode.streaming.transcriber import *
+from vocode.streaming.agent import *
+from vocode.streaming.synthesizer import *
+from vocode.streaming.models.transcriber import *
+from vocode.streaming.models.agent import *
+from vocode.streaming.models.synthesizer import *
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
+import vocode
 
 # these can also be set as environment variables
 vocode.setenv(
@@ -85,96 +90,53 @@ vocode.setenv(
 )
 
 
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+
 async def main():
-    microphone_input, speaker_output = create_microphone_input_and_speaker_output(
-        streaming=True, use_default_devices=False
-    )
+    (
+        microphone_input,
+        speaker_output,
+    ) = create_streaming_microphone_input_and_speaker_output(use_default_devices=False)
 
     conversation = StreamingConversation(
         output_device=speaker_output,
         transcriber=DeepgramTranscriber(
             DeepgramTranscriberConfig.from_input_device(
-                microphone_input, endpointing_config=PunctuationEndpointingConfig()
+                microphone_input,
+                endpointing_config=PunctuationEndpointingConfig(),
             )
         ),
         agent=ChatGPTAgent(
             ChatGPTAgentConfig(
-                initial_message=BaseMessage(text="Hello!"),
-                prompt_preamble="Have a pleasant conversation about life",
-            ),
+                initial_message=BaseMessage(text="What up"),
+                prompt_preamble="""The AI is having a pleasant conversation about life""",
+            )
         ),
         synthesizer=AzureSynthesizer(
             AzureSynthesizerConfig.from_output_device(speaker_output)
         ),
+        logger=logger,
     )
     await conversation.start()
     print("Conversation started, press Ctrl+C to end")
     signal.signal(signal.SIGINT, lambda _0, _1: conversation.terminate())
     while conversation.is_active():
-        chunk = microphone_input.get_audio()
-        if chunk:
-            conversation.receive_audio(chunk)
-        await asyncio.sleep(0)
+        chunk = await microphone_input.get_audio()
+        conversation.receive_audio(chunk)
 
 
 if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-# ☁️ Quickstart (Hosted)
-
-First, get a _free_ API key from our [dashboard](https://app.vocode.dev).
-
-```bash
-pip install 'vocode[io]'
-```
-
-```python
-import asyncio
-import signal
-
-import vocode
-from vocode.streaming.hosted_streaming_conversation import HostedStreamingConversation
-from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.helpers import create_microphone_input_and_speaker_output
-from vocode.streaming.models.transcriber import (
-    DeepgramTranscriberConfig,
-    PunctuationEndpointingConfig,
-)
-from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-
-vocode.api_key = "<your API key>"
-
-
-if __name__ == "__main__":
-    microphone_input, speaker_output = create_microphone_input_and_speaker_output(
-        streaming=True, use_default_devices=False
-    )
-
-    conversation = HostedStreamingConversation(
-        input_device=microphone_input,
-        output_device=speaker_output,
-        transcriber_config=DeepgramTranscriberConfig.from_input_device(
-            microphone_input,
-            endpointing_config=PunctuationEndpointingConfig(),
-        ),
-        agent_config=ChatGPTAgentConfig(
-            initial_message=BaseMessage(text="Hello!"),
-            prompt_preamble="Have a pleasant conversation about life",
-        ),
-        synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
-    )
-    signal.signal(signal.SIGINT, lambda _0, _1: conversation.deactivate())
-    asyncio.run(conversation.start())
-```
-
 # 📞 Phone call quickstarts
 
+- [Telephony Server - Self-hosted](https://docs.vocode.dev/telephony)
 - [Inbound calls - Hosted](https://docs.vocode.dev/telephony#inbound-calls)
 - [Outbound calls - Hosted](https://docs.vocode.dev/telephony#outbound-calls)
-- [Telephony Server - Self-hosted](https://github.com/vocodedev/vocode-python/blob/main/examples/telephony_app.py)
 
 # 🌱 Documentation
 

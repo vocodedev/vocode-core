@@ -6,11 +6,14 @@ from typing import Optional
 from io import BytesIO
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import GTTSSynthesizerConfig
+from vocode.streaming.models.synthesizer import GTTSSynthesizerConfig, SynthesizerType
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
+    tracer,
 )
+
+from opentelemetry.context.context import Context
 
 
 class GTTSSynthesizer(BaseSynthesizer):
@@ -26,6 +29,9 @@ class GTTSSynthesizer(BaseSynthesizer):
         self.gTTS = gTTS
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
+    @tracer.start_as_current_span(
+        "synthesis", Context(synthesizer=SynthesizerType.GTTS.value)
+    )
     async def create_speech(
         self,
         message: BaseMessage,
