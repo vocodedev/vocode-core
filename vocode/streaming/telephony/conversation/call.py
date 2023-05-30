@@ -115,9 +115,7 @@ class Call(StreamingConversation):
             events_manager=events_manager,
         )
 
-    async def attach_ws_and_start(self, ws: WebSocket, initial_connection: bool = True):
-        self.playing_dtmf = False # Reset the state
-
+    async def attach_ws_and_start(self, ws: WebSocket):
         assert isinstance(self.output_device, TwilioOutputDevice)
         self.logger.debug("Trying to attach WS to outbound call")
         self.output_device.ws = ws
@@ -125,16 +123,15 @@ class Call(StreamingConversation):
 
         self.twilio_call = self.twilio_client.calls(self.twilio_sid).fetch()
 
-        if initial_connection and self.twilio_call is not None and self.twilio_call.answered_by in ("machine_start", "fax"):
+        if self.twilio_call is not None and self.twilio_call.answered_by in ("machine_start", "fax"):
             self.logger.info(f"Call answered by {self.twilio_call.answered_by}")
             self.twilio_call.update(status="completed")
         else:
             await self.wait_for_twilio_start(ws)
-            if initial_connection:
-                await super().start()
-                self.events_manager.publish_event(
-                    PhoneCallConnectedEvent(conversation_id=self.id)
-                )
+            await super().start()
+            self.events_manager.publish_event(
+                PhoneCallConnectedEvent(conversation_id=self.id)
+            )
             while self.active:
                 message = await ws.receive_text()
                 response = await self.handle_ws_message(message)
@@ -195,8 +192,12 @@ class Call(StreamingConversation):
             self.config_manager.delete_config(self.id)
 
     def tear_down(self):
-        self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
-        self.terminate()
+        conversation_ended = not self.playing_dtmf
+
+        if conversation_ended:
+            self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
+
+        self.terminate(conversation_ended=conversation_ended)
 
     def play_dtmf(self, dtmf_key: str):
         # Twilio does not support playing DTMF tones as a wav file through the <Stream>.
