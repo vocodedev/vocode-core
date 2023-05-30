@@ -211,9 +211,6 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 return ssml_fragment.split(">")[-1]
         return message
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.AZURE.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
@@ -268,6 +265,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             )
         else:
             output_generator = chunk_generator(audio_data_stream)
+
         return SynthesisResult(
             output_generator,
             lambda seconds: self.get_message_up_to(

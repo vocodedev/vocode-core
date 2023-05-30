@@ -1,6 +1,8 @@
 import asyncio
 import typing
+import argparse
 from dotenv import load_dotenv
+from playground.streaming.tracing_utils import make_parser_and_maybe_trace
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.action_agent import ActionAgent
 from vocode.streaming.models.actions import ActionType
@@ -107,4 +109,5 @@ async def agent_main():
 
 
 if __name__ == "__main__":
+    make_parser_and_maybe_trace()
     asyncio.run(agent_main())

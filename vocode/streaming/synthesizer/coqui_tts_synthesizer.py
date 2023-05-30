@@ -38,15 +38,15 @@ class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
         self.language = synthesizer_config.language
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.COQUI_TTS.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.COQUI_TTS.value.split('_', 1)[-1]}.create_total",
+        )
         tts = self.tts
         audio_data = await asyncio.get_event_loop().run_in_executor(
             self.thread_pool_executor,
@@ -54,6 +54,10 @@ class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
             message.text,
             self.speaker,
             self.language,
+        )
+        create_speech_span.end()
+        convert_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.COQUI_TTS.value.split('_', 1)[-1]}.convert",
         )
         audio_data = np.array(audio_data)
 
@@ -69,6 +73,10 @@ class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
 
         output_bytes_io = io.BytesIO()
         audio_segment.export(output_bytes_io, format="wav")  # type: ignore
-        return self.create_synthesis_result_from_wav(
+
+        result = self.create_synthesis_result_from_wav(
             file=output_bytes_io, message=message, chunk_size=chunk_size
         )
+
+        convert_span.end()
+        return result
