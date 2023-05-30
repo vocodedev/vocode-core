@@ -1,4 +1,5 @@
 import re
+import argparse
 from collections import defaultdict
 from threading import RLock
 from typing import Optional
@@ -74,3 +75,22 @@ class SpecificStatisticsReader(MetricReader):
                     final_metrics[metric_name] = raw_metric.value
             for key, value in final_metrics.items():
                 print(f"{key}: {value}")
+
+
+def make_parser_and_maybe_trace():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--trace", action="store_true", help="Log latencies and other statistics"
+    )
+    args = parser.parse_args()
+    if args.trace:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.resources import Resource
+
+        trace.set_tracer_provider(TracerProvider(resource=Resource.create({})))
+        span_exporter = PrintDurationSpanExporter()
+        trace.get_tracer_provider().add_span_processor(  # type: ignore
+            SimpleSpanProcessor(span_exporter)
+        )

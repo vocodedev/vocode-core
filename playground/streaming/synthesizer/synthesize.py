@@ -13,6 +13,7 @@ from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.output_device.speaker_output import SpeakerOutput
 from vocode.streaming.synthesizer import *
 from vocode.streaming.utils import get_chunk_size_per_second
+from playground.streaming.tracing_utils import make_parser_and_maybe_trace
 
 
 if __name__ == "__main__":
@@ -21,23 +22,7 @@ if __name__ == "__main__":
 
     load_dotenv()
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--trace", action="store_true", help="Log latencies and other statistics"
-    )
-    args = parser.parse_args()
-    if args.trace:
-        from opentelemetry import trace
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-        from opentelemetry.sdk.resources import Resource
-        from playground.streaming.tracing_utils import PrintDurationSpanExporter
-
-        trace.set_tracer_provider(TracerProvider(resource=Resource.create({})))
-        span_exporter = PrintDurationSpanExporter()
-        trace.get_tracer_provider().add_span_processor(  # type: ignore
-            SimpleSpanProcessor(span_exporter)
-        )
+    make_parser_and_maybe_trace()
 
     seconds_per_chunk = 1
 
