@@ -2,6 +2,7 @@ from typing import List, Optional, Union
 from enum import Enum
 
 from pydantic import validator
+from vocode.streaming.models.actions import ActionType
 
 from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
@@ -11,7 +12,11 @@ LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
 LLM_AGENT_DEFAULT_MAX_TOKENS = 256
 LLM_AGENT_DEFAULT_MODEL_NAME = "text-curie-001"
 CHAT_GPT_AGENT_DEFAULT_MODEL_NAME = "gpt-3.5-turbo"
+ACTION_AGENT_DEFAULT_MODEL_NAME = "gpt-4"
 CHAT_ANTHROPIC_DEFAULT_MODEL_NAME = "claude-v1"
+AZURE_OPENAI_DEFAULT_API_TYPE = "azure"
+AZURE_OPENAI_DEFAULT_API_VERSION = "2023-03-15-preview"
+AZURE_OPENAI_DEFAULT_ENGINE = "gpt-35-turbo"
 
 
 class AgentType(str, Enum):
@@ -25,6 +30,7 @@ class AgentType(str, Enum):
     INFORMATION_RETRIEVAL = "agent_information_retrieval"
     RESTFUL_USER_IMPLEMENTED = "agent_restful_user_implemented"
     WEBSOCKET_USER_IMPLEMENTED = "agent_websocket_user_implemented"
+    ACTION = "agent_action"
 
 
 class FillerAudioConfig(BaseModel):
@@ -43,6 +49,12 @@ class FillerAudioConfig(BaseModel):
 
 class WebhookConfig(BaseModel):
     url: str
+
+
+class AzureOpenAIConfig(BaseModel):
+    api_type: str = AZURE_OPENAI_DEFAULT_API_TYPE
+    api_version: Optional[str] = AZURE_OPENAI_DEFAULT_API_VERSION
+    engine: str = AZURE_OPENAI_DEFAULT_ENGINE
 
 
 class AgentConfig(TypedModel, type=AgentType.BASE.value):
@@ -76,11 +88,19 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     cut_off_response: Optional[CutOffResponse] = None
+    azure_params: Optional[AzureOpenAIConfig] = None
 
 
 class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC):
     model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
     max_tokens_to_sample: int = 200
+
+
+class ActionAgentConfig(AgentConfig, type=AgentType.ACTION):
+    actions: List[ActionType]
+    model_name: str = ACTION_AGENT_DEFAULT_MODEL_NAME
+    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
+    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
 
 
 class InformationRetrievalAgentConfig(

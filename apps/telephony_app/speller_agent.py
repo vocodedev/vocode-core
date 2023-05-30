@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 import typing
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.models.agent import AgentConfig, AgentType, ChatGPTAgentConfig
-from vocode.streaming.agent.base_agent import BaseAgent
+from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 from vocode.streaming.agent.factory import AgentFactory
 
 
@@ -11,7 +11,7 @@ class SpellerAgentConfig(AgentConfig, type="agent_speller"):
     pass
 
 
-class SpellerAgent(BaseAgent[SpellerAgentConfig]):
+class SpellerAgent(RespondAgent[SpellerAgentConfig]):
     def __init__(self, agent_config: SpellerAgentConfig):
         super().__init__(agent_config=agent_config)
 

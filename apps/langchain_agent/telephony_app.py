@@ -13,6 +13,10 @@ from vocode.streaming.telephony.server.base import TelephonyServer
 
 from call_transcript_utils import add_transcript
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 app = FastAPI(docs_url=None)
 
 logging.basicConfig()

@@ -1,6 +1,9 @@
 import asyncio
 import typing
 from dotenv import load_dotenv
+from vocode.streaming.action.worker import ActionsWorker
+from vocode.streaming.agent.action_agent import ActionAgent
+from vocode.streaming.models.actions import ActionType
 from vocode.streaming.models.transcript import Transcript
 
 load_dotenv()
@@ -10,19 +13,22 @@ from vocode.streaming.agent.base_agent import (
     AgentInput,
     AgentResponseMessage,
     AgentResponseType,
+    TranscriptionAgentInput,
 )
-from vocode.streaming.models.agent import ChatGPTAgentConfig
+from vocode.streaming.models.agent import (
+    ActionAgentConfig,
+    ChatGPTAgentConfig,
+    FillerAudioConfig,
+)
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import create_conversation_id
-from vocode.streaming.utils.events_manager import EventsManager
 
 
 async def run_agent(agent: BaseAgent):
     ended = False
-    events_manager = EventsManager()
     conversation_id = create_conversation_id()
 
-    async def receiver():
+    async def agent_response_receiver():
         nonlocal ended
         while not ended:
             try:
@@ -38,7 +44,7 @@ async def run_agent(agent: BaseAgent):
                     agent_response = typing.cast(AgentResponseMessage, response)
 
                     agent.transcript.add_bot_message(
-                        agent_response.message.text, events_manager, conversation_id
+                        agent_response.message.text, conversation_id
                     )
                     print(
                         "AI: "
@@ -53,12 +59,9 @@ async def run_agent(agent: BaseAgent):
                 message = await asyncio.get_event_loop().run_in_executor(
                     None, lambda: input("Human: ")
                 )
-                agent.transcript.add_human_message(
-                    message, events_manager, conversation_id
-                )
                 agent.consume_nonblocking(
                     agent.interruptible_event_factory.create(
-                        AgentInput(
+                        TranscriptionAgentInput(
                             transcription=Transcription(
                                 message=message, confidence=1.0, is_final=True
                             ),
@@ -69,7 +72,18 @@ async def run_agent(agent: BaseAgent):
             except asyncio.CancelledError:
                 break
 
-    await asyncio.gather(receiver(), sender())
+    actions_worker = None
+    if isinstance(agent, ActionAgent):
+        actions_worker = ActionsWorker(
+            input_queue=agent.actions_queue,
+            output_queue=agent.get_input_queue(),
+            action_factory=agent.action_factory,
+        )
+        actions_worker.start()
+
+    await asyncio.gather(agent_response_receiver(), sender())
+    if actions_worker is not None:
+        actions_worker.terminate()
 
 
 async def agent_main():
@@ -82,6 +96,7 @@ async def agent_main():
             generate_responses=True,
         )
     )
+
     agent.attach_transcript(transcript)
     agent.start()
 
