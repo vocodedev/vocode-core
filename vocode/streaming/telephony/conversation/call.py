@@ -48,6 +48,7 @@ class Call(StreamingConversation):
         self,
         base_url: str,
         config_manager: BaseConfigManager,
+        call_config: CallConfig,
         agent_config: AgentConfig,
         transcriber_config: TranscriberConfig,
         synthesizer_config: SynthesizerConfig,
@@ -62,6 +63,7 @@ class Call(StreamingConversation):
     ):
         self.base_url = base_url
         self.config_manager = config_manager
+        self.call_config = call_config
         self.twilio_config = twilio_config or TwilioConfig(
             account_sid=getenv("TWILIO_ACCOUNT_SID"),
             auth_token=getenv("TWILIO_AUTH_TOKEN"),
@@ -76,6 +78,7 @@ class Call(StreamingConversation):
             per_chunk_allowance_seconds=0.01,
             events_manager=events_manager,
             logger=logger,
+            transcript=call_config.transcript,
         )
         self.twilio_sid = twilio_sid
         self.latest_media_timestamp = 0
@@ -99,6 +102,7 @@ class Call(StreamingConversation):
             base_url=base_url,
             logger=logger,
             config_manager=config_manager,
+            call_config=call_config,
             agent_config=call_config.agent_config,
             transcriber_config=call_config.transcriber_config,
             synthesizer_config=call_config.synthesizer_config,
@@ -136,8 +140,8 @@ class Call(StreamingConversation):
                 response = await self.handle_ws_message(message)
                 if response == PhoneCallAction.CLOSE_WEBSOCKET:
                     break
-        if not self.playing_dtmf:
-            self.tear_down()
+
+        self.tear_down()
 
     async def wait_for_twilio_start(self, ws: WebSocket):
         assert isinstance(self.output_device, TwilioOutputDevice)
@@ -178,12 +182,17 @@ class Call(StreamingConversation):
 
     def mark_terminated(self):
         super().mark_terminated()
-        self.logger.debug("Ending call")
-        end_twilio_call(
-            self.twilio_client,
-            self.twilio_sid,
-        )
-        self.config_manager.delete_config(self.id)
+        if self.playing_dtmf:
+            self.logger.debug("We are playing DTMF so we won't terminate the call.  Instead, saving call config.")
+            self.call_config.transcript = self.transcript
+            self.config_manager.save_config(conversation_id=self.id, config=self.call_config)
+        else:
+            self.logger.debug("Ending call")
+            end_twilio_call(
+                self.twilio_client,
+                self.twilio_sid,
+            )
+            self.config_manager.delete_config(self.id)
 
     def tear_down(self):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
