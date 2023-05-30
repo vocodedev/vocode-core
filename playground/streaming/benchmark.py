@@ -461,6 +461,31 @@ async def run_transcribers():
             transcriber.terminate()
 
 
+def create_graphs(final_results):
+    logger.info("Creating graphs from benchmark results...")
+    results_split = []
+    for name, value in final_results.items():
+        name = name.split(".", 1)
+        new_name = name[1].rsplit(".", 1)
+        results_split.append((name[0], *new_name, value))
+
+    graph_data = defaultdict(lambda: defaultdict(list))
+    for category, name, metric, value in results_split:
+        graph_data[f"{category} - {metric}"]["labels"].append(name)
+        graph_data[f"{category} - {metric}"]["values"].append(value)
+
+    graph_dir = os.path.join(args.results_dir, "graphs")
+    os.makedirs(graph_dir, exist_ok=True)
+
+    for graph_title, data in graph_data.items():
+        plt.title(graph_title)
+        plt.bar(data["labels"], data["values"])
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig(os.path.join(graph_dir, f"{graph_title}.png"))
+        plt.clf()
+
+
 async def main():
     result_file_path = os.path.join(args.results_dir, args.results_file)
     if not args.just_graphs:
@@ -518,28 +543,7 @@ async def main():
             final_results = json.load(f)
 
     if args.create_graphs or args.just_graphs:
-        logger.info("Creating graphs from benchmark results...")
-        results_split = []
-        for name, value in final_results.items():
-            name = name.split(".", 1)
-            new_name = name[1].rsplit(".", 1)
-            results_split.append((name[0], *new_name, value))
-
-        graph_data = defaultdict(lambda: defaultdict(list))
-        for category, name, metric, value in results_split:
-            graph_data[f"{category} - {metric}"]["labels"].append(name)
-            graph_data[f"{category} - {metric}"]["values"].append(value)
-
-        graph_dir = os.path.join(args.results_dir, "graphs")
-        os.makedirs(graph_dir, exist_ok=True)
-
-        for graph_title, data in graph_data.items():
-            plt.title(graph_title)
-            plt.bar(data["labels"], data["values"])
-            plt.xticks(rotation=45)
-            plt.tight_layout()
-            plt.savefig(os.path.join(graph_dir, f"{graph_title}.png"))
-            plt.clf()
+        create_graphs(final_results)
 
     print("Benchmarking complete!")
 
