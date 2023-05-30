@@ -141,9 +141,14 @@ class RespondAgent(BaseAgent[AgentConfigType]):
     async def handle_generate_response(
         self, transcription: Transcription, conversation_id: str
     ) -> bool:
-        tracer_name_start = f"{AGENT_TRACE_NAME}.{self.agent_config.type}"
-        if hasattr(self.agent_config, "model_name"):
-            tracer_name_start += f"-{self.agent_config.model_name}"  # type: ignore
+        optional_model_name = (
+            f"-{self.agent_config.model_name}"
+            if hasattr(self.agent_config, "model_name")
+            else ""
+        )
+        tracer_name_start = (
+            f"{AGENT_TRACE_NAME}.{self.agent_config.type}{optional_model_name}"
+        )
 
         agent_span = tracer.start_span(
             f"{tracer_name_start}.generate_total"  # type: ignore
