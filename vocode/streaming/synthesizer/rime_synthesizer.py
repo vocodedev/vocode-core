@@ -44,9 +44,6 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        create_speech_span = tracer.start_span(
-            f"synthesizer.{SynthesizerType.RIME.value.split('_', 1)[-1]}.create_total",
-        )
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -56,6 +53,9 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
             "text": message.text,
             "speaker": self.speaker,
         }
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.RIME.value.split('_', 1)[-1]}.create_total",
+        )
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 RIME_BASE_URL,

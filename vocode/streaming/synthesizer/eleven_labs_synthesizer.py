@@ -50,9 +50,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        create_speech_span = tracer.start_span(
-            f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_total",
-        )
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
@@ -69,6 +66,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         if self.model_id:
             body["model_id"] = self.model_id
 
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_total",
+        )
         async with aiohttp.ClientSession() as session:
             async with session.request(
                 "POST",

@@ -43,9 +43,6 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        create_speech_span = tracer.start_span(
-            f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.create_total",
-        )
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "X-User-ID": self.user_id,
@@ -62,6 +59,9 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
         if self.synthesizer_config.preset:
             body["preset"] = self.synthesizer_config.preset
 
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.create_total",
+        )
         async with aiohttp.ClientSession() as session:
             async with session.request(
                 url=TTS_ENDPOINT,

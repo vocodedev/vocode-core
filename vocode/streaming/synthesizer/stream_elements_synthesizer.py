@@ -37,13 +37,13 @@ class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        create_speech_span = tracer.start_span(
-            f"synthesizer.{SynthesizerType.STREAM_ELEMENTS.value.split('_', 1)[-1]}.create_total",
-        )
         url_params = {
             "voice": self.voice,
             "text": message.text,
         }
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.STREAM_ELEMENTS.value.split('_', 1)[-1]}.create_total",
+        )
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 self.TTS_ENDPOINT,

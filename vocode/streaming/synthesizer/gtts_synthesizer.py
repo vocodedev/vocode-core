@@ -35,15 +35,15 @@ class GTTSSynthesizer(BaseSynthesizer):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        create_speech_span = tracer.start_span(
-            f"synthesizer.{SynthesizerType.GTTS.value.split('_', 1)[-1]}.create_total"
-        )
         audio_file = BytesIO()
 
         def thread():
             tts = self.gTTS(message.text)
             tts.write_to_fp(audio_file)
 
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.GTTS.value.split('_', 1)[-1]}.create_total"
+        )
         await asyncio.get_event_loop().run_in_executor(
             self.thread_pool_executor, thread
         )
