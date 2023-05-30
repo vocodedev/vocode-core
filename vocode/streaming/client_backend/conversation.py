@@ -27,6 +27,10 @@ from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode.streaming.utils.base_router import BaseRouter
 
+from vocode.streaming.models.events import Event, EventType
+from vocode.streaming.models.transcript import TranscriptEvent
+from vocode.streaming.utils import events_manager
+
 
 class ConversationRouter(BaseRouter):
     def __init__(
@@ -87,6 +91,9 @@ class ConversationRouter(BaseRouter):
         )
         conversation = self.get_conversation(output_device, start_message)
         await conversation.start(lambda: websocket.send_text(ReadyMessage().json()))
+        if start_message.transcript:
+            self.events_manager_instance = TranscriptEventManager(output_device)
+            await self.events_manager_instance.start()
         while conversation.is_active():
             message: WebSocketMessage = WebSocketMessage.parse_obj(
                 await websocket.receive_json()
@@ -95,8 +102,23 @@ class ConversationRouter(BaseRouter):
                 break
             audio_message = typing.cast(AudioMessage, message)
             conversation.receive_audio(audio_message.get_bytes())
+        if start_message.transcript:
+            self.events_manager_instance.end()
         output_device.mark_closed()
         conversation.terminate()
 
     def get_router(self) -> APIRouter:
         return self.router
+
+class TranscriptEventManager(events_manager.EventsManager):
+    def __init__(self, output_device: WebsocketOutputDevice):
+        super().__init__(subscriptions=[EventType.TRANSCRIPT])
+        self.output_device = output_device
+
+    def handle_event(self, event: Event):
+        if event.type == EventType.TRANSCRIPT:
+            transcript_event = typing.cast(TranscriptEvent, event)
+            self.output_device.consume_transcript(transcript_event)
+
+    def restart(self, output_device: WebsocketOutputDevice):
+        self.output_device = output_device

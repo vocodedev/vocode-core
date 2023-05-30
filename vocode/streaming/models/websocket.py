@@ -8,13 +8,15 @@ from .model import TypedModel
 from .transcriber import TranscriberConfig
 from .agent import AgentConfig
 from .synthesizer import SynthesizerConfig
+from .events import Sender
+from .transcript import TranscriptEvent
 
 
 class WebSocketMessageType(str, Enum):
     BASE = "websocket_base"
     START = "websocket_start"
     AUDIO = "websocket_audio"
-    AUDIO_EXT = "websocket_audio_ext"
+    TRANSCRIPT = "websocket_transcript"
     READY = "websocket_ready"
     STOP = "websocket_stop"
     AUDIO_CONFIG_START = "websocket_audio_config_start"
@@ -35,21 +37,14 @@ class AudioMessage(WebSocketMessage, type=WebSocketMessageType.AUDIO):
         return base64.b64decode(self.data)
 
 
-class AudioMessageExt(WebSocketMessage, type=WebSocketMessageType.AUDIO_EXT):
-    data: str
-    human_message: str
-    bot_message: str
+class TranscriptMessage(WebSocketMessage, type=WebSocketMessageType.TRANSCRIPT):
+    text: str
+    sender: Sender
+    timestamp: float
 
     @classmethod
-    def from_bytes(cls, chunk: bytes, human_message, bot_message):
-        return cls(
-            data=base64.b64encode(chunk).decode("utf-8"),
-            human_message=human_message,
-            bot_message=bot_message
-        )
-
-    def get_bytes(self) -> bytes:
-        return base64.b64decode(self.data)
+    def from_event(cls, event: TranscriptEvent):
+        return cls(text=event.text, sender=event.sender, timestamp=event.timestamp)
 
 
 class StartMessage(WebSocketMessage, type=WebSocketMessageType.START):
@@ -65,6 +60,7 @@ class AudioConfigStartMessage(
     input_audio_config: InputAudioConfig
     output_audio_config: OutputAudioConfig
     conversation_id: Optional[str] = None
+    transcript: Optional[bool] = None
 
 
 class ReadyMessage(WebSocketMessage, type=WebSocketMessageType.READY):
