@@ -2,6 +2,7 @@ import os
 import sys
 import typing
 from dotenv import load_dotenv
+from apps.langchain_agent.tools.word_of_the_day import word_of_the_day
 
 from tools.contacts import get_all_contacts
 from tools.vocode import call_phone_number
@@ -32,7 +33,7 @@ if __name__ == "__main__":
     # Logging of LLMChains
     verbose = True
     agent = initialize_agent(
-        tools=[get_all_contacts, call_phone_number],
+        tools=[get_all_contacts, call_phone_number, word_of_the_day],
         llm=llm,
         agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
         verbose=verbose,
