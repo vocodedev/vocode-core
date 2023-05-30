@@ -8,7 +8,7 @@ from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 import aiohttp
 import asyncio
 
-COQUI_BASE_URL = "https://app.coqui.ai/api/v2/"
+COQUI_BASE_URL = "https://app.coqui.ai/api/v2/samples"
 DEFAULT_SPEAKER_ID = "d2bd7ccb-1b65-4005-9578-32c4e02d8ddf"
 MAX_TEXT_LENGTH = 250  # The maximum length of text that can be synthesized at once
 
@@ -27,9 +27,7 @@ class CoquiSynthesizer(BaseSynthesizer):
         self.api_key = getenv("COQUI_API_KEY", api_key)
 
     def synthesize(self, text: str) -> AudioSegment:
-        # Split the text into chunks of less than MAX_TEXT_LENGTH characters
         text_chunks = self.split_text(text)
-        # Synthesize each chunk and concatenate the results
         audio_chunks = [self.synthesize_chunk(chunk) for chunk in text_chunks]
         return sum(audio_chunks)  # type: ignore
 
@@ -43,29 +41,58 @@ class CoquiSynthesizer(BaseSynthesizer):
         response = requests.get(sample["audio_url"])
         return AudioSegment.from_wav(io.BytesIO(response.content))  # type: ignore
 
-    def split_text(self, text: str) -> List[str]:
-        sentence_enders = re.compile("[.!?]")
-        # Split the text into sentences using the regular expression
-        sentences = sentence_enders.split(text)
-        chunks = []
-        current_chunk = ""
-        for sentence in sentences:
-            # Strip leading and trailing whitespace from the sentence
-            sentence = sentence.strip()
-            # If the sentence is empty, skip it
-            if not sentence:
-                continue
-            # Concatenate the current chunk and the sentence, and add a period to the end
-            proposed_chunk = current_chunk + sentence
-            if len(proposed_chunk) > 250:
-                chunks.append(current_chunk.strip())
-                current_chunk = sentence + "."
+
+    def split_text(self, string):
+        # Base case: if the string is less than or equal to MAX_TEXT_LENGTH characters, return it as a single element array
+        if len(string) <= MAX_TEXT_LENGTH:
+            return [string.strip()]
+        
+        # Recursive case: find the index of the last sentence ender in the first MAX_TEXT_LENGTH characters of the string
+        sentence_enders = [".", "!", "?"]
+        index = -1
+        for ender in sentence_enders:
+            i = string[:MAX_TEXT_LENGTH].rfind(ender)
+            if i > index:
+                index = i
+        
+        # If there is a sentence ender, split the string at that index plus one and strip any spaces from both parts
+        if index != -1:
+            first_part = string[:index + 1].strip()
+            second_part = string[index + 1:].strip()
+        
+        # If there is no sentence ender, find the index of the last comma in the first MAX_TEXT_LENGTH characters of the string
+        else:
+            index = string[:MAX_TEXT_LENGTH].rfind(",")
+            # If there is a comma, split the string at that index plus one and strip any spaces from both parts
+            if index != -1:
+                first_part = string[:index + 1].strip()
+                second_part = string[index + 1:].strip()
+            
+            # If there is no comma, find the index of the last space in the first MAX_TEXT_LENGTH characters of the string
             else:
-                current_chunk = proposed_chunk + "."
-        # If there is a current chunk at the end, add it to the list of chunks
-        if current_chunk:
-            chunks.append(current_chunk.strip())
-        return chunks
+                index = string[:MAX_TEXT_LENGTH].rfind(" ")
+            # If there is a space, split the string at that index and strip any spaces from both parts
+            if index != -1:
+                first_part = string[:index].strip()
+                second_part = string[index:].strip()
+            
+            # If there is no space, split the string at MAX_TEXT_LENGTH characters and strip any spaces from both parts
+            else:
+                first_part = string[:MAX_TEXT_LENGTH].strip()
+                second_part = string[MAX_TEXT_LENGTH:].strip()
+        
+        # Append the first part to the result array
+        result = [first_part]
+        
+        # Call the function recursively on the remaining part of the string and extend the result array with it, unless it is empty
+        if second_part != "":
+            result.extend(self.split_text(second_part))
+        
+        # Return the result array
+        return result
+
+
+
 
     async def async_synthesize(self, text: str) -> AudioSegment:
         # This method is similar to the synthesize method, but it uses async IO to synthesize each chunk in parallel
@@ -118,18 +145,18 @@ class CoquiSynthesizer(BaseSynthesizer):
         }
 
         if self.use_xtts:
+            url += "/xtts/"
             # If we have a voice prompt, use that instead of the voice ID
             if self.voice_prompt is not None:
-                url += "samples/xtts/render-from-prompt/"
+                url += "render-from-prompt/"
                 body["prompt"] = self.voice_prompt
             else:
-                url += "samples/xtts/render/"
+                url += "render/"
                 body["voice_id"] = self.voice_id
         else:
             if self.voice_prompt is not None:
-                url += "samples/from-prompt/"
+                url += "/from-prompt/"
                 body["prompt"] = self.voice_prompt
             else:
-                url += "samples"
                 body["voice_id"] = self.voice_id
         return url, headers, body
