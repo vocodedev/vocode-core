@@ -9,13 +9,14 @@ import numpy as np
 class FileInputDevice(BaseInputDevice):
     DEFAULT_SAMPLING_RATE = 44100
     DEFAULT_CHUNK_SIZE = 2048
+    DEFAULT_SILENT_DURATION = 3.0
 
     def __init__(
         self,
         file_path: str,
         sampling_rate: int = DEFAULT_SAMPLING_RATE,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
-        silent_duration: float = 3.0,
+        silent_duration: float = DEFAULT_SILENT_DURATION,
         skip_initial_load=False,
     ):
         super().__init__(sampling_rate, AudioEncoding.LINEAR16, chunk_size)
