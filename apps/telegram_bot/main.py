@@ -76,7 +76,7 @@ for key, value in voice_attr_of.items():
 
 
 # Special defaultdict that supports replitdb
-class defaultdict:
+class ChatsDB:
     def __init__(self, db) -> None:
         # Initialize an empty dictionary to store user data
         self.db = db
@@ -107,7 +107,7 @@ class VocodeBotResponder:
         self.transcriber = transcriber
         self.system_prompt = system_prompt
         self.synthesizer = synthesizer
-        self.db = defaultdict(db if db else {})
+        self.db = ChatsDB(db if db else {})
 
     def get_agent(self, chat_id: int) -> ChatGPTAgent:
         # Get current voice name and description from DB
