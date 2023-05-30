@@ -2,12 +2,14 @@ import re
 import argparse
 from collections import defaultdict
 from threading import RLock
-from typing import Optional
+from typing import Any, Dict, List, Optional, Union
 from opentelemetry.sdk.trace.export import SpanExporter
 from opentelemetry.sdk.metrics.export import MetricReader
-from opentelemetry.sdk.metrics.export import MetricsData
+from opentelemetry.sdk.metrics.export import Metric, MetricsData
+from opentelemetry.sdk.metrics.export import NumberDataPoint, HistogramDataPoint
 
 NANOSECONDS_PER_SECOND = 1e9
+
 
 class PrintDurationSpanExporter(SpanExporter):
     def __init__(self):
@@ -56,12 +58,12 @@ class SpecificStatisticsReader(MetricReader):
     def shutdown(self, timeout_millis: float = 30_000, **kwargs) -> None:
         scope_metrics = self.get_metrics_data().resource_metrics[0].scope_metrics
         if len(scope_metrics) > 0:
-            metric_results = scope_metrics[0].metrics
-            metric_results = {
+            metric_results: List[Metric] = scope_metrics[0].metrics
+            formatted_metric_results: Dict[str, Any] = {
                 metric.name: metric.data.data_points[0] for metric in metric_results
             }
             final_metrics = {}
-            for metric_name, raw_metric in metric_results.items():
+            for metric_name, raw_metric in formatted_metric_results.items():
                 if re.match(r"transcriber.*\.min_latency", metric_name):
                     final_metrics[metric_name] = raw_metric.min
                 elif re.match(r"transcriber.*\.max_latency", metric_name):
@@ -70,7 +72,9 @@ class SpecificStatisticsReader(MetricReader):
                     transcriber_str = metric_name.split(".")[1]
                     final_metrics[metric_name] = (
                         raw_metric.sum
-                        / metric_results[f"transcriber.{transcriber_str}.duration"].sum
+                        / formatted_metric_results[
+                            f"transcriber.{transcriber_str}.duration"
+                        ].sum
                     )
                 else:
                     final_metrics[metric_name] = raw_metric.value
