@@ -27,6 +27,41 @@ class PrintDurationSpanExporter(SpanExporter):
             print(f"{name}: {sum(durations) / len(durations)}")
 
 
+def get_final_metrics(scope_metrics, final_spans=None):
+    if len(scope_metrics) > 0:
+        metric_results: List[Metric] = scope_metrics[0].metrics
+        formatted_metric_results: Dict[str, Any] = {
+            metric.name: metric.data.data_points[0] for metric in metric_results
+        }
+        final_metrics = {}
+        for metric_name, raw_metric in formatted_metric_results.items():
+            if re.match(r"transcriber.*\.min_latency", metric_name):
+                final_metrics[metric_name] = raw_metric.min
+            elif re.match(r"transcriber.*\.max_latency", metric_name):
+                final_metrics[metric_name] = raw_metric.max
+            elif re.match(r"transcriber.*\.avg_latency", metric_name):
+                transcriber_str = metric_name.split(".")[1]
+                final_metrics[metric_name] = (
+                    raw_metric.sum
+                    / formatted_metric_results[
+                        f"transcriber.{transcriber_str}.duration"
+                    ].sum
+                )
+            elif re.match(r"agent.*\.total_characters", metric_name) and final_spans:
+                agent_str = metric_name.split(".", 1)[1].rsplit(".", 1)[0]
+                final_metrics[
+                    f"agent.{agent_str}.characters_per_second"
+                ] = raw_metric.value / sum(
+                    final_spans[f"agent.{agent_str}.generate_total"]
+                )
+            else:
+                try:
+                    final_metrics[metric_name] = raw_metric.value
+                except AttributeError:
+                    pass
+        return final_metrics
+
+
 class SpecificStatisticsReader(MetricReader):
     """Implementation of `MetricReader` that returns its metrics from :func:`get_metrics_data`.
 
@@ -57,29 +92,9 @@ class SpecificStatisticsReader(MetricReader):
 
     def shutdown(self, timeout_millis: float = 30_000, **kwargs) -> None:
         scope_metrics = self.get_metrics_data().resource_metrics[0].scope_metrics
-        if len(scope_metrics) > 0:
-            metric_results: List[Metric] = scope_metrics[0].metrics
-            formatted_metric_results: Dict[str, Any] = {
-                metric.name: metric.data.data_points[0] for metric in metric_results
-            }
-            final_metrics = {}
-            for metric_name, raw_metric in formatted_metric_results.items():
-                if re.match(r"transcriber.*\.min_latency", metric_name):
-                    final_metrics[metric_name] = raw_metric.min
-                elif re.match(r"transcriber.*\.max_latency", metric_name):
-                    final_metrics[metric_name] = raw_metric.max
-                elif re.match(r"transcriber.*\.avg_latency", metric_name):
-                    transcriber_str = metric_name.split(".")[1]
-                    final_metrics[metric_name] = (
-                        raw_metric.sum
-                        / formatted_metric_results[
-                            f"transcriber.{transcriber_str}.duration"
-                        ].sum
-                    )
-                else:
-                    final_metrics[metric_name] = raw_metric.value
-            for key, value in final_metrics.items():
-                print(f"{key}: {value}")
+        final_metrics = get_final_metrics(scope_metrics, final_spans=None)
+        for key, value in final_metrics.items():
+            print(f"{key}: {value}")
 
 
 def make_parser_and_maybe_trace():

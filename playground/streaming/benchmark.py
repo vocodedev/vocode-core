@@ -57,6 +57,7 @@ from vocode.streaming.transcriber import DeepgramTranscriber, AssemblyAITranscri
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import get_chunk_size_per_second
 from vocode.streaming.utils.worker import InterruptibleEvent
+from playground.streaming.tracing_utils import get_final_metrics
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -504,30 +505,7 @@ async def main():
             final_spans[span.name].append(duration_s)
 
         scope_metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics
-        if len(scope_metrics) > 0:
-            metric_results = scope_metrics[0].metrics
-            metric_results = {
-                metric.name: metric.data.data_points[0] for metric in metric_results
-            }
-            final_metrics = {}
-            for metric_name, raw_metric in metric_results.items():
-                if re.match(r"transcriber.*\.min_latency", metric_name):
-                    final_metrics[metric_name] = raw_metric.min
-                if re.match(r"transcriber.*\.max_latency", metric_name):
-                    final_metrics[metric_name] = raw_metric.max
-                if re.match(r"transcriber.*\.avg_latency", metric_name):
-                    transcriber_str = metric_name.split(".")[1]
-                    final_metrics[metric_name] = (
-                        raw_metric.sum
-                        / metric_results[f"transcriber.{transcriber_str}.duration"].sum
-                    )
-                if re.match(r"agent.*\.total_characters", metric_name):
-                    agent_str = metric_name.split(".", 1)[1].rsplit(".", 1)[0]
-                    final_metrics[
-                        f"agent.{agent_str}.characters_per_second"
-                    ] = raw_metric.value / sum(
-                        final_spans[f"agent.{agent_str}.generate_total"]
-                    )
+        final_metrics = get_final_metrics(scope_metrics, final_spans=final_spans)
 
         final_spans = {k: sum(v) / len(v) for k, v in final_spans.items()}
         if len(scope_metrics) > 0:
