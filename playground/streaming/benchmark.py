@@ -466,9 +466,9 @@ def create_graphs(final_results):
     logger.info("Creating graphs from benchmark results...")
     results_split = []
     for name, value in final_results.items():
-        name = name.split(".", 1)
-        new_name = name[1].rsplit(".", 1)
-        results_split.append((name[0], *new_name, value))
+        first_name = name.split(".", 1)
+        second_name = first_name[1].rsplit(".", 1)
+        results_split.append((first_name[0], *second_name, value))
 
     graph_data = defaultdict(lambda: defaultdict(list))
     for category, name, metric, value in results_split:
