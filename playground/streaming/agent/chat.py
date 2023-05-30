@@ -28,7 +28,7 @@ async def run_agent(agent: BaseAgent):
     ended = False
     conversation_id = create_conversation_id()
 
-    async def agent_response_receiver():
+    async def receiver():
         nonlocal ended
         while not ended:
             try:
@@ -81,7 +81,7 @@ async def run_agent(agent: BaseAgent):
         )
         actions_worker.start()
 
-    await asyncio.gather(agent_response_receiver(), sender())
+    await asyncio.gather(receiver(), sender())
     if actions_worker is not None:
         actions_worker.terminate()
 
