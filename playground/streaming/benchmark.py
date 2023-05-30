@@ -90,21 +90,21 @@ synthesizer_classes = {
 STREAMING_SYNTHESIZERS = ["azure"]
 
 
-transcriber_choices = ["deepgram", "assemblyai"]
-agent_choices = [
+TRANSCRIBER_CHOICES = ["deepgram", "assemblyai"]
+AGENT_CHOICES = [
     "gpt_gpt-3.5-turbo",
     "gpt_gpt-4",
     "anthropic_claude-v1",
     "anthropic_claude-instant-v1",
 ]
-synthesizer_choices = list(synthesizer_classes)
+SYNTHESIZER_CHOICES = list(synthesizer_classes)
 
 parser.add_argument(
     "--transcribers",
     type=str,
     nargs="*",
     default=[],
-    choices=transcriber_choices + ["all"],
+    choices=TRANSCRIBER_CHOICES + ["all"],
     help="The list of transcribers to benchmark",
 )
 parser.add_argument(
@@ -112,7 +112,7 @@ parser.add_argument(
     type=str,
     nargs="*",
     default=[],
-    choices=agent_choices + ["all"],
+    choices=AGENT_CHOICES + ["all"],
     help="The list of agents to benchmark. Each agent should be of the form <company>_<model_name>.",
 )
 parser.add_argument(
@@ -120,7 +120,7 @@ parser.add_argument(
     type=str,
     nargs="*",
     default=[],
-    choices=synthesizer_choices + ["all"],
+    choices=SYNTHESIZER_CHOICES + ["all"],
     help="The list of synthesizers to benchmark",
 )
 parser.add_argument(
@@ -208,16 +208,16 @@ parser.add_argument(
 args = parser.parse_args()
 if args.all:
     print("--all is set! Running all supported transcribers, agents, and synthesizers.")
-    args.transcribers = transcriber_choices
-    args.agents = agent_choices
-    args.synthesizers = synthesizer_choices
+    args.transcribers = TRANSCRIBER_CHOICES
+    args.agents = AGENT_CHOICES
+    args.synthesizers = SYNTHESIZER_CHOICES
 
 if "all" in args.transcribers:
-    args.transcribers = transcriber_choices
+    args.transcribers = TRANSCRIBER_CHOICES
 if "all" in args.agents:
-    args.agents = agent_choices
+    args.agents = AGENT_CHOICES
 if "all" in args.synthesizers:
-    args.synthesizers = synthesizer_choices
+    args.synthesizers = SYNTHESIZER_CHOICES
 
 if args.all_num_cycles is not None:
     args.transcriber_num_cycles = args.all_num_cycles
