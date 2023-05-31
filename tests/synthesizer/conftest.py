@@ -7,7 +7,7 @@ from vocode.streaming.synthesizer.eleven_labs_synthesizer import (
     ElevenLabsSynthesizer,
     ELEVEN_LABS_BASE_URL,
 )
-# from tests.synthesizer.data.loader import get_audio_path
+from tests.synthesizer.data.loader import get_audio_path
 
 DEFAULT_PARAMS = {'sampling_rate': 16000, 'audio_encoding': AudioEncoding.LINEAR16}
 @pytest.fixture
@@ -17,7 +17,7 @@ def mock_eleven_labs_api():
         def request_handler(url, headers, **kwargs):
             if headers['xi-api-key'] != 'my_api_key':
                 return CallbackResult(status=401)
-            with open("./data/fake_audio.mp3", 'rb') as audio_file: #TODO: replace with get_audio_path
+            with open(get_audio_path("fake_audio.mp3"), 'rb') as audio_file: #TODO: replace with get_audio_path
                 return CallbackResult(content_type='audio/mpeg', body=audio_file.read())
         m.post(pattern, callback=request_handler)
         yield m
