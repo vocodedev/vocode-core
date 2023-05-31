@@ -8,7 +8,7 @@ from vocode.streaming.models.transcript import Action, Message, Transcript
 SENTENCE_ENDINGS = [".", "!", "?", "\n"]
 
 
-def custom_sent_tokenize(text: str, sentence_endings: List[str]) -> List[str]:
+def _sent_tokenize(text: str, sentence_endings: List[str]) -> List[str]:
     sentence_endings = [e for e in sentence_endings if e != "."]
     sentence_endings_pattern = "|".join(map(re.escape, sentence_endings))
 
@@ -54,7 +54,7 @@ async def stream_openai_response_async(
             continue
         buffer += token
 
-        sentences = custom_sent_tokenize(buffer, sentence_endings)
+        sentences = _sent_tokenize(buffer, sentence_endings)
         for sentence in sentences[:-1]:
             if sentence.strip():
                 yield sentence.strip()
