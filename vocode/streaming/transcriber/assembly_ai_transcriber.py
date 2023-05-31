@@ -85,7 +85,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
 
     def terminate(self):
         self._ended = True
-        super().terminate
+        super().terminate()
 
     def get_assembly_ai_url(self):
         url_params = {"sample_rate": self.transcriber_config.sampling_rate}
