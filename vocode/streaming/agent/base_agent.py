@@ -59,16 +59,16 @@ class AgentResponse(TypedModel, type=AgentResponseType.BASE.value):
     pass
 
 
-class AgentResponseMessage(TypedModel, type=AgentResponseType.MESSAGE.value):
+class AgentResponseMessage(AgentResponse, type=AgentResponseType.MESSAGE.value):
     message: BaseMessage
     is_interruptible: bool = True
 
 
-class AgentResponseStop(TypedModel, type=AgentResponseType.STOP.value):
+class AgentResponseStop(AgentResponse, type=AgentResponseType.STOP.value):
     pass
 
 
-class AgentResponseFillerAudio(TypedModel, type=AgentResponseType.FILLER_AUDIO.value):
+class AgentResponseFillerAudio(AgentResponse, type=AgentResponseType.FILLER_AUDIO.value):
     pass
 
 
