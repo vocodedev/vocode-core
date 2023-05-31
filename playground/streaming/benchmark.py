@@ -16,7 +16,7 @@ from opentelemetry.sdk.metrics.export import (
 )
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.sdk.resources import Resource
-from vocode.streaming.agent.base_agent import AgentInput
+from vocode.streaming.agent.base_agent import TranscriptionAgentInput
 from vocode.streaming.input_device.file_input_device import FileInputDevice
 from vocode.streaming.agent import ChatGPTAgent, ChatAnthropicAgent
 from vocode.streaming.input_device.microphone_input import MicrophoneInput
@@ -298,13 +298,13 @@ async def run_agents():
                 )
             agent.attach_transcript(Transcript())
             agent_task = agent.start()
-            message = AgentInput(
+            message = TranscriptionAgentInput(
                 transcription=Transcription(
                     message=args.agent_first_input, confidence=1.0, is_final=True
                 ),
                 conversation_id=0,
             )
-            await agent.input_queue.put(InterruptibleEvent(message))
+            agent.consume_nonblocking(agent.interruptible_event_factory.create(message))
 
             while True:
                 try:
