@@ -811,20 +811,20 @@ grpcio-gcp = ["grpcio-gcp (>=0.2.2,<1.0dev)"]
 
 [[package]]
 name = "google-auth"
-version = "2.18.1"
+version = "2.19.0"
 description = "Google Authentication Library"
 category = "main"
 optional = true
-python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*"
+python-versions = ">=3.6"
 files = [
-    {file = "google-auth-2.18.1.tar.gz", hash = "sha256:d7a3249027e7f464fbbfd7ee8319a08ad09d2eea51578575c4bd360ffa049ccb"},
-    {file = "google_auth-2.18.1-py2.py3-none-any.whl", hash = "sha256:55a395cdfd3f3dd3f649131d41f97c17b4ed8a2aac1be3502090c716314e8a37"},
+    {file = "google-auth-2.19.0.tar.gz", hash = "sha256:f39d528077ac540793dd3c22a8706178f157642a67d874db25c640b7fead277e"},
+    {file = "google_auth-2.19.0-py2.py3-none-any.whl", hash = "sha256:be617bfaf77774008e9d177573f782e109188c8a64ae6e744285df5cea3e7df6"},
 ]
 
 [package.dependencies]
 cachetools = ">=2.0.0,<6.0"
 pyasn1-modules = ">=0.2.1"
-rsa = {version = ">=3.1.4,<5", markers = "python_version >= \"3.6\""}
+rsa = ">=3.1.4,<5"
 six = ">=1.9.0"
 urllib3 = "<2.0"
 
@@ -1664,6 +1664,27 @@ files = [
     {file = "numpy-1.24.3-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:35400e6a8d102fd07c71ed7dcadd9eb62ee9a6e84ec159bd48c28235bbb0f8e4"},
     {file = "numpy-1.24.3.tar.gz", hash = "sha256:ab344f1bf21f140adab8e47fdbc7c35a477dc01408791f8ba00d018dd0bc5155"},
 ]
+
+[[package]]
+name = "nylas"
+version = "5.14.0"
+description = "Python bindings for Nylas, the next-generation email platform."
+category = "main"
+optional = true
+python-versions = "*"
+files = [
+    {file = "nylas-5.14.0.tar.gz", hash = "sha256:f59c4db7628034d1a977168494dae2c3db183c0c460ed43afad10f0bd1370d47"},
+]
+
+[package.dependencies]
+requests = {version = ">=2.4.2", extras = ["security"]}
+six = ">=1.4.1"
+urlobject = "*"
+websocket-client = "0.59.0"
+
+[package.extras]
+release = ["bumpversion (>=0.5.0)", "twine (>=3.4.2)"]
+test = ["mock", "pytest", "pytest-cov", "pytest-mock", "pytest-timeout", "pytz", "responses (==0.10.5)", "twine"]
 
 [[package]]
 name = "openai"
@@ -2841,6 +2862,17 @@ secure = ["certifi", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "ipaddress", "p
 socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
 [[package]]
+name = "urlobject"
+version = "2.4.3"
+description = "A utility class for manipulating URLs."
+category = "main"
+optional = true
+python-versions = "*"
+files = [
+    {file = "URLObject-2.4.3.tar.gz", hash = "sha256:47b2e20e6ab9c8366b2f4a3566b6ff4053025dad311c4bb71279bbcfa2430caa"},
+]
+
+[[package]]
 name = "uvicorn"
 version = "0.21.1"
 description = "The lightning-fast ASGI server."
@@ -2870,6 +2902,21 @@ files = [
     {file = "wcwidth-0.2.6-py2.py3-none-any.whl", hash = "sha256:795b138f6875577cd91bba52baf9e445cd5118fd32723b460e30a0af30ea230e"},
     {file = "wcwidth-0.2.6.tar.gz", hash = "sha256:a5220780a404dbe3353789870978e472cfe477761f06ee55077256e509b156d0"},
 ]
+
+[[package]]
+name = "websocket-client"
+version = "0.59.0"
+description = "WebSocket client for Python with low level API options"
+category = "main"
+optional = true
+python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+files = [
+    {file = "websocket-client-0.59.0.tar.gz", hash = "sha256:d376bd60eace9d437ab6d7ee16f4ab4e821c9dae591e1b783c58ebd8aaf80c5c"},
+    {file = "websocket_client-0.59.0-py2.py3-none-any.whl", hash = "sha256:2e50d26ca593f70aba7b13a489435ef88b8fc3b5c5643c1ce8808ff9b40f0b32"},
+]
+
+[package.dependencies]
+six = "*"
 
 [[package]]
 name = "websockets"
@@ -3141,7 +3188,8 @@ docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker
 testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)"]
 
 [extras]
-all = ["elevenlabs", "google-cloud-speech", "google-cloud-texttospeech", "gtts", "redis", "twilio"]
+actions = ["nylas"]
+all = ["elevenlabs", "google-cloud-speech", "google-cloud-texttospeech", "gtts", "nylas", "redis", "twilio"]
 synthesizers = ["elevenlabs", "google-cloud-texttospeech", "gtts"]
 telephony = ["redis", "twilio"]
 transcribers = ["google-cloud-speech"]
@@ -3149,4 +3197,4 @@ transcribers = ["google-cloud-speech"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<3.12"
-content-hash = "c9999b49c6e7a3eca66e43fd64b3038b6f187b5d2ba4f34d706d4c0f2f78697f"
+content-hash = "a0ca33d55bc2f9f3f4f628c1e5ee66d87dc8f532a67a39fa1e2319080128664c"
