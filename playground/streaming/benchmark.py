@@ -272,13 +272,11 @@ metrics.set_meter_provider(provider)
 
 async def run_agents():
     for agent_name in tqdm(args.agents, desc="Agents"):
-        for agent_run_idx in tqdm(range(args.agent_num_cycles), desc="Agent Cycles"):
-            company, model_name = agent_name.split("_")
-
-            length_meter = meter.create_counter(
-                f"agent.agent_chat_{company}-{model_name}.total_characters",
-            )
-
+        company, model_name = agent_name.split("_")
+        length_meter = meter.create_counter(
+            f"agent.agent_chat_{company}-{model_name}.total_characters",
+        )
+        for _ in tqdm(range(args.agent_num_cycles), desc="Agent Cycles"):
             if company == "gpt":
                 agent = ChatGPTAgent(
                     ChatGPTAgentConfig(
