@@ -65,31 +65,30 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
         agent_response: AgentResponse
 
         if isinstance(message, WebSocketAgentTextMessage):
-            agent_response = cast(AgentResponse, AgentResponseMessage(message=BaseMessage(text=message.data.text)))
+            agent_response = AgentResponseMessage(
+                message=BaseMessage(text=message.data.text)
+            )
         elif isinstance(message, WebSocketAgentStopMessage):
-            agent_response = cast(AgentResponse, AgentResponseStop())
+            agent_response = AgentResponseStop()
             self.has_ended = True
         else:
             raise Exception("Unknown Socket message type")
 
         # Change this to new agent response format
-        interruptible_event = InterruptibleEvent(
-            is_interruptible=self.get_agent_config().allow_agent_to_be_cut_off,
-            payload=agent_response,
-        )
         self.logger.info("Putting interruptible agent response event in output queue")
-        self.output_queue.put_nowait(interruptible_event)
+        self.produce_interruptible_event_nonblocking(
+            agent_response, self.get_agent_config().allow_agent_to_be_cut_off
+        )
 
     async def _process(self) -> None:
-        extra_headers: Dict[str, str] = {}
         socket_url = self.get_agent_config().respond.url
         self.logger.info("Connecting to web socket agent %s", socket_url)
 
-        async with connect(
-            socket_url,
-            extra_headers=extra_headers
-        ) as ws:
-            async def sender(ws: WebSocketClientProtocol) -> None:  # sends audio to websocket
+        async with connect(socket_url) as ws:
+
+            async def sender(
+                ws: WebSocketClientProtocol,
+            ) -> None:  # sends audio to websocket
                 while not self.has_ended:
                     self.logger.info("Waiting for data from agent request queue")
                     try:
@@ -97,10 +96,16 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
                         payload = input.payload
                         if isinstance(payload, TranscriptionAgentInput):
                             transcription = payload.transcription
-                            self.logger.info("Transcription message: %s", transcription.message)
-                            agent_request = WebSocketAgentTextMessage.from_text(transcription.message)
+                            self.logger.info(
+                                "Transcription message: %s", transcription.message
+                            )
+                            agent_request = WebSocketAgentTextMessage.from_text(
+                                transcription.message, payload.conversation_id
+                            )
                             agent_request_json = agent_request.json()
-                            self.logger.info(f"Sending data to web socket agent: {agent_request_json}")
+                            self.logger.info(
+                                f"Sending data to web socket agent: {agent_request_json}"
+                            )
                             if isinstance(agent_request, AgentResponseStop):
                                 # In practice, it doesn't make sense for the client to send a text and stop message to the agent service
                                 self.has_ended = True
@@ -109,7 +114,9 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
                         break
 
                     except Exception as e:
-                        self.logger.error(f"WebSocket Agent Send Error: \"{e}\" in Web Socket User Implemented Agent sender")
+                        self.logger.error(
+                            f'WebSocket Agent Send Error: "{e}" in Web Socket User Implemented Agent sender'
+                        )
                         break
 
                     await ws.send(agent_request_json)
@@ -125,21 +132,29 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
                         self._handle_incoming_socket_message(message)
 
                     except websockets.exceptions.ConnectionClosed as e:
-                        self.logger.error(f"WebSocket Agent Receive Error: Connection Closed - \"{e}\"")
+                        self.logger.error(
+                            f'WebSocket Agent Receive Error: Connection Closed - "{e}"'
+                        )
                         break
 
                     except websockets.exceptions.ConnectionClosedOK as e:
-                        self.logger.error(f"WebSocket Agent Receive Error: Connection Closed OK - \"{e}\"")
+                        self.logger.error(
+                            f'WebSocket Agent Receive Error: Connection Closed OK - "{e}"'
+                        )
                         break
 
                     except websockets.exceptions.InvalidStatus as e:
-                        self.logger.error(f"WebSocket Agent Receive Error: Invalid Status - \"{e}\"")
+                        self.logger.error(
+                            f'WebSocket Agent Receive Error: Invalid Status - "{e}"'
+                        )
 
                     except Exception as e:
-                        self.logger.error(f"WebSocket Agent Receive Error: \"{e}\"")
+                        self.logger.error(f'WebSocket Agent Receive Error: "{e}"')
                         break
 
-                self.logger.debug("Terminating Web Socket User Implemented Agent receiver")
+                self.logger.debug(
+                    "Terminating Web Socket User Implemented Agent receiver"
+                )
 
             await asyncio.gather(sender(ws), receiver(ws))
 
