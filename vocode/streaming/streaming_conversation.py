@@ -590,8 +590,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         transcript_name = f"cache/{self.id}.json"
         os.makedirs("cache", exist_ok=True)
-        with open(transcript_name, "w") as f:
-            f.write(self.transcript.json())
+        with open(transcript_name, "w", encoding='utf-8') as f:
+            f.write(self.transcript.json(ensure_ascii=False))
 
         if self.check_for_idle_task:
             self.logger.debug("Terminating check_for_idle Task")
