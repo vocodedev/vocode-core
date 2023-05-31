@@ -127,7 +127,7 @@ parser.add_argument(
 parser.add_argument(
     "--transcriber_audio",
     type=str,
-    default="test.wav",
+    default="playground/streaming/test.wav",
     help="Path to the audio file to transcribe",
 )
 parser.add_argument(
