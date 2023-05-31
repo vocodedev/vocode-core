@@ -26,9 +26,6 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
         self.voice_id = synthesizer_config.voice_id
         self.voice_prompt = synthesizer_config.voice_prompt
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.COQUI.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
@@ -56,6 +53,9 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
         if self.voice_id:
             body["voice_id"] = self.voice_id
 
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.create_total"
+        )
         async with aiohttp.ClientSession() as session:
             async with session.request(
                 "POST",
@@ -69,14 +69,21 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
                     "GET",
                     sample["audio_url"],
                 ) as response:
+                    read_response = await response.read()
+                    create_speech_span.end()
+                    convert_span = tracer.start_span(
+                        f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.convert",
+                    )
                     audio_segment: AudioSegment = AudioSegment.from_wav(
-                        io.BytesIO(await response.read())  # type: ignore
+                        io.BytesIO(read_response)  # type: ignore
                     )
 
                     output_bytes: bytes = audio_segment.raw_data
 
-                    return self.create_synthesis_result_from_wav(
+                    result = self.create_synthesis_result_from_wav(
                         file=output_bytes,
                         message=message,
                         chunk_size=chunk_size,
                     )
+                    convert_span.end()
+                    return result

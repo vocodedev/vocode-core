@@ -13,11 +13,30 @@ from vocode.streaming.models.websocket import AudioMessage
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
     Transcription,
+    meter,
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
 
 
 ASSEMBLY_AI_URL = "wss://api.assemblyai.com/v2/realtime/ws"
+
+
+avg_latency_hist = meter.create_histogram(
+    name="transcriber.assemblyai.avg_latency",
+    unit="seconds",
+)
+max_latency_hist = meter.create_histogram(
+    name="transcriber.assemblyai.max_latency",
+    unit="seconds",
+)
+min_latency_hist = meter.create_histogram(
+    name="transcriber.assemblyai.min_latency",
+    unit="seconds",
+)
+duration_hist = meter.create_histogram(
+    name="transcriber.assemblyai.duration",
+    unit="seconds",
+)
 
 
 class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
@@ -39,6 +58,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
             raise Exception("Assembly AI endpointing config not supported yet")
 
         self.buffer = bytearray()
+        self.audio_cursor = 0
 
     async def ready(self):
         return True
@@ -63,7 +83,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
             self.buffer = bytearray()
 
     def terminate(self):
-        terminate_msg = json.dumps({"terminate_session": True})
+        terminate_msg = str.encode(json.dumps({"terminate_session": True}))
         self.input_queue.put_nowait(terminate_msg)
         self._ended = True
 
@@ -76,6 +96,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
         return ASSEMBLY_AI_URL + f"?{urlencode(url_params)}"
 
     async def process(self):
+        self.audio_cursor = 0
         URL = self.get_assembly_ai_url()
 
         async with websockets.connect(
@@ -92,12 +113,20 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
                         data = await asyncio.wait_for(self.input_queue.get(), 5)
                     except asyncio.exceptions.TimeoutError:
                         break
+                    num_channels = 1
+                    sample_width = 2
+                    self.audio_cursor += len(data) / (
+                        self.transcriber_config.sampling_rate
+                        * num_channels
+                        * sample_width
+                    )
                     await ws.send(
                         json.dumps({"audio_data": AudioMessage.from_bytes(data).data})
                     )
                 self.logger.debug("Terminating AssemblyAI transcriber sender")
 
             async def receiver(ws):
+                transcript_cursor = 0.0
                 while not self._ended:
                     try:
                         result_str = await ws.recv()
@@ -113,7 +142,22 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
                         "message_type" in data
                         and data["message_type"] == "FinalTranscript"
                     )
+
                     if "text" in data and data["text"]:
+                        cur_max_latency = self.audio_cursor - transcript_cursor
+                        transcript_cursor = data["audio_end"] / 1000
+                        cur_min_latency = self.audio_cursor - transcript_cursor
+                        duration = data["audio_end"] / 1000 - data["audio_start"] / 1000
+
+                        avg_latency_hist.record(
+                            (cur_min_latency + cur_max_latency) / 2 * duration
+                        )
+                        duration_hist.record(duration)
+
+                        # Log max and min latencies
+                        max_latency_hist.record(cur_max_latency)
+                        min_latency_hist.record(max(cur_min_latency, 0))
+
                         self.output_queue.put_nowait(
                             Transcription(
                                 message=data["text"],

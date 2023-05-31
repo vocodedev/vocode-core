@@ -5,6 +5,7 @@ from vocode.streaming.models.model import TypedModel
 class Sender(str, Enum):
     HUMAN = "human"
     BOT = "bot"
+    ACTION_WORKER = "action_worker"
 
 
 class EventType(str, Enum):
