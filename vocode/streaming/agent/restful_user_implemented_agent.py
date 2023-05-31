@@ -25,7 +25,6 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
                 "Use the WebSocket user implemented agent to stream responses"
             )
         self.logger = logger or logging.getLogger(__name__)
-        self.client_session = aiohttp.ClientSession()
 
     async def respond(
         self,
@@ -36,7 +35,7 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
         config = self.agent_config.respond
         body = None
         try:
-            async with self.client_session as session:
+            async with aiohttp.ClientSession() as session:
                 payload = RESTfulAgentInput(
                     human_input=human_input, conversation_id=conversation_id
                 ).dict()
@@ -47,7 +46,7 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
                     timeout=aiohttp.ClientTimeout(total=15),
                 ) as response:
                     body = await response.json()
-                    response.raise_for_status()  # Raises an exception for non-2xx status codes
+                    response.raise_for_status()
                     output: RESTfulAgentOutput = RESTfulAgentOutput.parse_obj(body)
                     output_response = None
                     should_stop = False
