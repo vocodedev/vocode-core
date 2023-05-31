@@ -3,6 +3,45 @@ title: "Tracing"
 description: "Time components of your Vocode conversations"
 ---
 
+# Benchmarking Script
+The benchmarking CLI application is located in `playground/streaming/benchmark.py`.
+You can run it with `python playground/streaming/benchmark.py --help` to see the available options.
+The script individually tests the transcribers, agents, and synthesizers that you
+specify with the `--transcribers`, `--agents`, and `--synthesizers` flags, respectively.
+
+For example, to compare Deepgram to AssemblyAI, you can run the following command:
+`python playground/streaming/benchmark.py --transcribers deepgram assemblyai --transcriber_audio sample.wav`
+where `sample.wav` is the audio file you want to transcribe. Alternatively, you
+can specify `transcriber_use_mic` instead of `--transcriber_audio` to use your
+microphone as the audio source. Additionally, you can add the `--create_graphs`
+option to generate bar charts of the results. Generating graphs requires
+[matplotlib](https://matplotlib.org/), which you can install with
+`poetry add matplotlib` or `pip install matplotlib`.
+
+By default all results (synthesized audio files, JSON data export, and graphs)
+are saved in the `benchmark_results` directory in the root of the project. You
+can change this behavior with the `--results_dir` and `--results_file` options.
+
+A useful option is `--all`, which will run the benchmarking script for all supported
+transcribers, agents, and synthesizers.
+
+Since the results of testing a component can vary based on many factors, it is
+helpful to use the `--{transcriber,agent,synthesizer}_num_cycles` options to
+specify how many times you want to test each component. Results are averaged
+across all cycles. You can also set `--all_num_cycles` to more easily make all
+components run for the same number of cycles.
+
+When testing agents, you can set the prompt preamble with the `--agent_prompt_preamble`
+argument and the first input with the `--agent_first_input` option. For
+synthesizers, you can specify the synthesized text with the `--synthesizer_text`
+option.
+
+Supported Transcribers: Deepgram, AssemblyAI
+Supported Agents: All OpenAI, All Anthropic
+Supported Synthesizers: ElevenLabs, PlayHT, Google, Azure, GTTS, Bark, Rime, Stream Elements
+
+
+# Small Manual Example
 At the top of `quickstarts/streaming_conversation.py`, include the following code:
 
 ```python

@@ -38,9 +38,6 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         self.api_key = getenv("RIME_API_KEY")
         self.speaker = synthesizer_config.speaker
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.RIME.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
@@ -56,6 +53,9 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
             "text": message.text,
             "speaker": self.speaker,
         }
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.RIME.value.split('_', 1)[-1]}.create_total",
+        )
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 RIME_BASE_URL,
@@ -68,8 +68,15 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
                         f"Rime API error: {response.status}, {await response.text()}"
                     )
                 data = await response.json()
+                create_speech_span.end()
+                convert_span = tracer.start_span(
+                    f"synthesizer.{SynthesizerType.RIME.value.split('_', 1)[-1]}.convert",
+                )
+
                 audio_file = io.BytesIO(base64.b64decode(data.get("audioContent")))
 
-                return self.create_synthesis_result_from_wav(
+                result = self.create_synthesis_result_from_wav(
                     file=audio_file, message=message, chunk_size=chunk_size
                 )
+                convert_span.end()
+                return result
