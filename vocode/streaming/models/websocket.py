@@ -60,7 +60,7 @@ class AudioConfigStartMessage(
     input_audio_config: InputAudioConfig
     output_audio_config: OutputAudioConfig
     conversation_id: Optional[str] = None
-    transcript: Optional[bool] = None
+    subscribe_transcript: Optional[bool] = None
 
 
 class ReadyMessage(WebSocketMessage, type=WebSocketMessageType.READY):

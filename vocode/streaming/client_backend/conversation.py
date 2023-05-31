@@ -69,7 +69,7 @@ class ConversationRouter(BaseRouter):
         transcriber = self.transcriber_thunk(start_message.input_audio_config)
         synthesizer = self.synthesizer_thunk(start_message.output_audio_config)
         synthesizer.synthesizer_config.should_encode_as_wav = True
-        if start_message.transcript:
+        if start_message.subscribe_transcript:
             self.events_manager_instance = TranscriptEventManager(output_device, self.logger)
         else:
             self.events_manager_instance = None
@@ -89,7 +89,6 @@ class ConversationRouter(BaseRouter):
             await websocket.receive_json()
         )
         self.logger.debug(f"Conversation started")
-        self.logger.debug(start_message.dict())
         output_device = WebsocketOutputDevice(
             websocket,
             start_message.output_audio_config.sampling_rate,
@@ -121,7 +120,7 @@ class TranscriptEventManager(events_manager.EventsManager):
         if event.type == EventType.TRANSCRIPT:
             transcript_event = typing.cast(TranscriptEvent, event)
             self.output_device.consume_transcript(transcript_event)
-            self.logger.debug(event.dict())
+            # self.logger.debug(event.dict())
 
     def restart(self, output_device: WebsocketOutputDevice):
         self.output_device = output_device
