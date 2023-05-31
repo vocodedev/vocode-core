@@ -18,6 +18,7 @@ from vocode.streaming.agent.base_agent import (
     AgentResponseStop,
     AgentResponseFillerAudio,
     BaseAgent,
+    TranscriptionAgentInput,
 )
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.websocket_agent import (
@@ -93,14 +94,16 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
                     self.logger.info("Waiting for data from agent request queue")
                     try:
                         input = await self.input_queue.get()
-                        transcription = input.payload.transcription
-                        self.logger.info("Transcription message: %s", transcription.message)
-                        agent_request = WebSocketAgentTextMessage.from_text(transcription.message)
-                        agent_request_json = agent_request.json()
-                        self.logger.info(f"Sending data to web socket agent: {agent_request_json}")
-                        if isinstance(agent_request, AgentResponseStop):
-                            # In practice, it doesn't make sense for the client to send a text and stop message to the agent service
-                            self.has_ended = True
+                        payload = input.payload
+                        if isinstance(payload, TranscriptionAgentInput):
+                            transcription = payload.transcription
+                            self.logger.info("Transcription message: %s", transcription.message)
+                            agent_request = WebSocketAgentTextMessage.from_text(transcription.message)
+                            agent_request_json = agent_request.json()
+                            self.logger.info(f"Sending data to web socket agent: {agent_request_json}")
+                            if isinstance(agent_request, AgentResponseStop):
+                                # In practice, it doesn't make sense for the client to send a text and stop message to the agent service
+                                self.has_ended = True
 
                     except asyncio.exceptions.TimeoutError:
                         break
