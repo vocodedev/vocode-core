@@ -225,7 +225,7 @@ if args.all_num_cycles is not None:
     args.agent_num_cycles = args.all_num_cycles
     args.synthesizer_num_cycles = args.all_num_cycles
 
-if args.create_graphs:
+if args.create_graphs or args.just_graphs:
     try:
         import matplotlib.pyplot as plt
     except ImportError:
