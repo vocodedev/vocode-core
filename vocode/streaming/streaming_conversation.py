@@ -309,12 +309,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     item.interruption_event,
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
                 )
-                self.conversation.logger.debug("Message sent: {}".format(message_sent))
+                self.conversation.logger.debug("Bot reponse sent: {}".format(message_sent))
+                if synthesis_result.cached_path:
+                    metadata["path"] = synthesis_result.cached_path
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(
                         message_sent
                     )
                     metadata["cut_off"] = True
+                    if synthesis_result.cached_path:
+                        # "Uncache" the file that was cut off and isn't suitable to cache
+                        try:
+                            os.remove(synthesis_result.cached_path)
+                        except OSError:
+                            pass
 
                 if self.conversation.bot_sentiment:
                     metadata["sentiment"] = self.conversation.bot_sentiment

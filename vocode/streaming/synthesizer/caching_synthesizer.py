@@ -23,20 +23,29 @@ def save_as_wav(path, audio_data: bytes, config: Union[SynthesizerConfig, Transc
         wav_file.writeframes(audio_data)
         wav_file.close()
 
+def get_voice_id(synthesizer_config: SynthesizerConfig) -> str:
+    voice = None
+    if synthesizer_config.type == "synthesizer_azure" or synthesizer_config.type == "synthesizer_google":
+        voice = synthesizer_config.voice_name  # type: ignore
+    elif synthesizer_config.type in ["synthesizer_eleven_labs", "synthesizer_play_ht", "synthesizer_coqui"]:
+        voice = synthesizer_config.voice_id # type: ignore
+    return voice or synthesizer_config.type
+
 def cache_key(text, synthesizer_config: SynthesizerConfig) -> str:
     config_text = synthesizer_config.json()
     cleaned_text = text.lower()
     cleaned_text = re.sub(r'\s+', '-', cleaned_text)
     cleaned_text = re.sub(r'[|<>"?*:\\.$[\]#/@]', '', cleaned_text)
-
+    voice_id = get_voice_id(synthesizer_config)
     hash_value = hashlib.md5((cleaned_text + config_text).encode()).hexdigest()[:8]
-    return f"synth_{cleaned_text[:32]}_{hash_value}.wav"
+    return f"{voice_id}/synth_{cleaned_text[:32]}_{hash_value}.wav"
 
 class AsyncGeneratorWrapper(AsyncGenerator[ChunkResult, None]):
-    def __init__(self, generator, when_finished: Callable):
+    def __init__(self, generator, when_finished: Callable, remove_wav_header: bool):
         self.generator = generator
         self.all_bytes = bytearray()
         self.when_finished = when_finished
+        self.remove_wav_header = remove_wav_header
 
     def __aiter__(self):
         return self
@@ -44,7 +53,9 @@ class AsyncGeneratorWrapper(AsyncGenerator[ChunkResult, None]):
     async def __anext__(self):
         try:
             chunk_result = await self.generator.__anext__()
-            self.all_bytes += chunk_result.chunk
+            # Hacky way to cut off each chunk's wav header if it has one
+            if chunk_result and chunk_result.chunk:
+                self.all_bytes += chunk_result.chunk[44:] if self.remove_wav_header else chunk_result.chunk
             return chunk_result
         except StopAsyncIteration:
             # Code to run when the async generator has finished
@@ -102,16 +113,17 @@ class CachingSynthesizer(BaseSynthesizer):
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         cached_path = os.path.join(self.cache_path, cache_key(message.text, self.inner_synthesizer.get_synthesizer_config()))
-        if os.path.exists(cached_path):
+        if False and os.path.exists(cached_path):
             with open(cached_path, "rb") as f:
                 result = self.inner_synthesizer.create_synthesis_result_from_wav(f, message, chunk_size)
         else:
             result = await self.inner_synthesizer.create_speech(message, chunk_size, bot_sentiment)
-        
-        def save_synthesis(all_bytes):
-            save_as_wav(cached_path, all_bytes, self.inner_synthesizer.get_synthesizer_config())
+            result.chunk_generator = AsyncGeneratorWrapper(
+                result.chunk_generator, 
+                lambda all_bytes: save_as_wav(cached_path, all_bytes, self.inner_synthesizer.get_synthesizer_config()),
+                self.inner_synthesizer.synthesizer_config.should_encode_as_wav
+            )
 
-        result.chunk_generator = AsyncGeneratorWrapper(result.chunk_generator, save_synthesis)
         result.cached_path = cached_path
         return result
 
