@@ -38,12 +38,6 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
         self.tts = tts
 
         # Instantiates a client
-        credentials_path = getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        if not credentials_path:
-            raise Exception(
-                "Please set GOOGLE_APPLICATION_CREDENTIALS environment variable"
-            )
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
         self.client = tts.TextToSpeechClient()
 
         # Build the voice request, select the language code ("en-US") and the ssml
