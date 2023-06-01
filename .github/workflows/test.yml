@@ -28,6 +28,9 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+      
+      - name: Install ffmpeg
+        run: sudo apt-get install ffmpeg
 
       - name: Install poetry ${{ matrix.poetry-version }}
         run: |
