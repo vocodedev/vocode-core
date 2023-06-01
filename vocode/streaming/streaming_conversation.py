@@ -93,6 +93,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
+            if transcription.message.strip() == "":
+                self.conversation.logger.info("Ignoring empty transcription")
+                return
             if transcription.is_final:
                 self.conversation.logger.debug(
                     "Got transcription: {}, confidence: {}".format(
