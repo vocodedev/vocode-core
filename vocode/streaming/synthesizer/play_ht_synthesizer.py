@@ -37,9 +37,6 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
                 "You must set the PLAY_HT_API_KEY and PLAY_HT_USER_ID environment variables"
             )
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.PLAY_HT.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
@@ -62,6 +59,9 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
         if self.synthesizer_config.preset:
             body["preset"] = self.synthesizer_config.preset
 
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.create_total",
+        )
         async with aiohttp.ClientSession() as session:
             async with session.request(
                 url=TTS_ENDPOINT,
@@ -74,16 +74,22 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
                     raise Exception(
                         f"Play.ht API error: {response.status}, {response.text}"
                     )
-
+                read_response = await response.read()
+                create_speech_span.end()
+                convert_span = tracer.start_span(
+                    f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.convert",
+                )
                 audio_segment: AudioSegment = AudioSegment.from_mp3(
-                    io.BytesIO(await response.read())  # type: ignore
+                    io.BytesIO(read_response)  # type: ignore
                 )
 
                 output_bytes_io = io.BytesIO()
                 audio_segment.export(output_bytes_io, format="wav")  # type: ignore
 
-                return self.create_synthesis_result_from_wav(
+                result = self.create_synthesis_result_from_wav(
                     file=output_bytes_io,
                     message=message,
                     chunk_size=chunk_size,
                 )
+                convert_span.end()
+                return result

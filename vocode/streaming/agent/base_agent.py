@@ -5,8 +5,10 @@ from enum import Enum
 import logging
 import random
 from typing import AsyncGenerator, Generator, Generic, Optional, Tuple, TypeVar, Union
+import typing
 from opentelemetry import trace
 from opentelemetry.trace import Span
+from vocode.streaming.models.actions import ActionOutput
 
 from vocode.streaming.models.agent import (
     AgentConfig,
@@ -28,9 +30,22 @@ tracer = trace.get_tracer(__name__)
 AGENT_TRACE_NAME = "agent"
 
 
-class AgentInput(BaseModel):
-    transcription: Transcription
+class AgentInputType(str, Enum):
+    BASE = "agent_input_base"
+    TRANSCRIPTION = "agent_input_transcription"
+    ACTION_RESULT = "agent_input_action_result"
+
+
+class AgentInput(TypedModel, type=AgentInputType.BASE.value):
     conversation_id: str
+
+
+class TranscriptionAgentInput(AgentInput, type=AgentInputType.TRANSCRIPTION.value):
+    transcription: Transcription
+
+
+class ActionResultAgentInput(AgentInput, type=AgentInputType.ACTION_RESULT.value):
+    action_output: ActionOutput
 
 
 class AgentResponseType(str, Enum):
@@ -141,8 +156,20 @@ class RespondAgent(BaseAgent[AgentConfigType]):
     async def handle_generate_response(
         self, transcription: Transcription, conversation_id: str
     ) -> bool:
+        optional_model_name = (
+            f"-{self.agent_config.model_name}"
+            if hasattr(self.agent_config, "model_name")
+            else ""
+        )
+        tracer_name_start = (
+            f"{AGENT_TRACE_NAME}.{self.agent_config.type}{optional_model_name}"
+        )
+
         agent_span = tracer.start_span(
-            AGENT_TRACE_NAME, {"generate_response": True}  # type: ignore
+            f"{tracer_name_start}.generate_total"  # type: ignore
+        )
+        agent_span_first = tracer.start_span(
+            f"{tracer_name_start}.generate_first"  # type: ignore
         )
         responses = self.generate_response(
             transcription.message,
@@ -152,12 +179,14 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         is_first_response = True
         async for response in responses:
             if is_first_response:
-                agent_span.end()
+                agent_span_first.end()
+                is_first_response = False
             self.produce_interruptible_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
         # TODO: implement should_stop for generate_responses
+        agent_span.end()
         return False
 
     async def handle_respond(
@@ -165,7 +194,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
     ) -> bool:
         try:
             with tracer.start_as_current_span(
-                AGENT_TRACE_NAME, {"generate_response": False}  # type: ignore
+                f"{AGENT_TRACE_NAME}.{self.agent_config.type}.respond_total"
             ):
                 response, should_stop = await self.respond(
                     transcription.message,
@@ -187,12 +216,22 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         return False
 
     async def process(self, item: InterruptibleEvent[AgentInput]):
+        assert self.transcript is not None
         try:
             agent_input = item.payload
+            if agent_input.type != AgentInputType.TRANSCRIPTION:
+                return
+            transcription = typing.cast(
+                TranscriptionAgentInput, agent_input
+            ).transcription
+            self.transcript.add_human_message(
+                text=transcription.message,
+                conversation_id=agent_input.conversation_id,
+            )
             goodbye_detected_task = None
             if self.agent_config.end_conversation_on_goodbye:
                 goodbye_detected_task = self.create_goodbye_detection_task(
-                    agent_input.transcription.message
+                    transcription.message
                 )
             if self.agent_config.send_filler_audio:
                 self.produce_interruptible_event_nonblocking(AgentResponseFillerAudio())
@@ -200,11 +239,11 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             should_stop = False
             if self.agent_config.generate_responses:
                 should_stop = await self.handle_generate_response(
-                    agent_input.transcription, agent_input.conversation_id
+                    transcription, agent_input.conversation_id
                 )
             else:
                 should_stop = await self.handle_respond(
-                    agent_input.transcription, agent_input.conversation_id
+                    transcription, agent_input.conversation_id
                 )
             if should_stop:
                 self.logger.debug("Agent requested to stop")
