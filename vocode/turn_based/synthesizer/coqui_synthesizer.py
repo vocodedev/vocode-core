@@ -133,7 +133,7 @@ class CoquiSynthesizer(BaseSynthesizer):
                     # Return an AudioSegment object from the audio data
                     return AudioSegment.from_wav(io.BytesIO(audio_data))  # type: ignore
 
-    def get_request(self, text: str) -> typing.Tuple[str, dict[str, str], typing.Dict[str, object]]:
+    def get_request(self, text: str) -> typing.Tuple[str, typing.Dict[str, str], typing.Dict[str, object]]:
         url = COQUI_BASE_URL
         headers = {
             "Authorization": f"Bearer {self.api_key}",
