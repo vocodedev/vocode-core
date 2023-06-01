@@ -26,7 +26,9 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
         super().__init__(transcriber_config)
 
         from google.cloud import speech
+        import google.auth
 
+        google.auth.default()
         self.speech = speech
 
         self._ended = False

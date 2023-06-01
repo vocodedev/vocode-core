@@ -28,6 +28,9 @@ class GoogleSynthesizer(BaseSynthesizer):
         effects_profile_id: Optional[str] = None,
         enable_time_pointing: Optional[list] = DEFAULT_TIME_POINTING,
     ):
+        import google.auth
+
+        google.auth.default()
         self.client = tts.TextToSpeechClient()
 
         self.voice = tts.VoiceSelectionParams(
