@@ -65,7 +65,9 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
         agent_response: AgentResponse
 
         if isinstance(message, WebSocketAgentTextMessage):
-            agent_response = AgentResponseMessage(message=BaseMessage(text=message.data.text))
+            agent_response = AgentResponseMessage(
+                message=BaseMessage(text=message.data.text)
+            )
         elif isinstance(message, WebSocketAgentStopMessage):
             agent_response = AgentResponseStop()
             self.has_ended = True
@@ -82,8 +84,9 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
         self.logger.info("Connecting to web socket agent %s", socket_url)
 
         async with connect(socket_url) as ws:
+
             async def sender(
-                ws: WebSocketClientProtocol
+                ws: WebSocketClientProtocol,
             ) -> None:  # sends audio to websocket
                 while not self.has_ended:
                     self.logger.info("Waiting for data from agent request queue")
@@ -113,7 +116,9 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
                         break
 
                     except Exception as e:
-                        self.logger.error(f"WebSocket Agent Send Error: \"{e}\" in Web Socket User Implemented Agent sender")
+                        self.logger.error(
+                            f'WebSocket Agent Send Error: "{e}" in Web Socket User Implemented Agent sender'
+                        )
                         break
 
                 self.logger.debug("Terminating web socket agent sender")
@@ -129,29 +134,29 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
 
                     except websockets.exceptions.ConnectionClosed as e:
                         self.logger.error(
-                            f"WebSocket Agent Receive Error: Connection Closed - \"{e}\""
+                            f'WebSocket Agent Receive Error: Connection Closed - "{e}"'
                         )
                         break
 
                     except websockets.exceptions.ConnectionClosedOK as e:
                         self.logger.error(
-                            f"WebSocket Agent Receive Error: Connection Closed OK - \"{e}\""
+                            f'WebSocket Agent Receive Error: Connection Closed OK - "{e}"'
                         )
                         break
 
                     except websockets.exceptions.InvalidStatus as e:
                         self.logger.error(
-                            f"WebSocket Agent Receive Error: Invalid Status - \"{e}\""
+                            f'WebSocket Agent Receive Error: Invalid Status - "{e}"'
                         )
                         break
 
                     except Exception as e:
-                        self.logger.error(
-                            f"WebSocket Agent Receive Error: \"{e}\""
-                        )
+                        self.logger.error(f'WebSocket Agent Receive Error: "{e}"')
                         break
 
-                self.logger.debug("Terminating Web Socket User Implemented Agent receiver")
+                self.logger.debug(
+                    "Terminating Web Socket User Implemented Agent receiver"
+                )
 
             await asyncio.gather(sender(ws), receiver(ws))
 
