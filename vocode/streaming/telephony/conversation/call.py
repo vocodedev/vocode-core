@@ -36,7 +36,8 @@ from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
-
+from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
+from vocode.streaming.utils import create_conversation_id
 
 class PhoneCallAction(Enum):
     CLOSE_WEBSOCKET = 1
@@ -59,6 +60,12 @@ class Call(StreamingConversation):
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
+        conversation_id = conversation_id or create_conversation_id()
+        logger = wrap_logger(
+            logger or logging.getLogger(__name__),
+            conversation_id=conversation_id,
+        )
+        
         self.base_url = base_url
         self.config_manager = config_manager
         self.twilio_config = twilio_config or TwilioConfig(
