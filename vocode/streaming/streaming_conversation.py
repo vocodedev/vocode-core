@@ -36,6 +36,7 @@ from vocode.streaming.agent.base_agent import (
     AgentInput,
     AgentResponse,
     AgentResponseMessage,
+    AgentResponseStop,
     AgentResponseType,
     BaseAgent,
     TranscriptionAgentInput,
@@ -195,6 +196,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             ],
             conversation: "StreamingConversation",
             interruptible_event_factory: InterruptibleEventFactory,
+            agent: BaseAgent,
         ):
             super().__init__(input_queue=input_queue, output_queue=output_queue)
             self.input_queue = input_queue
@@ -208,6 +210,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
             )
+            self.agent = agent
 
         def send_filler_audio(self):
             assert self.conversation.filler_audio_worker is not None
@@ -247,6 +250,22 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                     ):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
+
+                # Check for goodbye intent
+                if self.agent.agent_config.end_conversation_on_goodbye:
+                    goodbye_detected_task = self.agent.create_goodbye_detection_task(
+                        agent_response_message.message.text
+                    )
+                try:
+                    goodbye_detected = await asyncio.wait_for(
+                        goodbye_detected_task, 0.1
+                    )
+                    if goodbye_detected:
+                        self.conversation.logger.debug("Goodbye detected from the bot, ending conversation")
+                        self.conversation.terminate()
+                        return
+                except asyncio.TimeoutError:
+                    self.conversation.logger.debug("Goodbye detection timed out")
 
                 self.conversation.logger.debug("Synthesizing speech for message")
                 synthesis_result = await self.conversation.synthesizer.create_speech(
@@ -338,6 +357,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             output_queue=self.synthesis_results_queue,
             conversation=self,
             interruptible_event_factory=self.interruptible_event_factory,
+            agent=self.agent,
         )
         self.actions_worker = None
         if isinstance(self.agent, ActionAgent):
