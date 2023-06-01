@@ -54,7 +54,8 @@ class OutboundCall:
             sampling_rate=DEFAULT_SAMPLING_RATE,
             audio_encoding=DEFAULT_AUDIO_ENCODING,
             chunk_size=DEFAULT_CHUNK_SIZE,
-            model="voicemail",
+            model="phonecall",
+            tier="nova",
             endpointing_config=PunctuationEndpointingConfig(),
         )
         self.synthesizer_config = synthesizer_config or AzureSynthesizerConfig(
