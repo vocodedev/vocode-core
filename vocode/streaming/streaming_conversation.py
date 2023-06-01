@@ -453,7 +453,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.debug("Bot sentiment: %s", new_bot_sentiment)
             self.bot_sentiment = new_bot_sentiment
 
-    async def receive_message(self, message: str):
+   def receive_message(self, message: str):
         transcription = Transcription(
             message=message,
             confidence=1.0,
