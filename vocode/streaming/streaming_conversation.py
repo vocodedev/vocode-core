@@ -459,7 +459,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             confidence=1.0,
             is_final=True,
         )
-        await self.transcriptions_worker.process(transcription)
+        self.transcriptions_worker.consume_nonblocking(transcription)
 
     def receive_audio(self, chunk: bytes):
         self.transcriber.send_audio(chunk)
