@@ -454,12 +454,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.bot_sentiment = new_bot_sentiment
 
     async def receive_message(self, message: str):
-        transcripion = Transcription(
+        transcription = Transcription(
             message=message,
             confidence=1.0,
             is_final=True,
         )
-        await self.transcriptions_worker.process(transcripion)
+        await self.transcriptions_worker.process(transcription)
 
     def receive_audio(self, chunk: bytes):
         self.transcriber.send_audio(chunk)
