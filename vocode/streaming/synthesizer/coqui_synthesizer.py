@@ -16,7 +16,7 @@ from vocode.streaming.models.message import BaseMessage
 from opentelemetry.context.context import Context
 
 
-COQUI_BASE_URL = "https://app.coqui.ai/api/v2/"
+COQUI_BASE_URL = "https://app.coqui.ai/api/v2"
 
 
 class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
@@ -32,26 +32,23 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        url = COQUI_BASE_URL + "samples"
+        url = f"{COQUI_BASE_URL}/samples/xtts/render/"
         if self.voice_prompt:
-            url = f"{url}/from-prompt/"
+            url = f"{COQUI_BASE_URL}/samples/xtts/render-from-prompt/"
 
         headers = {"Authorization": f"Bearer {self.api_key}"}
-
-        emotion = "Neutral"
-        if bot_sentiment is not None and bot_sentiment.emotion:
-            emotion = bot_sentiment.emotion.capitalize()
 
         body = {
             "text": message.text,
             "name": "unnamed",
-            "emotion": emotion,
         }
 
         if self.voice_prompt:
             body["prompt"] = self.voice_prompt
-        if self.voice_id:
+        elif self.voice_id:
             body["voice_id"] = self.voice_id
+
+        # print("➡️", body)
 
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.create_total"
@@ -65,6 +62,7 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
                 timeout=aiohttp.ClientTimeout(total=15),
             ) as response:
                 sample = await response.json()
+                # print("⬅️", sample)
                 async with session.request(
                     "GET",
                     sample["audio_url"],
@@ -74,14 +72,9 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
                     convert_span = tracer.start_span(
                         f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.convert",
                     )
-                    audio_segment: AudioSegment = AudioSegment.from_wav(
-                        io.BytesIO(read_response)  # type: ignore
-                    )
-
-                    output_bytes: bytes = audio_segment.raw_data
 
                     result = self.create_synthesis_result_from_wav(
-                        file=output_bytes,
+                        file=io.BytesIO(read_response),
                         message=message,
                         chunk_size=chunk_size,
                     )
