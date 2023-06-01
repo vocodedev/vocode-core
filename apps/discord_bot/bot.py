@@ -2,27 +2,43 @@ import os
 import io
 import logging
 import asyncio
+from functools import partial
 
 import discord
 from discord.sinks import Sink, Filters, default_filters, AudioData
+from discord.ext import tasks
 
 from vocode.streaming.transcriber import DeepgramTranscriber
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.transcriber import DeepgramTranscriberConfig
 from pydub import AudioSegment
+from vocode.streaming.models.agent import ChatGPTAgentConfig
+from vocode.streaming.agent import ChatGPTAgent
+from vocode.streaming.synthesizer import AzureSynthesizer
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.models.transcriber import PunctuationEndpointingConfig
+from discord_output_device import DiscordOutputDevice
+from discord_streaming_conversation import DiscordStreamingConversation
 
 bot = discord.Bot(debug_guilds=[1113610683737722913])
 connections = {}
 
+logging.basicConfig()
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
-transcriber = DeepgramTranscriber(DeepgramTranscriberConfig(sampling_rate=44100, audio_encoding=AudioEncoding.LINEAR16, chunk_size=2048))
+conversation = None
+IDLE_TIME_SECONDS = 10
+
 
 import wave
-f = wave.open("test.wav", "wb")
+
+f = wave.open("receive.wav", "wb")
 f.setnchannels(1)
 f.setsampwidth(2)
 f.setframerate(44100)
+
+
 class VocodeSink(Sink):
     @Filters.container
     def write(self, data, user):
@@ -32,7 +48,9 @@ class VocodeSink(Sink):
 
         file = self.audio_data[user]
         file.write(data)
-        data = AudioSegment.from_raw(io.BytesIO(data), sample_width=2, frame_rate=48000, channels=2)
+        data = AudioSegment.from_raw(
+            io.BytesIO(data), sample_width=2, frame_rate=48000, channels=2
+        )
         # convert data audio segment to wav with 1 channel and frame rate 44100
         data = data.set_channels(1)
         data = data.set_frame_rate(44100)
@@ -41,50 +59,83 @@ class VocodeSink(Sink):
         data.export(raw, format="raw")
         f.writeframes(raw.getvalue())
         raw.seek(0)
-        transcriber.send_audio(raw)
+        conversation.receive_audio(raw)
+        # transcriber.send_audio(raw)
         # write the data to a wave file
-        
-        # f.writeframes(data)
 
-async def print_transcription_task():
-    while True:
-        print("getting")
-        transcription = await transcriber.output_queue.get()
-        print("got it!")
-        print(transcription)
+    def format_audio(self, *args, **kwargs):
+        pass
 
 
-
-async def finished_callback(sink, channel: discord.TextChannel, *args):
+async def finished_callback(
+    sink, channel: discord.TextChannel, conversation=None, *args
+):
     recorded_users = [f"<@{user_id}>" for user_id, audio in sink.audio_data.items()]
     await sink.vc.disconnect()
-    files = [
-        discord.File(audio.file, f"{user_id}.{sink.encoding}")
-        for user_id, audio in sink.audio_data.items()
-    ]
+    # files = [
+    #     discord.File(audio.file, f"{user_id}.{sink.encoding}")
+    #     for user_id, audio in sink.audio_data.items()
+    # ]
+    if conversation.active:
+        conversation.terminate()
+    else:
+        await channel.send("Leaving voice channel due to lack of voice activity.")
     await channel.send(
-        f"Finished! Recorded audio for {', '.join(recorded_users)}.", files=files
+        f"Finished! Recorded audio for {', '.join(recorded_users)}.",  # files=files
     )
+
 
 @bot.command()
 async def start(ctx: discord.ApplicationContext):
     """Record your voice!"""
-    transcriber.start()
-    
+    global conversation
+    discord_output = DiscordOutputDevice(None)
+    transcriber = DeepgramTranscriber(
+        DeepgramTranscriberConfig(
+            sampling_rate=44100,
+            audio_encoding=AudioEncoding.LINEAR16,
+            chunk_size=2048,
+            endpointing_config=PunctuationEndpointingConfig(),
+        )
+    )
+    agent = ChatGPTAgent(
+        ChatGPTAgentConfig(
+            initial_message=None,
+            prompt_preamble="""The AI is having a pleasant conversation about life""",
+            allowed_idle_time_seconds=IDLE_TIME_SECONDS,
+        )
+    )
+    synthesizer = AzureSynthesizer(
+        AzureSynthesizerConfig.from_output_device(discord_output)
+    )
+
+    conversation = DiscordStreamingConversation(
+        output_device=discord_output,
+        transcriber=transcriber,
+        agent=agent,
+        synthesizer=synthesizer,
+        logger=logger,
+    )
+    print("Conversation created")
+
+    await conversation.start()
+
     voice = ctx.author.voice
 
     if not voice:
         return await ctx.respond("You're not in a vc right now")
 
     vc = await voice.channel.connect()
+    discord_output.init(vc)
+    conversation.provide_discord_connection(vc, connections)
     connections.update({ctx.guild.id: vc})
 
     vc.start_recording(
         VocodeSink(),
-        finished_callback,
+        partial(finished_callback, conversation=conversation),
         ctx.channel,
     )
-    asyncio.create_task(print_transcription_task())
+    # asyncio.create_task(print_transcription_task())
 
     await ctx.respond("The recording has started!")
 
@@ -100,20 +151,25 @@ async def stop(ctx: discord.ApplicationContext):
     else:
         await ctx.respond("Not recording in this guild.")
 
-# async def main():
-    # transcriber.start()
-    # async def print_transcription_task():
-    #     while True:
-    #         transcription = await transcriber.output_queue.get()
-    #         print(transcription)
 
-    # asyncio.create_task(print_transcription_task())
+@bot.event
+async def on_ready():
+    pass
+
+
+# async def main():
+# transcriber.start()
+# async def print_transcription_task():
+#     while True:
+#         transcription = await transcriber.output_queue.get()
+#         print(transcription)
+
+# asyncio.create_task(print_transcription_task())
 
 bot.run(os.environ["DISCORD_BOT_TOKEN"])
 
 # if __name__ == "__main__":
 #     main()
-
 
 
 # @client.tree.command()
