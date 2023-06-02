@@ -9,6 +9,7 @@ readme = "README.md"
 python = ">=3.9,<3.12"
 py-cord = {extras = ["voice"], version = "^2.4.1"}
 vocode = "^0.1.110"
+google-cloud-speech = "^2.20.0"
 
 
 [build-system]

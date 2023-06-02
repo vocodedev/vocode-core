@@ -8,9 +8,9 @@ import discord
 from discord.sinks import Sink, Filters, default_filters, AudioData
 from discord.ext import tasks
 
-from vocode.streaming.transcriber import DeepgramTranscriber
+from vocode.streaming.transcriber import DeepgramTranscriber, GoogleTranscriber
 from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.models.transcriber import DeepgramTranscriberConfig
+from vocode.streaming.models.transcriber import DeepgramTranscriberConfig, GoogleTranscriberConfig
 from pydub import AudioSegment
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.agent import ChatGPTAgent
@@ -33,21 +33,21 @@ IDLE_TIME_SECONDS = 10
 
 import wave
 
-f = wave.open("receive.wav", "wb")
-f.setnchannels(1)
-f.setsampwidth(2)
-f.setframerate(44100)
+# f = wave.open("receive.wav", "wb")
+# f.setnchannels(1)
+# f.setsampwidth(2)
+# f.setframerate(44100)
 
-
+import time
 class VocodeSink(Sink):
     @Filters.container
     def write(self, data, user):
-        if user not in self.audio_data:
-            file = io.BytesIO()
-            self.audio_data.update({user: AudioData(file)})
+        # if user not in self.audio_data:
+        #     file = io.BytesIO()
+        #     self.audio_data.update({user: AudioData(file)})
 
-        file = self.audio_data[user]
-        file.write(data)
+        # file = self.audio_data[user]
+        # file.write(data)
         data = AudioSegment.from_raw(
             io.BytesIO(data), sample_width=2, frame_rate=48000, channels=2
         )
@@ -57,9 +57,10 @@ class VocodeSink(Sink):
         data = data.set_sample_width(2)
         raw = io.BytesIO()
         data.export(raw, format="raw")
-        f.writeframes(raw.getvalue())
+        # f.writeframes(raw.getvalue())
         raw.seek(0)
-        conversation.receive_audio(raw)
+        # print(time.time())
+        conversation.receive_audio(raw.read())
         # transcriber.send_audio(raw)
         # write the data to a wave file
 
@@ -90,19 +91,27 @@ async def start(ctx: discord.ApplicationContext):
     """Record your voice!"""
     global conversation
     discord_output = DiscordOutputDevice(None)
-    transcriber = DeepgramTranscriber(
-        DeepgramTranscriberConfig(
+    transcriber = GoogleTranscriber(
+        GoogleTranscriberConfig(
             sampling_rate=44100,
             audio_encoding=AudioEncoding.LINEAR16,
             chunk_size=2048,
-            endpointing_config=PunctuationEndpointingConfig(),
         )
     )
+    # transcriber = DeepgramTranscriber(
+    #     DeepgramTranscriberConfig(
+    #         sampling_rate=44100,
+    #         audio_encoding=AudioEncoding.LINEAR16,
+    #         chunk_size=2048,
+    #         endpointing_config=PunctuationEndpointingConfig(),
+    #     )
+    # )
     agent = ChatGPTAgent(
         ChatGPTAgentConfig(
             initial_message=None,
             prompt_preamble="""The AI is having a pleasant conversation about life""",
             allowed_idle_time_seconds=IDLE_TIME_SECONDS,
+            generate_responses=False,
         )
     )
     synthesizer = AzureSynthesizer(
