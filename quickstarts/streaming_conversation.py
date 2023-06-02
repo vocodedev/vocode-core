@@ -7,10 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.helpers import (
-    create_streaming_microphone_input_and_speaker_output,
-    DeviceConfigurations,
-)
+from vocode.helpers import create_streaming_microphone_input_and_speaker_output
 from vocode.streaming.transcriber import *
 from vocode.streaming.agent import *
 from vocode.streaming.synthesizer import *
@@ -30,7 +27,7 @@ async def main():
         microphone_input,
         speaker_output,
     ) = create_streaming_microphone_input_and_speaker_output(
-        device_configurations=DeviceConfigurations.selectors(),
+        use_default_devices=False,
         logger=logger,
     )
 

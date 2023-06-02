@@ -3,10 +3,7 @@ import logging
 import signal
 from vocode.streaming.hosted_streaming_conversation import HostedStreamingConversation
 from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.helpers import (
-    create_streaming_microphone_input_and_speaker_output,
-    DeviceConfigurations,
-)
+from vocode.helpers import create_streaming_microphone_input_and_speaker_output
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
@@ -26,7 +23,7 @@ if __name__ == "__main__":
         microphone_input,
         speaker_output,
     ) = create_streaming_microphone_input_and_speaker_output(
-        device_configurations=DeviceConfigurations.selectors(),
+        use_default_devices=False,
     )
 
     conversation = HostedStreamingConversation(
