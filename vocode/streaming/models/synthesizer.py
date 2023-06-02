@@ -139,6 +139,7 @@ class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value
     api_key: Optional[str] = None
     voice_id: Optional[str] = COQUI_DEFAULT_SPEAKER_ID
     voice_prompt: Optional[str] = None
+    use_xtts: Optional[bool] = True
 
     @validator("voice_id", always=True)
     def override_voice_id_with_prompt(cls, voice_id, values):

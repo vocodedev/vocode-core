@@ -1,5 +1,5 @@
 import io
-from typing import Optional
+from typing import Optional, Tuple, Dict
 import aiohttp
 from pydub import AudioSegment
 
@@ -25,6 +25,38 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
         self.api_key = synthesizer_config.api_key or getenv("COQUI_API_KEY")
         self.voice_id = synthesizer_config.voice_id
         self.voice_prompt = synthesizer_config.voice_prompt
+        self.use_xtts = synthesizer_config.use_xtts
+
+
+    def get_request(self, text: str) -> Tuple[str, Dict[str, str], Dict[str, object]]:
+        url = COQUI_BASE_URL
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        body = {
+            "text": text,
+            "speed": 1,
+        }
+
+        if self.use_xtts:
+            # If we have a voice prompt, use that instead of the voice ID
+            if self.voice_prompt is not None:
+                url = f"{COQUI_BASE_URL}/samples/xtts/render-from-prompt/"
+                body["prompt"] = self.voice_prompt
+            else:
+                url = f"{COQUI_BASE_URL}/samples/xtts/render/"
+                body["voice_id"] = self.voice_id
+        else:
+            if self.voice_prompt is not None:
+                url = f"{COQUI_BASE_URL}/samples/from-prompt/"
+                body["prompt"] = self.voice_prompt
+            else:
+                url = f"{COQUI_BASE_URL}/samples"
+                body["voice_id"] = self.voice_id
+        return url, headers, body
+
 
     async def create_speech(
         self,
@@ -32,22 +64,7 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        url = f"{COQUI_BASE_URL}/samples/xtts/render/"
-        if self.voice_prompt:
-            url = f"{COQUI_BASE_URL}/samples/xtts/render-from-prompt/"
-
-        headers = {"Authorization": f"Bearer {self.api_key}"}
-
-        body = {
-            "text": message.text,
-            "name": "unnamed",
-        }
-
-        if self.voice_prompt:
-            body["prompt"] = self.voice_prompt
-        elif self.voice_id:
-            body["voice_id"] = self.voice_id
-
+        url, headers, body = self.get_request(message.text)
         # print("➡️", body)
 
         create_speech_span = tracer.start_span(
