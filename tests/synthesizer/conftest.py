@@ -37,18 +37,6 @@ def mock_eleven_labs_api():
         yield m
 
 
-@pytest.fixture
-def mock_eleven_labs_api_optimize_streaming_latency():
-    with aioresponses() as m:
-        pattern = re.compile(
-            rf"{re.escape(ELEVEN_LABS_BASE_URL)}text-to-speech/\w+")
-        m.post(
-            pattern, callback=create_request_handler(
-                optimize_streaming_latency=True)
-        )
-        yield m
-
-
 @pytest.fixture(scope="module")
 def eleven_labs_synthesizer_with_api_key():
     params = DEFAULT_PARAMS.copy()
@@ -69,35 +57,4 @@ def eleven_labs_synthesizer_env_api_key():
     import os
 
     os.environ["ELEVEN_LABS_API_KEY"] = "my_api_key"
-    yield ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
-
-
-@pytest.fixture(scope="module")
-def eleven_labs_synthesizer_stability_similarity():
-    params = DEFAULT_PARAMS.copy()
-    params["stability"] = 0.5
-    params["similarity_boost"] = 0.5
-    yield ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
-
-
-@pytest.fixture(scope="module")
-def eleven_labs_synthesizer_optimize_streaming_latency():
-    params = DEFAULT_PARAMS.copy()
-    params["optimize_streaming_latency"] = 1
-    yield ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
-
-
-@pytest.fixture(scope="module")
-def eleven_labs_synthesizer_voice_id():
-    params = DEFAULT_PARAMS.copy()
-    from vocode.streaming.synthesizer.eleven_labs_synthesizer import ADAM_VOICE_ID
-
-    params["voice_id"] = ADAM_VOICE_ID
-    yield ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
-
-
-@pytest.fixture(scope="module")
-def eleven_labs_synthesizer_only_stability():
-    params = DEFAULT_PARAMS.copy()
-    params["stability"] = 0.5
     yield ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
