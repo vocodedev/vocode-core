@@ -68,7 +68,9 @@ class AgentResponseStop(AgentResponse, type=AgentResponseType.STOP.value):
     pass
 
 
-class AgentResponseFillerAudio(AgentResponse, type=AgentResponseType.FILLER_AUDIO.value):
+class AgentResponseFillerAudio(
+    AgentResponse, type=AgentResponseType.FILLER_AUDIO.value
+):
     pass
 
 
@@ -156,14 +158,24 @@ class RespondAgent(BaseAgent[AgentConfigType]):
     async def handle_generate_response(
         self, transcription: Transcription, conversation_id: str
     ) -> bool:
-        optional_model_name = (
-            f"-{self.agent_config.model_name}"
-            if hasattr(self.agent_config, "model_name")
-            else ""
-        )
-        tracer_name_start = (
-            f"{AGENT_TRACE_NAME}.{self.agent_config.type}{optional_model_name}"
-        )
+        if (
+            hasattr(self.agent_config, "azure_params")
+            and self.agent_config.azure_params is not None
+        ):
+            beginning_agent_name = self.agent_config.type.rsplit("_", 1)[0]
+            engine = self.agent_config.azure_params.engine
+            tracer_name_start = (
+                f"{AGENT_TRACE_NAME}.{beginning_agent_name}_azuregpt-{engine}"
+            )
+        else:
+            optional_model_name = (
+                f"-{self.agent_config.model_name}"
+                if hasattr(self.agent_config, "model_name")
+                else ""
+            )
+            tracer_name_start = (
+                f"{AGENT_TRACE_NAME}.{self.agent_config.type}{optional_model_name}"
+            )
 
         agent_span = tracer.start_span(
             f"{tracer_name_start}.generate_total"  # type: ignore

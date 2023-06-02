@@ -21,7 +21,11 @@ from vocode.streaming.input_device.file_input_device import FileInputDevice
 from vocode.streaming.agent import ChatGPTAgent, ChatAnthropicAgent
 from vocode.streaming.input_device.microphone_input import MicrophoneInput
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.agent import ChatGPTAgentConfig, ChatAnthropicAgentConfig
+from vocode.streaming.models.agent import (
+    AzureOpenAIConfig,
+    ChatGPTAgentConfig,
+    ChatAnthropicAgentConfig,
+)
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
     BarkSynthesizerConfig,
@@ -95,6 +99,7 @@ TRANSCRIBER_CHOICES = ["deepgram", "assemblyai"]
 AGENT_CHOICES = [
     "gpt_gpt-3.5-turbo",
     "gpt_gpt-4",
+    "azuregpt_gpt-35-turbo",
     "anthropic_claude-v1",
     "anthropic_claude-instant-v1",
 ]
@@ -284,6 +289,15 @@ async def run_agents():
                         prompt_preamble=args.agent_prompt_preamble,
                         allow_agent_to_be_cut_off=False,
                         model_name=model_name,
+                    )
+                )
+            elif company == "azuregpt":
+                agent = ChatGPTAgent(
+                    ChatGPTAgentConfig(
+                        initial_message=None,
+                        prompt_preamble=args.agent_prompt_preamble,
+                        allow_agent_to_be_cut_off=False,
+                        azure_params=AzureOpenAIConfig(engine=model_name),
                     )
                 )
             elif company == "anthropic":
@@ -505,7 +519,7 @@ async def main():
         scope_metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics
         final_metrics = get_final_metrics(scope_metrics, final_spans=final_spans)
 
-        final_spans = {k: sum(v) / len(v) for k, v in final_spans.items()}
+        final_spans = {k: sum(v) / len(v) for k, v in final_spans.items() if len(v) > 0}
         if len(scope_metrics) > 0:
             final_results = {**final_spans, **final_metrics}
         else:
