@@ -120,16 +120,21 @@ class ElevenLabsSynthesizerConfig(
                 "Both stability and similarity_boost must be set or not set."
             )
         return similarity_boost
-    
+
     @validator("optimize_streaming_latency")
     def optimize_streaming_latency_check(cls, optimize_streaming_latency):
-        if optimize_streaming_latency is not None and not (0 <= optimize_streaming_latency <= 4):
+        if optimize_streaming_latency is not None and not (
+            0 <= optimize_streaming_latency <= 4
+        ):
             raise ValueError("optimize_streaming_latency must be between 0 and 4.")
         return optimize_streaming_latency
 
 
+RIME_DEFAULT_SPEAKER = "young_male_unmarked-1"
+
+
 class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME.value):
-    speaker: str
+    speaker: str = RIME_DEFAULT_SPEAKER
 
 
 COQUI_DEFAULT_SPEAKER_ID = "d2bd7ccb-1b65-4005-9578-32c4e02d8ddf"
@@ -150,8 +155,11 @@ class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value
         return voice_id or COQUI_DEFAULT_SPEAKER_ID
 
 
+PLAYHT_DEFAULT_VOICE_ID = "larry"
+
+
 class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.value):
-    voice_id: str
+    voice_id: str = PLAYHT_DEFAULT_VOICE_ID
     speed: Optional[str] = None
     preset: Optional[str] = None
 
