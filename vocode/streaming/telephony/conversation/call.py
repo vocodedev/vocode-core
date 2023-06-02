@@ -122,7 +122,9 @@ class Call(StreamingConversation):
             await self.wait_for_twilio_start(ws)
             await super().start()
             self.events_manager.publish_event(
-                PhoneCallConnectedEvent(conversation_id=self.id)
+                PhoneCallConnectedEvent(conversation_id=self.id,
+                                        to_phone_number=twilio_call.to,
+                                        from_phone_number=twilio_call.from_formatted)
             )
             while self.active:
                 message = await ws.receive_text()
