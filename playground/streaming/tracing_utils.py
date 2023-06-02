@@ -52,8 +52,6 @@ def get_final_metrics(scope_metrics, final_spans=None):
                 final_metrics[f"agent.{agent_str}.characters_per_second"] = (
                     raw_metric.value
                     / sum(final_spans[f"agent.{agent_str}.generate_total"])
-                    if len(final_spans[f"agent.{agent_str}.generate_total"]) > 0
-                    else 0
                 )
             else:
                 try:
