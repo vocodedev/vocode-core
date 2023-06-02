@@ -16,7 +16,7 @@ from opentelemetry.sdk.metrics.export import (
 )
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.sdk.resources import Resource
-from vocode.streaming.agent.base_agent import AgentInput
+from vocode.streaming.agent.base_agent import TranscriptionAgentInput
 from vocode.streaming.input_device.file_input_device import FileInputDevice
 from vocode.streaming.agent import ChatGPTAgent, ChatAnthropicAgent
 from vocode.streaming.input_device.microphone_input import MicrophoneInput
@@ -127,7 +127,7 @@ parser.add_argument(
 parser.add_argument(
     "--transcriber_audio",
     type=str,
-    default="test.wav",
+    default="playground/streaming/test.wav",
     help="Path to the audio file to transcribe",
 )
 parser.add_argument(
@@ -225,7 +225,7 @@ if args.all_num_cycles is not None:
     args.agent_num_cycles = args.all_num_cycles
     args.synthesizer_num_cycles = args.all_num_cycles
 
-if args.create_graphs:
+if args.create_graphs or args.just_graphs:
     try:
         import matplotlib.pyplot as plt
     except ImportError:
@@ -272,13 +272,11 @@ metrics.set_meter_provider(provider)
 
 async def run_agents():
     for agent_name in tqdm(args.agents, desc="Agents"):
-        for agent_run_idx in tqdm(range(args.agent_num_cycles), desc="Agent Cycles"):
-            company, model_name = agent_name.split("_")
-
-            length_meter = meter.create_counter(
-                f"agent.agent_chat_{company}-{model_name}.total_characters",
-            )
-
+        company, model_name = agent_name.split("_")
+        length_meter = meter.create_counter(
+            f"agent.agent_chat_{company}-{model_name}.total_characters",
+        )
+        for _ in tqdm(range(args.agent_num_cycles), desc="Agent Cycles"):
             if company == "gpt":
                 agent = ChatGPTAgent(
                     ChatGPTAgentConfig(
@@ -298,13 +296,13 @@ async def run_agents():
                 )
             agent.attach_transcript(Transcript())
             agent_task = agent.start()
-            message = AgentInput(
+            message = TranscriptionAgentInput(
                 transcription=Transcription(
                     message=args.agent_first_input, confidence=1.0, is_final=True
                 ),
                 conversation_id=0,
             )
-            await agent.input_queue.put(InterruptibleEvent(message))
+            agent.consume_nonblocking(agent.interruptible_event_factory.create(message))
 
             while True:
                 try:
