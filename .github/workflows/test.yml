@@ -45,7 +45,7 @@ jobs:
 
       - name: Install dependencies
         shell: bash
-        run: python -m poetry install
+        run: python -m poetry install -E all
 
       - name: Lint with mypy
         run: |
