@@ -31,61 +31,10 @@ Choice: """.format(
     )
 
 
-class IODeviceConfiguration:
-    pass
-
-
-class DefaultIODeviceConfiguration(IODeviceConfiguration):
-    """
-    Use this configuration to use the default input or output device of the system.
-    """
-    pass
-
-
-class NamedIODeviceConfiguration(IODeviceConfiguration):
-    """
-    Use this configuration to specify an input or output device by name. This uses an exact string match.
-    """
-    def __init__(self, name: str):
-        self.name = name
-
-
-class SelectorIODeviceConfiguration(IODeviceConfiguration):
-    """
-    Use this to select an input or output device from a list of devices when the application starts.
-    """
-    pass
-
-
-class DeviceConfigurations:
-    def __init__(self, input: IODeviceConfiguration, output: IODeviceConfiguration):
-        self.input = input
-        self.output = output
-
-    @staticmethod
-    def default() -> "DeviceConfigurations":
-        return DeviceConfigurations(
-            input=DefaultIODeviceConfiguration(),
-            output=DefaultIODeviceConfiguration(),
-        )
-
-    @staticmethod
-    def named(input_name: str, output_name: str) -> "DeviceConfigurations":
-        return DeviceConfigurations(
-            input=NamedIODeviceConfiguration(name=input_name),
-            output=NamedIODeviceConfiguration(name=output_name),
-        )
-
-    @staticmethod
-    def selectors() -> "DeviceConfigurations":
-        return DeviceConfigurations(
-            input=SelectorIODeviceConfiguration(),
-            output=SelectorIODeviceConfiguration(),
-        )
-
-
 def create_streaming_microphone_input_and_speaker_output(
-    device_configurations: DeviceConfigurations = DeviceConfigurations.selectors(),
+    use_default_devices: bool = False,
+    input_device_name: Optional[str] = None,
+    output_device_name: Optional[str] = None,
     mic_sampling_rate=None,
     speaker_sampling_rate=None,
     use_blocking_speaker_output=False,
@@ -96,7 +45,9 @@ def create_streaming_microphone_input_and_speaker_output(
         speaker_class=BlockingStreamingSpeakerOutput
         if use_blocking_speaker_output
         else StreamingSpeakerOutput,
-        device_configurations=device_configurations,
+        use_default_devices=use_default_devices,
+        input_device_name=input_device_name,
+        output_device_name=output_device_name,
         mic_sampling_rate=mic_sampling_rate,
         speaker_sampling_rate=speaker_sampling_rate,
         logger=logger,
@@ -104,7 +55,9 @@ def create_streaming_microphone_input_and_speaker_output(
 
 
 def create_turn_based_microphone_input_and_speaker_output(
-    device_configurations: DeviceConfigurations = DeviceConfigurations.selectors(),
+    use_default_devices: bool = False,
+    input_device_name: Optional[str] = None,
+    output_device_name: Optional[str] = None,
     mic_sampling_rate=None,
     speaker_sampling_rate=None,
     logger: Optional[logging.Logger] = None,
@@ -112,9 +65,12 @@ def create_turn_based_microphone_input_and_speaker_output(
     return _create_microphone_input_and_speaker_output(
         microphone_class=TurnBasedMicrophoneInput,
         speaker_class=TurnBasedSpeakerOutput,
-        device_configurations=device_configurations,
+        use_default_devices=use_default_devices,
+        input_device_name=input_device_name,
+        output_device_name=output_device_name,
         mic_sampling_rate=mic_sampling_rate,
         speaker_sampling_rate=speaker_sampling_rate,
+        logger=logger,
     )
 
 
@@ -129,7 +85,9 @@ def _create_microphone_input_and_speaker_output(
             TurnBasedSpeakerOutput,
         ]
     ],
-    device_configurations: DeviceConfigurations,
+    use_default_devices: bool,
+    input_device_name: Optional[str],
+    output_device_name: Optional[str],
     mic_sampling_rate=None,
     speaker_sampling_rate=None,
     logger: Optional[logging.Logger] = None,
@@ -148,30 +106,23 @@ def _create_microphone_input_and_speaker_output(
         filter(lambda device_info: device_info["max_output_channels"] > 0, device_infos)
     )
 
-    input_device_configuration = device_configurations.input
-
-    if isinstance(input_device_configuration, DefaultIODeviceConfiguration):
+    if use_default_devices:
         input_device_info = sd.query_devices(kind="input")
-    elif isinstance(input_device_configuration, NamedIODeviceConfiguration):
-        input_device_info = _find_device_with_name(input_device_infos, input_device_configuration.name)
-    elif isinstance(input_device_configuration, SelectorIODeviceConfiguration):
-        input_device_info = input_device_infos[
-            int(input(_get_device_prompt(input_device_infos)))
-        ]
-    else:
-        raise Exception("Unknown input device configuration: {}".format(input_device_configuration))
-
-    output_device_configuration = device_configurations.output
-    if isinstance(output_device_configuration, DefaultIODeviceConfiguration):
         output_device_info = sd.query_devices(kind="output")
-    elif isinstance(output_device_configuration, NamedIODeviceConfiguration):
-        output_device_info = _find_device_with_name(output_device_infos, output_device_configuration.name)
-    elif isinstance(output_device_configuration, SelectorIODeviceConfiguration):
-        output_device_info = output_device_infos[
-            int(input(_get_device_prompt(output_device_infos)))
-        ]
     else:
-        raise Exception("Unknown output device configuration: {}".format(output_device_configuration))
+        if input_device_name is not None:
+            input_device_info = _find_device_with_name(input_device_infos, input_device_name)
+        else:
+            input_device_info = input_device_infos[
+                int(input(_get_device_prompt(input_device_infos)))
+            ]
+
+        if output_device_name is not None:
+            output_device_info = _find_device_with_name(output_device_infos, output_device_name)
+        else:
+            output_device_info = output_device_infos[
+                int(input(_get_device_prompt(output_device_infos)))
+            ]
 
     if logger is not None:
         logger.info("Using microphone input device: %s", input_device_info["name"])
