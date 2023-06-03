@@ -21,6 +21,7 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_CHUNK_SIZE,
     DEFAULT_SAMPLING_RATE,
 )
+from vocode.streaming.telephony.templater import Templater
 from vocode.streaming.telephony.utils import create_twilio_client
 from vocode.streaming.utils import create_conversation_id
 
@@ -69,12 +70,16 @@ class OutboundCall:
         )
         self.twilio_client = create_twilio_client(self.twilio_config)
         self.twilio_sid = None
+        self.templater = Templater()
 
     def create_twilio_call(
         self, to_phone: str, from_phone: str, digits: str = "", record: bool = False
     ) -> str:
+        twiml = self.templater.get_connection_twiml(
+            base_url=self.base_url, call_id=self.conversation_id
+        )
         twilio_call = self.twilio_client.calls.create(
-            url=f"https://{self.base_url}/twiml/initiate_call/{self.conversation_id}",
+            twiml=twiml.body.decode("utf-8"),
             to=to_phone,
             from_=from_phone,
             send_digits=digits,

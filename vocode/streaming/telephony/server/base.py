@@ -27,7 +27,6 @@ from vocode.streaming.telephony.constants import (
 )
 
 from vocode.streaming.telephony.server.router.calls import CallsRouter
-from vocode.streaming.telephony.server.router.twiml import TwiMLRouter
 from vocode.streaming.models.telephony import (
     CallConfig,
     TwilioConfig,
@@ -78,11 +77,6 @@ class TelephonyServer:
                 synthesizer_factory=synthesizer_factory,
                 events_manager=self.events_manager,
                 logger=self.logger,
-            ).get_router()
-        )
-        self.router.include_router(
-            TwiMLRouter(
-                base_url=base_url, templater=self.templater, logger=self.logger
             ).get_router()
         )
         for config in inbound_call_configs:
