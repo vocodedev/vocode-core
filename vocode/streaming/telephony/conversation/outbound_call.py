@@ -1,5 +1,4 @@
 import logging
-from pipes import Template
 from typing import Optional
 from vocode import getenv
 
