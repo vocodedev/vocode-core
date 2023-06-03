@@ -1,7 +1,7 @@
 import io
 from pydub import AudioSegment
 import discord
-from asyncio import Queue
+from janus import Queue
 import asyncio
 import numpy as np
 
@@ -57,24 +57,53 @@ class DiscordOutputDevice(BaseOutputDevice):
         super().__init__(sampling_rate, audio_encoding)
         self.blocksize = self.sampling_rate
         self.queue: Queue[np.ndarray] = Queue()
-        self.thread_worker = None
+        # self.thread_worker = None
+        self.process_task = asyncio.create_task(self.process())
+        self.ready_to_send = True
+    
+    async def process(self):
+        while True:
+            if self.ready_to_send:
+                self.ready_to_send = False
+                block = await self.queue.async_q.get()
+                self.play_audio(block)
+        
+    def play_audio(self, buffer):
+        data = AudioSegment.from_raw(
+            io.BytesIO(buffer), sample_width=2, frame_rate=44100, channels=1
+        )
+        data = data.set_channels(2)
+        data = data.set_frame_rate(48000)
+        data = data.set_sample_width(2)
+        raw = io.BytesIO()
+        data.export(raw, format="raw")
+        audio = discord.PCMAudio(raw)
+
+        def after(error):
+            if error:
+                print(f"Player error: {error}")
+            self.ready_to_send = True
+        
+        self.vc.play(discord.PCMVolumeTransformer(audio), after=after)
 
     def consume_nonblocking(self, chunk):
-        if self.thread_worker is None:
-            raise RuntimeError(
-                "Output device not inited. Call discord_output.init(voice_channel) first."
-            )
+        # if self.thread_worker is None:
+        #     raise RuntimeError(
+        #         "Output device not inited. Call discord_output.init(voice_channel) first."
+        #     )
 
         chunk_arr = np.frombuffer(chunk, dtype=np.int16)
         for i in range(0, chunk_arr.shape[0], self.blocksize):
             block = np.zeros(self.blocksize, dtype=np.int16)
             size = min(self.blocksize, chunk_arr.shape[0] - i)
             block[:size] = chunk_arr[i : i + size]
-            self.queue.put_nowait(block)
+            self.queue.sync_q.put_nowait(block)
 
     def init(self, vc):
-        self.thread_worker = PlayFuncWriterWorker(self.queue, vc)
-        self.thread_worker.start()
+        self.vc = vc
+        # self.thread_worker = PlayFuncWriterWorker(self.queue, vc)
+        # self.thread_worker.start()
+        pass
 
     def terminate(self):
         self.thread_worker.terminate()

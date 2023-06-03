@@ -3,6 +3,7 @@ import io
 import logging
 import asyncio
 from functools import partial
+import threading
 
 import discord
 from discord.sinks import Sink, Filters, default_filters, AudioData
@@ -14,8 +15,8 @@ from vocode.streaming.models.transcriber import DeepgramTranscriberConfig, Googl
 from pydub import AudioSegment
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.agent import ChatGPTAgent
-from vocode.streaming.synthesizer import AzureSynthesizer
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.synthesizer import AzureSynthesizer, StreamElementsSynthesizer
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig, StreamElementsSynthesizerConfig
 from vocode.streaming.models.transcriber import PunctuationEndpointingConfig
 from discord_output_device import DiscordOutputDevice
 from discord_streaming_conversation import DiscordStreamingConversation
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 conversation = None
+discord_output = None
 IDLE_TIME_SECONDS = 10
 
 
@@ -85,27 +87,31 @@ async def finished_callback(
         f"Finished! Recorded audio for {', '.join(recorded_users)}.",  # files=files
     )
 
+def create_loop_in_thread(loop: asyncio.AbstractEventLoop, long_running_task=None):
+    asyncio.set_event_loop(loop)
+    if long_running_task:
+        loop.run_until_complete(long_running_task)
+    else:
+        loop.run_forever()
 
-@bot.command()
-async def start(ctx: discord.ApplicationContext):
-    """Record your voice!"""
-    global conversation
+async def start_conversation():
+    global conversation, discord_output
     discord_output = DiscordOutputDevice(None)
-    transcriber = GoogleTranscriber(
-        GoogleTranscriberConfig(
-            sampling_rate=44100,
-            audio_encoding=AudioEncoding.LINEAR16,
-            chunk_size=2048,
-        )
-    )
-    # transcriber = DeepgramTranscriber(
-    #     DeepgramTranscriberConfig(
+    # transcriber = GoogleTranscriber(
+    #     GoogleTranscriberConfig(
     #         sampling_rate=44100,
     #         audio_encoding=AudioEncoding.LINEAR16,
     #         chunk_size=2048,
-    #         endpointing_config=PunctuationEndpointingConfig(),
     #     )
     # )
+    transcriber = DeepgramTranscriber(
+        DeepgramTranscriberConfig(
+            sampling_rate=44100,
+            audio_encoding=AudioEncoding.LINEAR16,
+            chunk_size=2048,
+            endpointing_config=PunctuationEndpointingConfig(),
+        )
+    )
     agent = ChatGPTAgent(
         ChatGPTAgentConfig(
             initial_message=None,
@@ -114,8 +120,11 @@ async def start(ctx: discord.ApplicationContext):
             generate_responses=False,
         )
     )
-    synthesizer = AzureSynthesizer(
-        AzureSynthesizerConfig.from_output_device(discord_output)
+    # synthesizer = AzureSynthesizer(
+    #     AzureSynthesizerConfig.from_output_device(discord_output)
+    # )
+    synthesizer = StreamElementsSynthesizer(
+        StreamElementsSynthesizerConfig.from_output_device(discord_output)
     )
 
     conversation = DiscordStreamingConversation(
@@ -128,6 +137,13 @@ async def start(ctx: discord.ApplicationContext):
     print("Conversation created")
 
     await conversation.start()
+
+create_loop_in_thread(asyncio.new_event_loop(), start_conversation())
+
+@bot.command()
+async def start(ctx: discord.ApplicationContext):
+    """Record your voice!"""
+    global conversation, discord_output
 
     voice = ctx.author.voice
 
