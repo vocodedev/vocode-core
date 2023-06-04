@@ -23,7 +23,9 @@ class VonageOutputDevice(BaseOutputDevice):
         while self.active:
             chunk = await self.queue.get()
             self.tmp_file.writeframes(chunk)
-            await self.ws.send_bytes(chunk)
+            for i in range(0, len(chunk), 640):
+                subchunk = chunk[i : i + 640]
+                await self.ws.send_bytes(subchunk)
 
     def consume_nonblocking(self, chunk: bytes):
         self.queue.put_nowait(chunk)

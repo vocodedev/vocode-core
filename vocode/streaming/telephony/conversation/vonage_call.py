@@ -1,3 +1,4 @@
+import asyncio
 import typing
 from fastapi import WebSocket
 import base64
@@ -28,6 +29,7 @@ from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 from vocode.streaming.synthesizer.factory import SynthesizerFactory
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
+from vocode.streaming.telephony.client.vonage_client import VonageClient
 from vocode.streaming.telephony.config_manager.base_config_manager import (
     BaseConfigManager,
 )
@@ -44,7 +46,7 @@ class PhoneCallAction(Enum):
     CLOSE_WEBSOCKET = 1
 
 
-class VonageCall(StreamingConversation):
+class VonageCall(StreamingConversation[VonageOutputDevice]):
     def __init__(
         self,
         base_url: str,
@@ -63,13 +65,7 @@ class VonageCall(StreamingConversation):
     ):
         self.base_url = base_url
         self.config_manager = config_manager
-        self.twilio_config = twilio_config or TwilioConfig(
-            account_sid=getenv("TWILIO_ACCOUNT_SID"),
-            auth_token=getenv("TWILIO_AUTH_TOKEN"),
-        )
-        self.telephony_client = TwilioClient(
-            base_url=base_url, twilio_config=self.twilio_config
-        )
+        self.telephony_client = VonageClient(base_url=base_url)
         super().__init__(
             VonageOutputDevice(),
             transcriber_factory.create_transcriber(transcriber_config, logger=logger),
@@ -110,7 +106,15 @@ class VonageCall(StreamingConversation):
             events_manager=events_manager,
         )
 
+    async def run_dtmf_delayed(self):
+        await asyncio.sleep(3)
+        print("Sending DTMF")
+        response = self.telephony_client.voice.send_dtmf(
+            self.twilio_sid, {"digits": "1234"}
+        )
+
     async def attach_ws_and_start(self, ws: WebSocket):
+        await ws.receive()
         assert isinstance(self.output_device, TwilioOutputDevice) or isinstance(
             self.output_device, VonageOutputDevice
         )
@@ -127,12 +131,8 @@ class VonageCall(StreamingConversation):
         #     )
         # )
         while self.active:
-            message = typing.cast(dict, await ws.receive())
-            if not message:
-                continue
-            response = await self.handle_ws_message(message)
-            if response == PhoneCallAction.CLOSE_WEBSOCKET:
-                break
+            chunk = await ws.receive_bytes()
+            self.receive_audio(chunk)
         self.tear_down()
 
     # async def wait_for_vonage_start(self, ws: WebSocket):
@@ -148,16 +148,6 @@ class VonageCall(StreamingConversation):
     #             )
     #             self.output_device.stream_sid = data["start"]["streamSid"]
     #             break
-
-    async def handle_ws_message(self, data: dict) -> Optional[PhoneCallAction]:
-        if data["type"] == "websocket.receive":
-            if "bytes" in data and type(data["bytes"]) == bytes:
-                self.receive_audio(data["bytes"])
-            else:
-                print(data)
-        else:
-            print(data)
-        return None
 
     def mark_terminated(self):
         super().mark_terminated()

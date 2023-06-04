@@ -30,6 +30,7 @@ class VonageClient(BaseTelephonyClient):
                 "ncco": [
                     {
                         "action": "connect",
+                        "from": "vocode",
                         "endpoint": [
                             {
                                 "type": "websocket",
@@ -42,11 +43,12 @@ class VonageClient(BaseTelephonyClient):
                 ],
             }
         )
-        print(response)
-        return "foo"
+        if response["status"] != "started":
+            raise RuntimeError(f"Failed to start call: {response}")
+        return response["uuid"]
 
     def end_call(self, id) -> bool:
-        raise NotImplementedError
+        return False
 
     def validate_outbound_call(
         self,
