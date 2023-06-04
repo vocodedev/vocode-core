@@ -9,7 +9,7 @@ from vocode.streaming.telephony.config_manager.base_config_manager import (
 )
 
 from vocode.streaming.telephony.conversation.call import Call
-from vocode.streaming.telephony.templater import Templater
+from vocode.streaming.telephony.conversation.vonage_call import VonageCall
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.base_router import BaseRouter
 from vocode.streaming.utils.events_manager import EventsManager
@@ -19,7 +19,6 @@ class CallsRouter(BaseRouter):
     def __init__(
         self,
         base_url: str,
-        templater: Templater,
         config_manager: BaseConfigManager,
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
@@ -29,7 +28,6 @@ class CallsRouter(BaseRouter):
     ):
         super().__init__()
         self.base_url = base_url
-        self.templater = templater
         self.config_manager = config_manager
         self.transcriber_factory = transcriber_factory
         self.agent_factory = agent_factory
@@ -46,7 +44,7 @@ class CallsRouter(BaseRouter):
         if not call_config:
             raise HTTPException(status_code=400, detail="No active phone call")
 
-        call: Call = Call.from_call_config(
+        call: VonageCall = VonageCall.from_call_config(
             base_url=self.base_url,
             call_config=call_config,
             config_manager=self.config_manager,

@@ -1,3 +1,4 @@
+import typing
 from fastapi import WebSocket
 import base64
 from enum import Enum
@@ -9,6 +10,7 @@ from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import PhoneCallConnectedEvent, PhoneCallEndedEvent
+from vocode.streaming.output_device.vonage_output_device import VonageOutputDevice
 
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.models.telephony import CallConfig, TwilioConfig
@@ -42,7 +44,7 @@ class PhoneCallAction(Enum):
     CLOSE_WEBSOCKET = 1
 
 
-class Call(StreamingConversation):
+class VonageCall(StreamingConversation):
     def __init__(
         self,
         base_url: str,
@@ -69,7 +71,7 @@ class Call(StreamingConversation):
             base_url=base_url, twilio_config=self.twilio_config
         )
         super().__init__(
-            TwilioOutputDevice(),
+            VonageOutputDevice(),
             transcriber_factory.create_transcriber(transcriber_config, logger=logger),
             agent_factory.create_agent(agent_config, logger=logger),
             synthesizer_factory.create_synthesizer(synthesizer_config, logger=logger),
@@ -79,7 +81,6 @@ class Call(StreamingConversation):
             logger=logger,
         )
         self.twilio_sid = twilio_sid
-        self.latest_media_timestamp = 0
 
     @staticmethod
     def from_call_config(
@@ -93,7 +94,7 @@ class Call(StreamingConversation):
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
         events_manager: Optional[EventsManager] = None,
     ):
-        return Call(
+        return VonageCall(
             base_url=base_url,
             logger=logger,
             config_manager=config_manager,
@@ -110,68 +111,52 @@ class Call(StreamingConversation):
         )
 
     async def attach_ws_and_start(self, ws: WebSocket):
-        assert isinstance(self.output_device, TwilioOutputDevice)
+        assert isinstance(self.output_device, TwilioOutputDevice) or isinstance(
+            self.output_device, VonageOutputDevice
+        )
         self.logger.debug("Trying to attach WS to outbound call")
         self.output_device.ws = ws
         self.logger.debug("Attached WS to outbound call")
 
-        twilio_call = self.telephony_client.twilio_client.calls(self.twilio_sid).fetch()
-
-        if twilio_call.answered_by in ("machine_start", "fax"):
-            self.logger.info(f"Call answered by {twilio_call.answered_by}")
-            twilio_call.update(status="completed")
-        else:
-            await self.wait_for_twilio_start(ws)
-            await super().start()
-            self.events_manager.publish_event(
-                PhoneCallConnectedEvent(
-                    conversation_id=self.id,
-                    to_phone_number=twilio_call.to,
-                    from_phone_number=twilio_call.from_formatted,
-                )
-            )
-            while self.active:
-                message = await ws.receive_text()
-                response = await self.handle_ws_message(message)
-                if response == PhoneCallAction.CLOSE_WEBSOCKET:
-                    break
-        self.tear_down()
-
-    async def wait_for_twilio_start(self, ws: WebSocket):
-        assert isinstance(self.output_device, TwilioOutputDevice)
-        while True:
-            message = await ws.receive_text()
+        await super().start()
+        # self.events_manager.publish_event(
+        #     PhoneCallConnectedEvent(
+        #         conversation_id=self.id,
+        #         to_phone_number=twilio_call.to,
+        #         from_phone_number=twilio_call.from_formatted,
+        #     )
+        # )
+        while self.active:
+            message = typing.cast(dict, await ws.receive())
             if not message:
                 continue
-            data = json.loads(message)
-            if data["event"] == "start":
-                self.logger.debug(
-                    f"Media WS: Received event '{data['event']}': {message}"
-                )
-                self.output_device.stream_sid = data["start"]["streamSid"]
+            response = await self.handle_ws_message(message)
+            if response == PhoneCallAction.CLOSE_WEBSOCKET:
                 break
+        self.tear_down()
 
-    async def handle_ws_message(self, message) -> Optional[PhoneCallAction]:
-        if message is None:
-            return PhoneCallAction.CLOSE_WEBSOCKET
+    # async def wait_for_vonage_start(self, ws: WebSocket):
+    #     assert isinstance(self.output_device, VonageOutputDevice)
+    #     while True:
+    #         message = await ws.receive_text()
+    #         if not message:
+    #             continue
+    #         data = json.loads(message)
+    #         if data["event"] == "start":
+    #             self.logger.debug(
+    #                 f"Media WS: Received event '{data['event']}': {message}"
+    #             )
+    #             self.output_device.stream_sid = data["start"]["streamSid"]
+    #             break
 
-        data = json.loads(message)
-        if data["event"] == "media":
-            media = data["media"]
-            chunk = base64.b64decode(media["payload"])
-            if self.latest_media_timestamp + 20 < int(media["timestamp"]):
-                bytes_to_fill = 8 * (
-                    int(media["timestamp"]) - (self.latest_media_timestamp + 20)
-                )
-                self.logger.debug(f"Filling {bytes_to_fill} bytes of silence")
-                # NOTE: 0xff is silence for mulaw audio
-                self.receive_audio(b"\xff" * bytes_to_fill)
-            self.latest_media_timestamp = int(media["timestamp"])
-            self.receive_audio(chunk)
-        elif data["event"] == "stop":
-            self.logger.debug(f"Media WS: Received event 'stop': {message}")
-            self.logger.debug("Stopping...")
-            return PhoneCallAction.CLOSE_WEBSOCKET
+    async def handle_ws_message(self, data: dict) -> Optional[PhoneCallAction]:
+        if data["type"] == "websocket.receive":
+            if "bytes" in data and type(data["bytes"]) == bytes:
+                self.receive_audio(data["bytes"])
+            else:
+                print(data)
+        else:
+            print(data)
         return None
 
     def mark_terminated(self):

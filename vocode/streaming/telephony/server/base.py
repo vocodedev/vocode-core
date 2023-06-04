@@ -17,6 +17,7 @@ from vocode.streaming.models.transcriber import (
 )
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 from vocode.streaming.synthesizer.factory import SynthesizerFactory
+from vocode.streaming.telephony.client.twilio_client import TwilioClient
 from vocode.streaming.telephony.config_manager.base_config_manager import (
     BaseConfigManager,
 )
@@ -34,7 +35,6 @@ from vocode.streaming.models.telephony import (
 
 from vocode.streaming.telephony.conversation.call import Call
 from vocode.streaming.telephony.templater import Templater
-from vocode.streaming.telephony.utils import create_twilio_client, end_twilio_call
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils import create_conversation_id
@@ -70,7 +70,6 @@ class TelephonyServer:
         self.router.include_router(
             CallsRouter(
                 base_url=base_url,
-                templater=self.templater,
                 config_manager=self.config_manager,
                 transcriber_factory=transcriber_factory,
                 agent_factory=agent_factory,
@@ -145,10 +144,10 @@ class TelephonyServer:
         call_config = self.config_manager.get_config(conversation_id)
         if not call_config:
             raise ValueError(f"Could not find call config for {conversation_id}")
-        end_twilio_call(
-            create_twilio_client(call_config.twilio_config),
-            call_config.twilio_sid,
+        telephony_client = TwilioClient(
+            base_url=self.base_url, twilio_config=call_config.twilio_config
         )
+        telephony_client.end_call(call_config.twilio_sid)
         return {"id": conversation_id}
 
     def get_router(self) -> APIRouter:
