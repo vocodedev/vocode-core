@@ -9,6 +9,7 @@ from vocode.streaming.telephony.templater import Templater
 class TwilioClient(BaseTelephonyClient):
     def __init__(self, base_url: str, twilio_config: TwilioConfig):
         super().__init__(base_url)
+        self.twilio_config = twilio_config
         # TODO: this is blocking
         self.twilio_client = Client(twilio_config.account_sid, twilio_config.auth_token)
         try:
@@ -19,6 +20,9 @@ class TwilioClient(BaseTelephonyClient):
                 "Could not create Twilio client. Invalid credentials"
             ) from e
         self.templater = Templater()
+
+    def get_telephony_config(self):
+        return self.twilio_config
 
     def create_call(
         self,

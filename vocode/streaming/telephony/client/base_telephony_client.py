@@ -7,6 +7,9 @@ class BaseTelephonyClient:
     def __init__(self, base_url):
         self.base_url = base_url
 
+    def get_telephony_config(self):
+        raise NotImplementedError
+
     def create_call(
         self,
         conversation_id: str,

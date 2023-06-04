@@ -14,7 +14,7 @@ from vocode.streaming.models.events import PhoneCallConnectedEvent, PhoneCallEnd
 from vocode.streaming.output_device.vonage_output_device import VonageOutputDevice
 
 from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.streaming.models.telephony import CallConfig, TwilioConfig
+from vocode.streaming.models.telephony import CallConfig, TwilioConfig, VonageConfig
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
@@ -36,6 +36,7 @@ from vocode.streaming.telephony.config_manager.base_config_manager import (
 from vocode.streaming.telephony.constants import DEFAULT_SAMPLING_RATE
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.streaming_conversation import StreamingConversation
+from vocode.streaming.telephony.conversation.call import Call
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode.streaming.transcriber.factory import TranscriberFactory
@@ -46,7 +47,7 @@ class PhoneCallAction(Enum):
     CLOSE_WEBSOCKET = 1
 
 
-class VonageCall(StreamingConversation[VonageOutputDevice]):
+class VonageCall(Call[VonageOutputDevice]):
     def __init__(
         self,
         base_url: str,
@@ -54,8 +55,8 @@ class VonageCall(StreamingConversation[VonageOutputDevice]):
         agent_config: AgentConfig,
         transcriber_config: TranscriberConfig,
         synthesizer_config: SynthesizerConfig,
-        twilio_config: Optional[TwilioConfig] = None,
-        twilio_sid: Optional[str] = None,
+        vonage_config: Optional[VonageConfig] = None,
+        vonage_uuid: Optional[str] = None,
         conversation_id: Optional[str] = None,
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
@@ -63,61 +64,42 @@ class VonageCall(StreamingConversation[VonageOutputDevice]):
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
-        self.base_url = base_url
-        self.config_manager = config_manager
-        self.telephony_client = VonageClient(base_url=base_url)
         super().__init__(
+            base_url,
+            config_manager,
             VonageOutputDevice(),
-            transcriber_factory.create_transcriber(transcriber_config, logger=logger),
-            agent_factory.create_agent(agent_config, logger=logger),
-            synthesizer_factory.create_synthesizer(synthesizer_config, logger=logger),
+            agent_config,
+            transcriber_config,
+            synthesizer_config,
             conversation_id=conversation_id,
-            per_chunk_allowance_seconds=0.01,
             events_manager=events_manager,
-            logger=logger,
-        )
-        self.twilio_sid = twilio_sid
-
-    @staticmethod
-    def from_call_config(
-        base_url: str,
-        call_config: CallConfig,
-        config_manager: BaseConfigManager,
-        conversation_id: str,
-        logger: logging.Logger,
-        transcriber_factory: TranscriberFactory = TranscriberFactory(),
-        agent_factory: AgentFactory = AgentFactory(),
-        synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
-        events_manager: Optional[EventsManager] = None,
-    ):
-        return VonageCall(
-            base_url=base_url,
-            logger=logger,
-            config_manager=config_manager,
-            agent_config=call_config.agent_config,
-            transcriber_config=call_config.transcriber_config,
-            synthesizer_config=call_config.synthesizer_config,
-            twilio_config=call_config.twilio_config,
-            twilio_sid=call_config.twilio_sid,
-            conversation_id=conversation_id,
             transcriber_factory=transcriber_factory,
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
-            events_manager=events_manager,
+            logger=logger,
         )
+        self.base_url = base_url
+        self.config_manager = config_manager
+        self.vonage_config = vonage_config or VonageConfig(
+            api_key=getenv("VONAGE_API_KEY"),
+            api_secret=getenv("VONAGE_API_SECRET"),
+            application_id=getenv("VONAGE_APPLICATION_ID"),
+            private_key=getenv("VONAGE_PRIVATE_KEY"),
+        )
+        self.telephony_client = VonageClient(
+            base_url=base_url, vonage_config=self.vonage_config
+        )
+        self.vonage_uuid = vonage_uuid
 
     async def run_dtmf_delayed(self):
         await asyncio.sleep(3)
         print("Sending DTMF")
         response = self.telephony_client.voice.send_dtmf(
-            self.twilio_sid, {"digits": "1234"}
+            self.vonage_uuid, {"digits": "1234"}
         )
 
     async def attach_ws_and_start(self, ws: WebSocket):
-        await ws.receive()
-        assert isinstance(self.output_device, TwilioOutputDevice) or isinstance(
-            self.output_device, VonageOutputDevice
-        )
+        start_message = await ws.receive()
         self.logger.debug("Trying to attach WS to outbound call")
         self.output_device.ws = ws
         self.logger.debug("Attached WS to outbound call")
@@ -135,23 +117,9 @@ class VonageCall(StreamingConversation[VonageOutputDevice]):
             self.receive_audio(chunk)
         self.tear_down()
 
-    # async def wait_for_vonage_start(self, ws: WebSocket):
-    #     assert isinstance(self.output_device, VonageOutputDevice)
-    #     while True:
-    #         message = await ws.receive_text()
-    #         if not message:
-    #             continue
-    #         data = json.loads(message)
-    #         if data["event"] == "start":
-    #             self.logger.debug(
-    #                 f"Media WS: Received event '{data['event']}': {message}"
-    #             )
-    #             self.output_device.stream_sid = data["start"]["streamSid"]
-    #             break
-
     def mark_terminated(self):
         super().mark_terminated()
-        self.telephony_client.end_call(self.twilio_sid)
+        self.telephony_client.end_call(self.vonage_uuid)
         self.config_manager.delete_config(self.id)
 
     def tear_down(self):

@@ -1,11 +1,13 @@
+import abc
+from functools import partial
 import logging
 from typing import List, Optional
 from fastapi import APIRouter, Form, Response
-from pydantic import BaseModel
-from vocode import getenv
+from pydantic import BaseModel, Field
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
+from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
     SynthesizerConfig,
@@ -18,6 +20,7 @@ from vocode.streaming.models.transcriber import (
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 from vocode.streaming.synthesizer.factory import SynthesizerFactory
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
+from vocode.streaming.telephony.client.vonage_client import VonageClient
 from vocode.streaming.telephony.config_manager.base_config_manager import (
     BaseConfigManager,
 )
@@ -30,7 +33,10 @@ from vocode.streaming.telephony.constants import (
 from vocode.streaming.telephony.server.router.calls import CallsRouter
 from vocode.streaming.models.telephony import (
     CallConfig,
+    TwilioCallConfig,
     TwilioConfig,
+    VonageCallConfig,
+    VonageConfig,
 )
 
 from vocode.streaming.telephony.conversation.call import Call
@@ -41,12 +47,25 @@ from vocode.streaming.utils import create_conversation_id
 from vocode.streaming.utils.events_manager import EventsManager
 
 
-class InboundCallConfig(BaseModel):
+class InboundCallConfig(BaseModel, abc.ABC):
     url: str
     agent_config: AgentConfig
-    twilio_config: Optional[TwilioConfig] = None
     transcriber_config: Optional[TranscriberConfig] = None
     synthesizer_config: Optional[SynthesizerConfig] = None
+
+
+class TwilioInboundCallConfig(InboundCallConfig):
+    twilio_config: TwilioConfig
+
+
+class VonageInboundCallConfig(InboundCallConfig):
+    vonage_config: VonageConfig
+
+
+class VonageAnswerRequest(BaseModel):
+    to: str
+    from_: str = Field(..., alias="from")
+    uuid: str
 
 
 class TelephonyServer:
@@ -81,32 +100,22 @@ class TelephonyServer:
         for config in inbound_call_configs:
             self.router.add_api_route(
                 config.url,
-                self.create_inbound_route(
-                    agent_config=config.agent_config,
-                    twilio_config=config.twilio_config,
-                    transcriber_config=config.transcriber_config,
-                    synthesizer_config=config.synthesizer_config,
-                ),
+                self.create_inbound_route(inbound_call_config=config),
                 methods=["POST"],
-            )
-            self.logger.info(
-                f"Set up inbound call TwiML at https://{base_url}{config.url}"
             )
 
     def create_inbound_route(
         self,
-        agent_config: AgentConfig,
-        twilio_config: Optional[TwilioConfig] = None,
-        transcriber_config: Optional[TranscriberConfig] = None,
-        synthesizer_config: Optional[SynthesizerConfig] = None,
+        inbound_call_config: InboundCallConfig,
     ):
-        def route(
+        def twilio_route(
+            twilio_config: TwilioConfig,
             twilio_sid: str = Form(alias="CallSid"),
             twilio_from: str = Form(alias="From"),
             twilio_to: str = Form(alias="To"),
         ) -> Response:
-            call_config = CallConfig(
-                transcriber_config=transcriber_config
+            call_config = TwilioCallConfig(
+                transcriber_config=inbound_call_config.transcriber_config
                 or DeepgramTranscriberConfig(
                     sampling_rate=DEFAULT_SAMPLING_RATE,
                     audio_encoding=DEFAULT_AUDIO_ENCODING,
@@ -115,17 +124,13 @@ class TelephonyServer:
                     tier="nova",
                     endpointing_config=PunctuationEndpointingConfig(),
                 ),
-                agent_config=agent_config,
-                synthesizer_config=synthesizer_config
+                agent_config=inbound_call_config.agent_config,
+                synthesizer_config=inbound_call_config.synthesizer_config
                 or AzureSynthesizerConfig(
                     sampling_rate=DEFAULT_SAMPLING_RATE,
                     audio_encoding=DEFAULT_AUDIO_ENCODING,
                 ),
-                twilio_config=twilio_config
-                or TwilioConfig(
-                    account_sid=getenv("TWILIO_ACCOUNT_SID"),
-                    auth_token=getenv("TWILIO_AUTH_TOKEN"),
-                ),
+                twilio_config=twilio_config,
                 twilio_sid=twilio_sid,
                 twilio_from=twilio_from,
                 twilio_to=twilio_to,
@@ -137,13 +142,60 @@ class TelephonyServer:
                 base_url=self.base_url, call_id=conversation_id
             )
 
-        return route
+        def vonage_route(
+            vonage_config: VonageConfig, vonage_answer_request: VonageAnswerRequest
+        ):
+            call_config = VonageCallConfig(
+                transcriber_config=inbound_call_config.transcriber_config
+                or DeepgramTranscriberConfig(
+                    sampling_rate=16000,
+                    audio_encoding=AudioEncoding.LINEAR16,
+                    chunk_size=DEFAULT_CHUNK_SIZE,
+                    model="phonecall",
+                    tier="nova",
+                    endpointing_config=PunctuationEndpointingConfig(),
+                ),
+                agent_config=inbound_call_config.agent_config,
+                synthesizer_config=inbound_call_config.synthesizer_config
+                or AzureSynthesizerConfig(
+                    sampling_rate=16000,
+                    audio_encoding=AudioEncoding.LINEAR16,
+                ),
+                vonage_config=vonage_config,
+                vonage_uuid=vonage_answer_request.uuid,
+                vonage_from=vonage_answer_request.from_,
+                vonage_to=vonage_answer_request.to,
+            )
+            conversation_id = create_conversation_id()
+            self.config_manager.save_config(conversation_id, call_config)
+            return VonageClient.create_call_ncco(
+                base_url=self.base_url, conversation_id=conversation_id
+            )
+
+        if isinstance(inbound_call_config, TwilioInboundCallConfig):
+            self.logger.info(
+                f"Set up inbound call TwiML at https://{self.base_url}{inbound_call_config.url}"
+            )
+            return partial(twilio_route, inbound_call_config.twilio_config)
+        elif isinstance(inbound_call_config, VonageInboundCallConfig):
+            self.logger.info(
+                f"Set up inbound call NCCO at https://{self.base_url}{inbound_call_config.url}"
+            )
+            return partial(vonage_route, inbound_call_config.vonage_config)
+        else:
+            raise ValueError(
+                f"Unknown inbound call config type {type(inbound_call_config)}"
+            )
 
     async def end_outbound_call(self, conversation_id: str):
         # TODO validation via twilio_client
         call_config = self.config_manager.get_config(conversation_id)
         if not call_config:
             raise ValueError(f"Could not find call config for {conversation_id}")
+        if not isinstance(call_config, TwilioCallConfig):
+            raise ValueError(
+                f"Call config for {conversation_id} is not a TwilioCallConfig"
+            )
         telephony_client = TwilioClient(
             base_url=self.base_url, twilio_config=call_config.twilio_config
         )
