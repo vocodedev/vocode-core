@@ -74,6 +74,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
             **kwargs,
         )
 
+    # TODO(EPD-186): switch to from_twilio_input_device and from_vonage_input_device
     @classmethod
     def from_telephone_input_device(
         cls,

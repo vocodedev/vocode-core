@@ -1,4 +1,3 @@
-from os import getenv
 from typing import Optional
 from vocode.streaming.models.telephony import VonageConfig
 from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
@@ -20,6 +19,7 @@ class VonageClient(BaseTelephonyClient):
     def get_telephony_config(self):
         return self.vonage_config
 
+    # TODO(EPD-186): support recording in Vonage
     def create_call(
         self,
         conversation_id: str,
@@ -60,11 +60,11 @@ class VonageClient(BaseTelephonyClient):
         print(response)
         return False
 
+    # TODO(EPD-186)
     def validate_outbound_call(
         self,
         to_phone: str,
         from_phone: str,
         mobile_only: bool = True,
     ):
-        # TODO(ajay): implement
         pass

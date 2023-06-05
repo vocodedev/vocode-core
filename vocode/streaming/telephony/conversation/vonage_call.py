@@ -1,9 +1,5 @@
-import asyncio
-import typing
 from fastapi import WebSocket, WebSocketDisconnect
-import base64
 from enum import Enum
-import json
 import logging
 from typing import Optional
 from vocode import getenv
@@ -95,12 +91,9 @@ class VonageCall(Call[VonageOutputDevice]):
         )
         self.vonage_uuid = vonage_uuid
 
-    async def run_dtmf_delayed(self):
-        await asyncio.sleep(3)
-        print("Sending DTMF")
-        response = self.telephony_client.voice.send_dtmf(
-            self.vonage_uuid, {"digits": "1234"}
-        )
+    # TODO(EPD-186) - make this function async and use aiohttp with the vonage client
+    def send_dtmf(self):
+        self.telephony_client.voice.send_dtmf(self.vonage_uuid, {"digits": "1234"})
 
     async def attach_ws_and_start(self, ws: WebSocket):
         # start message
