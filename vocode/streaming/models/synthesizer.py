@@ -54,6 +54,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
             **kwargs
         )
 
+    # TODO(EPD-186): switch to from_twilio_output_device and from_vonage_output_device
     @classmethod
     def from_telephone_output_device(cls, **kwargs):
         return cls(
