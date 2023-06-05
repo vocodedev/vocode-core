@@ -29,6 +29,9 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_SAMPLING_RATE,
+    VONAGE_AUDIO_ENCODING,
+    VONAGE_CHUNK_SIZE,
+    VONAGE_SAMPLING_RATE,
 )
 from vocode.streaming.utils import create_conversation_id
 
@@ -59,17 +62,6 @@ class OutboundCall:
         self.mobile_only = mobile_only
         self.config_manager = config_manager
         self.agent_config = agent_config
-        self.transcriber_config = transcriber_config or DeepgramTranscriberConfig(
-            sampling_rate=DEFAULT_SAMPLING_RATE,
-            audio_encoding=DEFAULT_AUDIO_ENCODING,
-            chunk_size=DEFAULT_CHUNK_SIZE,
-            model="phonecall",
-            tier="nova",
-            endpointing_config=PunctuationEndpointingConfig(),
-        )
-        self.synthesizer_config = synthesizer_config or AzureSynthesizerConfig(
-            sampling_rate=DEFAULT_SAMPLING_RATE, audio_encoding=DEFAULT_AUDIO_ENCODING
-        )
         self.conversation_id = conversation_id or create_conversation_id()
         self.logger = logger or logging.getLogger(__name__)
         if not twilio_config and not vonage_config:
@@ -85,9 +77,33 @@ class OutboundCall:
             self.telephony_client = TwilioClient(
                 base_url=base_url, twilio_config=twilio_config
             )
+            self.transcriber_config = transcriber_config or DeepgramTranscriberConfig(
+                sampling_rate=DEFAULT_SAMPLING_RATE,
+                audio_encoding=DEFAULT_AUDIO_ENCODING,
+                chunk_size=DEFAULT_CHUNK_SIZE,
+                model="phonecall",
+                tier="nova",
+                endpointing_config=PunctuationEndpointingConfig(),
+            )
+            self.synthesizer_config = synthesizer_config or AzureSynthesizerConfig(
+                sampling_rate=DEFAULT_SAMPLING_RATE,
+                audio_encoding=DEFAULT_AUDIO_ENCODING,
+            )
         elif vonage_config:
             self.telephony_client = VonageClient(
                 base_url=base_url, vonage_config=vonage_config
+            )
+            self.transcriber_config = transcriber_config or DeepgramTranscriberConfig(
+                sampling_rate=VONAGE_SAMPLING_RATE,
+                audio_encoding=VONAGE_AUDIO_ENCODING,
+                chunk_size=DEFAULT_CHUNK_SIZE,
+                model="phonecall",
+                tier="nova",
+                endpointing_config=PunctuationEndpointingConfig(),
+            )
+            self.synthesizer_config = synthesizer_config or AzureSynthesizerConfig(
+                sampling_rate=VONAGE_SAMPLING_RATE,
+                audio_encoding=VONAGE_AUDIO_ENCODING,
             )
         self.telephony_id = None
 

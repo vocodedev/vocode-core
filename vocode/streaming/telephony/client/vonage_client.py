@@ -3,6 +3,8 @@ from vocode.streaming.models.telephony import VonageConfig
 from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
 import vonage
 
+from vocode.streaming.telephony.constants import VONAGE_CONTENT_TYPE
+
 
 class VonageClient(BaseTelephonyClient):
     def __init__(self, base_url, vonage_config: VonageConfig):
@@ -48,7 +50,7 @@ class VonageClient(BaseTelephonyClient):
                     {
                         "type": "websocket",
                         "uri": f"wss://{base_url}/connect_call/{conversation_id}",
-                        "content-type": "audio/l16;rate=16000",
+                        "content-type": VONAGE_CONTENT_TYPE,
                         "headers": {},
                     }
                 ],

@@ -28,6 +28,8 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_SAMPLING_RATE,
+    VONAGE_AUDIO_ENCODING,
+    VONAGE_SAMPLING_RATE,
 )
 
 from vocode.streaming.telephony.server.router.calls import CallsRouter
@@ -154,8 +156,8 @@ class TelephonyServer:
             call_config = VonageCallConfig(
                 transcriber_config=inbound_call_config.transcriber_config
                 or DeepgramTranscriberConfig(
-                    sampling_rate=16000,
-                    audio_encoding=AudioEncoding.LINEAR16,
+                    sampling_rate=VONAGE_SAMPLING_RATE,
+                    audio_encoding=VONAGE_AUDIO_ENCODING,
                     chunk_size=DEFAULT_CHUNK_SIZE,
                     model="phonecall",
                     tier="nova",
@@ -164,8 +166,8 @@ class TelephonyServer:
                 agent_config=inbound_call_config.agent_config,
                 synthesizer_config=inbound_call_config.synthesizer_config
                 or AzureSynthesizerConfig(
-                    sampling_rate=16000,
-                    audio_encoding=AudioEncoding.LINEAR16,
+                    sampling_rate=VONAGE_SAMPLING_RATE,
+                    audio_encoding=VONAGE_AUDIO_ENCODING,
                 ),
                 vonage_config=vonage_config,
                 vonage_uuid=vonage_answer_request.uuid,
