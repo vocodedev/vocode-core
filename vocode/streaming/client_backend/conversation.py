@@ -27,6 +27,10 @@ from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode.streaming.utils.base_router import BaseRouter
 
+from vocode.streaming.models.events import Event, EventType
+from vocode.streaming.models.transcript import TranscriptEvent
+from vocode.streaming.utils import events_manager
+
 
 class ConversationRouter(BaseRouter):
     def __init__(
@@ -65,12 +69,17 @@ class ConversationRouter(BaseRouter):
         transcriber = self.transcriber_thunk(start_message.input_audio_config)
         synthesizer = self.synthesizer_thunk(start_message.output_audio_config)
         synthesizer.synthesizer_config.should_encode_as_wav = True
+        if start_message.subscribe_transcript:
+            self.events_manager_instance = TranscriptEventManager(output_device, self.logger)
+        else:
+            self.events_manager_instance = None
         return StreamingConversation(
             output_device=output_device,
             transcriber=transcriber,
             agent=self.agent,
             synthesizer=synthesizer,
             conversation_id=start_message.conversation_id,
+            events_manager=self.events_manager_instance,
             logger=self.logger,
         )
 
@@ -100,3 +109,18 @@ class ConversationRouter(BaseRouter):
 
     def get_router(self) -> APIRouter:
         return self.router
+
+class TranscriptEventManager(events_manager.EventsManager):
+    def __init__(self, output_device: WebsocketOutputDevice, logger: Optional[logging.Logger] = None):
+        super().__init__(subscriptions=[EventType.TRANSCRIPT])
+        self.output_device = output_device
+        self.logger = logger or logging.getLogger(__name__)
+
+    def handle_event(self, event: Event):
+        if event.type == EventType.TRANSCRIPT:
+            transcript_event = typing.cast(TranscriptEvent, event)
+            self.output_device.consume_transcript(transcript_event)
+            # self.logger.debug(event.dict())
+
+    def restart(self, output_device: WebsocketOutputDevice):
+        self.output_device = output_device
