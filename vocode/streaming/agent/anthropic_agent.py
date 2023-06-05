@@ -50,8 +50,6 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
                 HumanMessagePromptTemplate.from_template("{input}"),
             ]
         )
-        if agent_config.initial_message:
-            raise NotImplementedError("initial_message not implemented for Anthropic")
 
         self.llm = ChatAnthropic(
             model=agent_config.model_name,
@@ -66,6 +64,14 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
         )
 
         self.memory = ConversationBufferMemory(return_messages=True)
+        self.memory.chat_memory.messages.append(
+            HumanMessage(content=self.agent_config.prompt_preamble)
+        )
+        if agent_config.initial_message:
+            self.memory.chat_memory.messages.append(
+                AIMessage(content=agent_config.initial_message.text)
+            )
+
         self.conversation = ConversationChain(
             memory=self.memory, prompt=self.prompt, llm=self.llm
         )
@@ -88,16 +94,15 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
     ) -> AsyncGenerator[str, None]:
         self.memory.chat_memory.messages.append(HumanMessage(content=human_input))
 
+        bot_memory_message = AIMessage(content="")
+        self.memory.chat_memory.messages.append(bot_memory_message)
+        prompt = self.llm._convert_messages_to_prompt(self.memory.chat_memory.messages)
+
         streamed_response = await self.anthropic_client.acompletion_stream(
-            prompt=self.llm._convert_messages_to_prompt(
-                self.memory.chat_memory.messages
-            ),
+            prompt=prompt,
             max_tokens_to_sample=self.agent_config.max_tokens_to_sample,
             model=self.agent_config.model_name,
         )
-
-        bot_memory_message = AIMessage(content="")
-        self.memory.chat_memory.messages.append(bot_memory_message)
 
         buffer = ""
         async for message in streamed_response:
