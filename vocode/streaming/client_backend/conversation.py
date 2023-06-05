@@ -69,17 +69,13 @@ class ConversationRouter(BaseRouter):
         transcriber = self.transcriber_thunk(start_message.input_audio_config)
         synthesizer = self.synthesizer_thunk(start_message.output_audio_config)
         synthesizer.synthesizer_config.should_encode_as_wav = True
-        if start_message.subscribe_transcript:
-            self.events_manager_instance = TranscriptEventManager(output_device, self.logger)
-        else:
-            self.events_manager_instance = None
         return StreamingConversation(
             output_device=output_device,
             transcriber=transcriber,
             agent=self.agent,
             synthesizer=synthesizer,
             conversation_id=start_message.conversation_id,
-            events_manager=self.events_manager_instance,
+            events_manager=TranscriptEventManager(output_device, self.logger) if start_message.subscribe_transcript else None,
             logger=self.logger,
         )
 
