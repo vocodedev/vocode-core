@@ -32,40 +32,21 @@ class SynthesizerFactory:
         synthesizer_config: SynthesizerConfig,
         logger: Optional[logging.Logger] = None,
     ):
-        if synthesizer_config.type == SynthesizerType.GOOGLE:
-            return GoogleSynthesizer(
-                typing.cast(GoogleSynthesizerConfig, synthesizer_config), logger=logger
-            )
-        elif synthesizer_config.type == SynthesizerType.AZURE:
-            return AzureSynthesizer(
-                typing.cast(AzureSynthesizerConfig, synthesizer_config), logger=logger
-            )
-        elif synthesizer_config.type == SynthesizerType.ELEVEN_LABS:
-            return ElevenLabsSynthesizer(
-                typing.cast(ElevenLabsSynthesizerConfig, synthesizer_config),
-                logger=logger,
-            )
-        elif synthesizer_config.type == SynthesizerType.PLAY_HT:
-            return PlayHtSynthesizer(
-                typing.cast(PlayHtSynthesizerConfig, synthesizer_config), logger=logger
-            )
-        elif synthesizer_config.type == SynthesizerType.RIME:
-            return RimeSynthesizer(
-                typing.cast(RimeSynthesizerConfig, synthesizer_config), logger=logger
-            )
-        elif synthesizer_config.type == SynthesizerType.GTTS:
-            return GTTSSynthesizer(
-                typing.cast(GTTSSynthesizerConfig, synthesizer_config), logger=logger
-            )
-        elif synthesizer_config.type == SynthesizerType.STREAM_ELEMENTS:
-            return StreamElementsSynthesizer(
-                typing.cast(StreamElementsSynthesizerConfig, synthesizer_config),
-                logger=logger,
-            )
-        elif synthesizer_config.type == SynthesizerType.COQUI_TTS:
-            return CoquiTTSSynthesizer(
-                typing.cast(CoquiTTSSynthesizerConfig, synthesizer_config),
-                logger=logger,
-            )
+        if isinstance(synthesizer_config, GoogleSynthesizerConfig):
+            return GoogleSynthesizer(synthesizer_config, logger=logger)
+        elif isinstance(synthesizer_config, AzureSynthesizerConfig):
+            return AzureSynthesizer(synthesizer_config, logger=logger)
+        elif isinstance(synthesizer_config, ElevenLabsSynthesizerConfig):
+            return ElevenLabsSynthesizer(synthesizer_config, logger=logger)
+        elif isinstance(synthesizer_config, PlayHtSynthesizerConfig):
+            return PlayHtSynthesizer(synthesizer_config, logger=logger)
+        elif isinstance(synthesizer_config, RimeSynthesizerConfig):
+            return RimeSynthesizer(synthesizer_config, logger=logger)
+        elif isinstance(synthesizer_config, GTTSSynthesizerConfig):
+            return GTTSSynthesizer(synthesizer_config, logger=logger)
+        elif isinstance(synthesizer_config, StreamElementsSynthesizerConfig):
+            return StreamElementsSynthesizer(synthesizer_config, logger=logger)
+        elif isinstance(synthesizer_config, CoquiTTSSynthesizerConfig):
+            return CoquiTTSSynthesizer(synthesizer_config, logger=logger)
         else:
             raise Exception("Invalid synthesizer config")

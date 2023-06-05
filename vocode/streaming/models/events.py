@@ -5,6 +5,7 @@ from vocode.streaming.models.model import TypedModel
 class Sender(str, Enum):
     HUMAN = "human"
     BOT = "bot"
+    ACTION_WORKER = "action_worker"
 
 
 class EventType(str, Enum):
@@ -19,7 +20,8 @@ class Event(TypedModel):
 
 
 class PhoneCallConnectedEvent(Event, type=EventType.PHONE_CALL_CONNECTED):
-    pass
+    to_phone_number: str
+    from_phone_number: str
 
 
 class PhoneCallEndedEvent(Event, type=EventType.PHONE_CALL_ENDED):

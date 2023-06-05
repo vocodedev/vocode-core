@@ -65,8 +65,8 @@ class VocodeCallbackHandler(BaseCallbackHandler):
         self, action: AgentAction, color: Optional[str] = None, **kwargs: Any
     ) -> Any:
         try:
-            thought = action.log.split("Action:")[0].replace("Thought: ", "")
-            self._speak_in_thread(thought)
+            to_say = f"Running tool {action.tool} with input: {action.tool_input}"
+            self._speak_in_thread(to_say)
         except:
             print("BEGIN LOG\n{}\nEND LOG".format(action.log))
 

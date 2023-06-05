@@ -23,27 +23,15 @@ class TranscriberFactory:
         transcriber_config: TranscriberConfig,
         logger: Optional[logging.Logger] = None,
     ):
-        if transcriber_config.type == TranscriberType.DEEPGRAM:
-            return DeepgramTranscriber(
-                typing.cast(DeepgramTranscriberConfig, transcriber_config),
-                logger=logger,
-            )
-        elif transcriber_config.type == TranscriberType.GOOGLE:
-            return GoogleTranscriber(
-                typing.cast(GoogleTranscriberConfig, transcriber_config), logger=logger
-            )
-        elif transcriber_config.type == TranscriberType.ASSEMBLY_AI:
-            return AssemblyAITranscriber(
-                typing.cast(AssemblyAITranscriberConfig, transcriber_config),
-                logger=logger,
-            )
-        elif transcriber_config.type == TranscriberType.REV_AI:
-            return RevAITranscriber(
-                typing.cast(RevAITranscriberConfig, transcriber_config), logger=logger
-            )
-        elif transcriber_config.type == TranscriberType.AZURE:
-            return AzureTranscriber(
-                typing.cast(AzureTranscriberConfig, transcriber_config), logger=logger
-            )
+        if isinstance(transcriber_config, DeepgramTranscriberConfig):
+            return DeepgramTranscriber(transcriber_config, logger=logger)
+        elif isinstance(transcriber_config, GoogleTranscriberConfig):
+            return GoogleTranscriber(transcriber_config, logger=logger)
+        elif isinstance(transcriber_config, AssemblyAITranscriberConfig):
+            return AssemblyAITranscriber(transcriber_config, logger=logger)
+        elif isinstance(transcriber_config, RevAITranscriberConfig):
+            return RevAITranscriber(transcriber_config, logger=logger)
+        elif isinstance(transcriber_config, AzureTranscriberConfig):
+            return AzureTranscriber(transcriber_config, logger=logger)
         else:
             raise Exception("Invalid transcriber config")

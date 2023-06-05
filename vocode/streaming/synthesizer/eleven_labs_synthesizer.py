@@ -44,9 +44,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.ELEVEN_LABS.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
@@ -66,8 +63,12 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             "text": message.text,
             "voice_settings": voice.settings.dict() if voice.settings else None,
         }
-        if self.model_id: body["model_id"] = self.model_id
+        if self.model_id:
+            body["model_id"] = self.model_id
 
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_total",
+        )
         async with aiohttp.ClientSession() as session:
             async with session.request(
                 "POST",
@@ -81,6 +82,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                         f"ElevenLabs API returned {response.status} status code"
                     )
                 audio_data = await response.read()
+                create_speech_span.end()
+                convert_span = tracer.start_span(
+                    f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.convert",
+                )
                 audio_segment: AudioSegment = AudioSegment.from_mp3(
                     io.BytesIO(audio_data)  # type: ignore
                 )
@@ -89,8 +94,11 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
                 audio_segment.export(output_bytes_io, format="wav")  # type: ignore
 
-                return self.create_synthesis_result_from_wav(
+                result = self.create_synthesis_result_from_wav(
                     file=output_bytes_io,
                     message=message,
                     chunk_size=chunk_size,
                 )
+                convert_span.end()
+
+                return result
