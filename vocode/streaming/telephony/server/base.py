@@ -38,18 +38,18 @@ from vocode.streaming.utils import create_conversation_id
 from vocode.streaming.utils.events_manager import EventsManager
 
 
-class InboundCallConfig(BaseModel, abc.ABC):
+class AbstractInboundCallConfig(BaseModel, abc.ABC):
     url: str
     agent_config: AgentConfig
     transcriber_config: Optional[TranscriberConfig] = None
     synthesizer_config: Optional[SynthesizerConfig] = None
 
 
-class TwilioInboundCallConfig(InboundCallConfig):
+class TwilioInboundCallConfig(AbstractInboundCallConfig):
     twilio_config: TwilioConfig
 
 
-class VonageInboundCallConfig(InboundCallConfig):
+class VonageInboundCallConfig(AbstractInboundCallConfig):
     vonage_config: VonageConfig
 
 
@@ -64,7 +64,7 @@ class TelephonyServer:
         self,
         base_url: str,
         config_manager: BaseConfigManager,
-        inbound_call_configs: List[InboundCallConfig] = [],
+        inbound_call_configs: List[AbstractInboundCallConfig] = [],
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
@@ -103,7 +103,7 @@ class TelephonyServer:
 
     def create_inbound_route(
         self,
-        inbound_call_config: InboundCallConfig,
+        inbound_call_config: AbstractInboundCallConfig,
     ):
         def twilio_route(
             twilio_config: TwilioConfig,
