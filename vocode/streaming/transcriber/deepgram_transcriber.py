@@ -61,10 +61,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
         self.audio_cursor = 0.0
-        self.tmp_file = wave.open("deepgram.wav", "wb")
-        self.tmp_file.setnchannels(1)
-        self.tmp_file.setsampwidth(2)
-        self.tmp_file.setframerate(self.transcriber_config.sampling_rate)
 
     async def _run_loop(self):
         restarts = 0
@@ -89,7 +85,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 self.transcriber_config.sampling_rate,
                 None,
             )
-        self.tmp_file.writeframes(chunk)
         super().send_audio(chunk)
 
     def terminate(self):

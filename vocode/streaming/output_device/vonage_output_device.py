@@ -14,15 +14,10 @@ class VonageOutputDevice(BaseOutputDevice):
         self.active = True
         self.queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.process_task = asyncio.create_task(self.process())
-        self.tmp_file = wave.open("vonage.wav", "wb")
-        self.tmp_file.setnchannels(1)
-        self.tmp_file.setsampwidth(2)
-        self.tmp_file.setframerate(self.sampling_rate)
 
     async def process(self):
         while self.active:
             chunk = await self.queue.get()
-            self.tmp_file.writeframes(chunk)
             for i in range(0, len(chunk), 640):
                 subchunk = chunk[i : i + 640]
                 await self.ws.send_bytes(subchunk)
