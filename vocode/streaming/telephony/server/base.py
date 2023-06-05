@@ -4,21 +4,12 @@ import logging
 from typing import List, Optional
 from fastapi import APIRouter, Form, Request, Response
 from pydantic import BaseModel, Field
-from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.models.synthesizer import (
-    AzureSynthesizerConfig,
-    SynthesizerConfig,
-)
-from vocode.streaming.models.transcriber import (
-    DeepgramTranscriberConfig,
-    PunctuationEndpointingConfig,
-    TranscriberConfig,
-)
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.models.synthesizer import SynthesizerConfig
+from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.synthesizer.factory import SynthesizerFactory
+from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
 from vocode.streaming.telephony.client.vonage_client import VonageClient
 from vocode.streaming.telephony.config_manager.base_config_manager import (
@@ -34,14 +25,12 @@ from vocode.streaming.telephony.constants import (
 
 from vocode.streaming.telephony.server.router.calls import CallsRouter
 from vocode.streaming.models.telephony import (
-    CallConfig,
     TwilioCallConfig,
     TwilioConfig,
     VonageCallConfig,
     VonageConfig,
 )
 
-from vocode.streaming.telephony.conversation.call import Call
 from vocode.streaming.telephony.templater import Templater
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.factory import TranscriberFactory
@@ -124,20 +113,10 @@ class TelephonyServer:
         ) -> Response:
             call_config = TwilioCallConfig(
                 transcriber_config=inbound_call_config.transcriber_config
-                or DeepgramTranscriberConfig(
-                    sampling_rate=DEFAULT_SAMPLING_RATE,
-                    audio_encoding=DEFAULT_AUDIO_ENCODING,
-                    chunk_size=DEFAULT_CHUNK_SIZE,
-                    model="phonecall",
-                    tier="nova",
-                    endpointing_config=PunctuationEndpointingConfig(),
-                ),
+                or TwilioCallConfig.default_transcriber_config(),
                 agent_config=inbound_call_config.agent_config,
                 synthesizer_config=inbound_call_config.synthesizer_config
-                or AzureSynthesizerConfig(
-                    sampling_rate=DEFAULT_SAMPLING_RATE,
-                    audio_encoding=DEFAULT_AUDIO_ENCODING,
-                ),
+                or TwilioCallConfig.default_synthesizer_config(),
                 twilio_config=twilio_config,
                 twilio_sid=twilio_sid,
                 from_phone=twilio_from,
@@ -155,20 +134,10 @@ class TelephonyServer:
         ):
             call_config = VonageCallConfig(
                 transcriber_config=inbound_call_config.transcriber_config
-                or DeepgramTranscriberConfig(
-                    sampling_rate=VONAGE_SAMPLING_RATE,
-                    audio_encoding=VONAGE_AUDIO_ENCODING,
-                    chunk_size=DEFAULT_CHUNK_SIZE,
-                    model="phonecall",
-                    tier="nova",
-                    endpointing_config=PunctuationEndpointingConfig(),
-                ),
+                or VonageCallConfig.default_transcriber_config(),
                 agent_config=inbound_call_config.agent_config,
                 synthesizer_config=inbound_call_config.synthesizer_config
-                or AzureSynthesizerConfig(
-                    sampling_rate=VONAGE_SAMPLING_RATE,
-                    audio_encoding=VONAGE_AUDIO_ENCODING,
-                ),
+                or VonageCallConfig.default_synthesizer_config(),
                 vonage_config=vonage_config,
                 vonage_uuid=vonage_answer_request.uuid,
                 to_phone=vonage_answer_request.from_,
@@ -200,14 +169,17 @@ class TelephonyServer:
         call_config = self.config_manager.get_config(conversation_id)
         if not call_config:
             raise ValueError(f"Could not find call config for {conversation_id}")
-        if not isinstance(call_config, TwilioCallConfig):
-            raise ValueError(
-                f"Call config for {conversation_id} is not a TwilioCallConfig"
+        telephony_client: BaseTelephonyClient
+        if isinstance(call_config, TwilioCallConfig):
+            telephony_client = TwilioClient(
+                base_url=self.base_url, twilio_config=call_config.twilio_config
             )
-        telephony_client = TwilioClient(
-            base_url=self.base_url, twilio_config=call_config.twilio_config
-        )
-        telephony_client.end_call(call_config.twilio_sid)
+            telephony_client.end_call(call_config.twilio_sid)
+        elif isinstance(call_config, VonageCallConfig):
+            telephony_client = VonageClient(
+                base_url=self.base_url, vonage_config=call_config.vonage_config
+            )
+            telephony_client.end_call(call_config.vonage_uuid)
         return {"id": conversation_id}
 
     def get_router(self) -> APIRouter:

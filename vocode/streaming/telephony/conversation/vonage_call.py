@@ -10,7 +10,7 @@ from vocode.streaming.models.events import PhoneCallConnectedEvent, PhoneCallEnd
 from vocode.streaming.output_device.vonage_output_device import VonageOutputDevice
 
 from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.streaming.models.telephony import CallConfig, TwilioConfig, VonageConfig
+from vocode.streaming.models.telephony import BaseCallConfig, TwilioConfig, VonageConfig
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
@@ -92,8 +92,8 @@ class VonageCall(Call[VonageOutputDevice]):
         self.vonage_uuid = vonage_uuid
 
     # TODO(EPD-186) - make this function async and use aiohttp with the vonage client
-    def send_dtmf(self):
-        self.telephony_client.voice.send_dtmf(self.vonage_uuid, {"digits": "1234"})
+    def send_dtmf(self, digits: str):
+        self.telephony_client.voice.send_dtmf(self.vonage_uuid, {"digits": digits})
 
     async def attach_ws_and_start(self, ws: WebSocket):
         # start message

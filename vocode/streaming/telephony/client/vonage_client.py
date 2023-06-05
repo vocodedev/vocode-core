@@ -58,9 +58,9 @@ class VonageClient(BaseTelephonyClient):
         ]
 
     def end_call(self, id) -> bool:
-        response = self.voice.update_call(uuid=id, action="hangup")
-        print(response)
-        return False
+        # TODO(EPD-186): return True if the call was ended successfully
+        self.voice.update_call(uuid=id, action="hangup")
+        return True
 
     # TODO(EPD-186)
     def validate_outbound_call(

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from vocode.streaming.models.telephony import CallConfig
+from vocode.streaming.models.telephony import BaseCallConfig
 
 
 class BaseTelephonyClient:

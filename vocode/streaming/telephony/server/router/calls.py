@@ -4,7 +4,7 @@ import logging
 from fastapi import APIRouter, HTTPException, WebSocket
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.telephony import (
-    CallConfig,
+    BaseCallConfig,
     TwilioCallConfig,
     VonageCallConfig,
 )
@@ -46,7 +46,7 @@ class CallsRouter(BaseRouter):
     def _from_call_config(
         self,
         base_url: str,
-        call_config: CallConfig,
+        call_config: BaseCallConfig,
         config_manager: BaseConfigManager,
         conversation_id: str,
         logger: logging.Logger,

@@ -11,7 +11,7 @@ from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import PhoneCallConnectedEvent, PhoneCallEndedEvent
 
 from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.streaming.models.telephony import CallConfig, TwilioConfig
+from vocode.streaming.models.telephony import BaseCallConfig, TwilioConfig
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
@@ -62,15 +62,6 @@ class TwilioCall(Call[TwilioOutputDevice]):
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
-        self.base_url = base_url
-        self.config_manager = config_manager
-        self.twilio_config = twilio_config or TwilioConfig(
-            account_sid=getenv("TWILIO_ACCOUNT_SID"),
-            auth_token=getenv("TWILIO_AUTH_TOKEN"),
-        )
-        self.telephony_client = TwilioClient(
-            base_url=base_url, twilio_config=self.twilio_config
-        )
         super().__init__(
             from_phone,
             to_phone,
@@ -86,6 +77,15 @@ class TwilioCall(Call[TwilioOutputDevice]):
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
             logger=logger,
+        )
+        self.base_url = base_url
+        self.config_manager = config_manager
+        self.twilio_config = twilio_config or TwilioConfig(
+            account_sid=getenv("TWILIO_ACCOUNT_SID"),
+            auth_token=getenv("TWILIO_AUTH_TOKEN"),
+        )
+        self.telephony_client = TwilioClient(
+            base_url=base_url, twilio_config=self.twilio_config
         )
         self.twilio_sid = twilio_sid
         self.latest_media_timestamp = 0

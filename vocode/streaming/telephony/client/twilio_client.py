@@ -1,7 +1,7 @@
 from typing import Optional
 from twilio.rest import Client
 
-from vocode.streaming.models.telephony import CallConfig, TwilioConfig
+from vocode.streaming.models.telephony import BaseCallConfig, TwilioConfig
 from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
 from vocode.streaming.telephony.templater import Templater
 
