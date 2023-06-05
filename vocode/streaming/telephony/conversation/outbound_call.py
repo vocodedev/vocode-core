@@ -112,8 +112,8 @@ class OutboundCall:
                 synthesizer_config=self.synthesizer_config,
                 twilio_config=self.telephony_client.twilio_config,
                 twilio_sid=self.telephony_id,
-                twilio_from=self.from_phone,
-                twilio_to=self.to_phone,
+                from_phone=self.from_phone,
+                to_phone=self.to_phone,
             )
         elif isinstance(self.telephony_client, VonageClient):
             call_config = VonageCallConfig(
@@ -122,8 +122,8 @@ class OutboundCall:
                 synthesizer_config=self.synthesizer_config,
                 vonage_config=self.telephony_client.vonage_config,
                 vonage_uuid=self.telephony_id,
-                vonage_from=self.from_phone,
-                vonage_to=self.to_phone,
+                from_phone=self.from_phone,
+                to_phone=self.to_phone,
             )
         else:
             raise ValueError("Unknown telephony client")

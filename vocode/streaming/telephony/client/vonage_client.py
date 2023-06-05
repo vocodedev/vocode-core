@@ -56,6 +56,8 @@ class VonageClient(BaseTelephonyClient):
         ]
 
     def end_call(self, id) -> bool:
+        response = self.voice.update_call(uuid=id, action="hangup")
+        print(response)
         return False
 
     def validate_outbound_call(

@@ -2,7 +2,7 @@ import abc
 from functools import partial
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Form, Response
+from fastapi import APIRouter, Form, Request, Response
 from pydantic import BaseModel, Field
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.factory import AgentFactory
@@ -103,6 +103,12 @@ class TelephonyServer:
                 self.create_inbound_route(inbound_call_config=config),
                 methods=["POST"],
             )
+        # vonage requires an events endpoint
+        self.router.add_api_route("/events", self.events, methods=["GET"])
+        self.logger.info(f"Set up events endpoint at https://{self.base_url}/events")
+
+    def events(self, request: Request):
+        return lambda: Response()
 
     def create_inbound_route(
         self,
@@ -132,8 +138,8 @@ class TelephonyServer:
                 ),
                 twilio_config=twilio_config,
                 twilio_sid=twilio_sid,
-                twilio_from=twilio_from,
-                twilio_to=twilio_to,
+                from_phone=twilio_from,
+                to_phone=twilio_to,
             )
 
             conversation_id = create_conversation_id()
@@ -163,8 +169,8 @@ class TelephonyServer:
                 ),
                 vonage_config=vonage_config,
                 vonage_uuid=vonage_answer_request.uuid,
-                vonage_from=vonage_answer_request.from_,
-                vonage_to=vonage_answer_request.to,
+                to_phone=vonage_answer_request.from_,
+                from_phone=vonage_answer_request.to,
             )
             conversation_id = create_conversation_id()
             self.config_manager.save_config(conversation_id, call_config)

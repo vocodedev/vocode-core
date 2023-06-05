@@ -37,6 +37,8 @@ TelephonyOutputDeviceType = TypeVar(
 class Call(StreamingConversation[TelephonyOutputDeviceType]):
     def __init__(
         self,
+        from_phone: str,
+        to_phone: str,
         base_url: str,
         config_manager: BaseConfigManager,
         output_device: TelephonyOutputDeviceType,
@@ -50,6 +52,8 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
+        self.from_phone = from_phone
+        self.to_phone = to_phone
         self.base_url = base_url
         self.config_manager = config_manager
         super().__init__(

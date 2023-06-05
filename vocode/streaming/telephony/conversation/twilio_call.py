@@ -46,6 +46,8 @@ class PhoneCallAction(Enum):
 class TwilioCall(Call[TwilioOutputDevice]):
     def __init__(
         self,
+        from_phone: str,
+        to_phone: str,
         base_url: str,
         config_manager: BaseConfigManager,
         agent_config: AgentConfig,
@@ -70,6 +72,8 @@ class TwilioCall(Call[TwilioOutputDevice]):
             base_url=base_url, twilio_config=self.twilio_config
         )
         super().__init__(
+            from_phone,
+            to_phone,
             base_url,
             config_manager,
             TwilioOutputDevice(),
@@ -100,8 +104,8 @@ class TwilioCall(Call[TwilioOutputDevice]):
             self.events_manager.publish_event(
                 PhoneCallConnectedEvent(
                     conversation_id=self.id,
-                    to_phone_number=twilio_call.to,
-                    from_phone_number=twilio_call.from_formatted,
+                    to_phone_number=self.to_phone,
+                    from_phone_number=self.from_phone,
                 )
             )
             while self.active:

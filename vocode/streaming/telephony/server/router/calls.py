@@ -57,6 +57,8 @@ class CallsRouter(BaseRouter):
     ):
         if isinstance(call_config, TwilioCallConfig):
             return TwilioCall(
+                to_phone=call_config.to_phone,
+                from_phone=call_config.from_phone,
                 base_url=base_url,
                 logger=logger,
                 config_manager=config_manager,
@@ -73,6 +75,8 @@ class CallsRouter(BaseRouter):
             )
         elif isinstance(call_config, VonageCallConfig):
             return VonageCall(
+                to_phone=call_config.to_phone,
+                from_phone=call_config.from_phone,
                 base_url=base_url,
                 logger=logger,
                 config_manager=config_manager,

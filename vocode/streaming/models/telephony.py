@@ -72,17 +72,15 @@ class CallConfig(TypedModel, type=CallConfigType.BASE.value):
     transcriber_config: TranscriberConfig
     agent_config: AgentConfig
     synthesizer_config: SynthesizerConfig
+    from_phone: str
+    to_phone: str
 
 
 class TwilioCallConfig(CallConfig, type=CallConfigType.TWILIO.value):
     twilio_config: TwilioConfig
     twilio_sid: str
-    twilio_from: Optional[str]
-    twilio_to: Optional[str]
 
 
 class VonageCallConfig(CallConfig, type=CallConfigType.VONAGE.value):
     vonage_config: VonageConfig
     vonage_uuid: str
-    vonage_from: Optional[str]
-    vonage_to: Optional[str]

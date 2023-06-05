@@ -1,6 +1,6 @@
 import asyncio
 import typing
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 import base64
 from enum import Enum
 import json
@@ -50,6 +50,8 @@ class PhoneCallAction(Enum):
 class VonageCall(Call[VonageOutputDevice]):
     def __init__(
         self,
+        from_phone: str,
+        to_phone: str,
         base_url: str,
         config_manager: BaseConfigManager,
         agent_config: AgentConfig,
@@ -65,6 +67,8 @@ class VonageCall(Call[VonageOutputDevice]):
         logger: Optional[logging.Logger] = None,
     ):
         super().__init__(
+            from_phone,
+            to_phone,
             base_url,
             config_manager,
             VonageOutputDevice(),
@@ -99,27 +103,31 @@ class VonageCall(Call[VonageOutputDevice]):
         )
 
     async def attach_ws_and_start(self, ws: WebSocket):
-        start_message = await ws.receive()
+        # start message
+        await ws.receive()
         self.logger.debug("Trying to attach WS to outbound call")
         self.output_device.ws = ws
         self.logger.debug("Attached WS to outbound call")
 
         await super().start()
-        # self.events_manager.publish_event(
-        #     PhoneCallConnectedEvent(
-        #         conversation_id=self.id,
-        #         to_phone_number=twilio_call.to,
-        #         from_phone_number=twilio_call.from_formatted,
-        #     )
-        # )
+        self.events_manager.publish_event(
+            PhoneCallConnectedEvent(
+                conversation_id=self.id,
+                to_phone_number=self.to_phone,
+                from_phone_number=self.from_phone,
+            )
+        )
         while self.active:
-            chunk = await ws.receive_bytes()
-            self.receive_audio(chunk)
+            try:
+                chunk = await ws.receive_bytes()
+                self.receive_audio(chunk)
+            except WebSocketDisconnect:
+                self.logger.debug("Websocket disconnected")
+                break
         self.tear_down()
 
     def mark_terminated(self):
         super().mark_terminated()
-        self.telephony_client.end_call(self.vonage_uuid)
         self.config_manager.delete_config(self.id)
 
     def tear_down(self):
