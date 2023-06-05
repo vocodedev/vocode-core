@@ -94,16 +94,15 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
     ) -> AsyncGenerator[str, None]:
         self.memory.chat_memory.messages.append(HumanMessage(content=human_input))
 
+        bot_memory_message = AIMessage(content="")
+        self.memory.chat_memory.messages.append(bot_memory_message)
+        prompt = self.llm._convert_messages_to_prompt(self.memory.chat_memory.messages)
+
         streamed_response = await self.anthropic_client.acompletion_stream(
-            prompt=self.llm._convert_messages_to_prompt(
-                self.memory.chat_memory.messages
-            ),
+            prompt=prompt,
             max_tokens_to_sample=self.agent_config.max_tokens_to_sample,
             model=self.agent_config.model_name,
         )
-
-        bot_memory_message = AIMessage(content="")
-        self.memory.chat_memory.messages.append(bot_memory_message)
 
         buffer = ""
         async for message in streamed_response:
