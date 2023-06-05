@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from vocode.streaming.models.telephony import TwilioConfig
 
 load_dotenv()
 
@@ -20,6 +21,10 @@ outbound_call = OutboundCall(
     from_phone="+15555555555",
     config_manager=config_manager,
     agent_config=SpellerAgentConfig(generate_responses=False),
+    twilio_config=TwilioConfig(
+        account_sid=os.environ["TWILIO_ACCOUNT_SID"],
+        auth_token=os.environ["TWILIO_AUTH_TOKEN"],
+    ),
 )
 
 input("Press enter to start call...")
