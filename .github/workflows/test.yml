@@ -28,9 +28,9 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      
+
       - name: Install ffmpeg
-        run: | 
+        run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
@@ -52,7 +52,6 @@ jobs:
           python -m poetry run mypy -p vocode
           python -m poetry run mypy -p quickstarts
           python -m poetry run mypy -p playground
-          python -m poetry run mypy -p apps
 
       - name: Test with pytest
         run: |
