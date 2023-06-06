@@ -54,7 +54,7 @@ class ConversationRouter(BaseRouter):
         logger: Optional[logging.Logger] = None,
     ):
         super().__init__()
-        self.sessions = {}
+        self.sessions: dict[str, StreamingConversation] = {}
         self.transcriber_thunk = transcriber_thunk
         self.agent = agent
         self.synthesizer_thunk = synthesizer_thunk
@@ -66,10 +66,10 @@ class ConversationRouter(BaseRouter):
         self,
         output_device: WebsocketOutputDevice,
         start_message: AudioConfigStartMessage,
-    ) -> StreamingConversation:
+    ) -> StreamingConversation | None:
         if start_message.conversation_id is None:
             return None
-        conversation: StreamingConversation = self.sessions.get(start_message.conversation_id)
+        conversation = self.sessions.get(start_message.conversation_id)
         if conversation is None:
             return None
         self.logger.debug(f"get_conversation restart...")
@@ -84,17 +84,16 @@ class ConversationRouter(BaseRouter):
         transcriber = self.transcriber_thunk(start_message.input_audio_config)
         synthesizer = self.synthesizer_thunk(start_message.output_audio_config)
         synthesizer.synthesizer_config.should_encode_as_wav = True
+        events_manager_instance: TranscriptEventManager | None = None
         if start_message.subscribe_transcript:
-            self.events_manager_instance = TranscriptEventManager(output_device, self.logger)
-        else:
-            self.events_manager_instance = None
+            events_manager_instance = TranscriptEventManager(output_device, self.logger)
         conversation =  StreamingConversation(
             output_device=output_device,
             transcriber=transcriber,
             agent=self.agent,
             synthesizer=synthesizer,
             conversation_id=start_message.conversation_id,
-            events_manager=self.events_manager_instance,
+            events_manager=events_manager_instance,
             logger=self.logger,
         )
         if start_message.conversation_id:
