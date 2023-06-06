@@ -138,16 +138,14 @@ class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME.value):
     speaker: str = RIME_DEFAULT_SPEAKER
 
 
-COQUI_DEFAULT_SPEAKER_ID = "d2bd7ccb-1b65-4005-9578-32c4e02d8ddf"
+COQUI_DEFAULT_SPEAKER_ID = "ebe2db86-62a6-49a1-907a-9a1360d4416e"
 
 
 class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value):
     api_key: Optional[str] = None
     voice_id: Optional[str] = COQUI_DEFAULT_SPEAKER_ID
     voice_prompt: Optional[str] = None
-    sentiment_config = SentimentConfig(
-        emotions=["neutral", "happy", "sad", "surprise", "angry", "dull"]
-    )
+    use_xtts: Optional[bool] = True
 
     @validator("voice_id", always=True)
     def override_voice_id_with_prompt(cls, voice_id, values):
