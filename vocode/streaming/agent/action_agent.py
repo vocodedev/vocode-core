@@ -19,7 +19,10 @@ from vocode.streaming.agent.base_agent import (
     TranscriptionAgentInput,
 )
 from vocode.streaming.agent.prompts.action_prompt import ACTION_PROMPT_DEFAULT
-from vocode.streaming.agent.utils import format_openai_chat_messages_from_transcript
+from vocode.streaming.agent.utils import (
+    format_openai_chat_messages_from_transcript,
+    stream_openai_response_async,
+)
 from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.agent import ActionAgentConfig
 from vocode.streaming.models.message import BaseMessage
@@ -75,16 +78,20 @@ class ActionAgent(BaseAgent[ActionAgentConfig]):
                 messages=messages,
                 max_tokens=self.agent_config.max_tokens,
                 temperature=self.agent_config.temperature,
+                stream=True,
             )
-            if hasattr(openai_response, "choices") and len(openai_response.choices) > 0:
-                verbose_response = openai_response.choices[0].message.content
-            else:
-                return  # TODO
-            print(verbose_response)
-            response = self.extract_response(verbose_response)
-            self.produce_interruptible_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=response))
-            )
+            verbose_response = ""
+            async for message in stream_openai_response_async(
+                openai_response,
+                get_text=lambda choice: choice.get("delta", {}).get("content"),
+                sentence_endings=["\n"],
+            ):
+                maybe_response = self.extract_response(message)
+                if maybe_response:
+                    self.produce_interruptible_event_nonblocking(
+                        AgentResponseMessage(message=BaseMessage(text=maybe_response))
+                    )
+                verbose_response += f"{message}\n"
             for action_input in self.get_action_inputs(
                 verbose_response, agent_input.conversation_id
             ):
@@ -113,7 +120,7 @@ class ActionAgent(BaseAgent[ActionAgentConfig]):
         return match.group(1).strip() if match else ""
 
     def extract_response(self, response: str):
-        match = re.search(r"Response:\s*(.*?)\n", response)
+        match = re.search(r"Response:\s*(.*)", response)
         return match.group(1).strip() if match else ""
 
     def get_action_inputs(
