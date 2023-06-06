@@ -3,7 +3,8 @@ import os
 import pickle
 import logging
 import inspect
-from typing import Tuple, Union, Optional, Dict, Type
+from pydantic import BaseModel
+from typing import Tuple, Union, Optional, Dict, Type, List
 from pydub import AudioSegment
 from telegram import Update
 from telegram.ext import (
@@ -46,9 +47,6 @@ supported_classes = [
 # Your chosen synthesizer provider's corresponding Vocode turn_based class instance
 SYNTH = CoquiSynthesizer(use_xtts=True)
 
-# Array of tuples (synthesizer's voice id, nickname, description if text to voice)
-DEFAULT_VOICES = [(None, "Coqui Default", None)]
-
 # Instructions to the language model responsible for generating response transcript.
 SYSTEM_PROMPT = "You are having a voice-to-voice conversation with a user. Always pretend you are a real human. Do not avoid or decline to answer questions because you are not human."
 """ CONFIGURATION END """
@@ -74,6 +72,21 @@ assert (
 for key, value in voice_attr_of.items():
     assert value in inspect.signature(key.__init__).parameters
 
+
+# Define a Voice model with id, name and description fields
+class Voice(BaseModel):
+  id: Optional[str] = None # Optional id for the voice
+  name: Optional[str] = None # Optional name for the voice
+  description: Optional[str] = None # Optional description for the voice
+
+# Array of tuples (synthesizer's voice id, nickname, description if text to voice)
+DEFAULT_VOICES: List[Voice] = [Voice(id=None, name="Coqui Default", description=None)]
+
+# Define a Chat model with voices, current_voice and current_conversation fields
+class Chat(BaseModel):
+  voices: List[Voice] = DEFAULT_VOICES # List of available voices for the chat
+  current_voice: Voice = DEFAULT_VOICES[0] # Current voice for the chat
+  current_conversation: bytes = None # Current conversation as a pickled object
 
 # Special defaultdict that supports replitdb
 class ChatsDB:
