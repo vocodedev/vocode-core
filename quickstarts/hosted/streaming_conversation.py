@@ -18,7 +18,8 @@ vocode.api_key = "<YOUR API KEY>"
 logging.basicConfig()
 logging.root.setLevel(logging.INFO)
 
-if __name__ == "__main__":
+
+async def main():
     (
         microphone_input,
         speaker_output,
@@ -38,4 +39,8 @@ if __name__ == "__main__":
         synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
     )
     signal.signal(signal.SIGINT, lambda _0, _1: conversation.deactivate())
-    asyncio.run(conversation.start())
+    await conversation.start()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
