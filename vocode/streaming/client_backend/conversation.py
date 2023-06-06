@@ -54,7 +54,7 @@ class ConversationRouter(BaseRouter):
         logger: Optional[logging.Logger] = None,
     ):
         super().__init__()
-        self.sessions: dict[str, StreamingConversation] = {}
+        self.sessions: typing.Dict[str, StreamingConversation] = {}
         self.transcriber_thunk = transcriber_thunk
         self.agent = agent
         self.synthesizer_thunk = synthesizer_thunk
@@ -66,7 +66,7 @@ class ConversationRouter(BaseRouter):
         self,
         output_device: WebsocketOutputDevice,
         start_message: AudioConfigStartMessage,
-    ) -> StreamingConversation | None:
+    ) -> typing.Union[StreamingConversation, None]:
         if start_message.conversation_id is None:
             return None
         conversation = self.sessions.get(start_message.conversation_id)
