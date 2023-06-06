@@ -27,7 +27,6 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
         self.voice_prompt = synthesizer_config.voice_prompt
         self.use_xtts = synthesizer_config.use_xtts
 
-
     def get_request(self, text: str) -> Tuple[str, Dict[str, str], Dict[str, object]]:
         url = COQUI_BASE_URL
         headers = {
@@ -57,7 +56,6 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
                 body["voice_id"] = self.voice_id
         return url, headers, body
 
-
     async def create_speech(
         self,
         message: BaseMessage,
@@ -65,7 +63,6 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         url, headers, body = self.get_request(message.text)
-        # print("➡️", body)
 
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.create_total"
@@ -79,7 +76,6 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
                 timeout=aiohttp.ClientTimeout(total=15),
             ) as response:
                 sample = await response.json()
-                # print("⬅️", sample)
                 async with session.request(
                     "GET",
                     sample["audio_url"],
