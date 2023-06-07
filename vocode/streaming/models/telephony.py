@@ -51,6 +51,7 @@ class CreateInboundCall(BaseModel):
 class EndOutboundCall(BaseModel):
     call_id: str
     twilio_config: Optional[TwilioConfig] = None
+    vonage_config: Optional[VonageConfig] = None
 
 
 class CreateOutboundCall(BaseModel):
@@ -61,6 +62,7 @@ class CreateOutboundCall(BaseModel):
     synthesizer_config: Optional[SynthesizerConfig] = None
     conversation_id: Optional[str] = None
     twilio_config: Optional[TwilioConfig] = None
+    vonage_config: Optional[VonageConfig] = None
     # TODO add IVR/etc.
 
 
