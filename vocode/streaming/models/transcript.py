@@ -37,13 +37,16 @@ class Transcript(BaseModel):
         conversation_id: str,
         metadata: Optional[dict] = None,
     ):
-        timestamp = time.time()
+        duration = metadata.get("duration", 0) if metadata else 0
+        # Current time is when a message has been finished transcribing/synthesizing, so
+        # timestamp of the start must be calculated by subtracting the duration
+        timestamp = time.time() - duration
         self.messages.append(Message(text=text, sender=sender, timestamp=timestamp, metadata=metadata or {}))
         events_manager.publish_event(
             TranscriptEvent(
                 text=text,
                 sender=sender,
-                timestamp=time.time(),
+                timestamp=timestamp,
                 conversation_id=conversation_id,
                 metadata=metadata,
             )

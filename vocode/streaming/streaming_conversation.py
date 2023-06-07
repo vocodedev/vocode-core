@@ -303,13 +303,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
             try:
                 message, synthesis_result = item.payload
                 metadata = message.metadata or {}
-                message_sent, cut_off = await self.conversation.send_speech_to_output(
+                message_sent, cut_off, duration = await self.conversation.send_speech_to_output(
                     message.text,
                     synthesis_result,
                     item.interruption_event,
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
                 )
                 self.conversation.logger.debug("Bot reponse sent: {}".format(message_sent))
+                # Only approximate duration since we don't know the exact duration of the last chunk
+                metadata["duration"] = duration
                 if synthesis_result.cached_path:
                     metadata["path"] = synthesis_result.cached_path
                 if cut_off:
@@ -546,13 +548,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.synthesizer.get_synthesizer_config().sampling_rate,
         )
         chunk_idx = 0
+        seconds = 0
         async for chunk_result in synthesis_result.chunk_generator:
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
                 len(chunk_result.chunk) / chunk_size
             )
+            seconds = chunk_idx * seconds_per_chunk
             if stop_event.is_set():
-                seconds = chunk_idx * seconds_per_chunk
                 self.logger.debug(
                     "Interrupted, stopping text to speech after {} chunks".format(
                         chunk_idx
@@ -582,7 +585,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()
-        return message_sent, cut_off
+        return message_sent, cut_off, seconds
 
     def mark_terminated(self):
         self.active = False
