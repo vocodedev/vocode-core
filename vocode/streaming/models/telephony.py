@@ -46,6 +46,7 @@ class CreateInboundCall(BaseModel):
     twilio_sid: str
     conversation_id: Optional[str] = None
     twilio_config: Optional[TwilioConfig] = None
+    vonage_config: Optional[VonageConfig] = None
 
 
 class EndOutboundCall(BaseModel):

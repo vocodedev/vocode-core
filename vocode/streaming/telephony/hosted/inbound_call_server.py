@@ -11,6 +11,7 @@ from vocode.streaming.models.telephony import (
     CreateInboundCall,
     TwilioConfig,
     TwilioConfig,
+    VonageConfig,
 )
 
 
@@ -22,6 +23,7 @@ class InboundCallServer:
         synthesizer_config: Optional[SynthesizerConfig] = None,
         response_on_rate_limit: Optional[str] = None,
         twilio_config: Optional[TwilioConfig] = None,
+        vonage_config: Optional[VonageConfig] = None,
     ):
         self.agent_config = agent_config
         self.transcriber_config = transcriber_config
@@ -33,6 +35,7 @@ class InboundCallServer:
             or "The line is really busy right now, check back later!"
         )
         self.twilio_config = twilio_config
+        self.vonage_config = vonage_config
         self.vocode_inbound_call_url = f"https://{vocode.base_url}/create_inbound_call"
 
     async def handle_call(self, twilio_sid: str = Form(alias="CallSid")):
@@ -45,6 +48,7 @@ class InboundCallServer:
                 transcriber_config=self.transcriber_config,
                 synthesizer_config=self.synthesizer_config,
                 twilio_config=self.twilio_config,
+                vonage_config=self.vonage_config,
             ).dict(),
         )
         if response.status_code == 429:
