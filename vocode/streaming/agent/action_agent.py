@@ -51,7 +51,8 @@ class ActionAgent(BaseAgent[ActionAgentConfig]):
     def _create_prompt(self):
         assert self.transcript is not None
         return ACTION_PROMPT_DEFAULT.format(
-            actions=self.get_action_descriptions(), transcript=self.transcript
+            actions=self.get_action_descriptions(),
+            transcript=self.transcript.to_string(),
         )
 
     async def process(self, item: InterruptibleEvent[AgentInput]):
