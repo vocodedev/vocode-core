@@ -29,6 +29,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
       - name: Install poetry ${{ matrix.poetry-version }}
         run: |
           python -m ensurepip
@@ -40,14 +45,13 @@ jobs:
 
       - name: Install dependencies
         shell: bash
-        run: python -m poetry install
+        run: python -m poetry install -E all
 
       - name: Lint with mypy
         run: |
           python -m poetry run mypy -p vocode
           python -m poetry run mypy -p quickstarts
           python -m poetry run mypy -p playground
-          python -m poetry run mypy -p apps
 
       - name: Test with pytest
         run: |

@@ -59,6 +59,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
 
         self.buffer = bytearray()
         self.audio_cursor = 0
+        self.terminate_msg = str.encode(json.dumps({"terminate_session": True}))
 
     async def ready(self):
         return True
@@ -83,9 +84,8 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
             self.buffer = bytearray()
 
     def terminate(self):
-        terminate_msg = str.encode(json.dumps({"terminate_session": True}))
-        self.input_queue.put_nowait(terminate_msg)
         self._ended = True
+        super().terminate()
 
     def get_assembly_ai_url(self):
         url_params = {"sample_rate": self.transcriber_config.sampling_rate}
@@ -123,6 +123,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
                     await ws.send(
                         json.dumps({"audio_data": AudioMessage.from_bytes(data).data})
                     )
+                await ws.send(self.terminate_msg)
                 self.logger.debug("Terminating AssemblyAI transcriber sender")
 
             async def receiver(ws):

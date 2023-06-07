@@ -27,6 +27,10 @@ from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode.streaming.utils.base_router import BaseRouter
 
+from vocode.streaming.models.events import Event, EventType
+from vocode.streaming.models.transcript import TranscriptEvent
+from vocode.streaming.utils import events_manager
+
 
 class ConversationRouter(BaseRouter):
     def __init__(
@@ -71,6 +75,7 @@ class ConversationRouter(BaseRouter):
             agent=self.agent,
             synthesizer=synthesizer,
             conversation_id=start_message.conversation_id,
+            events_manager=TranscriptEventManager(output_device, self.logger) if start_message.subscribe_transcript else None,
             logger=self.logger,
         )
 
@@ -100,3 +105,18 @@ class ConversationRouter(BaseRouter):
 
     def get_router(self) -> APIRouter:
         return self.router
+
+class TranscriptEventManager(events_manager.EventsManager):
+    def __init__(self, output_device: WebsocketOutputDevice, logger: Optional[logging.Logger] = None):
+        super().__init__(subscriptions=[EventType.TRANSCRIPT])
+        self.output_device = output_device
+        self.logger = logger or logging.getLogger(__name__)
+
+    def handle_event(self, event: Event):
+        if event.type == EventType.TRANSCRIPT:
+            transcript_event = typing.cast(TranscriptEvent, event)
+            self.output_device.consume_transcript(transcript_event)
+            # self.logger.debug(event.dict())
+
+    def restart(self, output_device: WebsocketOutputDevice):
+        self.output_device = output_device
