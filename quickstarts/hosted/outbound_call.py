@@ -1,8 +1,7 @@
 import os
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 from vocode.streaming.telephony.hosted.outbound_call import OutboundCall
-from vocode.streaming.models.telephony import CallEntity, TwilioConfig
-from vocode.streaming.models.agent import EchoAgentConfig, ChatGPTAgentConfig
+from vocode.streaming.models.telephony import CallEntity, VonageConfig
+from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
 import vocode
 
@@ -17,13 +16,6 @@ if __name__ == "__main__":
         agent_config=ChatGPTAgentConfig(
             initial_message=BaseMessage(text="the quick fox jumped over the lazy dog "),
             prompt_preamble="respond two sentences at a time",
-        ),
-        synthesizer_config=AzureSynthesizerConfig.from_telephone_output_device(
-            voice_name="en-US-JennyNeural"
-        ),
-        twilio_config=TwilioConfig(
-            account_sid=os.environ["TWILIO_ACCOUNT_SID"],
-            auth_token=os.environ["TWILIO_AUTH_TOKEN"],
         ),
     )
     call.start()
