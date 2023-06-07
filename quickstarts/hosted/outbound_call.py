@@ -17,12 +17,6 @@ if __name__ == "__main__":
             initial_message=BaseMessage(text="the quick fox jumped over the lazy dog "),
             prompt_preamble="respond two sentences at a time",
         ),
-        vonage_config=VonageConfig(
-            api_key=os.environ["VONAGE_API_KEY"],
-            api_secret=os.environ["VONAGE_API_SECRET"],
-            application_id=os.environ["VONAGE_APPLICATION_ID"],
-            private_key=os.environ["VONAGE_PRIVATE_KEY"],
-        ),
     )
     call.start()
     input("Press enter to end the call...")
