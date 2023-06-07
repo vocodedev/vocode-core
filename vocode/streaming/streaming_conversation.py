@@ -610,7 +610,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.track_bot_sentiment_task.cancel()
         if self.events_manager and self.events_task:
             self.logger.debug("Terminating events Task")
-            self.events_manager.end()
+            asyncio.create_task(self.events_manager.end())
         self.logger.debug("Terminating agent")
         self.agent.terminate()
         self.logger.debug("Terminating output device")
