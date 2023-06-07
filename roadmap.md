@@ -6,8 +6,8 @@ Our roadmap; if an issue has been created or the feature is currently being work
 
 - [ ] Messenger platforms
 
-  - [ ] Discord
-  - [ ] Telegram
+  - [ ] [🚧 Discord](https://github.com/vocodedev/vocode-python/pull/195)
+  - [ ] [🚧 Telegram](https://github.com/vocodedev/vocode-python/pull/173)
   - [ ] Messenger
   - [ ] Whatsapp
 
