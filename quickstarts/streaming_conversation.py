@@ -49,7 +49,8 @@ async def main():
     )
     await conversation.start()
     print("Conversation started, press Ctrl+C to end")
-    signal.signal(signal.SIGINT, lambda _0, _1: conversation.terminate())
+    loop = asyncio.get_event_loop()
+    signal.signal(signal.SIGINT, lambda _0, _1: loop.create_task(conversation.terminate()))
     while conversation.is_active():
         chunk = await microphone_input.get_audio()
         conversation.receive_audio(chunk)

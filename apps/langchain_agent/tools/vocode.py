@@ -17,7 +17,7 @@ import time
 
 
 @tool("call phone number")
-def call_phone_number(input: str) -> str:
+async def call_phone_number(input: str) -> str:
     """calls a phone number as a bot and returns a transcript of the conversation.
     the input to this tool is a pipe separated list of a phone number, a prompt, and the first thing the bot should say.
     The prompt should instruct the bot with what to do on the call and be in the 3rd person,
@@ -39,7 +39,7 @@ def call_phone_number(input: str) -> str:
         ),
         logger=logging.Logger("call_phone_number"),
     )
-    call.start()
+    await call.start()
     while True:
         maybe_transcript = get_transcript(call.conversation_id)
         if maybe_transcript:
