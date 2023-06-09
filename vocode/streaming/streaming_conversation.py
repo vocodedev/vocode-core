@@ -543,25 +543,26 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.transcriber.mute()
         message_sent = message
         cut_off = False
-        chunk_size = seconds_per_chunk * get_chunk_size_per_second(
+        chunk_size_per_second = get_chunk_size_per_second(
             self.synthesizer.get_synthesizer_config().audio_encoding,
             self.synthesizer.get_synthesizer_config().sampling_rate,
         )
+        chunk_size = seconds_per_chunk * chunk_size_per_second
         chunk_idx = 0
-        seconds = 0
+        duration = 0
         async for chunk_result in synthesis_result.chunk_generator:
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
                 len(chunk_result.chunk) / chunk_size
             )
-            seconds = chunk_idx * seconds_per_chunk
+            duration += speech_length_seconds
             if stop_event.is_set():
                 self.logger.debug(
                     "Interrupted, stopping text to speech after {} chunks".format(
                         chunk_idx
                     )
                 )
-                message_sent = f"{synthesis_result.get_message_up_to(seconds)}-"
+                message_sent = f"{synthesis_result.get_message_up_to(chunk_idx * seconds_per_chunk)}-"
                 cut_off = True
                 break
             if chunk_idx == 0:
@@ -585,7 +586,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()
-        return message_sent, cut_off, seconds
+        return message_sent, cut_off, duration
 
     def mark_terminated(self):
         self.active = False

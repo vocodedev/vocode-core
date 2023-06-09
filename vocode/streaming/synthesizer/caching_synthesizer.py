@@ -113,7 +113,7 @@ class CachingSynthesizer(BaseSynthesizer):
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         cached_path = os.path.join(self.cache_path, cache_key(message.text, self.inner_synthesizer.get_synthesizer_config()))
-        if False and os.path.exists(cached_path):
+        if os.path.exists(cached_path):
             with open(cached_path, "rb") as f:
                 result = self.inner_synthesizer.create_synthesis_result_from_wav(f, message, chunk_size)
         else:

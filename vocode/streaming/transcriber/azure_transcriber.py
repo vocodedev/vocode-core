@@ -21,6 +21,8 @@ from vocode.streaming.transcriber.base_transcriber import (
 )
 from vocode.streaming.models.transcriber import AzureTranscriberConfig
 
+TICKS_PER_MS = 10000
+TICKS_PER_S = 10000000
 
 class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
     def __init__(
@@ -67,12 +69,12 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
     def recognized_sentence_final(self, evt: SpeechRecognitionEventArgs):
         self.logger.debug("RECOGNITION FINAL on {}".format(evt))
         self.output_janus_queue.sync_q.put_nowait(
-            Transcription(message=evt.result.text, confidence=1.0, is_final=True, offset=evt.result.offset // 10000, duration=evt.result.duration // 10000)
+            Transcription(message=evt.result.text, confidence=1.0, is_final=True, offset=evt.result.offset / TICKS_PER_S, duration=evt.result.duration / TICKS_PER_S)
         )
 
     def recognized_sentence_stream(self, evt: SpeechRecognitionEventArgs):
         self.output_janus_queue.sync_q.put_nowait(
-            Transcription(message=evt.result.text, confidence=1.0, is_final=False, offset=evt.result.offset // 10000, duration=evt.result.duration // 10000)
+            Transcription(message=evt.result.text, confidence=1.0, is_final=False, offset=evt.result.offset / TICKS_PER_S, duration=evt.result.duration / TICKS_PER_S)
         )
 
     def _run_loop(self):

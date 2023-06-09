@@ -51,8 +51,9 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
                     output_response = None
                     should_stop = False
                     if output.type == RESTfulAgentOutputType.TEXT:
-                        output_response = BaseMessage(text=cast(RESTfulAgentText, output).response, metadata=output.metadata) 
+                        output_response = BaseMessage(text=cast(RESTfulAgentText, output).response, metadata=output.metadata)
                     elif output.type == RESTfulAgentOutputType.END:
+                        output_response = BaseMessage(text="", metadata=output.metadata)
                         should_stop = True
                     return output_response, should_stop
         except Exception as e:

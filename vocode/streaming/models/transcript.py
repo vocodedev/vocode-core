@@ -40,7 +40,8 @@ class Transcript(BaseModel):
         duration = metadata.get("duration", 0) if metadata else 0
         # Current time is when a message has been finished transcribing/synthesizing, so
         # timestamp of the start must be calculated by subtracting the duration
-        timestamp = time.time() - duration
+        timestamp = time.time()
+        timestamp = timestamp - duration
         self.messages.append(Message(text=text, sender=sender, timestamp=timestamp, metadata=metadata or {}))
         events_manager.publish_event(
             TranscriptEvent(
