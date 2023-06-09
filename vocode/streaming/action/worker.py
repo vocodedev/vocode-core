@@ -26,7 +26,7 @@ class ActionsWorker(InterruptibleWorker):
         )
         self.action_factory = action_factory
 
-    def process(self, item: InterruptibleEvent[ActionInput]):
+    async def process(self, item: InterruptibleEvent[ActionInput]):
         action_input = item.payload
         action = self.action_factory.create_action(action_input.action_type)
         action_output = action.run(action_input.params)
