@@ -273,7 +273,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.filler_audio_started_event: Optional[threading.Event] = None
 
         async def wait_for_filler_audio_to_finish(self):
-            if not self.filler_audio_started_event.set():
+            if not self.filler_audio_started_event:
                 self.conversation.logger.debug(
                     "Not waiting for filler audio to finish since we didn't send any chunks"
                 )
@@ -288,6 +288,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def process(self, item: InterruptibleEvent[FillerAudio]):
             try:
+                self.interruptible_event = item
                 filler_audio = item.payload
                 assert self.conversation.filler_audio_config is not None
                 filler_synthesis_result = filler_audio.create_synthesis_result()
@@ -567,7 +568,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.interruptible_events.put_nowait(interruptible_event)
         return interruptible_event
 
-    def broadcast_interrupt(self):
+    def broadcast_interrupt(self, max_interrupts=None):
         """Stops all inflight events and cancels all workers that are sending output
 
         Returns true if any events were interrupted - which is used as a flag for the agent (is_interrupt)
@@ -580,6 +581,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     if interruptible_event.interrupt():
                         self.logger.debug("Interrupting event")
                         num_interrupts += 1
+                if max_interrupts is not None and num_interrupts >= max_interrupts:
+                    break
             except queue.Empty:
                 break
         self.agent_responses_worker.cancel_current_task()
