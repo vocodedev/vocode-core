@@ -3,6 +3,7 @@ import os
 import pickle
 import logging
 import inspect
+from collections import defaultdict
 from pydantic import BaseModel
 from typing import Tuple, Union, Optional, Dict, Type, List
 from pydub import AudioSegment
@@ -88,45 +89,25 @@ class Chat(BaseModel):
   current_voice: Voice = DEFAULT_VOICES[0] # Current voice for the chat
   current_conversation: bytes = None # Current conversation as a pickled object
 
-# Special defaultdict that supports replitdb
-class ChatsDB:
-    def __init__(self, db) -> None:
-        # Initialize an empty dictionary to store user data
-        self.db = db
-
-    def __getitem__(self, chat_id) -> Dict:
-        # Return the user data for a given user id, or create a new one if not found
-        if chat_id not in self.db:
-            self.db[chat_id] = {
-                "voices": DEFAULT_VOICES,
-                "current_voice": DEFAULT_VOICES[0],
-                "current_conversation": None,
-            }
-        return self.db[chat_id]
-
-    def __setitem__(self, chat_id, user_data) -> None:
-        # Set the user data for a given user id
-        self.db[chat_id] = user_data
-
 
 class VocodeBotResponder:
     def __init__(
         self,
         transcriber: BaseTranscriber,
         system_prompt: str,
-        synthesizer: BaseSynthesizer,
-        db=None,
+        synthesizer: BaseSynthesizer
     ) -> None:
         self.transcriber = transcriber
         self.system_prompt = system_prompt
         self.synthesizer = synthesizer
-        self.db = ChatsDB(db if db else {})
+        self.db: Dict[int, Chat] = defaultdict(Chat)
+
 
     def get_agent(self, chat_id: int) -> ChatGPTAgent:
         # Get current voice name and description from DB
-        _, voice_name, voice_description = self.db[chat_id].get(
-            "current_voice", (None, None, None)
-        )
+        user = self.db[chat_id]
+        voice_name = user.current_voice.name
+        voice_description = user.current_voice.description
 
         # Augment prompt based on available info
         prompt = self.system_prompt
@@ -136,7 +117,7 @@ class VocodeBotResponder:
             )
 
         # Load saved conversation if it exists
-        convo_string = self.db[chat_id]["current_conversation"]
+        convo_string = self.db[chat_id].current_conversation
         agent = ChatGPTAgent(
             system_prompt=prompt,
             memory=pickle.loads(convo_string) if convo_string else None,
@@ -156,10 +137,9 @@ class VocodeBotResponder:
         agent = self.get_agent(chat_id)
         agent_response = agent.respond(input)
 
-        # Set current synthesizer voice from db
-        voice_id, _, voice_description = self.db[chat_id].get(
-            "current_voice", (None, None, None)
-        )
+        user = self.db[chat_id]
+        voice_id = user.current_voice.id
+        voice_description = user.current_voice.description
 
         # If we have a Coqui voice prompt, use that. Otherwise, set ID as synthesizer expects.
         if voice_description is not None and type(self.synthesizer) == CoquiSynthesizer:
@@ -171,7 +151,7 @@ class VocodeBotResponder:
         synth_response = await self.synthesizer.async_synthesize(agent_response)
 
         # Save conversation to DB
-        self.db[chat_id]["current_conversation"] = pickle.dumps(agent.memory)
+        self.db[chat_id].current_conversation = pickle.dumps(agent.memory)
 
         return agent_response, synth_response
 
@@ -179,17 +159,10 @@ class VocodeBotResponder:
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
         assert update.effective_chat, "Chat must be defined!"
-        chat_id = update.effective_chat.id
-        # Create user entry in DB
-        self.db[chat_id] = {
-            "voices": DEFAULT_VOICES,
-            "current_voice": DEFAULT_VOICES[0],
-            "current_conversation": None,
-        }
         start_text = """
 I'm a voice chatbot, send a voice message to me and I'll send one back!" Use /help to see available commands.
 """
-        await context.bot.send_message(chat_id=chat_id, text=start_text)
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=start_text)
 
     async def handle_telegram_message(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -239,7 +212,7 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
             return
         new_voice_id = context.args[0]
 
-        user_voices = self.db[chat_id]["voices"]
+        user_voices = self.db[chat_id].voices
         if len(user_voices) <= int(new_voice_id):
             await context.bot.send_message(
                 chat_id=chat_id,
@@ -247,9 +220,9 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
             )
             return
         else:
-            self.db[chat_id]["current_voice"] = user_voices[new_voice_id]
+            self.db[chat_id].current_voice = user_voices[new_voice_id]
             # Reset conversation
-            self.db[chat_id]["current_conversation"] = None
+            self.db[chat_id].current_conversation = None
             await context.bot.send_message(
                 chat_id=chat_id, text="Voice changed successfully!"
             )
@@ -275,11 +248,11 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
         voice_description = " ".join(context.args)
 
         # Coqui voices are created at synthesis-time, so don't have an ID nor name.
-        new_voice = (None, None, voice_description)
-        self.db[chat_id]["voices"].append(new_voice)
-        self.db[chat_id]["current_voice"] = new_voice
+        new_voice = Voice(id=None, name=None, description=voice_description)
+        self.db[chat_id].voices.append(new_voice)
+        self.db[chat_id].current_voice = new_voice
         # Reset conversation
-        self.db[chat_id]["current_conversation"] = None
+        self.db[chat_id].current_conversation = None
 
         await context.bot.send_message(
             chat_id=chat_id, text="Voice changed successfully!"
@@ -290,12 +263,12 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
     ) -> None:
         assert update.effective_chat, "Chat must be defined!"
         chat_id = update.effective_chat.id
-        user_voices = self.db[chat_id]["voices"]  # array (id, name, description)
+        user_voices = self.db[chat_id].voices
         # Make string table of id, name, description
         voices = "\n".join(
             [
-                f"{id}: {name if name else ''}{f' - {description}' if description else ''}"
-                for id, (internal_id, name, description) in enumerate(user_voices)
+                f"{id}: {voice.name if voice.name else ''}{f' - {voice.description}' if voice.description else ''}"
+                for id, voice in enumerate(user_voices)
             ]
         )
         await context.bot.send_message(
@@ -307,7 +280,9 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
     ) -> None:
         assert update.effective_chat, "Chat must be defined!"
         chat_id = update.effective_chat.id
-        _, name, description = self.db[chat_id].get("current_voice", (None, None, None))
+        current_voice = self.db[chat_id].current_voice
+        name = current_voice.name
+        description = current_voice.description
         current = name if name else description
         await context.bot.send_message(
             chat_id=chat_id,
