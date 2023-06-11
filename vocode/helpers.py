@@ -18,8 +18,6 @@ from vocode.turn_based.output_device.speaker_output import (
 )
 import logging
 
-logger = logging.getLogger(__name__)
-
 
 def _get_device_prompt(device_infos: List[dict]) -> str:
     return """Please select a device:
@@ -111,14 +109,18 @@ def _create_microphone_input_and_speaker_output(
         output_device_info = sd.query_devices(kind="output")
     else:
         if input_device_name is not None:
-            input_device_info = _find_device_with_name(input_device_infos, input_device_name)
+            input_device_info = _find_device_with_name(
+                input_device_infos, input_device_name
+            )
         else:
             input_device_info = input_device_infos[
                 int(input(_get_device_prompt(input_device_infos)))
             ]
 
         if output_device_name is not None:
-            output_device_info = _find_device_with_name(output_device_infos, output_device_name)
+            output_device_info = _find_device_with_name(
+                output_device_infos, output_device_name
+            )
         else:
             output_device_info = output_device_infos[
                 int(input(_get_device_prompt(output_device_infos)))
@@ -141,6 +143,8 @@ def _create_microphone_input_and_speaker_output(
 
 def _find_device_with_name(device_infos: List[dict], name: str) -> dict:
     try:
-        return next(filter(lambda device_info: name == device_info["name"], device_infos))
+        return next(
+            filter(lambda device_info: name == device_info["name"], device_infos)
+        )
     except StopIteration:
         raise Exception("Could not find device with name: {}".format(name))
