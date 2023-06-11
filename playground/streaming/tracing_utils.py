@@ -49,10 +49,9 @@ def get_final_metrics(scope_metrics, final_spans=None):
                 )
             elif re.match(r"agent.*\.total_characters", metric_name) and final_spans:
                 agent_str = metric_name.split(".", 1)[1].rsplit(".", 1)[0]
-                final_metrics[
-                    f"agent.{agent_str}.characters_per_second"
-                ] = raw_metric.value / sum(
-                    final_spans[f"agent.{agent_str}.generate_total"]
+                final_metrics[f"agent.{agent_str}.characters_per_second"] = (
+                    raw_metric.value
+                    / sum(final_spans[f"agent.{agent_str}.generate_total"])
                 )
             else:
                 try:
