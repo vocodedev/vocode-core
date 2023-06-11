@@ -112,7 +112,7 @@ class VocodeBotResponder:
         # Augment prompt based on available info
         prompt = self.system_prompt
         if voice_description != None or voice_name != None:
-            prompt += " Pretend to be {0}. This is a demo of Coqui TTS's voice creation tool, so your responses are fun, always in character, and relevant to that voice description.".format(
+            prompt += " Pretend to be {0}. This is a demo of Coqui's voice creation tool, so your responses are fun, always in character, and relevant to that voice description.".format(
                 voice_description if voice_description else voice_name
             )
 
@@ -142,7 +142,7 @@ class VocodeBotResponder:
         voice_description = user.current_voice.description
 
         # If we have a Coqui voice prompt, use that. Otherwise, set ID as synthesizer expects.
-        if voice_description is not None and type(self.synthesizer) == CoquiSynthesizer:
+        if voice_description is not None and isinstance(self.synthesizer, CoquiSynthesizer):
             self.synthesizer.voice_prompt = voice_description
         elif voice_id is not None:
             setattr(self.synthesizer, voice_attr_of[type(self.synthesizer)], voice_id)
@@ -210,10 +210,10 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
                 text="You must include a voice id. Use /list to list available voices",
             )
             return
-        new_voice_id = context.args[0]
+        new_voice_id = int(context.args[0])
 
         user_voices = self.db[chat_id].voices
-        if len(user_voices) <= int(new_voice_id):
+        if len(user_voices) <= new_voice_id:
             await context.bot.send_message(
                 chat_id=chat_id,
                 text="Sorry, I do not recognize that voice. Use /list to list available voices.",
@@ -232,7 +232,7 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
     ) -> None:
         assert update.effective_chat, "Chat must be defined!"
         chat_id = update.effective_chat.id
-        if type(self.synthesizer) is not CoquiSynthesizer:
+        if not isinstance(self.synthesizer, CoquiSynthesizer):
             await context.bot.send_message(
                 chat_id=chat_id,
                 text="Sorry, voice creation is only supported for Coqui TTS.",
@@ -265,14 +265,14 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
         chat_id = update.effective_chat.id
         user_voices = self.db[chat_id].voices
         # Make string table of id, name, description
-        voices = "\n".join(
+        voices_formatted = "\n".join(
             [
                 f"{id}: {voice.name if voice.name else ''}{f' - {voice.description}' if voice.description else ''}"
                 for id, voice in enumerate(user_voices)
             ]
         )
         await context.bot.send_message(
-            chat_id=chat_id, text=f"Available voices:\n{voices}"
+            chat_id=chat_id, text=f"Available voices:\n{voices_formatted}"
         )
 
     async def handle_telegram_who(
@@ -302,7 +302,7 @@ I'm a voice chatbot, here to talk with you! Here's what you can do:
 - Use /help to see this help message again.
 """
         assert update.effective_chat, "Chat must be defined!"
-        if type(self.synthesizer) is CoquiSynthesizer:
+        if isinstance(self.synthesizer, CoquiSynthesizer): 
             help_text += "\n- Use /create <voice_description> to create a new Coqui TTS voice from a text prompt and switch to it."
         await context.bot.send_message(chat_id=update.effective_chat.id, text=help_text)
 
