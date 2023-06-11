@@ -453,6 +453,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.debug("Bot sentiment: %s", new_bot_sentiment)
             self.bot_sentiment = new_bot_sentiment
 
+    def receive_message(self, message: str):
+        transcription = Transcription(
+            message=message,
+            confidence=1.0,
+            is_final=True,
+        )
+        self.transcriptions_worker.consume_nonblocking(transcription)
+
     def receive_audio(self, chunk: bytes):
         self.transcriber.send_audio(chunk)
 
