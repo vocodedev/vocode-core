@@ -21,7 +21,10 @@ if __name__ == "__main__":
     (
         microphone_input,
         speaker_output,
-    ) = create_turn_based_microphone_input_and_speaker_output(use_default_devices=False)
+    ) = create_turn_based_microphone_input_and_speaker_output(
+        use_default_devices=False,
+        logger=logger,
+    )
 
     conversation = TurnBasedConversation(
         input_device=microphone_input,
