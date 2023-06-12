@@ -75,10 +75,6 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
     async def attach_ws_and_start(self, ws: WebSocket):
         raise NotImplementedError
 
-    async def mark_terminated(self):
-        await super().mark_terminated()
-        await self.config_manager.delete_config(self.id)
-
-    async def tear_down(self):
+    def tear_down(self):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
-        await self.terminate()
+        self.terminate()

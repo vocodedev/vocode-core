@@ -235,7 +235,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     return
                 if agent_response.type == AgentResponseType.STOP:
                     self.conversation.logger.debug("Agent requested to stop")
-                    await self.conversation.terminate()
+                    self.conversation.terminate()
                     return
 
                 agent_response_message = typing.cast(
@@ -432,7 +432,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 or ALLOWED_IDLE_TIME
             ):
                 self.logger.debug("Conversation idle for too long, terminating")
-                await self.terminate()
+                self.terminate()
                 return
             await asyncio.sleep(15)
 
@@ -548,11 +548,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.transcriber.unmute()
         return message_sent, cut_off
 
-    async def mark_terminated(self):
+    def mark_terminated(self):
         self.active = False
 
-    async def terminate(self):
-        await self.mark_terminated()
+    def terminate(self):
+        self.mark_terminated()
         self.events_manager.publish_event(
             TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
         )

@@ -113,6 +113,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 response = await self.handle_ws_message(message)
                 if response == PhoneCallAction.CLOSE_WEBSOCKET:
                     break
+        await self.config_manager.delete_config(self.id)
         await self.tear_down()
 
     async def wait_for_twilio_start(self, ws: WebSocket):
@@ -152,6 +153,6 @@ class TwilioCall(Call[TwilioOutputDevice]):
             return PhoneCallAction.CLOSE_WEBSOCKET
         return None
 
-    async def mark_terminated(self):
-        await super().mark_terminated()
+    def mark_terminated(self):
+        super().mark_terminated()
         self.telephony_client.end_call(self.twilio_sid)

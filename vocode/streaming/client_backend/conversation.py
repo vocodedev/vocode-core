@@ -101,7 +101,7 @@ class ConversationRouter(BaseRouter):
             audio_message = typing.cast(AudioMessage, message)
             conversation.receive_audio(audio_message.get_bytes())
         output_device.mark_closed()
-        await conversation.terminate()
+        conversation.terminate()
 
     def get_router(self) -> APIRouter:
         return self.router
