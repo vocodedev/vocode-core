@@ -102,6 +102,7 @@ class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC):
 class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI):
     prompt_preamble: str
     model_name: str = CHAT_VERTEX_AI_DEFAULT_MODEL_NAME
+    generate_responses: bool = False  # Google Vertex AI doesn't support streaming
 
 
 class ActionAgentConfig(AgentConfig, type=AgentType.ACTION):

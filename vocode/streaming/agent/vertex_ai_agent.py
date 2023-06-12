@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
 import logging
 from typing import Optional, Tuple
 from langchain import ConversationChain
@@ -39,6 +41,7 @@ class ChatVertexAIAgent(RespondAgent[ChatVertexAIAgentConfig]):
         self.conversation = ConversationChain(
             memory=self.memory, prompt=self.prompt, llm=self.llm
         )
+        self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
     async def respond(
         self,
@@ -46,6 +49,12 @@ class ChatVertexAIAgent(RespondAgent[ChatVertexAIAgentConfig]):
         conversation_id: str,
         is_interrupt: bool = False,
     ) -> Tuple[str, bool]:
-        text = self.conversation.predict(input=human_input)
+        # Vertex AI doesn't allow async, so we run in a separate thread
+        text = await asyncio.get_event_loop().run_in_executor(
+            self.thread_pool_executor,
+            lambda input: self.conversation.predict(input=input),
+            human_input,
+        )
+
         self.logger.debug(f"LLM response: {text}")
         return text, False
