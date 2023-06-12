@@ -103,7 +103,7 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
         in_memory_wav.setnchannels(1)
         in_memory_wav.setsampwidth(2)
         in_memory_wav.setframerate(output_sample_rate)
-        in_memory_wav.writeframes(response.audio_content[real_offset:-real_offset])
+        in_memory_wav.writeframes(response.audio_content)
         output_bytes_io.seek(0)
 
         return self.create_synthesis_result_from_wav(
