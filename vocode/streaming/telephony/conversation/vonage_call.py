@@ -117,12 +117,12 @@ class VonageCall(Call[VonageOutputDevice]):
             except WebSocketDisconnect:
                 self.logger.debug("Websocket disconnected")
                 break
-        self.tear_down()
+        await self.tear_down()
 
     async def mark_terminated(self):
-        super().mark_terminated()
+        await super().mark_terminated()
         await self.config_manager.delete_config(self.id)
 
-    def tear_down(self):
+    async def tear_down(self):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
-        self.terminate()
+        await self.terminate()
