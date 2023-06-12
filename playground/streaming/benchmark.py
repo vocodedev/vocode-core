@@ -163,6 +163,11 @@ parser.add_argument(
     help="The initial message sent to the agent (this is a transcribed sentence that the agent should respond to).",
 )
 parser.add_argument(
+    "--no_generate_responses",
+    action="store_true",
+    help="Disable streaming generated responses for agents",
+)
+parser.add_argument(
     "--transcriber_num_cycles",
     type=int,
     default=1,
@@ -249,6 +254,8 @@ if args.just_graphs:
         + "generating graphs from the last saved benchmark result JSON file."
     )
 
+should_generate_responses = not args.no_generate_responses
+
 os.makedirs(args.results_dir, exist_ok=True)
 
 
@@ -294,6 +301,7 @@ async def run_agents():
                         prompt_preamble=args.agent_prompt_preamble,
                         allow_agent_to_be_cut_off=False,
                         model_name=model_name,
+                        generate_responses=should_generate_responses,
                     )
                 )
             elif company == "azuregpt":
@@ -303,6 +311,7 @@ async def run_agents():
                         prompt_preamble=args.agent_prompt_preamble,
                         allow_agent_to_be_cut_off=False,
                         azure_params=AzureOpenAIConfig(engine=model_name),
+                        generate_responses=should_generate_responses,
                     )
                 )
             elif company == "anthropic":
@@ -311,6 +320,7 @@ async def run_agents():
                         initial_message=None,
                         allow_agent_to_be_cut_off=False,
                         model_name=model_name,
+                        generate_responses=should_generate_responses,
                     )
                 )
             elif company == "vertex_ai":
@@ -320,6 +330,7 @@ async def run_agents():
                         prompt_preamble=args.agent_prompt_preamble,
                         allow_agent_to_be_cut_off=False,
                         model_name=model_name,
+                        generate_responses=False,
                     )
                 )
             agent.attach_transcript(Transcript())
