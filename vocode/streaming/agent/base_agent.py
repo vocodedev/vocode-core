@@ -280,7 +280,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             tracer_name_start = remove_non_letters_digits(
                 f"{AGENT_TRACE_NAME}.{self.agent_config.type}{optional_model_name}"
             )
-        self.tracer_name_start = tracer_name_start
+        self.tracer_name_start: str = tracer_name_start
         return tracer_name_start
 
     async def respond(
