@@ -93,19 +93,19 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     azure_params: Optional[AzureOpenAIConfig] = None
 
 
-class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC):
+class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):
     prompt_preamble: str
     model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
     max_tokens_to_sample: int = 200
 
 
-class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI):
+class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):
     prompt_preamble: str
     model_name: str = CHAT_VERTEX_AI_DEFAULT_MODEL_NAME
     generate_responses: bool = False  # Google Vertex AI doesn't support streaming
 
 
-class ActionAgentConfig(AgentConfig, type=AgentType.ACTION):
+class ActionAgentConfig(AgentConfig, type=AgentType.ACTION.value):
     actions: List[ActionType]
     model_name: str = ACTION_AGENT_DEFAULT_MODEL_NAME
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
