@@ -157,6 +157,8 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 AgentResponseMessage(message=response),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
+            if response.metadata.get("stop") == True:
+                return True
         # TODO: implement should_stop for generate_responses
         return False
 
