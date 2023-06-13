@@ -104,7 +104,7 @@ class OutboundCall:
         else:
             raise ValueError("No telephony config provided")
 
-    def start(self):
+    async def start(self):
         self.logger.debug("Starting outbound call")
         self.telephony_client.validate_outbound_call(
             to_phone=self.to_phone,
@@ -140,7 +140,7 @@ class OutboundCall:
             )
         else:
             raise ValueError("Unknown telephony client")
-        self.config_manager.save_config(self.conversation_id, call_config)
+        await self.config_manager.save_config(self.conversation_id, call_config)
 
     def end(self):
         return self.telephony_client.end_call(self.telephony_id)
