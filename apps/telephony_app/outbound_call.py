@@ -12,15 +12,21 @@ from speller_agent import SpellerAgentConfig
 
 BASE_URL = os.environ["BASE_URL"]
 
-config_manager = RedisConfigManager()
 
-outbound_call = OutboundCall(
-    base_url=BASE_URL,
-    to_phone="+15555555555",
-    from_phone="+15555555555",
-    config_manager=config_manager,
-    agent_config=SpellerAgentConfig(generate_responses=False),
-)
+async def main():
+    config_manager = RedisConfigManager()
 
-input("Press enter to start call...")
-outbound_call.start()
+    outbound_call = OutboundCall(
+        base_url=BASE_URL,
+        to_phone="+15555555555",
+        from_phone="+15555555555",
+        config_manager=config_manager,
+        agent_config=SpellerAgentConfig(generate_responses=False),
+    )
+
+    input("Press enter to start call...")
+    await outbound_call.start()
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())

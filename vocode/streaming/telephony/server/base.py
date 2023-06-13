@@ -105,7 +105,7 @@ class TelephonyServer:
         self,
         inbound_call_config: AbstractInboundCallConfig,
     ):
-        def twilio_route(
+        async def twilio_route(
             twilio_config: TwilioConfig,
             twilio_sid: str = Form(alias="CallSid"),
             twilio_from: str = Form(alias="From"),
@@ -124,12 +124,12 @@ class TelephonyServer:
             )
 
             conversation_id = create_conversation_id()
-            self.config_manager.save_config(conversation_id, call_config)
+            await self.config_manager.save_config(conversation_id, call_config)
             return self.templater.get_connection_twiml(
                 base_url=self.base_url, call_id=conversation_id
             )
 
-        def vonage_route(
+        async def vonage_route(
             vonage_config: VonageConfig, vonage_answer_request: VonageAnswerRequest
         ):
             call_config = VonageCallConfig(
@@ -144,7 +144,7 @@ class TelephonyServer:
                 from_phone=vonage_answer_request.to,
             )
             conversation_id = create_conversation_id()
-            self.config_manager.save_config(conversation_id, call_config)
+            await self.config_manager.save_config(conversation_id, call_config)
             return VonageClient.create_call_ncco(
                 base_url=self.base_url, conversation_id=conversation_id
             )
@@ -166,7 +166,7 @@ class TelephonyServer:
 
     async def end_outbound_call(self, conversation_id: str):
         # TODO validation via twilio_client
-        call_config = self.config_manager.get_config(conversation_id)
+        call_config = await self.config_manager.get_config(conversation_id)
         if not call_config:
             raise ValueError(f"Could not find call config for {conversation_id}")
         telephony_client: BaseTelephonyClient
