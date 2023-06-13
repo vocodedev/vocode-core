@@ -17,6 +17,7 @@ from opentelemetry.sdk.metrics.export import (
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.sdk.resources import Resource
 from vocode.streaming.agent.base_agent import TranscriptionAgentInput
+from vocode.streaming.agent.vertex_ai_agent import ChatVertexAIAgent
 from vocode.streaming.input_device.file_input_device import FileInputDevice
 from vocode.streaming.agent import ChatGPTAgent, ChatAnthropicAgent
 from vocode.streaming.input_device.microphone_input import MicrophoneInput
@@ -25,6 +26,7 @@ from vocode.streaming.models.agent import (
     AzureOpenAIConfig,
     ChatGPTAgentConfig,
     ChatAnthropicAgentConfig,
+    ChatVertexAIAgentConfig,
 )
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
@@ -59,7 +61,7 @@ from vocode.streaming.synthesizer import (
 )
 from vocode.streaming.transcriber import DeepgramTranscriber, AssemblyAITranscriber
 from vocode.streaming.transcriber.base_transcriber import Transcription
-from vocode.streaming.utils import get_chunk_size_per_second
+from vocode.streaming.utils import get_chunk_size_per_second, remove_non_letters_digits
 from vocode.streaming.utils.worker import InterruptibleEvent
 from playground.streaming.tracing_utils import get_final_metrics
 
@@ -102,6 +104,7 @@ AGENT_CHOICES = [
     "azuregpt_gpt-35-turbo",
     "anthropic_claude-v1",
     "anthropic_claude-instant-v1",
+    "vertex_ai_chat-bison@001",
 ]
 SYNTHESIZER_CHOICES = list(synthesizer_classes)
 
@@ -158,6 +161,11 @@ parser.add_argument(
     type=str,
     default="What is the meaning of life?",
     help="The initial message sent to the agent (this is a transcribed sentence that the agent should respond to).",
+)
+parser.add_argument(
+    "--no_generate_responses",
+    action="store_true",
+    help="Disable streaming generated responses for agents",
 )
 parser.add_argument(
     "--transcriber_num_cycles",
@@ -246,6 +254,8 @@ if args.just_graphs:
         + "generating graphs from the last saved benchmark result JSON file."
     )
 
+should_generate_responses = not args.no_generate_responses
+
 os.makedirs(args.results_dir, exist_ok=True)
 
 
@@ -277,9 +287,11 @@ metrics.set_meter_provider(provider)
 
 async def run_agents():
     for agent_name in tqdm(args.agents, desc="Agents"):
-        company, model_name = agent_name.split("_")
+        company, model_name = agent_name.rsplit("_", 1)
         length_meter = meter.create_counter(
-            f"agent.agent_chat_{company}-{model_name}.total_characters",
+            remove_non_letters_digits(
+                f"agent.agent_chat_{company}-{model_name}.total_characters"
+            ),
         )
         for _ in tqdm(range(args.agent_num_cycles), desc="Agent Cycles"):
             if company == "gpt":
@@ -289,6 +301,7 @@ async def run_agents():
                         prompt_preamble=args.agent_prompt_preamble,
                         allow_agent_to_be_cut_off=False,
                         model_name=model_name,
+                        generate_responses=should_generate_responses,
                     )
                 )
             elif company == "azuregpt":
@@ -298,6 +311,7 @@ async def run_agents():
                         prompt_preamble=args.agent_prompt_preamble,
                         allow_agent_to_be_cut_off=False,
                         azure_params=AzureOpenAIConfig(engine=model_name),
+                        generate_responses=should_generate_responses,
                     )
                 )
             elif company == "anthropic":
@@ -306,6 +320,17 @@ async def run_agents():
                         initial_message=None,
                         allow_agent_to_be_cut_off=False,
                         model_name=model_name,
+                        generate_responses=should_generate_responses,
+                    )
+                )
+            elif company == "vertex_ai":
+                agent = ChatVertexAIAgent(
+                    ChatVertexAIAgentConfig(
+                        initial_message=None,
+                        prompt_preamble=args.agent_prompt_preamble,
+                        allow_agent_to_be_cut_off=False,
+                        model_name=model_name,
+                        generate_responses=False,
                     )
                 )
             agent.attach_transcript(Transcript())

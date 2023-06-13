@@ -18,6 +18,7 @@ from vocode.streaming.models.agent import (
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.model import BaseModel, TypedModel
 from vocode.streaming.transcriber.base_transcriber import Transcription
+from vocode.streaming.utils import remove_non_letters_digits
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.utils.worker import (
@@ -158,25 +159,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
     async def handle_generate_response(
         self, transcription: Transcription, conversation_id: str
     ) -> bool:
-        if (
-            hasattr(self.agent_config, "azure_params")
-            and self.agent_config.azure_params is not None
-        ):
-            beginning_agent_name = self.agent_config.type.rsplit("_", 1)[0]
-            engine = self.agent_config.azure_params.engine
-            tracer_name_start = (
-                f"{AGENT_TRACE_NAME}.{beginning_agent_name}_azuregpt-{engine}"
-            )
-        else:
-            optional_model_name = (
-                f"-{self.agent_config.model_name}"
-                if hasattr(self.agent_config, "model_name")
-                else ""
-            )
-            tracer_name_start = (
-                f"{AGENT_TRACE_NAME}.{self.agent_config.type}{optional_model_name}"
-            )
-
+        tracer_name_start = await self.get_tracer_name_start()
         agent_span = tracer.start_span(
             f"{tracer_name_start}.generate_total"  # type: ignore
         )
@@ -205,9 +188,8 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         self, transcription: Transcription, conversation_id: str
     ) -> bool:
         try:
-            with tracer.start_as_current_span(
-                f"{AGENT_TRACE_NAME}.{self.agent_config.type}.respond_total"
-            ):
+            tracer_name_start = await self.get_tracer_name_start()
+            with tracer.start_as_current_span(f"{tracer_name_start}.respond_total"):
                 response, should_stop = await self.respond(
                     transcription.message,
                     is_interrupt=transcription.is_interrupt,
@@ -276,6 +258,30 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     self.logger.debug("Goodbye detection timed out")
         except asyncio.CancelledError:
             pass
+
+    async def get_tracer_name_start(self) -> str:
+        if hasattr(self, "tracer_name_start"):
+            return self.tracer_name_start
+        if (
+            hasattr(self.agent_config, "azure_params")
+            and self.agent_config.azure_params is not None
+        ):
+            beginning_agent_name = self.agent_config.type.rsplit("_", 1)[0]
+            engine = self.agent_config.azure_params.engine
+            tracer_name_start = (
+                f"{AGENT_TRACE_NAME}.{beginning_agent_name}_azuregpt-{engine}"
+            )
+        else:
+            optional_model_name = (
+                f"-{self.agent_config.model_name}"
+                if hasattr(self.agent_config, "model_name")
+                else ""
+            )
+            tracer_name_start = remove_non_letters_digits(
+                f"{AGENT_TRACE_NAME}.{self.agent_config.type}{optional_model_name}"
+            )
+        self.tracer_name_start: str = tracer_name_start
+        return tracer_name_start
 
     async def respond(
         self,
