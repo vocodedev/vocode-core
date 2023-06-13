@@ -1,11 +1,7 @@
 import json
 from vocode.streaming.action.base_action import BaseAction
 import os
-from dotenv import load_dotenv
-
 from vocode.streaming.models.actions import NylasSendEmailActionOutput
-
-load_dotenv()
 
 
 class NylasSendEmail(BaseAction[NylasSendEmailActionOutput]):

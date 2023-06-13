@@ -70,7 +70,7 @@ class GoodbyeModel:
         }
 
         engine = getenv("AZURE_OPENAI_TEXT_EMBEDDING_ENGINE")
-        if engine is not None:
+        if engine:
             params["engine"] = engine
         else:
             params["model"] = "text-embedding-ada-002"
