@@ -57,8 +57,8 @@ telephony_server = TelephonyServer(
                 generate_responses=True,
             ),
             twilio_config=TwilioConfig(
-                account_sid=os.environ.get("TWILIO_ACCOUNT_SID"),
-                auth_token=os.environ.get("TWILIO_AUTH_TOKEN"),
+                account_sid=os.environ["TWILIO_ACCOUNT_SID"],
+                auth_token=os.environ["TWILIO_AUTH_TOKEN"],
             ),
         )
     ],
