@@ -40,6 +40,20 @@ OPENAI_OBJECTS = [
     ],
     [
         {"delta": {"role": "assistant"}, "finish_reason": None},
+        {"delta": {"content": "Hello"}, "finish_reason": None},
+        {"delta": {"content": "."}, "finish_reason": None},
+        {"delta": {"content": " What"}, "finish_reason": None},
+        {"delta": {"content": " do"}, "finish_reason": None},
+        {"delta": {"content": " you"}, "finish_reason": None},
+        {"delta": {"content": " want"}, "finish_reason": None},
+        {"delta": {"content": " to"}, "finish_reason": None},
+        {"delta": {"content": " talk"}, "finish_reason": None},
+        {"delta": {"content": " about"}, "finish_reason": None},
+        {"delta": {"content": "?"}, "finish_reason": None},
+        {"delta": {}, "finish_reason": "stop"},
+    ],
+    [
+        {"delta": {"role": "assistant"}, "finish_reason": None},
         {"delta": {"content": "Sure"}, "finish_reason": None},
         {"delta": {"content": ","}, "finish_reason": None},
         {"delta": {"content": " here"}, "finish_reason": None},
@@ -116,6 +130,7 @@ OPENAI_OBJECTS = [
 
 EXPECTED_SENTENCES = [
     ["Hello!", "How are you doing today?"],
+    ["Hello.", "What do you want to talk about?"],
     [
         "Sure, here are three possible things we could talk about:",
         "1. Goals and aspirations",
