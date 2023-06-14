@@ -1,15 +1,19 @@
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Type
+from pydantic import Field
 from vocode.streaming.action.base_action import BaseAction
 import os
+from vocode.streaming.action.utils import exclude_keys_recursive
 from vocode.streaming.models.actions import ActionInput, ActionOutput, ActionType
 
 
 class NylasSendEmailActionInput(ActionInput):
     class Parameters(ActionInput.Parameters):
-        recipient_email: str
-        body: str
-        subject: Optional[str]
+        recipient_email: str = Field(
+            ..., description="The email address of the recipient."
+        )
+        body: str = Field(..., description="The body of the email.")
+        subject: Optional[str] = Field(None, description="The subject of the email.")
 
     action_type: str = ActionType.NYLAS_SEND_EMAIL.value
     params: Parameters
@@ -24,6 +28,9 @@ class NylasSendEmailActionOutput(ActionOutput):
 
 
 class NylasSendEmail(BaseAction[NylasSendEmailActionInput, NylasSendEmailActionOutput]):
+    description: str = "Sends an email using Nylas API."
+    action_type: str = ActionType.NYLAS_SEND_EMAIL.value
+
     def run(
         self, action_input: NylasSendEmailActionInput
     ) -> NylasSendEmailActionOutput:
@@ -51,34 +58,10 @@ class NylasSendEmail(BaseAction[NylasSendEmailActionInput, NylasSendEmailActionO
             response=NylasSendEmailActionOutput.Response(success=True)
         )
 
-    def get_openai_function(self):
-        return {
-            "name": ActionType.NYLAS_SEND_EMAIL.value,
-            "description": "Sends an email using Nylas API.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "recipient_email": {
-                        "type": "string",
-                        "description": "The email address of the recipient.",
-                    },
-                    "body": {
-                        "type": "string",
-                        "description": "The body of the email.",
-                    },
-                    "subject": {
-                        "type": "string",
-                        "description": "The subject of the email.",
-                    },
-                },
-                "required": ["recipient_email", "body"],
-            },
-        }
+    @property
+    def action_input_type(self) -> Type[NylasSendEmailActionInput]:
+        return NylasSendEmailActionInput
 
-    def create_action_input(
-        self, conversation_id: str, params: Dict[str, Any]
-    ) -> NylasSendEmailActionInput:
-        return NylasSendEmailActionInput(
-            conversation_id=conversation_id,
-            params=NylasSendEmailActionInput.Parameters(**params),
-        )
+    @property
+    def action_output_type(self) -> Type[NylasSendEmailActionOutput]:
+        return NylasSendEmailActionOutput
