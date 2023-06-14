@@ -1,4 +1,5 @@
 from enum import Enum
+from regex import B
 from vocode.streaming.models.model import BaseModel
 
 
@@ -8,15 +9,17 @@ class ActionType(str, Enum):
 
 
 class ActionInput(BaseModel):
-    action_type: ActionType
-    params: str
+    class Parameters(BaseModel):
+        pass
+
+    action_type: str
     conversation_id: str
+    params: Parameters
 
 
 class ActionOutput(BaseModel):
-    action_type: ActionType
-    response: str
+    class Response(BaseModel):
+        pass
 
-
-class NylasSendEmailActionOutput(ActionOutput):
-    action_type: ActionType = ActionType.NYLAS_SEND_EMAIL
+    action_type: str
+    response: Response

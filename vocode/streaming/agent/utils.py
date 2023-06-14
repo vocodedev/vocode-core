@@ -1,9 +1,14 @@
 import re
-from typing import AsyncGenerator, AsyncIterable, Callable, List, Optional
+from typing import Dict, Any, AsyncGenerator, AsyncIterable, Callable, List, Optional
 
 from openai.openai_object import OpenAIObject
 from vocode.streaming.models.events import Sender
-from vocode.streaming.models.transcript import Action, Message, Transcript
+from vocode.streaming.models.transcript import (
+    ActionFinish,
+    ActionStart,
+    Message,
+    Transcript,
+)
 
 SENTENCE_ENDINGS = [".", "!", "?", "\n"]
 
@@ -70,7 +75,7 @@ def get_sentence_from_buffer(buffer: str):
 def format_openai_chat_messages_from_transcript(
     transcript: Transcript, prompt_preamble: Optional[str] = None
 ) -> List[dict]:
-    chat_messages = (
+    chat_messages: List[Dict[str, Optional[Any]]] = (
         [{"role": "system", "content": prompt_preamble}] if prompt_preamble else []
     )
     for event_log in transcript.event_logs:
@@ -81,8 +86,23 @@ def format_openai_chat_messages_from_transcript(
                     "content": event_log.text,
                 }
             )
-        elif isinstance(event_log, Action):
+        elif isinstance(event_log, ActionStart):
             chat_messages.append(
-                {"role": "action_worker", "content": str(event_log.action_output)}
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "function_call": {
+                        "name": event_log.action_type,
+                        "arguments": event_log.action_input.params.json(),
+                    },
+                }
+            )
+        elif isinstance(event_log, ActionFinish):
+            chat_messages.append(
+                {
+                    "role": "function",
+                    "name": event_log.action_type,
+                    "content": event_log.action_output.response.json(),
+                }
             )
     return chat_messages
