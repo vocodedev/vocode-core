@@ -8,14 +8,21 @@ ActionOutputType = TypeVar("ActionOutputType", bound=ActionOutput)
 
 
 class BaseAction(Generic[ActionInputType, ActionOutputType]):
-    description: str = "Base action"
+    description: str = ""
     action_type: str = ActionType.BASE.value
 
     def run(self, action_input: ActionInputType) -> ActionOutputType:
         raise NotImplementedError
 
+    @property
+    def action_input_type(self) -> Type[ActionInputType]:
+        raise NotImplementedError
+
+    @property
+    def action_output_type(self) -> Type[ActionOutputType]:
+        raise NotImplementedError
+
     def get_openai_function(self):
-        # TODO: ideally, this should be reflexive and be able to be populated purely from the static information in the class
         parameters_schema = self.action_input_type.schema()["definitions"]["Parameters"]
         parameters_schema = exclude_keys_recursive(parameters_schema, {"title"})
         return {
@@ -32,11 +39,3 @@ class BaseAction(Generic[ActionInputType, ActionOutputType]):
             conversation_id=conversation_id,
             params=self.action_input_type.Parameters(**params),
         )
-
-    @property
-    def action_input_type(self) -> Type[ActionInputType]:
-        raise NotImplementedError
-
-    @property
-    def action_output_type(self) -> Type[ActionOutputType]:
-        raise NotImplementedError

@@ -10,6 +10,7 @@ import openai
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.action.nylas_send_email import NylasSendEmail
+from vocode.streaming.action.respond_action import RespondAction
 from vocode.streaming.agent.base_agent import (
     ActionResultAgentInput,
     AgentInput,
@@ -86,9 +87,15 @@ class ActionAgent(BaseAgent[ActionAgentConfig]):
                 )
             elif message.function_call:
                 action = self.action_factory.create_action(message.function_call.name)
+                params = json.loads(message.function_call.arguments)
+                if isinstance(action, RespondAction):
+                    user_message = params["user_message"]
+                    self.produce_interruptible_event_nonblocking(
+                        AgentResponseMessage(message=BaseMessage(text=user_message))
+                    )
                 action_input = action.create_action_input(
                     agent_input.conversation_id,
-                    json.loads(message.function_call.arguments),
+                    params,
                 )
                 event = self.interruptible_event_factory.create(action_input)
                 self.transcript.add_action_start_log(
