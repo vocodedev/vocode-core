@@ -54,6 +54,21 @@ OPENAI_OBJECTS = [
     ],
     [
         {"delta": {"role": "assistant"}, "finish_reason": None},
+        {"delta": {"content": "This"}, "finish_reason": None},
+        {"delta": {"content": " is"}, "finish_reason": None},
+        {"delta": {"content": " a"}, "finish_reason": None},
+        {"delta": {"content": " test"}, "finish_reason": None},
+        {"delta": {"content": " sentence."}, "finish_reason": None},
+        {"delta": {"content": " Want"}, "finish_reason": None},
+        {"delta": {"content": " to"}, "finish_reason": None},
+        {"delta": {"content": " hear"}, "finish_reason": None},
+        {"delta": {"content": " a"}, "finish_reason": None},
+        {"delta": {"content": " joke"}, "finish_reason": None},
+        {"delta": {"content": "?"}, "finish_reason": None},
+        {"delta": {}, "finish_reason": "stop"},
+    ],
+    [
+        {"delta": {"role": "assistant"}, "finish_reason": None},
         {"delta": {"content": "Sure"}, "finish_reason": None},
         {"delta": {"content": ","}, "finish_reason": None},
         {"delta": {"content": " here"}, "finish_reason": None},
@@ -126,11 +141,40 @@ OPENAI_OBJECTS = [
         {"delta": {"content": "."}, "finish_reason": None},
         {"delta": {}, "finish_reason": "stop"},
     ],
+    [
+        {"delta": {"role": "assistant"}, "finish_reason": None},
+        {"delta": {"content": "$"}, "finish_reason": None},
+        {"delta": {"content": "2"}, "finish_reason": None},
+        {"delta": {"content": " +"}, "finish_reason": None},
+        {"delta": {"content": " $"}, "finish_reason": None},
+        {"delta": {"content": "3"}, "finish_reason": None},
+        {"delta": {"content": "."}, "finish_reason": None},
+        {"delta": {"content": "00"}, "finish_reason": None},
+        {"delta": {"content": " is"}, "finish_reason": None},
+        {"delta": {"content": " equal"}, "finish_reason": None},
+        {"delta": {"content": " to"}, "finish_reason": None},
+        {"delta": {"content": " $"}, "finish_reason": None},
+        {"delta": {"content": "5"}, "finish_reason": None},
+        {"delta": {"content": "."}, "finish_reason": None},
+        {"delta": {"content": " $"}, "finish_reason": None},
+        {"delta": {"content": "6"}, "finish_reason": None},
+        {"delta": {"content": " +"}, "finish_reason": None},
+        {"delta": {"content": " $"}, "finish_reason": None},
+        {"delta": {"content": "4"}, "finish_reason": None},
+        {"delta": {"content": " is"}, "finish_reason": None},
+        {"delta": {"content": " equal"}, "finish_reason": None},
+        {"delta": {"content": " to"}, "finish_reason": None},
+        {"delta": {"content": " $"}, "finish_reason": None},
+        {"delta": {"content": "10"}, "finish_reason": None},
+        {"delta": {"content": "."}, "finish_reason": None},
+        {"delta": {}, "finish_reason": "stop"},
+    ],
 ]
 
 EXPECTED_SENTENCES = [
     ["Hello!", "How are you doing today?"],
     ["Hello.", "What do you want to talk about?"],
+    ["This is a test sentence.", "Want to hear a joke?"],
     [
         "Sure, here are three possible things we could talk about:",
         "1. Goals and aspirations",
@@ -140,6 +184,10 @@ EXPECTED_SENTENCES = [
     [
         "$1 + $3.20 is equal to $4.20.",
         "And $1.40 plus $2.80 is equal to $4.20 as well.",
+    ],
+    [
+        "$2 + $3.00 is equal to $5.",
+        "$6 + $4 is equal to $10.",
     ],
 ]
 

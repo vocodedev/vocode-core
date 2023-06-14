@@ -16,6 +16,7 @@ async def stream_openai_response_async(
     sentence_endings_pattern = "|".join(map(re.escape, sentence_endings))
     list_item_ending_pattern = r"\n"
     buffer = ""
+    prev_ends_with_money = False
     async for event in gen:
         choices = event.get("choices", [])
         if len(choices) == 0:
@@ -27,22 +28,28 @@ async def stream_openai_response_async(
         if not token:
             continue
 
+        if prev_ends_with_money and token.startswith(" "):
+            yield buffer.strip()
+            buffer = ""
+
         buffer += token
         possible_list_item = re.match(r"^\d+[ .]", buffer)
+        ends_with_money = re.findall(r"\$\d+.$", buffer)
         if re.findall(
             list_item_ending_pattern
             if possible_list_item
             else sentence_endings_pattern,
             token,
         ):
-            ends_with_money = re.findall(r"\$\d+.$", buffer)
             if not ends_with_money:
                 to_return = buffer.strip()
                 if to_return:
                     yield to_return
                 buffer = ""
-    if buffer.strip():
-        yield buffer
+        prev_ends_with_money = ends_with_money
+    to_return = buffer.strip()
+    if to_return:
+        yield to_return
 
 
 def find_last_punctuation(buffer: str) -> Optional[int]:
