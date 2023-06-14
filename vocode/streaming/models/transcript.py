@@ -109,6 +109,7 @@ class Transcript(BaseModel):
                 timestamp=timestamp,
             )
         )
+        # TODO: add to event manager
 
     def add_action_finish_log(self, action_output: ActionOutput, conversation_id: str):
         timestamp = time.time()

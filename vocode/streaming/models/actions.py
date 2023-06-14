@@ -1,5 +1,4 @@
 from enum import Enum
-from regex import B
 from vocode.streaming.models.model import BaseModel
 
 
