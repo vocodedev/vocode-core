@@ -33,8 +33,8 @@ async def stream_openai_response_async(
             buffer = ""
 
         buffer += token
-        possible_list_item = re.match(r"^\d+[ .]", buffer)
-        ends_with_money = re.findall(r"\$\d+.$", buffer)
+        possible_list_item = bool(re.match(r"^\d+[ .]", buffer))
+        ends_with_money = bool(re.findall(r"\$\d+.$", buffer))
         if re.findall(
             list_item_ending_pattern
             if possible_list_item
