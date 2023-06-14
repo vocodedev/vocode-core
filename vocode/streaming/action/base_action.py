@@ -11,7 +11,7 @@ class BaseAction(Generic[ActionInputType, ActionOutputType]):
     description: str = ""
     action_type: str = ActionType.BASE.value
 
-    def run(self, action_input: ActionInputType) -> ActionOutputType:
+    async def run(self, action_input: ActionInputType) -> ActionOutputType:
         raise NotImplementedError
 
     @property

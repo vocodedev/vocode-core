@@ -31,7 +31,7 @@ class NylasSendEmail(
     description: str = "Sends an email using Nylas API."
     action_type: str = ActionType.NYLAS_SEND_EMAIL.value
 
-    def run(
+    async def run(
         self, action_input: NylasSendEmailActionInput
     ) -> NylasSendEmailActionOutput:
         from nylas import APIClient
