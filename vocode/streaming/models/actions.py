@@ -17,6 +17,14 @@ class ActionInput(BaseModel, Generic[ParametersType]):
     params: ParametersType
 
 
+class VonagePhoneCallActionInput(ActionInput):
+    vonage_uuid: str
+
+
+class TwilioPhoneCallActionInput(ActionInput):
+    twilio_sid: str
+
+
 ResponseType = TypeVar("ResponseType", bound=BaseModel)
 
 

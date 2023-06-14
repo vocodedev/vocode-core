@@ -3,7 +3,11 @@ from __future__ import annotations
 import asyncio
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import ActionResultAgentInput, AgentInput
-from vocode.streaming.models.actions import ActionInput, ActionOutput
+from vocode.streaming.models.actions import (
+    ActionInput,
+    TwilioPhoneCallActionInput,
+    VonagePhoneCallActionInput,
+)
 from vocode.streaming.utils.worker import (
     InterruptibleEvent,
     InterruptibleEventFactory,
@@ -34,5 +38,11 @@ class ActionsWorker(InterruptibleWorker):
             ActionResultAgentInput(
                 conversation_id=action_input.conversation_id,
                 action_output=action_output,
+                vonage_uuid=action_input.vonage_uuid
+                if isinstance(action_input, VonagePhoneCallActionInput)
+                else None,
+                twilio_sid=action_input.twilio_sid
+                if isinstance(action_input, TwilioPhoneCallActionInput)
+                else None,
             )
         )
