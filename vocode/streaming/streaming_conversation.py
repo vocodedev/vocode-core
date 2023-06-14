@@ -124,10 +124,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
+                # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
                 event = self.interruptible_event_factory.create(
                     TranscriptionAgentInput(
                         transcription=transcription,
                         conversation_id=self.conversation.id,
+                        vonage_uuid=getattr(
+                            self.conversation.agent, "vonage_uuid", None
+                        ),
+                        twilio_sid=getattr(self.conversation.agent, "twilio_sid", None),
                     )
                 )
                 self.output_queue.put_nowait(event)

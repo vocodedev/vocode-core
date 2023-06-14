@@ -39,6 +39,8 @@ class AgentInputType(str, Enum):
 
 class AgentInput(TypedModel, type=AgentInputType.BASE.value):
     conversation_id: str
+    vonage_uuid: Optional[str]
+    twilio_sid: Optional[str]
 
 
 class TranscriptionAgentInput(AgentInput, type=AgentInputType.TRANSCRIPTION.value):
