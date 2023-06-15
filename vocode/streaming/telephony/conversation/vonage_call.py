@@ -117,7 +117,7 @@ class VonageCall(Call[VonageOutputDevice]):
             except WebSocketDisconnect:
                 self.logger.debug("Websocket disconnected")
                 break
-        self.config_manager.delete_config(self.id)
+        await self.config_manager.delete_config(self.id)
         self.tear_down()
 
     def tear_down(self):
