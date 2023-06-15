@@ -10,6 +10,10 @@ import openai
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.action.nylas_send_email import NylasSendEmail
+from vocode.streaming.action.phone_call_action import (
+    TwilioPhoneCallAction,
+    VonagePhoneCallAction,
+)
 from vocode.streaming.agent.base_agent import (
     ActionResultAgentInput,
     AgentInput,
@@ -92,10 +96,25 @@ class ActionAgent(BaseAgent[ActionAgentConfig]):
                     self.produce_interruptible_event_nonblocking(
                         AgentResponseMessage(message=BaseMessage(text=user_message))
                     )
-                action_input = action.create_action_input(
-                    agent_input.conversation_id,
-                    params,
-                )
+                if isinstance(action, VonagePhoneCallAction):
+                    assert (
+                        agent_input.vonage_uuid is not None
+                    ), "Cannot use VonagePhoneCallActionFactory unless the attached conversation is a VonageCall"
+                    action_input = action.create_phone_call_action_input(
+                        message.function_call.name, params, agent_input.vonage_uuid
+                    )
+                elif isinstance(action, TwilioPhoneCallAction):
+                    assert (
+                        agent_input.twilio_sid is not None
+                    ), "Cannot use TwilioPhoneCallActionFactory unless the attached conversation is a TwilioCall"
+                    action_input = action.create_phone_call_action_input(
+                        message.function_call.name, params, agent_input.twilio_sid
+                    )
+                else:
+                    action_input = action.create_action_input(
+                        agent_input.conversation_id,
+                        params,
+                    )
                 event = self.interruptible_event_factory.create(action_input)
                 self.transcript.add_action_start_log(
                     action_input=action_input,

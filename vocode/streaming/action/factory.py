@@ -4,7 +4,7 @@ from vocode.streaming.models.actions import ActionType
 
 
 class ActionFactory:
-    def create_action(self, action_type) -> BaseAction:
+    def create_action(self, action_type: str) -> BaseAction:
         if action_type == ActionType.NYLAS_SEND_EMAIL:
             return NylasSendEmail(should_respond=True)
         else:
