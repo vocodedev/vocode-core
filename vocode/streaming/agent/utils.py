@@ -8,40 +8,15 @@ from vocode.streaming.models.transcript import Action, Message, Transcript
 SENTENCE_ENDINGS = [".", "!", "?", "\n"]
 
 
-def _sent_tokenize(text: str, sentence_endings: List[str]) -> List[str]:
-    sentence_endings = [e for e in sentence_endings if e != "."]
-    sentence_endings_pattern = "|".join(map(re.escape, sentence_endings))
-
-    # Replace sentence endings with a unique marker
-    text = re.sub(f"([{sentence_endings_pattern}])", r"\1<END>", text)
-
-    sentences = text.split("<END>")
-
-    # Additional logic to handle numbered list items
-    combined_sentences = []
-    buffer = ""
-    for sentence in sentences:
-        # If the sentence starts with a number and a space, it's part of a list
-        if re.match(r"^\d+ ", sentence):
-            buffer += sentence + " "
-        else:
-            if buffer:
-                # Add the current buffer to combined_sentences and start a new buffer
-                combined_sentences.append(buffer.strip())
-                buffer = ""
-            combined_sentences.append(sentence)
-    if buffer:
-        combined_sentences.append(buffer.strip())
-
-    return combined_sentences
-
-
 async def stream_openai_response_async(
     gen: AsyncIterable[OpenAIObject],
     get_text: Callable[[dict], str],
     sentence_endings: List[str] = SENTENCE_ENDINGS,
 ) -> AsyncGenerator:
+    sentence_endings_pattern = "|".join(map(re.escape, sentence_endings))
+    list_item_ending_pattern = r"\n"
     buffer = ""
+    prev_ends_with_money = False
     async for event in gen:
         choices = event.get("choices", [])
         if len(choices) == 0:
@@ -52,15 +27,29 @@ async def stream_openai_response_async(
         token = get_text(choice)
         if not token:
             continue
-        buffer += token
 
-        sentences = _sent_tokenize(buffer, sentence_endings)
-        for sentence in sentences[:-1]:
-            if sentence.strip():
-                yield sentence.strip()
-        buffer = sentences[-1]
-    if buffer.strip():
-        yield buffer
+        if prev_ends_with_money and token.startswith(" "):
+            yield buffer.strip()
+            buffer = ""
+
+        buffer += token
+        possible_list_item = bool(re.match(r"^\d+[ .]", buffer))
+        ends_with_money = bool(re.findall(r"\$\d+.$", buffer))
+        if re.findall(
+            list_item_ending_pattern
+            if possible_list_item
+            else sentence_endings_pattern,
+            token,
+        ):
+            if not ends_with_money:
+                to_return = buffer.strip()
+                if to_return:
+                    yield to_return
+                buffer = ""
+        prev_ends_with_money = ends_with_money
+    to_return = buffer.strip()
+    if to_return:
+        yield to_return
 
 
 def find_last_punctuation(buffer: str) -> Optional[int]:
