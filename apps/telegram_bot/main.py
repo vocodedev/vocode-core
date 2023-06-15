@@ -85,9 +85,9 @@ DEFAULT_VOICES: List[Voice] = [Voice(id=None, name="Coqui Default", description=
 
 # Define a Chat model with voices, current_voice and current_conversation fields
 class Chat(BaseModel):
-  voices: List[Voice] = DEFAULT_VOICES # List of available voices for the chat
-  current_voice: Voice = DEFAULT_VOICES[0] # Current voice for the chat
-  current_conversation: bytes = None # Current conversation as a pickled object
+    voices: List[Voice] = DEFAULT_VOICES # List of available voices for the chat
+    current_voice: Voice = DEFAULT_VOICES[0] # Current voice for the chat
+    current_conversation: Optional[bytes] = None # Current conversation as a pickled object
 
 
 class VocodeBotResponder:
