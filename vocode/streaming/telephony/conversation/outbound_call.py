@@ -65,6 +65,9 @@ class OutboundCall:
                 auth_token=getenv("TWILIO_AUTH_TOKEN"),
             )
         self.telephony_client = self.create_telephony_client()
+        assert not output_to_speaker or isinstance(
+            self.telephony_client, VonageClient
+        ), "Output to speaker is only supported for Vonage calls"
         self.transcriber_config = self.create_transcriber_config(transcriber_config)
         self.synthesizer_config = self.create_synthesizer_config(synthesizer_config)
         self.telephony_id = None
