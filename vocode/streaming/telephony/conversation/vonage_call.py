@@ -62,6 +62,7 @@ class VonageCall(Call[VonageOutputDevice]):
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
         events_manager: Optional[EventsManager] = None,
+        output_to_speaker: bool = False,
         logger: Optional[logging.Logger] = None,
     ):
         super().__init__(
@@ -69,7 +70,7 @@ class VonageCall(Call[VonageOutputDevice]):
             to_phone,
             base_url,
             config_manager,
-            VonageOutputDevice(),
+            VonageOutputDevice(output_to_speaker=output_to_speaker),
             agent_config,
             transcriber_config,
             synthesizer_config,
@@ -79,8 +80,8 @@ class VonageCall(Call[VonageOutputDevice]):
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
             logger=logger,
-            output_to_speaker=vonage_config.output_to_speaker,
         )
+        self.output_to_speaker = output_to_speaker
         self.base_url = base_url
         self.config_manager = config_manager
         self.vonage_config = vonage_config or VonageConfig(
@@ -99,8 +100,10 @@ class VonageCall(Call[VonageOutputDevice]):
         self.telephony_client.voice.send_dtmf(self.vonage_uuid, {"digits": digits})
 
     async def attach_ws_and_start(self, ws: WebSocket):
-        if self.vonage_config.output_to_speaker:
-            output_speaker = SpeakerOutput.from_default_device(sampling_rate=16000, blocksize=VONAGE_CHUNK_SIZE // 2)
+        if self.output_to_speaker:
+            self.output_speaker = SpeakerOutput.from_default_device(
+                sampling_rate=16000, blocksize=VONAGE_CHUNK_SIZE // 2
+            )
         # start message
         await ws.receive()
         self.logger.debug("Trying to attach WS to outbound call")
@@ -118,14 +121,17 @@ class VonageCall(Call[VonageOutputDevice]):
         while self.active:
             try:
                 chunk = await ws.receive_bytes()
-                if self.vonage_config.output_to_speaker:
-                    output_speaker.consume_nonblocking(chunk)
                 self.receive_audio(chunk)
             except WebSocketDisconnect:
                 self.logger.debug("Websocket disconnected")
                 break
         await self.config_manager.delete_config(self.id)
         self.tear_down()
+
+    def receive_audio(self, chunk: bytes):
+        super().receive_audio(chunk)
+        if self.output_to_speaker:
+            self.output_speaker.consume_nonblocking(chunk)
 
     def tear_down(self):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))

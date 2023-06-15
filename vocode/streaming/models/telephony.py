@@ -33,7 +33,6 @@ class VonageConfig(BaseModel):
     application_id: str
     private_key: str
     record: bool = False
-    output_to_speaker: bool = False
 
 
 class CallEntity(BaseModel):
@@ -127,6 +126,7 @@ class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):
 class VonageCallConfig(BaseCallConfig, type=CallConfigType.VONAGE.value):
     vonage_config: VonageConfig
     vonage_uuid: str
+    output_to_speaker: bool = False
 
     @staticmethod
     def default_transcriber_config():
