@@ -38,6 +38,8 @@ from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscribe
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
 
+from vocode.streaming.output_device.speaker_output import SpeakerOutput
+from vocode.streaming.telephony.constants import VONAGE_CHUNK_SIZE
 
 class PhoneCallAction(Enum):
     CLOSE_WEBSOCKET = 1
@@ -77,6 +79,7 @@ class VonageCall(Call[VonageOutputDevice]):
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
             logger=logger,
+            output_to_speaker=vonage_config.output_to_speaker,
         )
         self.base_url = base_url
         self.config_manager = config_manager
@@ -96,6 +99,8 @@ class VonageCall(Call[VonageOutputDevice]):
         self.telephony_client.voice.send_dtmf(self.vonage_uuid, {"digits": digits})
 
     async def attach_ws_and_start(self, ws: WebSocket):
+        if self.vonage_config.output_to_speaker:
+            output_speaker = SpeakerOutput.from_default_device(sampling_rate=16000, blocksize=VONAGE_CHUNK_SIZE // 2)
         # start message
         await ws.receive()
         self.logger.debug("Trying to attach WS to outbound call")
@@ -113,6 +118,8 @@ class VonageCall(Call[VonageOutputDevice]):
         while self.active:
             try:
                 chunk = await ws.receive_bytes()
+                if self.vonage_config.output_to_speaker:
+                    output_speaker.consume_nonblocking(chunk)
                 self.receive_audio(chunk)
             except WebSocketDisconnect:
                 self.logger.debug("Websocket disconnected")

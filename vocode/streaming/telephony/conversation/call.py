@@ -51,6 +51,7 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
+        output_to_speaker: bool = False,
     ):
         self.from_phone = from_phone
         self.to_phone = to_phone
@@ -65,6 +66,7 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
             per_chunk_allowance_seconds=0.01,
             events_manager=events_manager,
             logger=logger,
+            output_to_speaker=output_to_speaker,
         )
 
     def attach_ws(self, ws: WebSocket):

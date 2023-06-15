@@ -20,6 +20,7 @@ from vocode.streaming.models.transcript import Transcript, TranscriptCompleteEve
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.output_device.speaker_output import SpeakerOutput
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 
@@ -308,6 +309,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         per_chunk_allowance_seconds: float = PER_CHUNK_ALLOWANCE_SECONDS,
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
+        output_to_speaker: bool = False,
     ):
         self.id = conversation_id or create_conversation_id()
         self.logger = logger or logging.getLogger(__name__)
@@ -385,6 +387,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # tracing
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
+
+        self.output_to_speaker = output_to_speaker
+        if output_to_speaker:
+            self.speaker_output = SpeakerOutput.from_default_device(sampling_rate=self.transcriber.transcriber_config.sampling_rate, blocksize=self.transcriber.transcriber_config.chunk_size)
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
@@ -537,6 +543,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if started_event:
                     started_event.set()
             self.output_device.consume_nonblocking(chunk_result.chunk)
+            if self.output_to_speaker:
+                self.speaker_output.consume_nonblocking(chunk_result.chunk)
             end_time = time.time()
             await asyncio.sleep(
                 max(

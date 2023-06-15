@@ -33,6 +33,7 @@ class VonageConfig(BaseModel):
     application_id: str
     private_key: str
     record: bool = False
+    output_to_speaker: bool = False
 
 
 class CallEntity(BaseModel):
