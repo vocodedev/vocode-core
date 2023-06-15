@@ -39,7 +39,7 @@ from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
 
 from vocode.streaming.output_device.speaker_output import SpeakerOutput
-from vocode.streaming.telephony.constants import VONAGE_CHUNK_SIZE
+from vocode.streaming.telephony.constants import VONAGE_CHUNK_SIZE, VONAGE_SAMPLING_RATE
 
 class PhoneCallAction(Enum):
     CLOSE_WEBSOCKET = 1
@@ -102,7 +102,7 @@ class VonageCall(Call[VonageOutputDevice]):
     async def attach_ws_and_start(self, ws: WebSocket):
         if self.output_to_speaker:
             self.output_speaker = SpeakerOutput.from_default_device(
-                sampling_rate=16000, blocksize=VONAGE_CHUNK_SIZE // 2
+                sampling_rate=VONAGE_SAMPLING_RATE, blocksize=VONAGE_CHUNK_SIZE // 2
             )
         # start message
         await ws.receive()
