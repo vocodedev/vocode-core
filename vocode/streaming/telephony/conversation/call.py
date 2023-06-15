@@ -24,11 +24,6 @@ from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
 
-
-class PhoneCallAction(Enum):
-    CLOSE_WEBSOCKET = 1
-
-
 TelephonyOutputDeviceType = TypeVar(
     "TelephonyOutputDeviceType", bound=Union[TwilioOutputDevice, VonageOutputDevice]
 )
