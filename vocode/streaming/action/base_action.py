@@ -1,5 +1,4 @@
-import logging
-from typing import Any, Dict, Generic, Optional, Type, TypeVar
+from typing import Any, Dict, Generic, Type
 from vocode.streaming.action.utils import exclude_keys_recursive
 from vocode.streaming.models.actions import (
     ActionInput,
@@ -7,8 +6,6 @@ from vocode.streaming.models.actions import (
     ActionType,
     ParametersType,
     ResponseType,
-    TwilioPhoneCallActionInput,
-    VonagePhoneCallActionInput,
 )
 
 
@@ -51,29 +48,13 @@ class BaseAction(Generic[ParametersType, ResponseType]):
         self,
         conversation_id: str,
         params: Dict[str, Any],
-        vonage_uuid: Optional[str] = None,
-        twilio_sid: Optional[str] = None,
     ) -> ActionInput[ParametersType]:
         if "user_message" in params:
             del params["user_message"]
-        action_input_kwargs: Dict[str, str] = {}
-        if isinstance(self.action_input_type, VonagePhoneCallActionInput):
-            if vonage_uuid is None:
-                raise RuntimeError(
-                    "Could not attach vonage_uuid, attached conversation is not a VonageCall"
-                )
-            action_input_kwargs["vonage_uuid"] = vonage_uuid
-        elif isinstance(self.action_input_type, TwilioPhoneCallActionInput):
-            if twilio_sid is None:
-                raise RuntimeError(
-                    "Could not attach twilio_sid, attached conversation is not a TwilioCall"
-                )
-            action_input_kwargs["twilio_sid"] = twilio_sid
         return ActionInput(
             action_type=self.action_type,
             conversation_id=conversation_id,
             params=self.parameters_type(**params),
-            **action_input_kwargs
         )
 
     def _user_message_param_info(self):

@@ -84,6 +84,7 @@ class CallsRouter(BaseRouter):
                 transcriber_config=call_config.transcriber_config,
                 synthesizer_config=call_config.synthesizer_config,
                 vonage_config=call_config.vonage_config,
+                vonage_uuid=call_config.vonage_uuid,
                 conversation_id=conversation_id,
                 transcriber_factory=transcriber_factory,
                 agent_factory=agent_factory,

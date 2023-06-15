@@ -4,7 +4,7 @@ import asyncio
 import queue
 import random
 import threading
-from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
+from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, cast
 import logging
 import time
 import typing
@@ -129,10 +129,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     TranscriptionAgentInput(
                         transcription=transcription,
                         conversation_id=self.conversation.id,
-                        vonage_uuid=getattr(
-                            self.conversation.agent, "vonage_uuid", None
-                        ),
-                        twilio_sid=getattr(self.conversation.agent, "twilio_sid", None),
+                        vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
+                        twilio_sid=getattr(self.conversation, "twilio_sid", None),
                     )
                 )
                 self.output_queue.put_nowait(event)
