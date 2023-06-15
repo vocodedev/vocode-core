@@ -1,5 +1,6 @@
 from enum import Enum
-from vocode.streaming.models.model import BaseModel
+from typing import Generic, TypeVar
+from pydantic import BaseModel
 
 
 class ActionType(str, Enum):
@@ -7,18 +8,18 @@ class ActionType(str, Enum):
     NYLAS_SEND_EMAIL = "action_nylas_send_email"
 
 
-class ActionInput(BaseModel):
-    class Parameters(BaseModel):
-        pass
+ParametersType = TypeVar("ParametersType", bound=BaseModel)
 
+
+class ActionInput(BaseModel, Generic[ParametersType]):
     action_type: str
     conversation_id: str
-    params: Parameters
+    params: ParametersType
 
 
-class ActionOutput(BaseModel):
-    class Response(BaseModel):
-        pass
+ResponseType = TypeVar("ResponseType", bound=BaseModel)
 
+
+class ActionOutput(BaseModel, Generic[ResponseType]):
     action_type: str
-    response: Response
+    response: ResponseType

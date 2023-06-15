@@ -1,37 +1,29 @@
 from typing import Optional, Type
-from pydantic import Field
+from pydantic import BaseModel, Field
 import os
 from vocode.streaming.action.base_action import BaseAction
 from vocode.streaming.models.actions import ActionInput, ActionOutput, ActionType
 
 
-class NylasSendEmailActionInput(ActionInput):
-    class Parameters(ActionInput.Parameters):
-        recipient_email: str = Field(
-            ..., description="The email address of the recipient."
-        )
-        body: str = Field(..., description="The body of the email.")
-        subject: Optional[str] = Field(None, description="The subject of the email.")
-
-    action_type: str = ActionType.NYLAS_SEND_EMAIL.value
-    params: Parameters
+class NylasSendEmailParameters(BaseModel):
+    recipient_email: str = Field(..., description="The email address of the recipient.")
+    body: str = Field(..., description="The body of the email.")
+    subject: Optional[str] = Field(None, description="The subject of the email.")
 
 
-class NylasSendEmailActionOutput(ActionOutput):
-    class Response(ActionOutput.Response):
-        success: bool
-
-    action_type: str = ActionType.NYLAS_SEND_EMAIL.value
-    response: Response
+class NylasSendEmailResponse(BaseModel):
+    success: bool
 
 
-class NylasSendEmail(BaseAction[NylasSendEmailActionInput, NylasSendEmailActionOutput]):
+class NylasSendEmail(BaseAction[NylasSendEmailParameters, NylasSendEmailResponse]):
     description: str = "Sends an email using Nylas API."
     action_type: str = ActionType.NYLAS_SEND_EMAIL.value
+    parameters_type: Type[NylasSendEmailParameters] = NylasSendEmailParameters
+    response_type: Type[NylasSendEmailResponse] = NylasSendEmailResponse
 
     async def run(
-        self, action_input: NylasSendEmailActionInput
-    ) -> NylasSendEmailActionOutput:
+        self, action_input: ActionInput[NylasSendEmailParameters]
+    ) -> ActionOutput[NylasSendEmailResponse]:
         from nylas import APIClient
 
         # Initialize the Nylas client
@@ -52,14 +44,7 @@ class NylasSendEmail(BaseAction[NylasSendEmailActionInput, NylasSendEmailActionO
         # Send the email
         draft.send()
 
-        return NylasSendEmailActionOutput(
-            response=NylasSendEmailActionOutput.Response(success=True)
+        return ActionOutput(
+            action_type=action_input.action_type,
+            response=NylasSendEmailResponse(success=True),
         )
-
-    @property
-    def action_input_type(self) -> Type[NylasSendEmailActionInput]:
-        return NylasSendEmailActionInput
-
-    @property
-    def action_output_type(self) -> Type[NylasSendEmailActionOutput]:
-        return NylasSendEmailActionOutput

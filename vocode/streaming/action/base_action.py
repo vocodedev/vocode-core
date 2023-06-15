@@ -1,32 +1,37 @@
 import logging
 from typing import Any, Dict, Generic, Optional, Type, TypeVar
 from vocode.streaming.action.utils import exclude_keys_recursive
-from vocode.streaming.models.actions import ActionInput, ActionOutput, ActionType
+from vocode.streaming.models.actions import (
+    ActionInput,
+    ActionOutput,
+    ActionType,
+    ParametersType,
+    ResponseType,
+)
 
-ActionInputType = TypeVar("ActionInputType", bound=ActionInput)
-ActionOutputType = TypeVar("ActionOutputType", bound=ActionOutput)
 
-
-class BaseAction(Generic[ActionInputType, ActionOutputType]):
+class BaseAction(Generic[ParametersType, ResponseType]):
     description: str = ""
     action_type: str = ActionType.BASE.value
 
     def __init__(self, should_respond: bool = False):
         self.should_respond = should_respond
 
-    async def run(self, action_input: ActionInputType) -> ActionOutputType:
+    async def run(
+        self, action_input: ActionInput[ParametersType]
+    ) -> ActionOutput[ResponseType]:
         raise NotImplementedError
 
     @property
-    def action_input_type(self) -> Type[ActionInputType]:
+    def parameters_type(self) -> Type[ParametersType]:
         raise NotImplementedError
 
     @property
-    def action_output_type(self) -> Type[ActionOutputType]:
+    def response_type(self) -> Type[ResponseType]:
         raise NotImplementedError
 
     def get_openai_function(self):
-        parameters_schema = self.action_input_type.schema()["definitions"]["Parameters"]
+        parameters_schema = self.parameters_type.schema()
         parameters_schema = exclude_keys_recursive(parameters_schema, {"title"})
         if self.should_respond:
             parameters_schema["properties"][
@@ -41,14 +46,16 @@ class BaseAction(Generic[ActionInputType, ActionOutputType]):
         }
 
     def create_action_input(
-        self, conversation_id: str, params: Dict[str, Any]
-    ) -> ActionInputType:
+        self,
+        conversation_id: str,
+        params: Dict[str, Any],
+    ) -> ActionInput[ParametersType]:
         if "user_message" in params:
             del params["user_message"]
-        return self.action_input_type(
+        return ActionInput(
             action_type=self.action_type,
             conversation_id=conversation_id,
-            params=self.action_input_type.Parameters(**params),
+            params=self.parameters_type(**params),
         )
 
     def _user_message_param_info(self):
