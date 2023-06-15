@@ -235,7 +235,7 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
         if not isinstance(self.synthesizer, CoquiSynthesizer):
             await context.bot.send_message(
                 chat_id=chat_id,
-                text="Sorry, voice creation is only supported for Coqui TTS.",
+                text="Sorry, voice creation is only supported for Coqui.",
             )
             return
         if not (context.args):
@@ -303,7 +303,7 @@ I'm a voice chatbot, here to talk with you! Here's what you can do:
 """
         assert update.effective_chat, "Chat must be defined!"
         if isinstance(self.synthesizer, CoquiSynthesizer): 
-            help_text += "\n- Use /create <voice_description> to create a new Coqui TTS voice from a text prompt and switch to it."
+            help_text += "\n- Use /create <voice_description> to create a new Coqui voice from a text prompt and switch to it."
         await context.bot.send_message(chat_id=update.effective_chat.id, text=help_text)
 
     async def handle_telegram_unknown_cmd(
