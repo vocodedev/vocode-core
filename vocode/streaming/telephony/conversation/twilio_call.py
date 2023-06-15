@@ -5,41 +5,29 @@ import json
 import logging
 from typing import Optional
 from vocode import getenv
-from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.events import PhoneCallConnectedEvent, PhoneCallEndedEvent
+from vocode.streaming.models.events import PhoneCallConnectedEvent
 
-from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.streaming.models.telephony import BaseCallConfig, TwilioConfig
+from vocode.streaming.models.telephony import TwilioConfig
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
 from vocode.streaming.models.synthesizer import (
-    AzureSynthesizerConfig,
     SynthesizerConfig,
 )
 from vocode.streaming.models.transcriber import (
-    DeepgramTranscriberConfig,
-    PunctuationEndpointingConfig,
     TranscriberConfig,
 )
-from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 from vocode.streaming.synthesizer.factory import SynthesizerFactory
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
 from vocode.streaming.telephony.config_manager.base_config_manager import (
     BaseConfigManager,
 )
-from vocode.streaming.telephony.constants import DEFAULT_SAMPLING_RATE
-from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.telephony.conversation.call import Call
-from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
-from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
 
 
-class PhoneCallAction(Enum):
+class PhoneCallWebsocketAction(Enum):
     CLOSE_WEBSOCKET = 1
 
 
@@ -111,7 +99,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
             while self.active:
                 message = await ws.receive_text()
                 response = await self.handle_ws_message(message)
-                if response == PhoneCallAction.CLOSE_WEBSOCKET:
+                if response == PhoneCallWebsocketAction.CLOSE_WEBSOCKET:
                     break
         await self.config_manager.delete_config(self.id)
         self.tear_down()
@@ -130,9 +118,9 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 self.output_device.stream_sid = data["start"]["streamSid"]
                 break
 
-    async def handle_ws_message(self, message) -> Optional[PhoneCallAction]:
+    async def handle_ws_message(self, message) -> Optional[PhoneCallWebsocketAction]:
         if message is None:
-            return PhoneCallAction.CLOSE_WEBSOCKET
+            return PhoneCallWebsocketAction.CLOSE_WEBSOCKET
 
         data = json.loads(message)
         if data["event"] == "media":
@@ -150,7 +138,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
         elif data["event"] == "stop":
             self.logger.debug(f"Media WS: Received event 'stop': {message}")
             self.logger.debug("Stopping...")
-            return PhoneCallAction.CLOSE_WEBSOCKET
+            return PhoneCallWebsocketAction.CLOSE_WEBSOCKET
         return None
 
     def mark_terminated(self):
