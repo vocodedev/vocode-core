@@ -17,11 +17,11 @@ class ActionInput(BaseModel, Generic[ParametersType]):
     params: ParametersType
 
 
-class VonagePhoneCallActionInput(ActionInput):
+class VonagePhoneCallActionInput(ActionInput[ParametersType]):
     vonage_uuid: str
 
 
-class TwilioPhoneCallActionInput(ActionInput):
+class TwilioPhoneCallActionInput(ActionInput[ParametersType]):
     twilio_sid: str
 
 
