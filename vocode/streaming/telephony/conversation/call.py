@@ -23,6 +23,8 @@ from vocode.streaming.telephony.constants import DEFAULT_SAMPLING_RATE
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
+from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
+from vocode.streaming.utils import create_conversation_id
 
 TelephonyOutputDeviceType = TypeVar(
     "TelephonyOutputDeviceType", bound=Union[TwilioOutputDevice, VonageOutputDevice]
@@ -47,6 +49,12 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
+        conversation_id = conversation_id or create_conversation_id()
+        logger = wrap_logger(
+            logger or logging.getLogger(__name__),
+            conversation_id=conversation_id,
+        )
+        
         self.from_phone = from_phone
         self.to_phone = to_phone
         self.base_url = base_url
