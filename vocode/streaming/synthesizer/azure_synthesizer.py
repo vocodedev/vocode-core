@@ -35,6 +35,10 @@ ElementTree.register_namespace("", NAMESPACES[""])
 ElementTree.register_namespace("mstts", NAMESPACES["mstts"])
 
 
+async def empty_generator():
+    yield SynthesisResult.ChunkResult(b"", True)
+
+
 class WordBoundaryEventPool:
     def __init__(self):
         self.events = []
@@ -220,9 +224,6 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         # offset = int(self.OFFSET_MS * (self.synthesizer_config.sampling_rate / 1000))
         offset = 0
         self.logger.debug(f"Synthesizing message: {message}")
-
-        async def empty_generator():
-            yield SynthesisResult.ChunkResult(b"", True)
 
         # Azure will return no audio for certain strings like "-", "[-", and "!"
         # which causes the `chunk_generator` below to hang. Return an empty
