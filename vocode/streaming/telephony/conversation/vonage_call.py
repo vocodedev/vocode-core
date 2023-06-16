@@ -65,12 +65,18 @@ class VonageCall(Call[VonageOutputDevice]):
         output_to_speaker: bool = False,
         logger: Optional[logging.Logger] = None,
     ):
+        if output_to_speaker:
+            self.output_speaker = SpeakerOutput.from_default_device(
+                sampling_rate=VONAGE_SAMPLING_RATE, blocksize=VONAGE_CHUNK_SIZE // 2
+            )
         super().__init__(
             from_phone,
             to_phone,
             base_url,
             config_manager,
-            VonageOutputDevice(output_to_speaker=output_to_speaker),
+            VonageOutputDevice(
+                output_speaker=self.output_speaker if output_to_speaker else None
+            ),
             agent_config,
             transcriber_config,
             synthesizer_config,
@@ -100,10 +106,6 @@ class VonageCall(Call[VonageOutputDevice]):
         self.telephony_client.voice.send_dtmf(self.vonage_uuid, {"digits": digits})
 
     async def attach_ws_and_start(self, ws: WebSocket):
-        if self.output_to_speaker:
-            self.output_speaker = SpeakerOutput.from_default_device(
-                sampling_rate=VONAGE_SAMPLING_RATE, blocksize=VONAGE_CHUNK_SIZE // 2
-            )
         # start message
         await ws.receive()
         self.logger.debug("Trying to attach WS to outbound call")
