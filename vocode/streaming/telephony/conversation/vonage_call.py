@@ -38,6 +38,8 @@ from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscribe
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
 
+from vocode.streaming.output_device.speaker_output import SpeakerOutput
+from vocode.streaming.telephony.constants import VONAGE_CHUNK_SIZE, VONAGE_SAMPLING_RATE
 
 class PhoneCallAction(Enum):
     CLOSE_WEBSOCKET = 1
@@ -60,14 +62,21 @@ class VonageCall(Call[VonageOutputDevice]):
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
         events_manager: Optional[EventsManager] = None,
+        output_to_speaker: bool = False,
         logger: Optional[logging.Logger] = None,
     ):
+        if output_to_speaker:
+            self.output_speaker = SpeakerOutput.from_default_device(
+                sampling_rate=VONAGE_SAMPLING_RATE, blocksize=VONAGE_CHUNK_SIZE // 2
+            )
         super().__init__(
             from_phone,
             to_phone,
             base_url,
             config_manager,
-            VonageOutputDevice(),
+            VonageOutputDevice(
+                output_speaker=self.output_speaker if output_to_speaker else None
+            ),
             agent_config,
             transcriber_config,
             synthesizer_config,
@@ -78,6 +87,7 @@ class VonageCall(Call[VonageOutputDevice]):
             synthesizer_factory=synthesizer_factory,
             logger=logger,
         )
+        self.output_to_speaker = output_to_speaker
         self.base_url = base_url
         self.config_manager = config_manager
         self.vonage_config = vonage_config or VonageConfig(
@@ -119,6 +129,11 @@ class VonageCall(Call[VonageOutputDevice]):
                 break
         await self.config_manager.delete_config(self.id)
         self.tear_down()
+
+    def receive_audio(self, chunk: bytes):
+        super().receive_audio(chunk)
+        if self.output_to_speaker:
+            self.output_speaker.consume_nonblocking(chunk)
 
     def tear_down(self):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))

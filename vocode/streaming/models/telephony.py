@@ -126,6 +126,7 @@ class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):
 class VonageCallConfig(BaseCallConfig, type=CallConfigType.VONAGE.value):
     vonage_config: VonageConfig
     vonage_uuid: str
+    output_to_speaker: bool = False
 
     @staticmethod
     def default_transcriber_config():
