@@ -29,7 +29,7 @@ class ActionsWorker(InterruptibleWorker):
     async def process(self, item: InterruptibleEvent[ActionInput]):
         action_input = item.payload
         action = self.action_factory.create_action(action_input.action_type)
-        action_output = action.run(action_input.params)
+        action_output = await action.run(action_input)
         self.produce_interruptible_event_nonblocking(
             ActionResultAgentInput(
                 conversation_id=action_input.conversation_id,
