@@ -89,6 +89,7 @@ class CallsRouter(BaseRouter):
                 agent_factory=agent_factory,
                 synthesizer_factory=synthesizer_factory,
                 events_manager=events_manager,
+                output_to_speaker=call_config.output_to_speaker,
             )
         else:
             raise ValueError(f"Unknown call config type {call_config.type}")

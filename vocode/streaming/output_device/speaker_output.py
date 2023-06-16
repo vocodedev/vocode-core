@@ -15,13 +15,14 @@ class SpeakerOutput(BaseOutputDevice):
         device_info: dict,
         sampling_rate: Optional[int] = None,
         audio_encoding: AudioEncoding = AudioEncoding.LINEAR16,
+        blocksize: Optional[int] = None,
     ):
         self.device_info = device_info
         sampling_rate = sampling_rate or int(
             self.device_info.get("default_samplerate", self.DEFAULT_SAMPLING_RATE)
         )
         super().__init__(sampling_rate, audio_encoding)
-        self.blocksize = self.sampling_rate
+        self.blocksize = blocksize or self.sampling_rate
         self.stream = sd.OutputStream(
             channels=1,
             samplerate=self.sampling_rate,
@@ -54,6 +55,6 @@ class SpeakerOutput(BaseOutputDevice):
     @classmethod
     def from_default_device(
         cls,
-        sampling_rate: Optional[int] = None,
+        **kwargs,
     ):
-        return cls(sd.query_devices(kind="output"), sampling_rate)
+        return cls(sd.query_devices(kind="output"), **kwargs)
