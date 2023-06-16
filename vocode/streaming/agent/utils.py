@@ -1,10 +1,16 @@
-from typing import AsyncGenerator, AsyncIterable, Callable, List, Optional
+import re
+from typing import Dict, Any, AsyncGenerator, AsyncIterable, Callable, List, Optional
 
 from openai.openai_object import OpenAIObject
 from vocode.streaming.models.events import Sender
-from vocode.streaming.models.transcript import Action, Message, Transcript
+from vocode.streaming.models.transcript import (
+    ActionFinish,
+    ActionStart,
+    Message,
+    Transcript,
+)
 
-SENTENCE_ENDINGS = [".", "!", "?"]
+SENTENCE_ENDINGS = [".", "!", "?", "\n"]
 
 
 async def stream_openai_response_async(
@@ -12,7 +18,10 @@ async def stream_openai_response_async(
     get_text: Callable[[dict], str],
     sentence_endings: List[str] = SENTENCE_ENDINGS,
 ) -> AsyncGenerator:
+    sentence_endings_pattern = "|".join(map(re.escape, sentence_endings))
+    list_item_ending_pattern = r"\n"
     buffer = ""
+    prev_ends_with_money = False
     async for event in gen:
         choices = event.get("choices", [])
         if len(choices) == 0:
@@ -23,12 +32,29 @@ async def stream_openai_response_async(
         token = get_text(choice)
         if not token:
             continue
-        buffer += token
-        if any(token.endswith(ending) for ending in sentence_endings):
+
+        if prev_ends_with_money and token.startswith(" "):
             yield buffer.strip()
             buffer = ""
-    if buffer.strip():
-        yield buffer
+
+        buffer += token
+        possible_list_item = bool(re.match(r"^\d+[ .]", buffer))
+        ends_with_money = bool(re.findall(r"\$\d+.$", buffer))
+        if re.findall(
+            list_item_ending_pattern
+            if possible_list_item
+            else sentence_endings_pattern,
+            token,
+        ):
+            if not ends_with_money:
+                to_return = buffer.strip()
+                if to_return:
+                    yield to_return
+                buffer = ""
+        prev_ends_with_money = ends_with_money
+    to_return = buffer.strip()
+    if to_return:
+        yield to_return
 
 
 def find_last_punctuation(buffer: str) -> Optional[int]:
@@ -49,7 +75,7 @@ def get_sentence_from_buffer(buffer: str):
 def format_openai_chat_messages_from_transcript(
     transcript: Transcript, prompt_preamble: Optional[str] = None
 ) -> List[dict]:
-    chat_messages = (
+    chat_messages: List[Dict[str, Optional[Any]]] = (
         [{"role": "system", "content": prompt_preamble}] if prompt_preamble else []
     )
     for event_log in transcript.event_logs:
@@ -60,8 +86,23 @@ def format_openai_chat_messages_from_transcript(
                     "content": event_log.text,
                 }
             )
-        elif isinstance(event_log, Action):
+        elif isinstance(event_log, ActionStart):
             chat_messages.append(
-                {"role": "action_worker", "content": str(event_log.action_output)}
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "function_call": {
+                        "name": event_log.action_type,
+                        "arguments": event_log.action_input.params.json(),
+                    },
+                }
+            )
+        elif isinstance(event_log, ActionFinish):
+            chat_messages.append(
+                {
+                    "role": "function",
+                    "name": event_log.action_type,
+                    "content": event_log.action_output.response.json(),
+                }
             )
     return chat_messages

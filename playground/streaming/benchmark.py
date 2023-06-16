@@ -16,12 +16,18 @@ from opentelemetry.sdk.metrics.export import (
 )
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.sdk.resources import Resource
-from vocode.streaming.agent.base_agent import AgentInput
+from vocode.streaming.agent.base_agent import TranscriptionAgentInput
+from vocode.streaming.agent.vertex_ai_agent import ChatVertexAIAgent
 from vocode.streaming.input_device.file_input_device import FileInputDevice
 from vocode.streaming.agent import ChatGPTAgent, ChatAnthropicAgent
 from vocode.streaming.input_device.microphone_input import MicrophoneInput
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.agent import ChatGPTAgentConfig, ChatAnthropicAgentConfig
+from vocode.streaming.models.agent import (
+    AzureOpenAIConfig,
+    ChatGPTAgentConfig,
+    ChatAnthropicAgentConfig,
+    ChatVertexAIAgentConfig,
+)
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
     BarkSynthesizerConfig,
@@ -55,7 +61,7 @@ from vocode.streaming.synthesizer import (
 )
 from vocode.streaming.transcriber import DeepgramTranscriber, AssemblyAITranscriber
 from vocode.streaming.transcriber.base_transcriber import Transcription
-from vocode.streaming.utils import get_chunk_size_per_second
+from vocode.streaming.utils import get_chunk_size_per_second, remove_non_letters_digits
 from vocode.streaming.utils.worker import InterruptibleEvent
 from playground.streaming.tracing_utils import get_final_metrics
 
@@ -95,8 +101,10 @@ TRANSCRIBER_CHOICES = ["deepgram", "assemblyai"]
 AGENT_CHOICES = [
     "gpt_gpt-3.5-turbo",
     "gpt_gpt-4",
+    "azuregpt_gpt-35-turbo",
     "anthropic_claude-v1",
     "anthropic_claude-instant-v1",
+    "vertex_ai_chat-bison@001",
 ]
 SYNTHESIZER_CHOICES = list(synthesizer_classes)
 
@@ -127,7 +135,7 @@ parser.add_argument(
 parser.add_argument(
     "--transcriber_audio",
     type=str,
-    default="test.wav",
+    default="playground/streaming/test.wav",
     help="Path to the audio file to transcribe",
 )
 parser.add_argument(
@@ -153,6 +161,11 @@ parser.add_argument(
     type=str,
     default="What is the meaning of life?",
     help="The initial message sent to the agent (this is a transcribed sentence that the agent should respond to).",
+)
+parser.add_argument(
+    "--no_generate_responses",
+    action="store_true",
+    help="Disable streaming generated responses for agents",
 )
 parser.add_argument(
     "--transcriber_num_cycles",
@@ -225,7 +238,7 @@ if args.all_num_cycles is not None:
     args.agent_num_cycles = args.all_num_cycles
     args.synthesizer_num_cycles = args.all_num_cycles
 
-if args.create_graphs:
+if args.create_graphs or args.just_graphs:
     try:
         import matplotlib.pyplot as plt
     except ImportError:
@@ -240,6 +253,8 @@ if args.just_graphs:
         "--just_graphs is set! Skipping computing statistics and instead "
         + "generating graphs from the last saved benchmark result JSON file."
     )
+
+should_generate_responses = not args.no_generate_responses
 
 os.makedirs(args.results_dir, exist_ok=True)
 
@@ -272,13 +287,13 @@ metrics.set_meter_provider(provider)
 
 async def run_agents():
     for agent_name in tqdm(args.agents, desc="Agents"):
-        for agent_run_idx in tqdm(range(args.agent_num_cycles), desc="Agent Cycles"):
-            company, model_name = agent_name.split("_")
-
-            length_meter = meter.create_counter(
-                f"agent.agent_chat_{company}-{model_name}.total_characters",
-            )
-
+        company, model_name = agent_name.rsplit("_", 1)
+        length_meter = meter.create_counter(
+            remove_non_letters_digits(
+                f"agent.agent_chat_{company}-{model_name}.total_characters"
+            ),
+        )
+        for _ in tqdm(range(args.agent_num_cycles), desc="Agent Cycles"):
             if company == "gpt":
                 agent = ChatGPTAgent(
                     ChatGPTAgentConfig(
@@ -286,6 +301,17 @@ async def run_agents():
                         prompt_preamble=args.agent_prompt_preamble,
                         allow_agent_to_be_cut_off=False,
                         model_name=model_name,
+                        generate_responses=should_generate_responses,
+                    )
+                )
+            elif company == "azuregpt":
+                agent = ChatGPTAgent(
+                    ChatGPTAgentConfig(
+                        initial_message=None,
+                        prompt_preamble=args.agent_prompt_preamble,
+                        allow_agent_to_be_cut_off=False,
+                        azure_params=AzureOpenAIConfig(engine=model_name),
+                        generate_responses=should_generate_responses,
                     )
                 )
             elif company == "anthropic":
@@ -294,17 +320,28 @@ async def run_agents():
                         initial_message=None,
                         allow_agent_to_be_cut_off=False,
                         model_name=model_name,
+                        generate_responses=should_generate_responses,
+                    )
+                )
+            elif company == "vertex_ai":
+                agent = ChatVertexAIAgent(
+                    ChatVertexAIAgentConfig(
+                        initial_message=None,
+                        prompt_preamble=args.agent_prompt_preamble,
+                        allow_agent_to_be_cut_off=False,
+                        model_name=model_name,
+                        generate_responses=False,
                     )
                 )
             agent.attach_transcript(Transcript())
             agent_task = agent.start()
-            message = AgentInput(
+            message = TranscriptionAgentInput(
                 transcription=Transcription(
                     message=args.agent_first_input, confidence=1.0, is_final=True
                 ),
                 conversation_id=0,
             )
-            await agent.input_queue.put(InterruptibleEvent(message))
+            agent.consume_nonblocking(agent.interruptible_event_factory.create(message))
 
             while True:
                 try:
@@ -507,7 +544,7 @@ async def main():
         scope_metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics
         final_metrics = get_final_metrics(scope_metrics, final_spans=final_spans)
 
-        final_spans = {k: sum(v) / len(v) for k, v in final_spans.items()}
+        final_spans = {k: sum(v) / len(v) for k, v in final_spans.items() if len(v) > 0}
         if len(scope_metrics) > 0:
             final_results = {**final_spans, **final_metrics}
         else:

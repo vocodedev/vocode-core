@@ -12,15 +12,13 @@ load_dotenv()
 
 from vocode.streaming.agent import *
 from vocode.streaming.agent.base_agent import (
-    AgentInput,
+    BaseAgent,
     AgentResponseMessage,
     AgentResponseType,
     TranscriptionAgentInput,
 )
 from vocode.streaming.models.agent import (
-    ActionAgentConfig,
     ChatGPTAgentConfig,
-    FillerAudioConfig,
 )
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import create_conversation_id

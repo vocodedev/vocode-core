@@ -11,7 +11,6 @@ from vocode.turn_based.synthesizer.gtts_synthesizer import GTTSSynthesizer
 from langchain.memory import ConversationBufferMemory
 
 
-from callback_handler import VocodeCallbackHandler
 from stdout_filterer import RedactPhoneNumbers
 
 load_dotenv()
@@ -38,10 +37,5 @@ if __name__ == "__main__":
         agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
         verbose=verbose,
         memory=memory,
-    )
-    agent.callback_manager.add_handler(
-        VocodeCallbackHandler(
-            AzureSynthesizer(voice_name="en-US-SteffanNeural"),
-        )
     )
     agent.run(OBJECTIVE)

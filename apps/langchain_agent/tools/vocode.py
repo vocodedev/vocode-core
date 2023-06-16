@@ -1,4 +1,5 @@
 import logging
+import asyncio
 import os
 from langchain.agents import tool
 from dotenv import load_dotenv
@@ -15,6 +16,8 @@ from vocode.streaming.telephony.config_manager.redis_config_manager import (
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 import time
 
+LOOP = asyncio.new_event_loop()
+asyncio.set_event_loop(LOOP)
 
 @tool("call phone number")
 def call_phone_number(input: str) -> str:
@@ -39,7 +42,7 @@ def call_phone_number(input: str) -> str:
         ),
         logger=logging.Logger("call_phone_number"),
     )
-    call.start()
+    LOOP.run_until_complete(call.start())
     while True:
         maybe_transcript = get_transcript(call.conversation_id)
         if maybe_transcript:

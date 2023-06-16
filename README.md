@@ -52,13 +52,15 @@ We're actively looking for community maintainers, so please reach out if interes
 
 Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)!
 
-# 🫂 Contribution
+# 🫂 Contribution and Roadmap
 
 We're an open source project and are extremely open to contributors adding new features, integrations, and documentation! Please don't hesitate to reach out and get started building with us.
 
 For more information on contributing, see our [Contribution Guide](https://github.com/vocodedev/vocode-python/blob/main/contributing.md).
 
-And we'd love to talk to you on [Discord](https://discord.gg/NaU4mMgcnC)!
+And check out our [Roadmap](https://github.com/vocodedev/vocode-python/blob/main/roadmap.md).
+
+We'd love to talk to you on [Discord](https://discord.gg/NaU4mMgcnC) about new ideas and contributing!
 
 # 🚀 Quickstart (Self-hosted)
 
@@ -99,7 +101,10 @@ async def main():
     (
         microphone_input,
         speaker_output,
-    ) = create_streaming_microphone_input_and_speaker_output(use_default_devices=False)
+    ) = create_streaming_microphone_input_and_speaker_output(
+        use_default_devices=False,
+        logger=logger,
+    )
 
     conversation = StreamingConversation(
         output_device=speaker_output,

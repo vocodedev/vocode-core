@@ -3,7 +3,11 @@ from __future__ import annotations
 import asyncio
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import ActionResultAgentInput, AgentInput
-from vocode.streaming.models.actions import ActionInput, ActionOutput
+from vocode.streaming.models.actions import (
+    ActionInput,
+    TwilioPhoneCallActionInput,
+    VonagePhoneCallActionInput,
+)
 from vocode.streaming.utils.worker import (
     InterruptibleEvent,
     InterruptibleEventFactory,
@@ -26,13 +30,19 @@ class ActionsWorker(InterruptibleWorker):
         )
         self.action_factory = action_factory
 
-    def process(self, item: InterruptibleEvent[ActionInput]):
+    async def process(self, item: InterruptibleEvent[ActionInput]):
         action_input = item.payload
         action = self.action_factory.create_action(action_input.action_type)
-        action_output = action.run(action_input.params)
+        action_output = await action.run(action_input)
         self.produce_interruptible_event_nonblocking(
             ActionResultAgentInput(
                 conversation_id=action_input.conversation_id,
                 action_output=action_output,
+                vonage_uuid=action_input.vonage_uuid
+                if isinstance(action_input, VonagePhoneCallActionInput)
+                else None,
+                twilio_sid=action_input.twilio_sid
+                if isinstance(action_input, TwilioPhoneCallActionInput)
+                else None,
             )
         )

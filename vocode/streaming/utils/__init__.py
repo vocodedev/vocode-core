@@ -3,9 +3,11 @@ import audioop
 import secrets
 from typing import Any
 import wave
+from string import ascii_letters, digits
 
 from ..models.audio_encoding import AudioEncoding
 
+custom_alphabet = ascii_letters + digits + ".-_"
 
 def create_loop_in_thread(loop: asyncio.AbstractEventLoop, long_running_task=None):
     asyncio.set_event_loop(loop)
@@ -61,3 +63,6 @@ def get_chunk_size_per_second(audio_encoding: AudioEncoding, sampling_rate: int)
 
 def create_conversation_id() -> str:
     return secrets.token_urlsafe(16)
+
+def remove_non_letters_digits(text):
+    return ''.join(i for i in text if i in custom_alphabet)

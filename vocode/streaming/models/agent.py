@@ -2,7 +2,6 @@ from typing import List, Optional, Union
 from enum import Enum
 
 from pydantic import validator
-from vocode.streaming.models.actions import ActionType
 
 from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
@@ -11,9 +10,10 @@ FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
 LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
 LLM_AGENT_DEFAULT_MAX_TOKENS = 256
 LLM_AGENT_DEFAULT_MODEL_NAME = "text-curie-001"
-CHAT_GPT_AGENT_DEFAULT_MODEL_NAME = "gpt-3.5-turbo"
-ACTION_AGENT_DEFAULT_MODEL_NAME = "gpt-4"
+CHAT_GPT_AGENT_DEFAULT_MODEL_NAME = "gpt-3.5-turbo-0613"
+ACTION_AGENT_DEFAULT_MODEL_NAME = "gpt-4-0613"
 CHAT_ANTHROPIC_DEFAULT_MODEL_NAME = "claude-v1"
+CHAT_VERTEX_AI_DEFAULT_MODEL_NAME = "chat-bison@001"
 AZURE_OPENAI_DEFAULT_API_TYPE = "azure"
 AZURE_OPENAI_DEFAULT_API_VERSION = "2023-03-15-preview"
 AZURE_OPENAI_DEFAULT_ENGINE = "gpt-35-turbo"
@@ -25,6 +25,7 @@ class AgentType(str, Enum):
     CHAT_GPT_ALPHA = "agent_chat_gpt_alpha"
     CHAT_GPT = "agent_chat_gpt"
     CHAT_ANTHROPIC = "agent_chat_anthropic"
+    CHAT_VERTEX_AI = "agent_chat_vertex_ai"
     ECHO = "agent_echo"
     GPT4ALL = "agent_gpt4all"
     INFORMATION_RETRIEVAL = "agent_information_retrieval"
@@ -91,13 +92,21 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     azure_params: Optional[AzureOpenAIConfig] = None
 
 
-class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC):
+class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):
+    prompt_preamble: str
     model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
     max_tokens_to_sample: int = 200
 
 
-class ActionAgentConfig(AgentConfig, type=AgentType.ACTION):
-    actions: List[ActionType]
+class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):
+    prompt_preamble: str
+    model_name: str = CHAT_VERTEX_AI_DEFAULT_MODEL_NAME
+    generate_responses: bool = False  # Google Vertex AI doesn't support streaming
+
+
+class ActionAgentConfig(AgentConfig, type=AgentType.ACTION.value):
+    prompt_preamble: str
+    actions: List[str]
     model_name: str = ACTION_AGENT_DEFAULT_MODEL_NAME
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS

@@ -10,6 +10,7 @@ from vocode.streaming.models.telephony import (
     CreateOutboundCall,
     EndOutboundCall,
     TwilioConfig,
+    VonageConfig,
 )
 from vocode.streaming.telephony.hosted.exceptions import RateLimitExceeded
 
@@ -24,6 +25,7 @@ class OutboundCall:
         synthesizer_config: Optional[SynthesizerConfig] = None,
         conversation_id: Optional[str] = None,
         twilio_config: Optional[TwilioConfig] = None,
+        vonage_config: Optional[VonageConfig] = None,
     ):
         self.recipient = recipient
         self.caller = caller
@@ -32,6 +34,7 @@ class OutboundCall:
         self.synthesizer_config = synthesizer_config
         self.conversation_id = conversation_id
         self.twilio_config = twilio_config
+        self.vonage_config = vonage_config
         self.vocode_create_outbound_call_url = (
             f"https://{vocode.base_url}/create_outbound_call"
         )
@@ -52,6 +55,7 @@ class OutboundCall:
                     synthesizer_config=self.synthesizer_config,
                     conversation_id=self.conversation_id,
                     twilio_config=self.twilio_config,
+                    vonage_config=self.vonage_config,
                 ).dict(),
                 timeout=5,
             )
@@ -73,6 +77,7 @@ class OutboundCall:
                 json=EndOutboundCall(
                     call_id=self.conversation_id,
                     twilio_config=self.twilio_config,
+                    vonage_config=self.vonage_config,
                 ).dict(),
                 timeout=2,
             )

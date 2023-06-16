@@ -4,7 +4,7 @@ import asyncio
 import queue
 import random
 import threading
-from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
+from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, cast
 import logging
 import time
 import typing
@@ -36,7 +36,9 @@ from vocode.streaming.constants import (
 from vocode.streaming.agent.base_agent import (
     AgentInput,
     AgentResponse,
+    AgentResponseFillerAudio,
     AgentResponseMessage,
+    AgentResponseStop,
     AgentResponseType,
     BaseAgent,
     TranscriptionAgentInput,
@@ -94,6 +96,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
+            if transcription.message.strip() == "":
+                self.conversation.logger.info("Ignoring empty transcription")
+                return
             if transcription.is_final:
                 self.conversation.logger.debug(
                     "Got transcription: {}, confidence: {}".format(
@@ -120,10 +125,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
+                # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
                 event = self.interruptible_event_factory.create(
                     TranscriptionAgentInput(
                         transcription=transcription,
                         conversation_id=self.conversation.id,
+                        vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
+                        twilio_sid=getattr(self.conversation, "twilio_sid", None),
                     )
                 )
                 self.output_queue.put_nowait(event)
@@ -228,13 +236,18 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async def process(self, item: InterruptibleEvent[AgentResponse]):
             try:
                 agent_response = item.payload
-                if agent_response.type == AgentResponseType.FILLER_AUDIO:
+                if isinstance(agent_response, AgentResponseFillerAudio):
                     self.send_filler_audio()
                     return
-                if agent_response.type == AgentResponseType.STOP:
+                if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")
                     self.conversation.terminate()
                     return
+                if isinstance(agent_response, AgentResponseMessage):
+                    self.conversation.transcript.add_bot_message(
+                        text=agent_response.message.text,
+                        conversation_id=self.conversation.id,
+                    )
 
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
@@ -289,10 +302,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.agent.update_last_bot_message_on_cut_off(
                         message_sent
                     )
-                self.conversation.transcript.add_bot_message(
-                    text=message_sent,
-                    conversation_id=self.conversation.id,
-                )
+                    self.conversation.transcript.update_last_bot_message_on_cut_off(
+                        message_sent
+                    )
             except asyncio.CancelledError:
                 pass
 
@@ -453,6 +465,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if new_bot_sentiment.emotion:
             self.logger.debug("Bot sentiment: %s", new_bot_sentiment)
             self.bot_sentiment = new_bot_sentiment
+
+    def receive_message(self, message: str):
+        transcription = Transcription(
+            message=message,
+            confidence=1.0,
+            is_final=True,
+        )
+        self.transcriptions_worker.consume_nonblocking(transcription)
 
     def receive_audio(self, chunk: bytes):
         self.transcriber.send_audio(chunk)
