@@ -2,7 +2,6 @@ from typing import List, Optional, Union
 from enum import Enum
 
 from pydantic import validator
-from vocode.streaming.models.actions import ActionType
 
 from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
@@ -106,7 +105,8 @@ class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):
 
 
 class ActionAgentConfig(AgentConfig, type=AgentType.ACTION.value):
-    actions: List[ActionType]
+    prompt_preamble: str
+    actions: List[str]
     model_name: str = ACTION_AGENT_DEFAULT_MODEL_NAME
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS

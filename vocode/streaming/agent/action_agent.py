@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from typing import List, Optional
 import re
@@ -46,14 +47,7 @@ class ActionAgent(BaseAgent[ActionAgentConfig]):
         openai.api_key = getenv("OPENAI_API_KEY")
         if not openai.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
-        self.action_descriptions = self.get_action_descriptions()
-
-    def _create_prompt(self):
-        assert self.transcript is not None
-        return ACTION_PROMPT_DEFAULT.format(
-            actions=self.get_action_descriptions(),
-            transcript=self.transcript.to_string(),
-        )
+        self.functions = self.get_functions()
 
     async def process(self, item: InterruptibleEvent[AgentInput]):
         assert self.transcript is not None
@@ -66,78 +60,53 @@ class ActionAgent(BaseAgent[ActionAgentConfig]):
                     conversation_id=agent_input.conversation_id,
                 )
             elif isinstance(agent_input, ActionResultAgentInput):
-                self.transcript.add_action_log(
+                self.transcript.add_action_finish_log(
                     action_output=agent_input.action_output,
                     conversation_id=agent_input.conversation_id,
                 )
             else:
                 raise ValueError("Invalid AgentInput type")
 
-            messages = [{"role": "system", "content": self._create_prompt()}]
+            messages = format_openai_chat_messages_from_transcript(
+                self.transcript, self.agent_config.prompt_preamble
+            )
             openai_response = await openai.ChatCompletion.acreate(
                 model=self.agent_config.model_name,
                 messages=messages,
+                functions=self.functions,
                 max_tokens=self.agent_config.max_tokens,
                 temperature=self.agent_config.temperature,
-                stream=True,
             )
-            verbose_response = ""
-            async for message in stream_openai_response_async(
-                openai_response,
-                get_text=lambda choice: choice.get("delta", {}).get("content"),
-                sentence_endings=["\n"],
-            ):
-                maybe_response = self.extract_response(message)
-                if maybe_response:
+            if len(openai_response.choices) == 0:
+                raise ValueError("OpenAI returned no choices")
+            message = openai_response.choices[0].message
+            if message.content:
+                self.produce_interruptible_event_nonblocking(
+                    AgentResponseMessage(message=BaseMessage(text=message.content))
+                )
+            elif message.function_call:
+                action = self.action_factory.create_action(message.function_call.name)
+                params = json.loads(message.function_call.arguments)
+                if "user_message" in params:
+                    user_message = params["user_message"]
                     self.produce_interruptible_event_nonblocking(
-                        AgentResponseMessage(message=BaseMessage(text=maybe_response))
+                        AgentResponseMessage(message=BaseMessage(text=user_message))
                     )
-                verbose_response += f"{message}\n"
-            for action_input in self.get_action_inputs(
-                verbose_response, agent_input.conversation_id
-            ):
+                action_input = action.create_action_input(
+                    agent_input.conversation_id,
+                    params,
+                )
                 event = self.interruptible_event_factory.create(action_input)
+                self.transcript.add_action_start_log(
+                    action_input=action_input,
+                    conversation_id=agent_input.conversation_id,
+                )
                 self.actions_queue.put_nowait(event)
         except asyncio.CancelledError:
             pass
 
-    def get_action_descriptions(self):
-        descriptions = []
-        for action_type in self.agent_config.actions:
-            action = self.action_factory.create_action(action_type)
-            docstring = action.run.__doc__
-            action_name = action_type.value
-            descriptions.append(
-                f"Action Name: {action_name}\nAction Description: {docstring}\n"
-            )
-        return "\n".join(descriptions)
-
-    def extract_action(self, response: str):
-        match = re.search(r"Action:\s*(.*)", response)
-        return match.group(1).strip() if match else None
-
-    def extract_parameters(self, response: str):
-        match = re.search(r"Action parameters:\s*(.*)", response)
-        return match.group(1).strip() if match else ""
-
-    def extract_response(self, response: str):
-        match = re.search(r"Response:\s*(.*)", response)
-        return match.group(1).strip() if match else ""
-
-    def get_action_inputs(
-        self, response: str, conversation_id: str
-    ) -> List[ActionInput]:
-        extracted_action = self.extract_action(response)
-        extracted_parameters = self.extract_parameters(response)
-
-        action_inputs = []
-        for action_type in self.agent_config.actions:
-            if action_type.value == extracted_action:
-                action_inputs.append(
-                    ActionInput(
-                        action_type=action_type,
-                        params=extracted_parameters,
-                        conversation_id=conversation_id,
-                    )
-                )
-        return action_inputs
+    def get_functions(self):
+        return [
+            self.action_factory.create_action(action_type).get_openai_function()
+            for action_type in self.agent_config.actions
+        ]

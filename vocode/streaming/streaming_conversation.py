@@ -35,7 +35,9 @@ from vocode.streaming.constants import (
 from vocode.streaming.agent.base_agent import (
     AgentInput,
     AgentResponse,
+    AgentResponseFillerAudio,
     AgentResponseMessage,
+    AgentResponseStop,
     AgentResponseType,
     BaseAgent,
     TranscriptionAgentInput,
@@ -230,13 +232,18 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async def process(self, item: InterruptibleEvent[AgentResponse]):
             try:
                 agent_response = item.payload
-                if agent_response.type == AgentResponseType.FILLER_AUDIO:
+                if isinstance(agent_response, AgentResponseFillerAudio):
                     self.send_filler_audio()
                     return
-                if agent_response.type == AgentResponseType.STOP:
+                if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")
                     self.conversation.terminate()
                     return
+                if isinstance(agent_response, AgentResponseMessage):
+                    self.conversation.transcript.add_bot_message(
+                        text=agent_response.message.text,
+                        conversation_id=self.conversation.id,
+                    )
 
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
@@ -291,10 +298,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.agent.update_last_bot_message_on_cut_off(
                         message_sent
                     )
-                self.conversation.transcript.add_bot_message(
-                    text=message_sent,
-                    conversation_id=self.conversation.id,
-                )
+                    self.conversation.transcript.update_last_bot_message_on_cut_off(
+                        message_sent
+                    )
             except asyncio.CancelledError:
                 pass
 
