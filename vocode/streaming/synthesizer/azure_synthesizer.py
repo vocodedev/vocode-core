@@ -35,10 +35,6 @@ ElementTree.register_namespace("", NAMESPACES[""])
 ElementTree.register_namespace("mstts", NAMESPACES["mstts"])
 
 
-async def empty_generator():
-    yield SynthesisResult.ChunkResult(b"", True)
-
-
 class WordBoundaryEventPool:
     def __init__(self):
         self.events = []
@@ -230,7 +226,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         # generator for these cases.
         if not re.match(r"\w", message.text):
             return SynthesisResult(
-                empty_generator(),
+                self.empty_generator(),
                 lambda _: message.text,
             )
 
