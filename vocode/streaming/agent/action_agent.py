@@ -90,6 +90,9 @@ class ActionAgent(BaseAgent[ActionAgentConfig]):
                 )
             elif message.function_call:
                 action = self.action_factory.create_action(message.function_call.name)
+                action.attach_conversation_state_manager(
+                    self.conversation_state_manager
+                )
                 params = json.loads(message.function_call.arguments)
                 if "user_message" in params:
                     user_message = params["user_message"]

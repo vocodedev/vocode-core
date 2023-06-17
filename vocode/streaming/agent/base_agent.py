@@ -21,6 +21,7 @@ from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import remove_non_letters_digits
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.models.transcript import Transcript
+from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     InterruptibleEvent,
     InterruptibleEventFactory,
@@ -132,6 +133,11 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
 
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript
+
+    def attach_conversation_state_manager(
+        self, conversation_state_manager: ConversationStateManager
+    ):
+        self.conversation_state_manager = conversation_state_manager
 
     def start(self):
         super().start()

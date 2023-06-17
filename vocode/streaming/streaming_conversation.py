@@ -18,7 +18,7 @@ from vocode.streaming.agent.bot_sentiment_analyser import (
 from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.transcript import Transcript, TranscriptCompleteEvent
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.transcriber import TranscriberConfig
+from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager
@@ -53,6 +53,7 @@ from vocode.streaming.transcriber.base_transcriber import (
     Transcription,
     BaseTranscriber,
 )
+from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
     InterruptibleEvent,
@@ -340,6 +341,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.filler_audio_queue: asyncio.Queue[
             InterruptibleEvent[FillerAudio]
         ] = asyncio.Queue()
+        self.state_manager = ConversationStateManager(conversation=self)
         self.transcriptions_worker = self.TranscriptionsWorker(
             input_queue=self.transcriber.output_queue,
             output_queue=self.agent.get_input_queue(),
