@@ -221,6 +221,15 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         offset = 0
         self.logger.debug(f"Synthesizing message: {message}")
 
+        # Azure will return no audio for certain strings like "-", "[-", and "!"
+        # which causes the `chunk_generator` below to hang. Return an empty
+        # generator for these cases.
+        if not re.match(r"\w", message.text):
+            return SynthesisResult(
+                self.empty_generator(),
+                lambda _: message.text,
+            )
+
         async def chunk_generator(
             audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
         ):

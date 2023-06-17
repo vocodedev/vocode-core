@@ -123,6 +123,9 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             ), "MuLaw encoding only supports 8kHz sampling rate"
         self.filler_audios: List[FillerAudio] = []
 
+    async def empty_generator(self):
+        yield SynthesisResult.ChunkResult(b"", True)
+
     def get_synthesizer_config(self) -> SynthesizerConfig:
         return self.synthesizer_config
 
