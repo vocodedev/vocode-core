@@ -20,6 +20,7 @@ from vocode.streaming.models.transcript import Transcript, TranscriptCompleteEve
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 
@@ -319,7 +320,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
         logger: Optional[logging.Logger] = None,
     ):
         self.id = conversation_id or create_conversation_id()
-        self.logger = logger or logging.getLogger(__name__)
+        self.logger = wrap_logger(
+            logger or logging.getLogger(__name__),
+            conversation_id=self.id,
+        )
         self.output_device = output_device
         self.transcriber = transcriber
         self.agent = agent
