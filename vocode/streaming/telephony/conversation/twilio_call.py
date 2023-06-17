@@ -25,6 +25,7 @@ from vocode.streaming.telephony.config_manager.base_config_manager import (
 from vocode.streaming.telephony.conversation.call import Call
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
+from vocode.streaming.utils.state_manager import TwilioCallStateManager
 
 
 class PhoneCallWebsocketAction(Enum):
@@ -77,6 +78,9 @@ class TwilioCall(Call[TwilioOutputDevice]):
         )
         self.twilio_sid = twilio_sid
         self.latest_media_timestamp = 0
+
+    def create_state_manager(self) -> TwilioCallStateManager:
+        return TwilioCallStateManager(self)
 
     async def attach_ws_and_start(self, ws: WebSocket):
         super().attach_ws(ws)

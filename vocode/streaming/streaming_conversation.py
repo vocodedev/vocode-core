@@ -341,7 +341,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.filler_audio_queue: asyncio.Queue[
             InterruptibleEvent[FillerAudio]
         ] = asyncio.Queue()
-        self.state_manager = ConversationStateManager(conversation=self)
+        self.state_manager = self.create_state_manager()
         self.transcriptions_worker = self.TranscriptionsWorker(
             input_queue=self.transcriber.output_queue,
             output_queue=self.agent.get_input_queue(),
@@ -400,6 +400,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # tracing
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
+
+    def create_state_manager(self) -> ConversationStateManager:
+        return ConversationStateManager(conversation=self)
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()

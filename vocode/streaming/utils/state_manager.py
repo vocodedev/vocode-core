@@ -3,6 +3,8 @@ from vocode.streaming.models.transcriber import EndpointingConfig
 
 if TYPE_CHECKING:
     from vocode.streaming.streaming_conversation import StreamingConversation
+    from vocode.streaming.telephony.conversation.vonage_call import VonageCall
+    from vocode.streaming.telephony.conversation.twilio_call import TwilioCall
 
 
 class ConversationStateManager:
@@ -19,3 +21,15 @@ class ConversationStateManager:
         self._conversation.transcriber.get_transcriber_config().endpointing_config = (
             endpointing_config
         )
+
+
+class VonageCallStateManager(ConversationStateManager):
+    def __init__(self, call: "VonageCall"):
+        super().__init__(call)
+        self._call = call
+
+
+class TwilioCallStateManager(ConversationStateManager):
+    def __init__(self, call: "TwilioCall"):
+        super().__init__(call)
+        self._call = call
