@@ -96,6 +96,7 @@ class ActionAgent(BaseAgent[ActionAgentConfig]):
                     self.produce_interruptible_event_nonblocking(
                         AgentResponseMessage(message=BaseMessage(text=user_message))
                     )
+                action_input: ActionInput
                 if isinstance(action, VonagePhoneCallAction):
                     assert (
                         agent_input.vonage_uuid is not None
