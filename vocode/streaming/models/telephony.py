@@ -45,14 +45,17 @@ class CreateInboundCall(BaseModel):
     transcriber_config: Optional[TranscriberConfig] = None
     agent_config: AgentConfig
     synthesizer_config: Optional[SynthesizerConfig] = None
-    vonage_uuid: str
+    vonage_uuid: Optional[str] = None
+    twilio_sid: Optional[str] = None
     conversation_id: Optional[str] = None
+    twilio_config: Optional[TwilioConfig] = None
     vonage_config: Optional[VonageConfig] = None
 
 
 class EndOutboundCall(BaseModel):
     call_id: str
     vonage_config: Optional[VonageConfig] = None
+    twilio_config: Optional[TwilioConfig] = None
 
 
 class CreateOutboundCall(BaseModel):
@@ -63,6 +66,7 @@ class CreateOutboundCall(BaseModel):
     synthesizer_config: Optional[SynthesizerConfig] = None
     conversation_id: Optional[str] = None
     vonage_config: Optional[VonageConfig] = None
+    twilio_config: Optional[TwilioConfig] = None
     # TODO add IVR/etc.
 
 
@@ -76,6 +80,7 @@ class DialIntoZoomCall(BaseModel):
     synthesizer_config: Optional[SynthesizerConfig] = None
     conversation_id: Optional[str] = None
     vonage_config: Optional[VonageConfig] = None
+    twilio_config: Optional[TwilioConfig] = None
 
 
 class CallConfigType(str, Enum):
