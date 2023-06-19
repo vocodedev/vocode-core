@@ -19,7 +19,6 @@ from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.transcript import Transcript, TranscriptCompleteEvent
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
-from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager
@@ -54,7 +53,6 @@ from vocode.streaming.transcriber.base_transcriber import (
     Transcription,
     BaseTranscriber,
 )
-from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
