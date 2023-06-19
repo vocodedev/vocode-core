@@ -8,6 +8,7 @@ from vocode.streaming.models.actions import (
     TwilioPhoneCallActionInput,
     VonagePhoneCallActionInput,
 )
+from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     InterruptibleEvent,
     InterruptibleEventFactory,
@@ -30,9 +31,15 @@ class ActionsWorker(InterruptibleWorker):
         )
         self.action_factory = action_factory
 
+    def attach_conversation_state_manager(
+        self, conversation_state_manager: ConversationStateManager
+    ):
+        self.conversation_state_manager = conversation_state_manager
+
     async def process(self, item: InterruptibleEvent[ActionInput]):
         action_input = item.payload
         action = self.action_factory.create_action(action_input.action_type)
+        action.attach_conversation_state_manager(self.conversation_state_manager)
         action_output = await action.run(action_input)
         self.produce_interruptible_event_nonblocking(
             ActionResultAgentInput(
