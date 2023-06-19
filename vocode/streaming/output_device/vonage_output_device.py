@@ -17,7 +17,7 @@ class VonageOutputDevice(BaseOutputDevice):
     def __init__(
         self,
         ws: Optional[WebSocket] = None,
-        output_to_speaker: Optional[SpeakerOutput] = None,
+        output_to_speaker: bool = False,
     ):
         super().__init__(
             sampling_rate=VONAGE_SAMPLING_RATE, audio_encoding=VONAGE_AUDIO_ENCODING
