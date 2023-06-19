@@ -25,6 +25,11 @@ from vocode.streaming.utils.events_manager import EventsManager
 
 from vocode.streaming.output_device.speaker_output import SpeakerOutput
 from vocode.streaming.telephony.constants import VONAGE_CHUNK_SIZE, VONAGE_SAMPLING_RATE
+from vocode.streaming.utils.state_manager import (
+    ConversationStateManager,
+    VonageCallStateManager,
+)
+
 
 class VonageCall(Call[VonageOutputDevice]):
     def __init__(
@@ -75,11 +80,13 @@ class VonageCall(Call[VonageOutputDevice]):
             base_url=base_url, vonage_config=self.vonage_config
         )
         self.vonage_uuid = vonage_uuid
-
         if output_to_speaker:
             self.output_speaker = SpeakerOutput.from_default_device(
                 sampling_rate=VONAGE_SAMPLING_RATE, blocksize=VONAGE_CHUNK_SIZE // 2
             )
+
+    def create_state_manager(self) -> VonageCallStateManager:
+        return VonageCallStateManager(self)
 
     # TODO(EPD-186) - make this function async and use aiohttp with the vonage client
     def send_dtmf(self, digits: str):

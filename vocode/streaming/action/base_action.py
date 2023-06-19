@@ -1,4 +1,4 @@
-from typing import Any, Dict, Generic, Type
+from typing import Any, Dict, Generic, Optional, Type
 from vocode.streaming.action.utils import exclude_keys_recursive
 from vocode.streaming.models.actions import (
     ActionInput,
@@ -7,6 +7,7 @@ from vocode.streaming.models.actions import (
     ParametersType,
     ResponseType,
 )
+from vocode.streaming.utils.state_manager import ConversationStateManager
 
 
 class BaseAction(Generic[ParametersType, ResponseType]):
@@ -15,6 +16,11 @@ class BaseAction(Generic[ParametersType, ResponseType]):
 
     def __init__(self, should_respond: bool = False):
         self.should_respond = should_respond
+
+    def attach_conversation_state_manager(
+        self, conversation_state_manager: ConversationStateManager
+    ):
+        self.conversation_state_manager = conversation_state_manager
 
     async def run(
         self, action_input: ActionInput[ParametersType]
