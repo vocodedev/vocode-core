@@ -348,6 +348,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             conversation=self,
             interruptible_event_factory=self.interruptible_event_factory,
         )
+        self.agent.attach_conversation_state_manager(self.state_manager)
         self.agent_responses_worker = self.AgentResponsesWorker(
             input_queue=self.agent.get_output_queue(),
             output_queue=self.synthesis_results_queue,
@@ -362,6 +363,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 interruptible_event_factory=self.interruptible_event_factory,
                 action_factory=self.agent.action_factory,
             )
+            self.actions_worker.attach_conversation_state_manager(self.state_manager)
         self.synthesis_results_worker = self.SynthesisResultsWorker(
             input_queue=self.synthesis_results_queue, conversation=self
         )
