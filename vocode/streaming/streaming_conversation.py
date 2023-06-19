@@ -235,6 +235,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
 
         async def process(self, item: InterruptibleEvent[AgentResponse]):
+            if not self.conversation.synthesis_enabled:
+                self.conversation.logger.debug(
+                    "Synthesis disabled, not synthesizing speech"
+                )
+                return
             try:
                 agent_response = item.payload
                 if isinstance(agent_response, AgentResponseFillerAudio):
@@ -329,6 +334,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriber = transcriber
         self.agent = agent
         self.synthesizer = synthesizer
+        self.synthesis_enabled = True
 
         self.interruptible_events: queue.Queue[InterruptibleEvent] = queue.Queue()
         self.interruptible_event_factory = self.QueueingInterruptibleEventFactory(
