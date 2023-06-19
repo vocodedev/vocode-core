@@ -224,7 +224,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         # Azure will return no audio for certain strings like "-", "[-", and "!"
         # which causes the `chunk_generator` below to hang. Return an empty
         # generator for these cases.
-        if not re.match(r"\w", message.text):
+        if not re.search(r"\w", message.text):
             return SynthesisResult(
                 self.empty_generator(),
                 lambda _: message.text,
