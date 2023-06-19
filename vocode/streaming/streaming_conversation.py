@@ -237,7 +237,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
 
         async def process(self, item: InterruptibleEvent[AgentResponse]):
-            try:
+            if not self.conversation.synthesis_enabled: return
                 if self.conversation.synthesis_enabled:
                     agent_response = item.payload
                     if isinstance(agent_response, AgentResponseFillerAudio):
