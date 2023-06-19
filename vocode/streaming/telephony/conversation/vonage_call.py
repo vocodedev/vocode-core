@@ -51,18 +51,12 @@ class VonageCall(Call[VonageOutputDevice]):
         output_to_speaker: bool = False,
         logger: Optional[logging.Logger] = None,
     ):
-        if output_to_speaker:
-            self.output_speaker = SpeakerOutput.from_default_device(
-                sampling_rate=VONAGE_SAMPLING_RATE, blocksize=VONAGE_CHUNK_SIZE // 2
-            )
         super().__init__(
             from_phone,
             to_phone,
             base_url,
             config_manager,
-            VonageOutputDevice(
-                output_speaker=self.output_speaker if output_to_speaker else None
-            ),
+            VonageOutputDevice(output_to_speaker=output_to_speaker),
             agent_config,
             transcriber_config,
             synthesizer_config,
@@ -86,6 +80,10 @@ class VonageCall(Call[VonageOutputDevice]):
             base_url=base_url, vonage_config=self.vonage_config
         )
         self.vonage_uuid = vonage_uuid
+        if output_to_speaker:
+            self.output_speaker = SpeakerOutput.from_default_device(
+                sampling_rate=VONAGE_SAMPLING_RATE, blocksize=VONAGE_CHUNK_SIZE // 2
+            )
 
     def create_state_manager(self) -> VonageCallStateManager:
         return VonageCallStateManager(self)
