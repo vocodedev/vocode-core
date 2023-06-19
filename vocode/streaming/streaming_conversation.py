@@ -236,40 +236,43 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def process(self, item: InterruptibleEvent[AgentResponse]):
             try:
-                agent_response = item.payload
-                if isinstance(agent_response, AgentResponseFillerAudio):
-                    self.send_filler_audio()
-                    return
-                if isinstance(agent_response, AgentResponseStop):
-                    self.conversation.logger.debug("Agent requested to stop")
-                    self.conversation.terminate()
-                    return
-                if isinstance(agent_response, AgentResponseMessage):
-                    self.conversation.transcript.add_bot_message(
-                        text=agent_response.message.text,
-                        conversation_id=self.conversation.id,
+                if self.conversation.synthesis_enabled:
+                    agent_response = item.payload
+                    if isinstance(agent_response, AgentResponseFillerAudio):
+                        self.send_filler_audio()
+                        return
+                    if isinstance(agent_response, AgentResponseStop):
+                        self.conversation.logger.debug("Agent requested to stop")
+                        self.conversation.terminate()
+                        return
+                    if isinstance(agent_response, AgentResponseMessage):
+                        self.conversation.transcript.add_bot_message(
+                            text=agent_response.message.text,
+                            conversation_id=self.conversation.id,
+                        )
+
+                    agent_response_message = typing.cast(
+                        AgentResponseMessage, agent_response
                     )
 
-                agent_response_message = typing.cast(
-                    AgentResponseMessage, agent_response
-                )
+                    if self.conversation.filler_audio_worker is not None:
+                        if (
+                            self.conversation.filler_audio_worker.interrupt_current_filler_audio()
+                        ):
+                            await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
 
-                if self.conversation.filler_audio_worker is not None:
-                    if (
-                        self.conversation.filler_audio_worker.interrupt_current_filler_audio()
-                    ):
-                        await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
-
-                self.conversation.logger.debug("Synthesizing speech for message")
-                synthesis_result = await self.conversation.synthesizer.create_speech(
-                    agent_response_message.message,
-                    self.chunk_size,
-                    bot_sentiment=self.conversation.bot_sentiment,
-                )
-                self.produce_interruptible_event_nonblocking(
-                    (agent_response_message.message, synthesis_result),
-                    is_interruptible=item.is_interruptible,
-                )
+                    self.conversation.logger.debug("Synthesizing speech for message")
+                    synthesis_result = await self.conversation.synthesizer.create_speech(
+                        agent_response_message.message,
+                        self.chunk_size,
+                        bot_sentiment=self.conversation.bot_sentiment,
+                    )
+                    self.produce_interruptible_event_nonblocking(
+                        (agent_response_message.message, synthesis_result),
+                        is_interruptible=item.is_interruptible,
+                    )
+                else:
+                    self.conversation.logger.debug("Synthesis disabled, not synthesizing speech")
             except asyncio.CancelledError:
                 pass
 
@@ -329,6 +332,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriber = transcriber
         self.agent = agent
         self.synthesizer = synthesizer
+        self.synthesis_enabled = True
 
         self.interruptible_events: queue.Queue[InterruptibleEvent] = queue.Queue()
         self.interruptible_event_factory = self.QueueingInterruptibleEventFactory(
