@@ -100,7 +100,6 @@ async def agent_main():
         ActionAgentConfig(
             prompt_preamble="the assistant is ready to help you send emails",
             actions=[ActionType.NYLAS_SEND_EMAIL.value],
-            model_name="gpt-3.5-turbo-0613",
         )
     )
     agent.attach_conversation_state_manager(DummyConversationManager(conversation=None))
