@@ -13,6 +13,7 @@ from vocode.streaming.utils.state_manager import ConversationStateManager
 class BaseAction(Generic[ParametersType, ResponseType]):
     description: str = ""
     action_type: str = ActionType.BASE.value
+    quiet: bool = False
 
     def __init__(self, should_respond: bool = False):
         self.should_respond = should_respond
