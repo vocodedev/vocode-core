@@ -125,6 +125,23 @@ class ActionAgent(BaseAgent[ActionAgentConfig]):
         except asyncio.CancelledError:
             pass
 
+    async def summarize(self, custom_prompt=None):
+        if not custom_prompt:
+            custom_prompt = "Summarize the above call transcript"
+        messages = format_openai_chat_messages_from_transcript(
+            self.transcript, custom_prompt
+        )
+        openai_response = await openai.ChatCompletion.acreate(
+            model=self.agent_config.model_name,
+            messages=messages,
+            max_tokens=self.agent_config.max_tokens,
+            temperature=self.agent_config.temperature,
+        )
+        if len(openai_response.choices) == 0:
+            raise ValueError("OpenAI returned no choices")
+        return openai_response.choices[0].message.content
+
+
     def get_functions(self):
         return [
             self.action_factory.create_action(action_type).get_openai_function()
