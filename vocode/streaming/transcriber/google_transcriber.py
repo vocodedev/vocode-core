@@ -26,16 +26,12 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
         super().__init__(transcriber_config)
 
         from google.cloud import speech
+        import google.auth
 
+        google.auth.default()
         self.speech = speech
 
         self._ended = False
-        credentials_path = getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        if not credentials_path:
-            raise Exception(
-                "Please set GOOGLE_APPLICATION_CREDENTIALS environment variable"
-            )
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
         self.google_streaming_config = self.create_google_streaming_config()
         self.client = self.speech.SpeechClient()
         self.is_ready = False
