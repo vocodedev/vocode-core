@@ -10,4 +10,4 @@ repos:
         args: [--ignore-missing-imports, ./]
         language: system
         pass_filenames: false
-        stages: [push]
+        stages: [pre-push]
