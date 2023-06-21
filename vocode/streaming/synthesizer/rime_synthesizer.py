@@ -24,9 +24,6 @@ from vocode.streaming.models.synthesizer import RimeSynthesizerConfig, Synthesiz
 from opentelemetry.context.context import Context
 
 # https://rime.ai/docs/quickstart
-RIME_SAMPLING_RATE = 22050
-RIME_BASE_URL = "https://rjmopratfrdjgmfmaios.functions.supabase.co/rime-tts"
-
 
 class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
     def __init__(
@@ -37,6 +34,8 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         super().__init__(synthesizer_config)
         self.api_key = getenv("RIME_API_KEY")
         self.speaker = synthesizer_config.speaker
+        self.sampling_rate = synthesizer_config.sampling_rate
+        self.base_url = synthesizer_config.base_url
 
     async def create_speech(
         self,
@@ -52,13 +51,14 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         body = {
             "text": message.text,
             "speaker": self.speaker,
+            "samplingRate": self.sampling_rate
         }
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.RIME.value.split('_', 1)[-1]}.create_total",
         )
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                RIME_BASE_URL,
+                self.base_url,
                 headers=headers,
                 json=body,
                 timeout=aiohttp.ClientTimeout(total=15),
