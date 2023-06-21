@@ -34,7 +34,7 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         super().__init__(synthesizer_config)
         self.api_key = getenv("RIME_API_KEY")
         self.speaker = synthesizer_config.speaker
-        self.samplingRate = synthesizer_config.sampling_rate
+        self.sampling_rate = synthesizer_config.sampling_rate
         self.baseUrl = synthesizer_config.base_url
 
     async def create_speech(
@@ -51,7 +51,7 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         body = {
             "text": message.text,
             "speaker": self.speaker,
-            "samplingRate": self.samplingRate
+            "samplingRate": self.sampling_rate
         }
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.RIME.value.split('_', 1)[-1]}.create_total",
