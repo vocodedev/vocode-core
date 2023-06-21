@@ -35,7 +35,7 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         self.api_key = getenv("RIME_API_KEY")
         self.speaker = synthesizer_config.speaker
         self.sampling_rate = synthesizer_config.sampling_rate
-        self.baseUrl = synthesizer_config.base_url
+        self.base_url = synthesizer_config.base_url
 
     async def create_speech(
         self,
@@ -58,7 +58,7 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         )
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                self.baseUrl,
+                self.base_url,
                 headers=headers,
                 json=body,
                 timeout=aiohttp.ClientTimeout(total=15),
