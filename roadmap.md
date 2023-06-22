@@ -28,6 +28,7 @@ Our roadmap; if an issue has been created or the feature is currently being work
   - [x] [Play.ht](http://Play.ht)
   - [x] Eleven Labs
   - [ ] Amazon Polly
+  - [ ] Resemble.AI
 
 ## Language Models:
 
