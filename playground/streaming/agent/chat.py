@@ -1,12 +1,12 @@
 import asyncio
 import typing
-import argparse
 from dotenv import load_dotenv
 from playground.streaming.tracing_utils import make_parser_and_maybe_trace
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.action_agent import ActionAgent
 from vocode.streaming.models.actions import ActionType
 from vocode.streaming.models.transcript import Transcript
+from vocode.streaming.utils.state_manager import ConversationStateManager
 
 load_dotenv()
 
@@ -18,10 +18,14 @@ from vocode.streaming.agent.base_agent import (
     TranscriptionAgentInput,
 )
 from vocode.streaming.models.agent import (
-    ChatGPTAgentConfig,
+    ActionAgentConfig,
 )
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import create_conversation_id
+
+
+class DummyConversationManager(ConversationStateManager):
+    pass
 
 
 async def run_agent(agent: BaseAgent):
@@ -79,6 +83,9 @@ async def run_agent(agent: BaseAgent):
             output_queue=agent.get_input_queue(),
             action_factory=agent.action_factory,
         )
+        actions_worker.attach_conversation_state_manager(
+            agent.conversation_state_manager
+        )
         actions_worker.start()
 
     await asyncio.gather(receiver(), sender())
@@ -89,14 +96,13 @@ async def run_agent(agent: BaseAgent):
 async def agent_main():
     transcript = Transcript()
     # Replace with your agent!
-    agent = ChatGPTAgent(
-        ChatGPTAgentConfig(
-            prompt_preamble="The assistant is having a pleasant conversation about life.",
-            end_conversation_on_goodbye=True,
-            generate_responses=True,
+    agent = ActionAgent(
+        ActionAgentConfig(
+            prompt_preamble="the assistant is ready to help you send emails",
+            actions=[ActionType.NYLAS_SEND_EMAIL.value],
         )
     )
-
+    agent.attach_conversation_state_manager(DummyConversationManager(conversation=None))
     agent.attach_transcript(transcript)
     agent.start()
 

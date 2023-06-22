@@ -4,7 +4,7 @@ import asyncio
 import queue
 import random
 import threading
-from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
+from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, cast
 import logging
 import time
 import typing
@@ -18,8 +18,9 @@ from vocode.streaming.agent.bot_sentiment_analyser import (
 from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.transcript import Transcript, TranscriptCompleteEvent
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.transcriber import TranscriberConfig
+from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 
@@ -35,7 +36,9 @@ from vocode.streaming.constants import (
 from vocode.streaming.agent.base_agent import (
     AgentInput,
     AgentResponse,
+    AgentResponseFillerAudio,
     AgentResponseMessage,
+    AgentResponseStop,
     AgentResponseType,
     BaseAgent,
     TranscriptionAgentInput,
@@ -50,6 +53,7 @@ from vocode.streaming.transcriber.base_transcriber import (
     Transcription,
     BaseTranscriber,
 )
+from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
     InterruptibleEvent,
@@ -122,10 +126,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
+                # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
                 event = self.interruptible_event_factory.create(
                     TranscriptionAgentInput(
                         transcription=transcription,
                         conversation_id=self.conversation.id,
+                        vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
+                        twilio_sid=getattr(self.conversation, "twilio_sid", None),
                     )
                 )
                 self.output_queue.put_nowait(event)
@@ -228,15 +235,25 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
 
         async def process(self, item: InterruptibleEvent[AgentResponse]):
+            if not self.conversation.synthesis_enabled:
+                self.conversation.logger.debug(
+                    "Synthesis disabled, not synthesizing speech"
+                )
+                return
             try:
                 agent_response = item.payload
-                if agent_response.type == AgentResponseType.FILLER_AUDIO:
+                if isinstance(agent_response, AgentResponseFillerAudio):
                     self.send_filler_audio()
                     return
-                if agent_response.type == AgentResponseType.STOP:
+                if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")
                     self.conversation.terminate()
                     return
+                if isinstance(agent_response, AgentResponseMessage):
+                    self.conversation.transcript.add_bot_message(
+                        text=agent_response.message.text,
+                        conversation_id=self.conversation.id,
+                    )
 
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
@@ -291,10 +308,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.agent.update_last_bot_message_on_cut_off(
                         message_sent
                     )
-                self.conversation.transcript.add_bot_message(
-                    text=message_sent,
-                    conversation_id=self.conversation.id,
-                )
+                    self.conversation.transcript.update_last_bot_message_on_cut_off(
+                        message_sent
+                    )
             except asyncio.CancelledError:
                 pass
 
@@ -310,11 +326,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
         logger: Optional[logging.Logger] = None,
     ):
         self.id = conversation_id or create_conversation_id()
-        self.logger = logger or logging.getLogger(__name__)
+        self.logger = wrap_logger(
+            logger or logging.getLogger(__name__),
+            conversation_id=self.id,
+        )
         self.output_device = output_device
         self.transcriber = transcriber
         self.agent = agent
         self.synthesizer = synthesizer
+        self.synthesis_enabled = True
 
         self.interruptible_events: queue.Queue[InterruptibleEvent] = queue.Queue()
         self.interruptible_event_factory = self.QueueingInterruptibleEventFactory(
@@ -327,12 +347,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.filler_audio_queue: asyncio.Queue[
             InterruptibleEvent[FillerAudio]
         ] = asyncio.Queue()
+        self.state_manager = self.create_state_manager()
         self.transcriptions_worker = self.TranscriptionsWorker(
             input_queue=self.transcriber.output_queue,
             output_queue=self.agent.get_input_queue(),
             conversation=self,
             interruptible_event_factory=self.interruptible_event_factory,
         )
+        self.agent.attach_conversation_state_manager(self.state_manager)
         self.agent_responses_worker = self.AgentResponsesWorker(
             input_queue=self.agent.get_output_queue(),
             output_queue=self.synthesis_results_queue,
@@ -347,6 +369,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 interruptible_event_factory=self.interruptible_event_factory,
                 action_factory=self.agent.action_factory,
             )
+            self.actions_worker.attach_conversation_state_manager(self.state_manager)
         self.synthesis_results_worker = self.SynthesisResultsWorker(
             input_queue=self.synthesis_results_queue, conversation=self
         )
@@ -385,6 +408,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # tracing
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
+
+    def create_state_manager(self) -> ConversationStateManager:
+        return ConversationStateManager(conversation=self)
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
