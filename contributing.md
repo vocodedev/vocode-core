@@ -10,6 +10,7 @@ To install requirements:
 
 ```bash
 poetry install
+poetry run pre-commit install
 ```
 
 ## 🚩 GitHub Issues
