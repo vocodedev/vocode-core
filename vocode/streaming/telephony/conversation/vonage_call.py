@@ -1,7 +1,6 @@
 from fastapi import WebSocket, WebSocketDisconnect
 import logging
 from typing import Optional
-from vocode import getenv
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import PhoneCallConnectedEvent, PhoneCallEndedEvent
@@ -70,12 +69,7 @@ class VonageCall(Call[VonageOutputDevice]):
         self.output_to_speaker = output_to_speaker
         self.base_url = base_url
         self.config_manager = config_manager
-        self.vonage_config = vonage_config or VonageConfig(
-            api_key=getenv("VONAGE_API_KEY"),
-            api_secret=getenv("VONAGE_API_SECRET"),
-            application_id=getenv("VONAGE_APPLICATION_ID"),
-            private_key=getenv("VONAGE_PRIVATE_KEY"),
-        )
+        self.vonage_config = vonage_config or VonageConfig()
         self.telephony_client = VonageClient(
             base_url=base_url, vonage_config=self.vonage_config
         )

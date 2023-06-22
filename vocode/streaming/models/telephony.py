@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 from typing import Optional
 from vocode.streaming.models.audio_encoding import AudioEncoding
@@ -22,16 +23,15 @@ from vocode.streaming.telephony.constants import (
 
 
 class TwilioConfig(BaseModel):
-    account_sid: str
-    auth_token: str
+    account_sid: str = os.environ["TWILIO_ACCOUNT_SID"]
+    auth_token: str = os.environ["TWILIO_AUTH_TOKEN"]
     record: bool = False
 
-
 class VonageConfig(BaseModel):
-    api_key: str
-    api_secret: str
-    application_id: str
-    private_key: str
+    api_key: str = os.environ["VONAGE_API_KEY"]
+    api_secret: str = os.environ["VONAGE_API_SECRET"]
+    application_id: str = os.environ["VONAGE_APPLICATION_ID"]
+    private_key: str = os.environ["VONAGE_PRIVATE_KEY"]
     record: bool = False
 
 
