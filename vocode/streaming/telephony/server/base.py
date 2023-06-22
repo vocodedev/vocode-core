@@ -103,13 +103,13 @@ class TelephonyServer:
         self.logger.info(f"Set up recordings endpoint at https://{self.base_url}/recordings/{{conversation_id}}")
  
     def events(self, request: Request):
-        return lambda: Response()
+        return Response()
 
     async def recordings(self, request: Request, conversation_id: str):
         recording_url = (await request.json())["recording_url"]
         if self.events_manager is not None and recording_url is not None:
             self.events_manager.publish_event(RecordingEvent(recording_url=recording_url, conversation_id=conversation_id))
-        return lambda: Response()
+        return Response()
 
     def create_inbound_route(
         self,
