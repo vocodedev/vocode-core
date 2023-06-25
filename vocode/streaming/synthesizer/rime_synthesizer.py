@@ -38,6 +38,7 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         self.speaker = synthesizer_config.speaker
         self.sampling_rate = synthesizer_config.sampling_rate
         self.base_url = synthesizer_config.base_url
+        self.use_new_format = synthesizer_config.use_new_body
 
     async def create_speech(
         self,
@@ -54,6 +55,15 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
             "text": message.text,
             "speaker": self.speaker,
             "samplingRate": self.sampling_rate,
+        }
+
+        if self.use_new_format:
+            body = {
+                "inputs": {
+                    "text": message.text,
+                    "speaker": self.speaker,
+                    "samplingRate": self.sampling_rate
+                }
         }
         if self.synthesizer_config.speed_alpha is not None:
             body["speedAlpha"] = self.synthesizer_config.speed_alpha
