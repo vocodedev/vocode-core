@@ -51,8 +51,8 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         
         body = {
             "text": message.text,
-            "speaker": speaker,
-            "samplingRate": sampling_rate
+            "speaker": self.speaker,
+            "samplingRate": self.sampling_rate
         }
 
         if self.use_new_format:
