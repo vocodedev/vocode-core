@@ -38,7 +38,7 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         self.speaker = synthesizer_config.speaker
         self.sampling_rate = synthesizer_config.sampling_rate
         self.base_url = synthesizer_config.base_url
-        self.use_new_format = synthesizer_config.use_new_body
+        self.use_new_format = synthesizer_config.use_new_format
 
     async def create_speech(
         self,
