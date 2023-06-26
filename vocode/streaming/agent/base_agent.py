@@ -50,6 +50,7 @@ class TranscriptionAgentInput(AgentInput, type=AgentInputType.TRANSCRIPTION.valu
 
 class ActionResultAgentInput(AgentInput, type=AgentInputType.ACTION_RESULT.value):
     action_output: ActionOutput
+    is_quiet: bool = False
 
 
 class AgentResponseType(str, Enum):
