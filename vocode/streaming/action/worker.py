@@ -51,5 +51,6 @@ class ActionsWorker(InterruptibleWorker):
                 twilio_sid=action_input.twilio_sid
                 if isinstance(action_input, TwilioPhoneCallActionInput)
                 else None,
+                is_quiet=action.quiet,
             )
         )

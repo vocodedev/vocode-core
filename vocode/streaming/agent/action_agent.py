@@ -68,6 +68,10 @@ class ActionAgent(BaseAgent[ActionAgentConfig]):
                     action_output=agent_input.action_output,
                     conversation_id=agent_input.conversation_id,
                 )
+                if agent_input.is_quiet:
+                    # Do not generate a response to quiet actions
+                    self.logger.debug("Action is quiet, skipping response generation")
+                    return
             else:
                 raise ValueError("Invalid AgentInput type")
 
