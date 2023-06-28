@@ -14,6 +14,8 @@ class RedisConfigManager(BaseConfigManager):
         self.redis: Redis = Redis(
             host=os.environ.get("REDISHOST", "localhost"),
             port=int(os.environ.get("REDISPORT", 6379)),
+            username=os.environ.get("REDISUSER", None),
+            password=os.environ.get("REDISPASSWORD", None),
             db=0,
             decode_responses=True,
         )
