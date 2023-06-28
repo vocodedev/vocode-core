@@ -13,6 +13,7 @@ class EventType(str, Enum):
     TRANSCRIPT_COMPLETE = "event_transcript_complete"
     PHONE_CALL_CONNECTED = "event_phone_call_connected"
     PHONE_CALL_ENDED = "event_phone_call_ended"
+    RECORDING = "event_recording"
 
 
 class Event(TypedModel):
@@ -26,3 +27,7 @@ class PhoneCallConnectedEvent(Event, type=EventType.PHONE_CALL_CONNECTED):
 
 class PhoneCallEndedEvent(Event, type=EventType.PHONE_CALL_ENDED):
     conversation_minutes: float = 0
+
+
+class RecordingEvent(Event, type=EventType.RECORDING):
+    recording_url: str
