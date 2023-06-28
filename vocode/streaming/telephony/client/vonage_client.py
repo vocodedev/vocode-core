@@ -34,7 +34,7 @@ class VonageClient(BaseTelephonyClient):
             {
                 "to": [{"type": "phone", "number": to_phone, "dtmfAnswer": digits}],
                 "from": {"type": "phone", "number": from_phone},
-                "ncco": self.create_call_ncco(self.base_url, conversation_id),
+                "ncco": self.create_call_ncco(self.base_url, conversation_id, record),
             }
         )
         if response["status"] != "started":
@@ -42,20 +42,25 @@ class VonageClient(BaseTelephonyClient):
         return response["uuid"]
 
     @staticmethod
-    def create_call_ncco(base_url, conversation_id):
-        return [
-            {
-                "action": "connect",
-                "endpoint": [
-                    {
-                        "type": "websocket",
-                        "uri": f"wss://{base_url}/connect_call/{conversation_id}",
-                        "content-type": VONAGE_CONTENT_TYPE,
-                        "headers": {},
-                    }
-                ],
-            }
-        ]
+    def create_call_ncco(base_url, conversation_id, record):
+        ncco = []
+        if record:
+            ncco.append({
+                "action": "record",
+                "eventUrl": [f"https://{base_url}/recordings/{conversation_id}"]
+            })
+        ncco.append({
+            "action": "connect",
+            "endpoint": [
+                {
+                    "type": "websocket",
+                    "uri": f"wss://{base_url}/connect_call/{conversation_id}",
+                    "content-type": VONAGE_CONTENT_TYPE,
+                    "headers": {},
+                }
+            ],
+        })
+        return ncco
 
     def end_call(self, id) -> bool:
         # TODO(EPD-186): return True if the call was ended successfully

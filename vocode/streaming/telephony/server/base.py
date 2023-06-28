@@ -6,6 +6,7 @@ from fastapi import APIRouter, Form, Request, Response
 from pydantic import BaseModel, Field
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
+from vocode.streaming.models.events import RecordingEvent
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.synthesizer.factory import SynthesizerFactory
@@ -95,11 +96,20 @@ class TelephonyServer:
                 methods=["POST"],
             )
         # vonage requires an events endpoint
-        self.router.add_api_route("/events", self.events, methods=["GET"])
+        self.router.add_api_route("/events", self.events, methods=["GET", "POST"])
         self.logger.info(f"Set up events endpoint at https://{self.base_url}/events")
 
+        self.router.add_api_route("/recordings/{conversation_id}", self.recordings, methods=["GET", "POST"])
+        self.logger.info(f"Set up recordings endpoint at https://{self.base_url}/recordings/{{conversation_id}}")
+ 
     def events(self, request: Request):
-        return lambda: Response()
+        return Response()
+
+    async def recordings(self, request: Request, conversation_id: str):
+        recording_url = (await request.json())["recording_url"]
+        if self.events_manager is not None and recording_url is not None:
+            self.events_manager.publish_event(RecordingEvent(recording_url=recording_url, conversation_id=conversation_id))
+        return Response()
 
     def create_inbound_route(
         self,
@@ -146,7 +156,7 @@ class TelephonyServer:
             conversation_id = create_conversation_id()
             await self.config_manager.save_config(conversation_id, call_config)
             return VonageClient.create_call_ncco(
-                base_url=self.base_url, conversation_id=conversation_id
+                base_url=self.base_url, conversation_id=conversation_id, record=vonage_config.record
             )
 
         if isinstance(inbound_call_config, TwilioInboundCallConfig):
