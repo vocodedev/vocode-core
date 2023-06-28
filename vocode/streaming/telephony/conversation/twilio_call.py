@@ -85,7 +85,12 @@ class TwilioCall(Call[TwilioOutputDevice]):
     async def attach_ws_and_start(self, ws: WebSocket):
         super().attach_ws(ws)
 
-        twilio_call = self.telephony_client.twilio_client.calls(self.twilio_sid).fetch()
+        twilio_call_ref = self.telephony_client.twilio_client.calls(self.twilio_sid)
+        twilio_call = twilio_call_ref.fetch()
+
+        if self.twilio_config.record:
+            recording = twilio_call_ref.recordings.create()
+            self.logger.info(f"Recording: {recording.sid}")
 
         if twilio_call.answered_by in ("machine_start", "fax"):
             self.logger.info(f"Call answered by {twilio_call.answered_by}")
