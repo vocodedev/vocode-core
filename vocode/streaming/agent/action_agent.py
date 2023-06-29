@@ -26,7 +26,7 @@ from vocode.streaming.agent.base_agent import (
 from vocode.streaming.agent.prompts.action_prompt import ACTION_PROMPT_DEFAULT
 from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
-    stream_openai_response_async,
+    stream_response_async,
 )
 from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.agent import ActionAgentConfig

@@ -12,7 +12,7 @@ from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
-    stream_openai_response_async,
+    stream_response_async,
 )
 from vocode.streaming.models.transcript import Transcript
 
@@ -116,7 +116,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
-        async for message in stream_openai_response_async(
+        async for message in stream_response_async(
             stream,
             get_text=lambda choice: choice.get("delta", {}).get("content"),
         ):

@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 from openai.openai_object import OpenAIObject
 from pydantic import BaseModel
 import pytest
-from vocode.streaming.agent.utils import stream_openai_response_async
+from vocode.streaming.agent.utils import stream_response_async
 
 GET_TEXT = lambda choice: choice.get("delta", {}).get("content")
 
@@ -193,7 +193,7 @@ EXPECTED_SENTENCES = [
 
 
 @pytest.mark.asyncio
-async def test_stream_openai_response_async():
+async def test_stream_response_async():
     test_cases = [
         StreamOpenAIResponseTestCase(
             openai_objects=[
@@ -208,7 +208,7 @@ async def test_stream_openai_response_async():
 
     for test_case in test_cases:
         actual_sentences = []
-        async for sentence in stream_openai_response_async(
+        async for sentence in stream_response_async(
             _agen_from_list(test_case.openai_objects), GET_TEXT
         ):
             actual_sentences.append(sentence)

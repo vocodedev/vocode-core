@@ -1,5 +1,14 @@
 import re
-from typing import Dict, Any, AsyncGenerator, AsyncIterable, Callable, List, Optional
+from typing import (
+    Dict,
+    Any,
+    AsyncGenerator,
+    AsyncIterable,
+    Callable,
+    List,
+    Optional,
+    Union,
+)
 
 from openai.openai_object import OpenAIObject
 from vocode.streaming.models.events import Sender
@@ -13,22 +22,28 @@ from vocode.streaming.models.transcript import (
 SENTENCE_ENDINGS = [".", "!", "?", "\n"]
 
 
-async def stream_openai_response_async(
-    gen: AsyncIterable[OpenAIObject],
+async def stream_response_async(
+    gen: AsyncIterable[Union[OpenAIObject, "CallbackOutput"]],
     get_text: Callable[[dict], str],
     sentence_endings: List[str] = SENTENCE_ENDINGS,
+    openai: bool = True,
 ) -> AsyncGenerator:
     sentence_endings_pattern = "|".join(map(re.escape, sentence_endings))
     list_item_ending_pattern = r"\n"
     buffer = ""
     prev_ends_with_money = False
     async for event in gen:
-        choices = event.get("choices", [])
-        if len(choices) == 0:
-            break
-        choice = choices[0]
-        if choice.finish_reason:
-            break
+        if openai:
+            choices = event.get("choices", [])
+            if len(choices) == 0:
+                break
+            choice = choices[0]
+            if choice.finish_reason:
+                break
+        else:
+            if event.finish:
+                break
+            choice = event
         token = get_text(choice)
         if not token:
             continue

@@ -6,6 +6,7 @@ from typing import AsyncGenerator, Optional, Tuple, Any
 from langchain import ConversationChain
 from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.agent import LlamacppAgentConfig
+from vocode.streaming.agent.utils import stream_response_async
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.callbacks.manager import CallbackManager
 from langchain.llms import LlamaCpp
@@ -132,37 +133,17 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
             lambda input: self.conversation.predict(input=input),
             human_input,
         )
-        sentence_endings_pattern = "|".join(map(re.escape, [".", "!", "?", "\n"]))
-        list_item_ending_pattern = r"\n"
-        buffer = ""
-        prev_ends_with_money = False
-        while True:
-            callback_output = await self.callback_queue.get()
-            if callback_output.finish:
-                break
-            token = callback_output.token
-            if not token:
-                continue
 
-            if prev_ends_with_money and token.startswith(" "):
-                yield buffer.strip()
-                buffer = ""
+        async def stream():
+            while True:
+                callback_output = await self.callback_queue.get()
+                if callback_output.finish:
+                    break
+                yield callback_output
 
-            buffer += token
-            possible_list_item = bool(re.match(r"^\d+[ .]", buffer))
-            ends_with_money = bool(re.findall(r"\$\d+.$", buffer))
-            if re.findall(
-                list_item_ending_pattern
-                if possible_list_item
-                else sentence_endings_pattern,
-                token,
-            ):
-                if not ends_with_money:
-                    to_return = buffer.strip()
-                    if to_return:
-                        yield to_return
-                    buffer = ""
-            prev_ends_with_money = ends_with_money
-        to_return = buffer.strip()
-        if to_return:
-            yield to_return
+        async for message in stream_response_async(
+            stream(),
+            get_text=lambda o: o.token,
+            openai=False,
+        ):
+            yield message
