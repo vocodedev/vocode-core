@@ -11,6 +11,7 @@ from vocode.streaming.agent.llm_agent import LLMAgent
 from vocode.streaming.agent.restful_user_implemented_agent import (
     RESTfulUserImplementedAgent,
 )
+from vocode.streaming.agent.llamacpp_agent import LlamacppAgent
 from vocode.streaming.models.agent import (
     ActionAgentConfig,
     AgentConfig,
@@ -21,6 +22,7 @@ from vocode.streaming.models.agent import (
     InformationRetrievalAgentConfig,
     LLMAgentConfig,
     RESTfulUserImplementedAgentConfig,
+    LlamacppAgentConfig
 )
 
 
@@ -42,4 +44,6 @@ class AgentFactory:
             return ChatAnthropicAgent(agent_config=agent_config, logger=logger)
         elif isinstance(agent_config, ActionAgentConfig):
             return ActionAgent(agent_config=agent_config, logger=logger)
+        elif isinstance(agent_config, LlamacppAgentConfig):
+            return LlamacppAgent(agent_config=agent_config, logger=logger)
         raise Exception("Invalid agent config", agent_config.type)
