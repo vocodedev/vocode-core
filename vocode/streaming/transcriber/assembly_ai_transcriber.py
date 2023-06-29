@@ -103,7 +103,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
         return ASSEMBLY_AI_URL + f"?{urlencode(url_params)}"
     
     def is_speech_final(
-        self: str, assembly_response: dict
+        self, assembly_response: dict
     ):
         transcript = assembly_response["channel"]["alternatives"][0]["transcript"]
 
