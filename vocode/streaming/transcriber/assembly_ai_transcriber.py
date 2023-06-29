@@ -8,7 +8,12 @@ import numpy as np
 from urllib.parse import urlencode
 from vocode import getenv
 
-from vocode.streaming.models.transcriber import AssemblyAITranscriberConfig
+from vocode.streaming.models.transcriber import (
+    AssemblyAITranscriberConfig,
+    EndpointingConfig,
+    EndpointingType,
+)
+
 from vocode.streaming.models.websocket import AudioMessage
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
@@ -94,6 +99,36 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
                 {"word_boost": json.dumps(self.transcriber_config.word_boost)}
             )
         return ASSEMBLY_AI_URL + f"?{urlencode(url_params)}"
+    
+    def is_speech_final(
+        self, current_buffer: str, assembly_response: dict, time_silent: float
+    ):
+        transcript = assembly_response["channel"]["alternatives"][0]["transcript"]
+
+        # this will be time based by default
+        if not self.transcriber_config.endpointing_config:
+            return (
+                not transcript
+                and current_buffer
+                and (time_silent + assembly_response["duration"])
+                > self.transcriber_config.endpointing_config.time_cutoff_seconds
+            )
+        elif (
+            self.transcriber_config.endpointing_config.type
+            == EndpointingType.PUNCTUATION_BASED
+        ):
+            return (
+                transcript
+                and transcript.strip()[-1] in PUNCTUATION_TERMINATORS
+            ) or (
+                False
+            )
+        elif (
+            self.transcriber_config.endpointing_config.type
+            == EndpointingType.CLASSIFIER_BASED
+        ):
+            return classify(transcript)
+        raise Exception("Endpointing config not supported")
 
     async def process(self):
         self.audio_cursor = 0
@@ -143,8 +178,29 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
                         "message_type" in data
                         and data["message_type"] == "FinalTranscript"
                     )
+                    if self.is_speech_final(buffer, data, time_silent):
+                        cur_max_latency = self.audio_cursor - transcript_cursor
+                        transcript_cursor = data["audio_end"] / 1000
+                        cur_min_latency = self.audio_cursor - transcript_cursor
+                        duration = data["audio_end"] / 1000 - data["audio_start"] / 1000
 
-                    if "text" in data and data["text"]:
+                        avg_latency_hist.record(
+                            (cur_min_latency + cur_max_latency) / 2 * duration
+                        )
+                        duration_hist.record(duration)
+
+                        # Log max and min latencies
+                        max_latency_hist.record(cur_max_latency)
+                        min_latency_hist.record(max(cur_min_latency, 0))
+
+                        self.output_queue.put_nowait(
+                            Transcription(
+                                message=data["text"],
+                                confidence=data["confidence"],
+                                is_final=is_final,
+                            )
+                        )
+                    elif "text" in data and data["text"]:
                         cur_max_latency = self.audio_cursor - transcript_cursor
                         transcript_cursor = data["audio_end"] / 1000
                         cur_min_latency = self.audio_cursor - transcript_cursor
