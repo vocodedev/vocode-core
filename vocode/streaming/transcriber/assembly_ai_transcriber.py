@@ -21,7 +21,7 @@ from vocode.streaming.transcriber.base_transcriber import (
     meter,
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
-
+from vocode.streaming.models.endpoint_classifier_model import EndpointClassifier
 
 ASSEMBLY_AI_URL = "wss://api.assemblyai.com/v2/realtime/ws"
 
@@ -65,6 +65,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
         self.buffer = bytearray()
         self.audio_cursor = 0
         self.terminate_msg = str.encode(json.dumps({"terminate_session": True}))
+        self.classifier = EndpointClassifier() #classification = classifier.classify_text(text)
 
     async def ready(self):
         return True
@@ -127,7 +128,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
             self.transcriber_config.endpointing_config.type
             == EndpointingType.CLASSIFIER_BASED
         ):
-            return classify(transcript)
+            return classifier.classify_text(transcript)
         raise Exception("Endpointing config not supported")
 
     async def process(self):
