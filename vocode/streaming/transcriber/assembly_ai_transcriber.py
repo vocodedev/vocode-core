@@ -24,6 +24,7 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.endpoint_classifier_model import EndpointClassifier
 
 ASSEMBLY_AI_URL = "wss://api.assemblyai.com/v2/realtime/ws"
+PUNCTUATION_TERMINATORS = [".", "!", "?"]
 
 
 avg_latency_hist = meter.create_histogram(
@@ -106,21 +107,15 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
     ):
         transcript = assembly_response["channel"]["alternatives"][0]["transcript"]
 
-        # this will be time based by default
+        # this will be parameter based by default
         if not self.transcriber_config.endpointing_config:
-            return (
-                not transcript
-                and current_buffer
-                and (time_silent + assembly_response["duration"])
-                > self.transcriber_config.endpointing_config.time_cutoff_seconds
-            )
+            return transcript and assembly_response["speech_final"]
         elif (
             self.transcriber_config.endpointing_config.type
             == EndpointingType.PUNCTUATION_BASED
         ):
             return (
-                transcript
-                and transcript.strip()[-1] in PUNCTUATION_TERMINATORS
+                transcript and transcript.strip()[-1] in PUNCTUATION_TERMINATORS and assembly_response["speech_final"]
             ) or (
                 False
             )
@@ -128,7 +123,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
             self.transcriber_config.endpointing_config.type
             == EndpointingType.CLASSIFIER_BASED
         ):
-            return classifier.classify_text(transcript)
+            return self.classifier.classify_text(transcript)
         raise Exception("Endpointing config not supported")
 
     async def process(self):
