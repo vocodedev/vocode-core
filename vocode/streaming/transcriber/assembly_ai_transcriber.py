@@ -123,7 +123,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
             self.transcriber_config.endpointing_config.type
             == EndpointingType.CLASSIFIER_BASED
         ):
-            return self.classifier.classify_text(transcript)
+            return self.classifier.classify_text(transcript) or assembly_response["speech_final"]
         raise Exception("Endpointing config not supported")
 
     async def process(self):
