@@ -104,8 +104,6 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
         self.conversation = ConversationChain(
             memory=self.memory, prompt=self.prompt, llm=self.llm
         )
-        # if agent_config.initial_message:
-        #     raise NotImplementedError("initial_message not supported for Vertex AI")
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
     async def respond(
