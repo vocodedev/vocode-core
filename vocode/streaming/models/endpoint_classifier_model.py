@@ -11,7 +11,7 @@ class EndpointClassifier:
         self.tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
         self.model.to(self.device)
 
-    def classify_text(self, text):
+    def classify_text(self, text, return_as_int=False):
         # Make the text lowercase
         text = text.lower()
         # Remove all punctuation
@@ -28,5 +28,10 @@ class EndpointClassifier:
         _, predicted_class = torch.max(outputs.logits, dim=1)
         # Convert predicted class to boolean
         classification = bool(predicted_class.item())
+        probability = probabilities[0][predicted_class] #this is the probability the sentence is complete
+        if predicted_class == 0:
+            probability = 1 - probability
+        if return_as_int:
+            return probability
         return classification
 
