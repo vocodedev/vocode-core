@@ -109,7 +109,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
 
         # this will be parameter based by default
         if not self.transcriber_config.endpointing_config:
-            return transcript and assembly_response["speech_final"]
+            return (transcript and assembly_response["speech_final"])
         elif (
             self.transcriber_config.endpointing_config.type
             == EndpointingType.PUNCTUATION_BASED
