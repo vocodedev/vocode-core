@@ -103,7 +103,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
         return ASSEMBLY_AI_URL + f"?{urlencode(url_params)}"
     
     def is_speech_final(
-        self, current_buffer: str, assembly_response: dict, time_silent: float
+        self: str, assembly_response: dict
     ):
         transcript = assembly_response["channel"]["alternatives"][0]["transcript"]
 
@@ -174,7 +174,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
                         "message_type" in data
                         and data["message_type"] == "FinalTranscript"
                     )
-                    if self.is_speech_final(buffer, data, time_silent):
+                    if self.is_speech_final(data):
                         cur_max_latency = self.audio_cursor - transcript_cursor
                         transcript_cursor = data["audio_end"] / 1000
                         cur_min_latency = self.audio_cursor - transcript_cursor
