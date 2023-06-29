@@ -5,7 +5,7 @@ import torch
 from transformers import DistilBertTokenizerFast, DistilBertForSequenceClassification
 
 class EndpointClassifier:
-    def __init__(self, checkpoint_path='results/checkpoint-29000'):
+    def __init__(self, checkpoint_path='checkpoint-42500'):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = DistilBertForSequenceClassification.from_pretrained(checkpoint_path)
         self.tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
