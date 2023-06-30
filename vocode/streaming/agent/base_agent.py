@@ -110,7 +110,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
     def __init__(
         self,
         agent_config: AgentConfigType,
-        action_factory: Optional[ActionFactory] = None,
+        action_factory: ActionFactory = ActionFactory(),
         interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
         logger: Optional[logging.Logger] = None,
     ):
@@ -192,7 +192,8 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         function_call = None
         async for response in responses:
             if isinstance(response, FunctionCall):
-                funciton_call = response
+                function_call = response
+                continue
             if is_first_response:
                 agent_span_first.end()
                 is_first_response = False
@@ -270,8 +271,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     transcription, agent_input.conversation_id
                 )
             
-            if function_call and self.action_factory is not None:
-                function_call = json.loads(function_call.text)
+            if function_call and self.agent_config.actions is not None:
                 action = self.action_factory.create_action(function_call.name)
                 params = json.loads(function_call.arguments)
                 if "user_message" in params:

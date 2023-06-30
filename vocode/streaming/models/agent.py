@@ -68,7 +68,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     send_filler_audio: Union[bool, FillerAudioConfig] = False
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
-    actions: List[str]
+    actions: Optional[List[str]]
 
 
 class CutOffResponse(BaseModel):

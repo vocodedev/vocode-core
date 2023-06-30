@@ -16,6 +16,7 @@ from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
     collate_response_async,
+    openai_get_tokens,
 )
 from vocode.streaming.models.transcript import Transcript
 
@@ -23,12 +24,12 @@ from vocode.streaming.models.transcript import Transcript
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def __init__(
         self,
-        action_factory: Optional[ActionFactory],
         agent_config: ChatGPTAgentConfig,
+        action_factory: ActionFactory = ActionFactory(),
         logger: Optional[logging.Logger] = None,
         openai_api_key: Optional[str] = None,
     ):
-        super().__init__(agent_config=agent_config, logger=logger)
+        super().__init__(agent_config=agent_config, action_factory=action_factory, logger=logger)
         if agent_config.azure_params:
             openai.api_type = agent_config.azure_params.api_type
             openai.api_base = getenv("AZURE_OPENAI_API_BASE")
@@ -49,7 +50,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         self.is_first_response = True
 
         # TODO: MOVE THIS LOGIC TO RESPOND/BASE AGENT?
-        self.functions = self.get_functions() if action_factory else None
+        self.functions = self.get_functions() if self.agent_config.actions else None
 
     def get_functions(self):
         if not self.action_factory:
@@ -78,7 +79,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         if self.functions:
             parameters["functions"] = self.functions
-
 
         return parameters
 
@@ -136,22 +136,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters["stream"] = True
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
         async for message in collate_response_async(
-            self.get_tokens(stream),
+            openai_get_tokens(stream),
             get_functions=True
         ):
             yield message
-
-    async def get_tokens(self, gen) -> AsyncGenerator[Union[str, FunctionFragment], None]:
-        for event in gen:
-            choices = event.get("choices", [])
-            if len(choices) == 0:
-                break
-            choice = choices[0]
-            if choice.finish_reason:
-                break
-            delta = choice.get("delta", {})
-            if "content" in delta:
-                token = delta["content"]
-                yield token
-            elif "function" in delta:
-                yield FunctionFragment(text=delta["function"])

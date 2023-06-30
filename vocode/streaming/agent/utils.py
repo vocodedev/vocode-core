@@ -22,7 +22,8 @@ async def collate_response_async(
     sentence_endings_pattern = "|".join(map(re.escape, sentence_endings))
     list_item_ending_pattern = r"\n"
     buffer = ""
-    function_buffer = ""
+    function_name_buffer = ""
+    function_args_buffer = ""
     prev_ends_with_money = False
     async for token in gen:
         if not token:
@@ -48,13 +49,34 @@ async def collate_response_async(
                     buffer = ""
             prev_ends_with_money = ends_with_money
         elif isinstance(token, FunctionFragment):
-            function_buffer += token.text
+            function_name_buffer += token.name
+            function_args_buffer += token.arguments
     to_return = buffer.strip()
     if to_return:
         yield to_return
-    if function_buffer and get_functions:
-        yield FunctionCall(text=function_buffer)
+    if function_name_buffer and get_functions:
+        yield FunctionCall(name=function_name_buffer, arguments=function_args_buffer)
 
+async def openai_get_tokens(gen) -> AsyncGenerator[Union[str, FunctionFragment], None]:
+    async for event in gen:
+        choices = event.get("choices", [])
+        if len(choices) == 0:
+            break
+        choice = choices[0]
+        if choice.finish_reason:
+            break
+        delta = choice.get("delta", {})
+        if "text" in delta and delta["text"] is not None:
+            token = delta["text"]
+            yield token
+        if "content" in delta and delta["content"] is not None:
+            token = delta["content"]
+            yield token
+        elif "function_call" in delta and delta["function_call"] is not None:
+            yield FunctionFragment(
+                name=delta["function_call"]["name"] if "name" in delta["function_call"] else "", 
+                arguments=delta["function_call"]["arguments"] if "arguments" in delta["function_call"] else ""
+                )
 
 def find_last_punctuation(buffer: str) -> Optional[int]:
     indices = [buffer.rfind(ending) for ending in SENTENCE_ENDINGS]

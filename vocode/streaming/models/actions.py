@@ -17,10 +17,12 @@ class ActionInput(BaseModel, Generic[ParametersType]):
     params: ParametersType
 
 class FunctionFragment(BaseModel):
-        text: str
+        name: str
+        arguments: str
 
 class FunctionCall(BaseModel):
-        text: str
+        name: str
+        arguments: str
 
 class VonagePhoneCallActionInput(ActionInput[ParametersType]):
     vonage_uuid: str
