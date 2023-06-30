@@ -59,7 +59,6 @@ class AzureOpenAIConfig(BaseModel):
 
 
 class AgentConfig(TypedModel, type=AgentType.BASE.value):
-    prompt_preamble: str
     initial_message: Optional[BaseMessage] = None
     generate_responses: bool = True
     allowed_idle_time_seconds: Optional[float] = None
@@ -70,12 +69,12 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     track_bot_sentiment: bool = False
     actions: Optional[List[str]]
 
-
 class CutOffResponse(BaseModel):
     messages: List[BaseMessage] = [BaseMessage(text="Sorry?")]
 
 
 class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
+    prompt_preamble: str
     expected_first_prompt: Optional[str] = None
     model_name: str = LLM_AGENT_DEFAULT_MODEL_NAME
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
@@ -84,6 +83,7 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
 
 
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
+    prompt_preamble: str
     expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
@@ -93,20 +93,16 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
 
 
 class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):
+    prompt_preamble: str
     model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
     max_tokens_to_sample: int = 200
 
 
 class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):
+    prompt_preamble: str
     model_name: str = CHAT_VERTEX_AI_DEFAULT_MODEL_NAME
     generate_responses: bool = False  # Google Vertex AI doesn't support streaming
 
-
-# class ActionAgentConfig(ChatGPTAgentConfig, type=AgentType.ACTION.value):
-#     actions: List[str]
-#     model_name: str = ACTION_AGENT_DEFAULT_MODEL_NAME
-#     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
-#     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
 
 
 class InformationRetrievalAgentConfig(
@@ -124,6 +120,7 @@ class EchoAgentConfig(AgentConfig, type=AgentType.ECHO.value):
 
 
 class GPT4AllAgentConfig(AgentConfig, type=AgentType.GPT4ALL.value):
+    prompt_preamble: str
     model_path: str
     generate_responses: bool = False
 
