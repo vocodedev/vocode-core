@@ -1,12 +1,11 @@
 from concurrent.futures import ThreadPoolExecutor
-import re
 import asyncio
 import logging
 from typing import AsyncGenerator, Optional, Tuple, Any
 from langchain import ConversationChain
 from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.agent import LlamacppAgentConfig
-from vocode.streaming.agent.utils import stream_response_async
+from vocode.streaming.agent.utils import stream_response_async, CallbackOutput
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.callbacks.manager import CallbackManager
 from langchain.llms import LlamaCpp
@@ -15,7 +14,6 @@ from langchain.prompts import (
     MessagesPlaceholder,
     HumanMessagePromptTemplate,
 )
-from pydantic import BaseModel
 from langchain.schema import LLMResult, SystemMessage, get_buffer_string
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import (
@@ -39,12 +37,6 @@ class FormatHistoryPromptTemplate(PromptTemplate):
         kwargs = self._merge_partial_and_user_variables(**kwargs)
         kwargs["history"] = get_buffer_string(kwargs["history"])
         return DEFAULT_FORMATTER_MAPPING[self.template_format](self.template, **kwargs)
-
-
-class CallbackOutput(BaseModel):
-    finish: bool = False
-    response: Optional[LLMResult] = None
-    token: Optional[str] = None
 
 
 class CustomStreamingCallbackHandler(BaseCallbackHandler):
@@ -71,7 +63,7 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
 
         if type(agent_config.prompt_template) is str:
             if agent_config.prompt_template == "alpaca":
-                self.prompt = FormatHistoryPromptTemplate(
+                prompt = FormatHistoryPromptTemplate(
                     input_variables=["history", "input"],
                     template=ALPACA_TEMPLATE_WITH_HISTORY,
                 )
@@ -80,7 +72,7 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
                     f"Unknown prompt template {agent_config.prompt_template}"
                 )
         else:
-            self.prompt = (
+            prompt = (
                 agent_config.prompt_template
                 or ChatPromptTemplate.from_messages(
                     [
@@ -89,8 +81,9 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
                     ]
                 )
             )
+        self.prompt : PromptTemplate = prompt
 
-        self.callback_queue = asyncio.Queue()
+        self.callback_queue : asyncio.Queue = asyncio.Queue()
         callback = CustomStreamingCallbackHandler(self.callback_queue)
         callback_manager = CallbackManager([callback])
         self.llm = LlamaCpp(

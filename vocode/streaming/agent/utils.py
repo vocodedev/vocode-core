@@ -11,6 +11,8 @@ from typing import (
 )
 
 from openai.openai_object import OpenAIObject
+from pydantic import BaseModel
+from langchain.schema import LLMResult
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import (
     ActionFinish,
@@ -21,10 +23,14 @@ from vocode.streaming.models.transcript import (
 
 SENTENCE_ENDINGS = [".", "!", "?", "\n"]
 
+class CallbackOutput(BaseModel):
+    finish: bool = False
+    response: Optional[LLMResult] = None
+    token: str = ""
 
 async def stream_response_async(
-    gen: AsyncIterable[Union[OpenAIObject, "CallbackOutput"]],
-    get_text: Callable[[dict], str],
+    gen: AsyncIterable[Union[OpenAIObject, CallbackOutput]],
+    get_text: Callable[[Union[dict, CallbackOutput]], str],
     sentence_endings: List[str] = SENTENCE_ENDINGS,
     openai: bool = True,
 ) -> AsyncGenerator:
