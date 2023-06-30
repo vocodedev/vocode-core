@@ -174,8 +174,9 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
 
 class RespondAgent(BaseAgent[AgentConfigType]):
     async def handle_generate_response(
-        self, transcription: Transcription, conversation_id: str
-    ) -> tuple[bool, Optional[FunctionCall]]:
+        self, transcription: Transcription, agent_input: AgentInput
+    ) -> bool:
+        conversation_id = agent_input.conversation_id
         tracer_name_start = await self.get_tracer_name_start()
         agent_span = tracer.start_span(
             f"{tracer_name_start}.generate_total"  # type: ignore
@@ -203,7 +204,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             )
         # TODO: implement should_stop for generate_responses
         agent_span.end()
-        return False, function_call
+        if function_call and self.agent_config.actions is not None:
+                self.call_function(function_call, agent_input)
+        return False
 
     async def handle_respond(
         self, transcription: Transcription, conversation_id: str
@@ -261,50 +264,14 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 self.produce_interruptible_event_nonblocking(AgentResponseFillerAudio())
             self.logger.debug("Responding to transcription")
             should_stop = False
-            function_call = None
             if self.agent_config.generate_responses:
-                should_stop, function_call = await self.handle_generate_response(
-                    transcription, agent_input.conversation_id
+                should_stop = await self.handle_generate_response(
+                    transcription, agent_input
                 )
             else:
                 should_stop = await self.handle_respond(
                     transcription, agent_input.conversation_id
                 )
-            
-            if function_call and self.agent_config.actions is not None:
-                action = self.action_factory.create_action(function_call.name)
-                params = json.loads(function_call.arguments)
-                if "user_message" in params:
-                    user_message = params["user_message"]
-                    self.produce_interruptible_event_nonblocking(
-                        AgentResponseMessage(message=BaseMessage(text=user_message))
-                    )
-                action_input: ActionInput
-                if isinstance(action, VonagePhoneCallAction):
-                    assert (
-                        agent_input.vonage_uuid is not None
-                    ), "Cannot use VonagePhoneCallActionFactory unless the attached conversation is a VonageCall"
-                    action_input = action.create_phone_call_action_input(
-                        function_call.name, params, agent_input.vonage_uuid
-                    )
-                elif isinstance(action, TwilioPhoneCallAction):
-                    assert (
-                        agent_input.twilio_sid is not None
-                    ), "Cannot use TwilioPhoneCallActionFactory unless the attached conversation is a TwilioCall"
-                    action_input = action.create_phone_call_action_input(
-                        function_call.name, params, agent_input.twilio_sid
-                    )
-                else:
-                    action_input = action.create_action_input(
-                        agent_input.conversation_id,
-                        params,
-                    )
-                event = self.interruptible_event_factory.create(action_input)
-                self.transcript.add_action_start_log(
-                    action_input=action_input,
-                    conversation_id=agent_input.conversation_id,
-                )
-                self.actions_queue.put_nowait(event)
 
             if should_stop:
                 self.logger.debug("Agent requested to stop")
@@ -325,6 +292,42 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     self.logger.debug("Goodbye detection timed out")
         except asyncio.CancelledError:
             pass
+
+    def call_function(self, function_call: FunctionCall, agent_input: AgentInput):
+        action = self.action_factory.create_action(function_call.name)
+        params = json.loads(function_call.arguments)
+        if "user_message" in params:
+            user_message = params["user_message"]
+            self.produce_interruptible_event_nonblocking(
+                AgentResponseMessage(message=BaseMessage(text=user_message))
+            )
+        action_input: ActionInput
+        if isinstance(action, VonagePhoneCallAction):
+            assert (
+                agent_input.vonage_uuid is not None
+            ), "Cannot use VonagePhoneCallActionFactory unless the attached conversation is a VonageCall"
+            action_input = action.create_phone_call_action_input(
+                function_call.name, params, agent_input.vonage_uuid
+            )
+        elif isinstance(action, TwilioPhoneCallAction):
+            assert (
+                agent_input.twilio_sid is not None
+            ), "Cannot use TwilioPhoneCallActionFactory unless the attached conversation is a TwilioCall"
+            action_input = action.create_phone_call_action_input(
+                function_call.name, params, agent_input.twilio_sid
+            )
+        else:
+            action_input = action.create_action_input(
+                agent_input.conversation_id,
+                params,
+            )
+        event = self.interruptible_event_factory.create(action_input)
+        assert self.transcript is not None
+        self.transcript.add_action_start_log(
+            action_input=action_input,
+            conversation_id=agent_input.conversation_id,
+        )
+        self.actions_queue.put_nowait(event)
 
     async def get_tracer_name_start(self) -> str:
         if hasattr(self, "tracer_name_start"):
