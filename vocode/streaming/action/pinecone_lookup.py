@@ -34,8 +34,6 @@ class PineconeLookup(BaseAction[PineconeLookupParameters, PineconeLookupResponse
             environment=getenv("PINECONE_ENVIRONMENT"),
         )
 
-        print(action_input)
-
         index = pinecone.Index(action_input.params.pinecone_index)
 
         embed = openai.Embedding.create(
@@ -45,9 +43,7 @@ class PineconeLookup(BaseAction[PineconeLookupParameters, PineconeLookupResponse
             [embed], top_k=action_input.params.num_results, include_metadata=True
         )
 
-        print(res)
-
         return ActionOutput(
             action_type=action_input.action_type,
-            response=PineconeLookupResponse(results=res["matches"]),
+            response=PineconeLookupResponse(results=[x.to_dict() for x in res["matches"]]),
         )
