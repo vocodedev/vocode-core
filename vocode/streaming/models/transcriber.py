@@ -22,6 +22,7 @@ class TranscriberType(str, Enum):
     WHISPER_CPP = "transcriber_whisper_cpp"
     REV_AI = "transcriber_rev_ai"
     AZURE = "transcriber_azure"
+    GLADIA = "transcriber_gladia"
 
 
 class EndpointingType(str, Enum):
@@ -107,6 +108,8 @@ class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM
     version: Optional[str] = None
     keywords: Optional[list] = None
 
+class GladiaTranscriberConfig(TranscriberConfig, type=TranscriberType.GLADIA.value):
+    pass
 
 class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.value):
     model: Optional[str] = None
