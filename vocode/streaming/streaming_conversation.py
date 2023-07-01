@@ -311,6 +311,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.transcript.update_last_bot_message_on_cut_off(
                         message_sent
                     )
+                if self.conversation.agent.agent_config.end_conversation_on_goodbye:
+                    goodbye_detected_task = (
+                        self.conversation.agent.create_goodbye_detection_task(
+                            message_sent
+                        )
+                    )
+                    try:
+                        if await asyncio.wait_for(goodbye_detected_task, 0.1):
+                            self.conversation.logger.debug(
+                                "Agent said goodbye, ending call"
+                            )
+                            self.conversation.terminate()
+                    except asyncio.TimeoutError:
+                        pass
             except asyncio.CancelledError:
                 pass
 
