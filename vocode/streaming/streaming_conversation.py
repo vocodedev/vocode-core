@@ -361,7 +361,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             interruptible_event_factory=self.interruptible_event_factory,
         )
         self.actions_worker = None
-        if self.agent.action_factory is not None:
+        if self.agent.get_agent_config().actions:
             self.actions_worker = ActionsWorker(
                 input_queue=self.agent.actions_queue,
                 output_queue=self.agent.get_input_queue(),
