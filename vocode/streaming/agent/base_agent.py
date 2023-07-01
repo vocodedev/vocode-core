@@ -366,5 +366,5 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[Union[str, FunctionCall], None]:
         raise NotImplementedError

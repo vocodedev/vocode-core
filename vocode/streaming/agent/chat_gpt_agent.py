@@ -53,8 +53,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         self.functions = self.get_functions() if self.agent_config.actions else None
 
     def get_functions(self):
+        assert self.agent_config.actions
         if not self.action_factory:
-            return []
+            return None
         return [
             self.action_factory.create_action(action_type).get_openai_function()
             for action_type in self.agent_config.actions
@@ -125,7 +126,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         human_input: str,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[Union[str, FunctionFragment], None]:
+    ) -> AsyncGenerator[Union[str, FunctionCall], None]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
             yield cut_off_response
