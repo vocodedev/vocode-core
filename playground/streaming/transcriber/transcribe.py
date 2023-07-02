@@ -8,6 +8,9 @@ from vocode.streaming.models.transcriber import (
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber, Transcription
 from vocode.streaming.transcriber import *
 
+from vocode.streaming.pubsub.base_pubsub import Subscriber, AudioFileWriterSubscriber
+from vocode import pubsub
+
 
 if __name__ == "__main__":
     import asyncio
@@ -46,7 +49,13 @@ if __name__ == "__main__":
         )
         transcriber.start()
         asyncio.create_task(print_output(transcriber))
+
         print("Start speaking...press Ctrl+C to end. ")
+
+        subscriber = AudioFileWriterSubscriber("AudioFileWriterSubscriber")
+        pubsub.subscribe(subscriber=subscriber, topic="test")
+        asyncio.create_task(subscriber.listen())
+
         while True:
             chunk = await microphone_input.get_audio()
             transcriber.send_audio(chunk)
