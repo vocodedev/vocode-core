@@ -36,7 +36,8 @@ class FileOutputDevice(BaseOutputDevice):
         audio_encoding: AudioEncoding = AudioEncoding.LINEAR16,
     ):
         super().__init__(sampling_rate, audio_encoding)
-        self.blocksize = self.sampling_rate
+        self.blocksize = self.sampling_rate  # One second of audio data
+        self.buffer = np.array([], dtype=np.int16)
         self.queue: Queue[np.ndarray] = Queue()
 
         wav = wave.open(file_path, "wb")
@@ -50,10 +51,10 @@ class FileOutputDevice(BaseOutputDevice):
 
     def consume_nonblocking(self, chunk):
         chunk_arr = np.frombuffer(chunk, dtype=np.int16)
-        for i in range(0, chunk_arr.shape[0], self.blocksize):
-            block = np.zeros(self.blocksize, dtype=np.int16)
-            size = min(self.blocksize, chunk_arr.shape[0] - i)
-            block[:size] = chunk_arr[i : i + size]
+        self.buffer = np.concatenate([self.buffer, chunk_arr])
+        while self.buffer.shape[0] >= self.blocksize:
+            block = self.buffer[: self.blocksize]
+            self.buffer = self.buffer[self.blocksize :]
             self.queue.put_nowait(block)
 
     def terminate(self):
