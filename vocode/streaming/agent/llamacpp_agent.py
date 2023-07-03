@@ -5,7 +5,7 @@ from typing import AsyncGenerator, Optional, Tuple, Any
 from langchain import ConversationChain
 from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.agent import LlamacppAgentConfig
-from vocode.streaming.agent.utils import stream_response_async, CallbackOutput
+from vocode.streaming.agent.utils import collate_response_async
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.callbacks.manager import CallbackManager
 from langchain.llms import LlamaCpp
@@ -14,6 +14,7 @@ from langchain.prompts import (
     MessagesPlaceholder,
     HumanMessagePromptTemplate,
 )
+from pydantic import BaseModel
 from langchain.schema import LLMResult, SystemMessage, get_buffer_string
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import (
@@ -30,6 +31,12 @@ Your previous conversation history:
 
 Current instruction/message to respond to: {input}
 ### Response:"""
+
+
+class CallbackOutput(BaseModel):
+    finish: bool = False
+    response: Optional[LLMResult] = None
+    token: str = ""
 
 
 class FormatHistoryPromptTemplate(PromptTemplate):
@@ -72,18 +79,15 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
                     f"Unknown prompt template {agent_config.prompt_template}"
                 )
         else:
-            prompt = (
-                agent_config.prompt_template
-                or ChatPromptTemplate.from_messages(
-                    [
-                        MessagesPlaceholder(variable_name="history"),
-                        HumanMessagePromptTemplate.from_template("{input}"),
-                    ]
-                )
+            prompt = agent_config.prompt_template or ChatPromptTemplate.from_messages(
+                [
+                    MessagesPlaceholder(variable_name="history"),
+                    HumanMessagePromptTemplate.from_template("{input}"),
+                ]
             )
-        self.prompt : PromptTemplate = prompt
+        self.prompt: PromptTemplate = prompt
 
-        self.callback_queue : asyncio.Queue = asyncio.Queue()
+        self.callback_queue: asyncio.Queue = asyncio.Queue()
         callback = CustomStreamingCallbackHandler(self.callback_queue)
         callback_manager = CallbackManager([callback])
         self.llm = LlamaCpp(
@@ -115,6 +119,13 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
         self.logger.debug(f"LLM response: {text}")
         return text, False
 
+    async def llamacpp_get_tokens(self):
+        while True:
+            callback_output = await self.callback_queue.get()
+            if callback_output.finish:
+                break
+            yield callback_output.token
+
     async def generate_response(
         self,
         human_input: str,
@@ -127,16 +138,7 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
             human_input,
         )
 
-        async def stream():
-            while True:
-                callback_output = await self.callback_queue.get()
-                if callback_output.finish:
-                    break
-                yield callback_output
-
-        async for message in stream_response_async(
-            stream(),
-            get_text=lambda o: o.token,
-            openai=False,
+        async for message in collate_response_async(
+            self.llamacpp_get_tokens(),
         ):
             yield message

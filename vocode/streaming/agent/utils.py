@@ -3,8 +3,6 @@ from typing import Dict, Any, AsyncGenerator, AsyncIterable, Callable, List, Lit
 
 from openai.openai_object import OpenAIObject
 from vocode.streaming.models.actions import FunctionCall, FunctionFragment
-from pydantic import BaseModel
-from langchain.schema import LLMResult
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import (
     ActionFinish,
