@@ -1,7 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import logging
-from typing import AsyncGenerator, Optional, Tuple, Any
+from typing import AsyncGenerator, Optional, Tuple, Any, Union
+import typing
 from langchain import ConversationChain
 from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.agent import LlamacppAgentConfig
@@ -68,9 +69,10 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
     ):
         super().__init__(agent_config=agent_config, logger=logger)
 
+        self.prompt: Union[PromptTemplate, ChatPromptTemplate]
         if type(agent_config.prompt_template) is str:
             if agent_config.prompt_template == "alpaca":
-                prompt = FormatHistoryPromptTemplate(
+                self.prompt = FormatHistoryPromptTemplate(
                     input_variables=["history", "input"],
                     template=ALPACA_TEMPLATE_WITH_HISTORY,
                 )
@@ -79,13 +81,15 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
                     f"Unknown prompt template {agent_config.prompt_template}"
                 )
         else:
-            prompt = agent_config.prompt_template or ChatPromptTemplate.from_messages(
-                [
-                    MessagesPlaceholder(variable_name="history"),
-                    HumanMessagePromptTemplate.from_template("{input}"),
-                ]
-            )
-        self.prompt: PromptTemplate = prompt
+            if agent_config.prompt_template is None:
+                self.prompt = ChatPromptTemplate.from_messages(
+                    [
+                        MessagesPlaceholder(variable_name="history"),
+                        HumanMessagePromptTemplate.from_template("{input}"),
+                    ]
+                )
+            else:
+                self.promt = typing.cast(PromptTemplate, agent_config.prompt_template)
 
         self.callback_queue: asyncio.Queue = asyncio.Queue()
         callback = CustomStreamingCallbackHandler(self.callback_queue)
@@ -141,4 +145,4 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
         async for message in collate_response_async(
             self.llamacpp_get_tokens(),
         ):
-            yield message
+            yield str(message)
