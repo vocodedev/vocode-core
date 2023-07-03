@@ -1,7 +1,6 @@
 import logging
 from typing import Optional
 import typing
-from vocode.streaming.agent.action_agent import ActionAgent
 from vocode.streaming.agent.anthropic_agent import ChatAnthropicAgent
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
@@ -12,7 +11,6 @@ from vocode.streaming.agent.restful_user_implemented_agent import (
     RESTfulUserImplementedAgent,
 )
 from vocode.streaming.models.agent import (
-    ActionAgentConfig,
     AgentConfig,
     AgentType,
     ChatAnthropicAgentConfig,
@@ -40,6 +38,4 @@ class AgentFactory:
             return RESTfulUserImplementedAgent(agent_config=agent_config, logger=logger)
         elif isinstance(agent_config, ChatAnthropicAgentConfig):
             return ChatAnthropicAgent(agent_config=agent_config, logger=logger)
-        elif isinstance(agent_config, ActionAgentConfig):
-            return ActionAgent(agent_config=agent_config, logger=logger)
         raise Exception("Invalid agent config", agent_config.type)

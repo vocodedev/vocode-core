@@ -1,18 +1,22 @@
 import logging
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import openai
 from typing import AsyncGenerator, Optional, Tuple
 
 import logging
+from pydantic import BaseModel
 
 from vocode import getenv
+from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent
+from vocode.streaming.models.actions import FunctionCall, FunctionFragment
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
-    stream_openai_response_async,
+    collate_response_async,
+    openai_get_tokens,
 )
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import Transcript
@@ -23,11 +27,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def __init__(
         self,
         agent_config: ChatGPTAgentConfig,
+        action_factory: ActionFactory = ActionFactory(),
         logger: Optional[logging.Logger] = None,
         openai_api_key: Optional[str] = None,
         vector_db_factory=VectorDBFactory(),
     ):
-        super().__init__(agent_config=agent_config, logger=logger)
+        super().__init__(agent_config=agent_config, action_factory=action_factory, logger=logger)
         if agent_config.azure_params:
             openai.api_type = agent_config.azure_params.api_type
             openai.api_base = getenv("AZURE_OPENAI_API_BASE")
@@ -52,6 +57,18 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 self.agent_config.vector_db_config
             )
 
+        # TODO: MOVE THIS LOGIC TO RESPOND/BASE AGENT?
+        self.functions = self.get_functions() if self.agent_config.actions else None
+
+    def get_functions(self):
+        assert self.agent_config.actions
+        if not self.action_factory:
+            return None
+        return [
+            self.action_factory.create_action(action_type).get_openai_function()
+            for action_type in self.agent_config.actions
+        ]
+
     def get_chat_parameters(self, messages: Optional[List] = None):
         assert self.transcript is not None
         messages = messages or format_openai_chat_messages_from_transcript(
@@ -68,6 +85,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             parameters["engine"] = self.agent_config.azure_params.engine
         else:
             parameters["model"] = self.agent_config.model_name
+
+        if self.functions:
+            parameters["functions"] = self.functions
 
         return parameters
 
@@ -108,13 +128,13 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             text = chat_completion.choices[0].message.content
         self.logger.debug(f"LLM response: {text}")
         return text, False
-
+    
     async def generate_response(
         self,
         human_input: str,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[Union[str, FunctionCall], None]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
             yield cut_off_response
@@ -138,8 +158,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
-        async for message in stream_openai_response_async(
-            stream,
-            get_text=lambda choice: choice.get("delta", {}).get("content"),
+        async for message in collate_response_async(
+            openai_get_tokens(stream),
+            get_functions=True
         ):
             yield message
