@@ -69,7 +69,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     send_filler_audio: Union[bool, FillerAudioConfig] = False
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
-
+    actions: Optional[List[str]] = None
 
 class CutOffResponse(BaseModel):
     messages: List[BaseMessage] = [BaseMessage(text="Sorry?")]
@@ -110,13 +110,6 @@ class LlamacppAgentConfig(AgentConfig, type=AgentType.LLAMACPP.value):
     prompt_preamble: str
     llamacpp_kwargs: dict = {}
     prompt_template: Optional[Union[PromptTemplate, str]] = None
-
-class ActionAgentConfig(AgentConfig, type=AgentType.ACTION.value):
-    prompt_preamble: str
-    actions: List[str]
-    model_name: str = ACTION_AGENT_DEFAULT_MODEL_NAME
-    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
-    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
 
 
 class InformationRetrievalAgentConfig(
