@@ -130,7 +130,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             docs_with_scores = await self.vector_db.similarity_search_with_score(
                 get_last_user_message()
             )
-            self.transcript.add_bot_message(
+            self.transcript.add_vector_db_results(
                 f"Found {len(docs_with_scores)} similar documents: {docs_with_scores}",
                 conversation_id,
             )
