@@ -1,5 +1,5 @@
 import re
-from typing import Dict, Any, AsyncGenerator, AsyncIterable, Callable, List, Optional, Union
+from typing import Dict, Any, AsyncGenerator, AsyncIterable, Callable, List, Literal, Optional, TypeVar, Union
 
 from openai.openai_object import OpenAIObject
 from vocode.streaming.models.actions import FunctionCall, FunctionFragment
@@ -13,12 +13,11 @@ from vocode.streaming.models.transcript import (
 
 SENTENCE_ENDINGS = [".", "!", "?", "\n"]
 
-
 async def collate_response_async(
     gen: AsyncIterable[Union[str, FunctionFragment]],
     sentence_endings: List[str] = SENTENCE_ENDINGS,
-    get_functions = False
-) -> AsyncGenerator:
+    get_functions: Literal[True, False] = False
+) -> AsyncGenerator[Union[str, FunctionCall], None]:
     sentence_endings_pattern = "|".join(map(re.escape, sentence_endings))
     list_item_ending_pattern = r"\n"
     buffer = ""
