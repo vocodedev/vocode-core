@@ -218,6 +218,18 @@ FUNCTIONS_INPUT = [
         },
         {"delta": {}, "finish_reason": "function_call"},
     ],
+    [
+        {"delta": {"function_call": {"name": "wave"}}, "finish_reason": None},
+        {
+            "delta": {"function_call": {"name": "_hello", "arguments": "{\n"}},
+            "finish_reason": None,
+        },
+        {
+            "delta": {"function_call": {"arguments": '  "name": "user"\n}'}},
+            "finish_reason": None,
+        },
+        {"delta": {}, "finish_reason": "function_call"},
+    ]
 ]
 
 FUNCTIONS_OUTPUT = [
@@ -225,7 +237,11 @@ FUNCTIONS_OUTPUT = [
         "Hello.",
         "What do you want to talk about",
         FunctionCall(name="wave_hello", arguments='{\n  "name": "user"\n}'),
+    ],
+    [
+        FunctionCall(name="wave_hello", arguments='{\n  "name": "user"\n}'),
     ]
+
 ]
 
 
