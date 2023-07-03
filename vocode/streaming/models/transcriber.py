@@ -108,9 +108,10 @@ class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM
     version: Optional[str] = None
     keywords: Optional[list] = None
 
+
 class GladiaTranscriberConfig(TranscriberConfig, type=TranscriberType.GLADIA.value):
     buffer_size_seconds: float = 0.1
-    pass
+
 
 class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.value):
     model: Optional[str] = None
