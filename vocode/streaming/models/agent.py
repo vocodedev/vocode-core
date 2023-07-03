@@ -5,6 +5,7 @@ from pydantic import validator
 
 from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
+from .vector_db import VectorDBConfig
 
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
 LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
@@ -90,6 +91,8 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     cut_off_response: Optional[CutOffResponse] = None
     azure_params: Optional[AzureOpenAIConfig] = None
+    vector_db_config: Optional[VectorDBConfig] = None
+
 
 
 class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):

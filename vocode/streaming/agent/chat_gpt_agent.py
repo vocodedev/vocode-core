@@ -18,7 +18,9 @@ from vocode.streaming.agent.utils import (
     collate_response_async,
     openai_get_tokens,
 )
+from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import Transcript
+from vocode.streaming.vector_db.factory import VectorDBFactory
 
 
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
@@ -28,6 +30,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         action_factory: ActionFactory = ActionFactory(),
         logger: Optional[logging.Logger] = None,
         openai_api_key: Optional[str] = None,
+        vector_db_factory=VectorDBFactory(),
     ):
         super().__init__(agent_config=agent_config, action_factory=action_factory, logger=logger)
         if agent_config.azure_params:
@@ -48,6 +51,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             else None
         )
         self.is_first_response = True
+
+        if self.agent_config.vector_db_config:
+            self.vector_db = vector_db_factory.create_vector_db(
+                self.agent_config.vector_db_config
+            )
 
         # TODO: MOVE THIS LOGIC TO RESPOND/BASE AGENT?
         self.functions = self.get_functions() if self.agent_config.actions else None
@@ -132,6 +140,20 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             yield cut_off_response
             return
         assert self.transcript is not None
+
+        def get_last_user_message():
+            for message in self.transcript.event_logs[::-1]:
+                if message.sender == Sender.HUMAN:
+                    return message.to_string()
+
+        if self.agent_config.vector_db_config:
+            docs_with_scores = await self.vector_db.similarity_search_with_score(
+                get_last_user_message()
+            )
+            self.transcript.add_vector_db_results(
+                f"Found {len(docs_with_scores)} similar documents: {docs_with_scores}",
+                conversation_id,
+            )
 
         chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True

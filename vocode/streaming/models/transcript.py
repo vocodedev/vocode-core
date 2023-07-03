@@ -99,6 +99,13 @@ class Transcript(BaseModel):
             sender=Sender.BOT,
             conversation_id=conversation_id,
         )
+    
+    def add_vector_db_results(self, text: str, conversation_id: str):
+        self.add_message(
+            text=text,
+            sender=Sender.VECTOR_DB,
+            conversation_id=conversation_id,
+        )
 
     def add_action_start_log(self, action_input: ActionInput, conversation_id: str):
         timestamp = time.time()
