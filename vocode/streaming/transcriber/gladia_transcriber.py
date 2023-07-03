@@ -14,7 +14,6 @@ from vocode.streaming.models.websocket import AudioMessage
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
     Transcription,
-    # meter,
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
 
@@ -48,21 +47,21 @@ class GladiaTranscriber(BaseAsyncTranscriber[GladiaTranscriberConfig]):
     async def _run_loop(self):
         await self.process()
 
-    # def send_audio(self, chunk):
-    #     if self.transcriber_config.audio_encoding == AudioEncoding.MULAW:
-    #         sample_width = 1
-    #         if isinstance(chunk, np.ndarray):
-    #             chunk = chunk.astype(np.int16)
-    #             chunk = chunk.tobytes()
-    #         chunk = audioop.ulaw2lin(chunk, sample_width)
+    def send_audio(self, chunk):
+        if self.transcriber_config.audio_encoding == AudioEncoding.MULAW:
+            sample_width = 1
+            if isinstance(chunk, np.ndarray):
+                chunk = chunk.astype(np.int16)
+                chunk = chunk.tobytes()
+            chunk = audioop.ulaw2lin(chunk, sample_width)
 
-    #     self.buffer.extend(chunk)
+        self.buffer.extend(chunk)
 
-    #     if (
-    #         len(self.buffer) / (2 * self.transcriber_config.sampling_rate)
-    #     ) >= self.transcriber_config.buffer_size_seconds:
-    #         self.input_queue.put_nowait(self.buffer)
-    #         self.buffer = bytearray()
+        if (
+            len(self.buffer) / (2 * self.transcriber_config.sampling_rate)
+        ) >= self.transcriber_config.buffer_size_seconds:
+            self.input_queue.put_nowait(self.buffer)
+            self.buffer = bytearray()
 
     def terminate(self):
         self._ended = True
@@ -103,7 +102,6 @@ class GladiaTranscriber(BaseAsyncTranscriber[GladiaTranscriberConfig]):
                         result_str = await ws.recv()
                         data = json.loads(result_str)
                         if "error" in data and data["error"]:
-                            print(data["error"])
                             raise Exception(data["error"])
                     except websockets.exceptions.ConnectionClosedError as e:
                         self.logger.debug(e)
