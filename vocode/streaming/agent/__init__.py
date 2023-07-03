@@ -8,4 +8,3 @@ from vocode.streaming.agent.llm_agent import LLMAgent
 from vocode.streaming.agent.restful_user_implemented_agent import (
     RESTfulUserImplementedAgent,
 )
-from vocode.streaming.agent.action_agent import ActionAgent

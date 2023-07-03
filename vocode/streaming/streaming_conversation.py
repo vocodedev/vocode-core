@@ -10,7 +10,6 @@ import time
 import typing
 
 from vocode.streaming.action.worker import ActionsWorker
-from vocode.streaming.agent.action_agent import ActionAgent
 
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
@@ -376,7 +375,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             interruptible_event_factory=self.interruptible_event_factory,
         )
         self.actions_worker = None
-        if isinstance(self.agent, ActionAgent):
+        if self.agent.get_agent_config().actions:
             self.actions_worker = ActionsWorker(
                 input_queue=self.agent.actions_queue,
                 output_queue=self.agent.get_input_queue(),
