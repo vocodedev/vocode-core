@@ -1,8 +1,10 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from openai.openai_object import OpenAIObject
 from pydantic import BaseModel
+from vocode.streaming.models.actions import FunctionCall
 import pytest
 from vocode.streaming.agent.utils import collate_response_async, openai_get_tokens
+
 
 async def _agen_from_list(l):
     for item in l:
@@ -20,6 +22,11 @@ def create_chatgpt_openai_object(
 class StreamOpenAIResponseTestCase(BaseModel):
     openai_objects: List[OpenAIObject]
     expected_sentences: List[str]
+
+
+class StreamOpenAIResponseFunctionTestCase(BaseModel):
+    openai_objects: List[OpenAIObject]
+    expected_functions: List[Union[str, FunctionCall]]
 
 
 OPENAI_OBJECTS = [
@@ -188,6 +195,39 @@ EXPECTED_SENTENCES = [
     ],
 ]
 
+FUNCTIONS_INPUT = [
+    [
+        {"delta": {"role": "assistant"}, "finish_reason": None},
+        {"delta": {"content": "Hello"}, "finish_reason": None},
+        {"delta": {"content": "."}, "finish_reason": None},
+        {"delta": {"content": " What"}, "finish_reason": None},
+        {"delta": {"content": " do"}, "finish_reason": None},
+        {"delta": {"content": " you"}, "finish_reason": None},
+        {"delta": {"content": " want"}, "finish_reason": None},
+        {"delta": {"content": " to"}, "finish_reason": None},
+        {"delta": {"content": " talk"}, "finish_reason": None},
+        {"delta": {"content": " about"}, "finish_reason": None},
+        {"delta": {"function_call": {"name": "wave"}}, "finish_reason": None},
+        {
+            "delta": {"function_call": {"name": "_hello", "arguments": "{\n"}},
+            "finish_reason": None,
+        },
+        {
+            "delta": {"function_call": {"arguments": '  "name": "user"\n}'}},
+            "finish_reason": None,
+        },
+        {"delta": {}, "finish_reason": "function_call"},
+    ],
+]
+
+FUNCTIONS_OUTPUT = [
+    [
+        "Hello.",
+        "What do you want to talk about",
+        FunctionCall(name="wave_hello", arguments='{\n  "name": "user"\n}'),
+    ]
+]
+
 
 @pytest.mark.asyncio
 async def test_stream_openai_response_async():
@@ -202,6 +242,15 @@ async def test_stream_openai_response_async():
             OPENAI_OBJECTS, EXPECTED_SENTENCES
         )
     ]
+    function_tests = [
+        StreamOpenAIResponseFunctionTestCase(
+            openai_objects=[
+                create_chatgpt_openai_object(**obj) for obj in openai_objects
+            ],
+            expected_functions=expected_functions,
+        )
+        for openai_objects, expected_functions in zip(FUNCTIONS_INPUT, FUNCTIONS_OUTPUT)
+    ]
 
     for test_case in test_cases:
         actual_sentences = []
@@ -210,3 +259,12 @@ async def test_stream_openai_response_async():
         ):
             actual_sentences.append(sentence)
         assert actual_sentences == test_case.expected_sentences
+
+    for test_case in function_tests:
+        actual_functions = []
+        async for sentence in collate_response_async(
+            openai_get_tokens(_agen_from_list(test_case.openai_objects)),
+            get_functions=True
+        ):
+            actual_functions.append(sentence)
+        assert actual_functions == test_case.expected_functions
