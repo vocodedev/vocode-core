@@ -3,3 +3,4 @@ google-cloud-texttospeech
 redis
 twilio
 python-dotenv
+vonage
