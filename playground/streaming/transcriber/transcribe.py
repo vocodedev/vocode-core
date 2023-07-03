@@ -8,7 +8,7 @@ from vocode.streaming.models.transcriber import (
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber, Transcription
 from vocode.streaming.transcriber import *
 
-from vocode.streaming.pubsub.base_pubsub import Subscriber, AudioFileWriterSubscriber
+from vocode.streaming.pubsub.base_pubsub import AudioFileWriterSubscriber
 from vocode import pubsub
 
 
@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
         subscriber = AudioFileWriterSubscriber("AudioFileWriterSubscriber")
         pubsub.subscribe(subscriber=subscriber, topic="test")
-        asyncio.create_task(subscriber.listen())
+        subscriber.start()
 
         while True:
             chunk = await microphone_input.get_audio()
