@@ -12,7 +12,6 @@ class PineconeDB(VectorDB):
         import pinecone
 
         self.config = config
-        self.pinecone = pinecone
 
         pinecone.init(
             api_key=getenv("PINECONE_API_KEY"),
