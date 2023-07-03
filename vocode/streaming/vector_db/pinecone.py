@@ -17,8 +17,8 @@ class PineconeDB(VectorDB):
             api_key=getenv("PINECONE_API_KEY"),
             environment=getenv("PINECONE_ENVIRONMENT"),
         )
-        index = self.pinecone.Index(self.config.index)
-        self.embeddings = OpenAIEmbeddings()
+        index = pinecone.Index(self.config.index)
+        self.embeddings = OpenAIEmbeddings()  # type: ignore
         self.vectorstore = Pinecone(index, self.embeddings.embed_query, "text")
 
     async def add_texts(self, texts, **kwargs):
