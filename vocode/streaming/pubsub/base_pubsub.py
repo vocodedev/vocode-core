@@ -12,7 +12,7 @@ from vocode.streaming.output_device.file_output_device import FileOutputDevice
 
 
 @dataclass
-class AudioChunkEvent:
+class PubsubEvent:
     """Event Dataclass contains details about the event."""
 
     event_id: str
@@ -27,17 +27,17 @@ class AudioFileWriterSubscriber(AsyncWorker):
 
     def __init__(self, name: str):
         self.name = name
-        self.queue = asyncio.Queue()
+        self.input_queue = asyncio.Queue()
         self.file_writers: Dict[int, FileOutputDevice] = {}
         self.buffers: Dict[int, List[np.ndarray]] = {}
         self.last_flush_time: Dict[int, float] = {}
         self.save_chunk_in_sec = 5
-        super().__init__(input_queue=self.queue)
+        super().__init__(input_queue=self.input_queue)
 
     async def _run_loop(self):
         """Listen to the topics subscribed to."""
         while True:
-            event = await self.queue.get()
+            event = await self.input_queue.get()
             if event.payload_type == AudioEncoding.LINEAR16:
                 # accomulate {self.save_chunk_in_sec} seconds chunks based on event.event_id and flush them to disk to recording/{event.event_id}.wav
                 if event.event_id not in self.file_writers:
@@ -74,10 +74,10 @@ class PubSubManager:
             self.subscribers[topic] = []
         self.subscribers[topic].append(subscriber)
 
-    async def publish(self, event: AudioChunkEvent):
+    async def publish(self, event: PubsubEvent):
         """Publish an event to a specific topic."""
         for subscriber in self.subscribers.get(event.topic, []):
-            await subscriber.queue.put(event)
+            await subscriber.input_queue.put(event)
 
 
 class Publisher:
@@ -101,7 +101,7 @@ class Publisher:
                 "pubsub can not be None when publishing events via Publisher.publish"
             )
 
-        event = AudioChunkEvent(
+        event = PubsubEvent(
             event_id, payload, payload_type, datetime.utcnow().isoformat(), topic
         )
         await pubsub.publish(event)
