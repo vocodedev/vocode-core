@@ -18,4 +18,4 @@ class PineconeConfig(VectorDBConfig, type=VectorDBType.PINECONE.value):
     index: str
     api_key: Optional[str]
     api_environment: Optional[str]
-    top_k: int = 10
+    top_k: int = 3
