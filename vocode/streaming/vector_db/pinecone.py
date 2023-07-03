@@ -1,7 +1,7 @@
-import os
 import asyncio
 from functools import partial
 from langchain.vectorstores import Pinecone
+from vocode import getenv
 from vocode.streaming.models.vector_db import PineconeConfig
 from langchain.embeddings.openai import OpenAIEmbeddings
 from vocode.streaming.vector_db.base_vector_db import VectorDB
@@ -15,8 +15,8 @@ class PineconeDB(VectorDB):
         self.pinecone = pinecone
 
         pinecone.init(
-            api_key=os.environ["PINECONE_API_KEY"],
-            environment=os.environ["PINECONE_ENVIRONMENT"],
+            api_key=getenv("PINECONE_API_KEY"),
+            environment=getenv("PINECONE_ENVIRONMENT"),
         )
         index = self.pinecone.Index(self.config.index)
         self.embeddings = OpenAIEmbeddings()
