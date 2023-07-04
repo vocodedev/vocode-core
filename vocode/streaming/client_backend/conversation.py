@@ -52,6 +52,7 @@ class ConversationRouter(BaseRouter):
             )
         ),
         logger: Optional[logging.Logger] = None,
+        conversation_endpoint = "/conversation"
     ):
         super().__init__()
         self.transcriber_thunk = transcriber_thunk
@@ -59,7 +60,7 @@ class ConversationRouter(BaseRouter):
         self.synthesizer_thunk = synthesizer_thunk
         self.logger = logger or logging.getLogger(__name__)
         self.router = APIRouter()
-        self.router.websocket("/conversation")(self.conversation)
+        self.router.websocket(conversation_endpoint)(self.conversation)
 
     def get_conversation(
         self,
