@@ -19,7 +19,45 @@ from vocode.streaming.telephony.conversation.vonage_call import VonageCall
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.base_router import BaseRouter
 from vocode.streaming.utils.events_manager import EventsManager
+from opentelemetry import trace
+import requests
+import os
+import json
 
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+class DatabaseExporter:
+    def __init__(self, conversation_id):
+        self.conversation_id = conversation_id
+    def export(self, spans):
+        record_data = {"conversation_id": self.conversation_id, "log": []}
+        
+        for span in spans:
+            record_data["log"].append({
+                "name": span.name,
+                "duration": (span.end_time - span.start_time) / 1e9,
+                # "trace_id": span.context.trace_id,
+                # "span_id": span.context.span_id,
+            })
+
+        record_data["log"] = json.dumps(record_data["log"])
+        
+        record_data = {"records": [{"fields": record_data}]}
+
+        print(record_data)
+
+        response = requests.post(f"https://api.airtable.com/v0/{os.getenv('AIRTABLE_BASE_ID')}/logs", headers={
+                "Authorization": f"Bearer {os.getenv('AIRTABLE_ACCESS_TOKEN')}", "Content-Type": "application/json"}
+            , json=record_data, params={"typecast": "true"})
+        if response.status_code == 200:
+            print("Successfully logged to database")
+        else:
+            print("Failed to log to database", response.status_code, response.text)
+
+        
+    def shutdown(self):
+        pass
 
 class CallsRouter(BaseRouter):
     def __init__(
@@ -96,26 +134,36 @@ class CallsRouter(BaseRouter):
             raise ValueError(f"Unknown call config type {call_config.type}")
 
     async def connect_call(self, websocket: WebSocket, id: str):
-        await websocket.accept()
-        self.logger.debug("Phone WS connection opened for chat {}".format(id))
-        call_config = await self.config_manager.get_config(id)
-        if not call_config:
-            raise HTTPException(status_code=400, detail="No active phone call")
+        span_exporter = InMemorySpanExporter()
+        database_exporter = DatabaseExporter(id)
+        span_processor = BatchSpanProcessor(span_exporter)
+        trace.get_tracer_provider().add_span_processor(span_processor)
+        tracer = trace.get_tracer(__name__)
+        with tracer.start_as_current_span("connect_call") as conversation:
+            conversation.set_attribute("conversation_id", id)
+            await websocket.accept()
+            self.logger.debug("Phone WS connection opened for chat {}".format(id))
+            call_config = await self.config_manager.get_config(id)
+            if not call_config:
+                raise HTTPException(status_code=400, detail="No active phone call")
 
-        call = self._from_call_config(
-            base_url=self.base_url,
-            call_config=call_config,
-            config_manager=self.config_manager,
-            conversation_id=id,
-            transcriber_factory=self.transcriber_factory,
-            agent_factory=self.agent_factory,
-            synthesizer_factory=self.synthesizer_factory,
-            events_manager=self.events_manager,
-            logger=self.logger,
-        )
+            call = self._from_call_config(
+                base_url=self.base_url,
+                call_config=call_config,
+                config_manager=self.config_manager,
+                conversation_id=id,
+                transcriber_factory=self.transcriber_factory,
+                agent_factory=self.agent_factory,
+                synthesizer_factory=self.synthesizer_factory,
+                events_manager=self.events_manager,
+                logger=self.logger,
+            )
 
-        await call.attach_ws_and_start(websocket)
-        self.logger.debug("Phone WS connection closed for chat {}".format(id))
+            await call.attach_ws_and_start(websocket)
+            self.logger.debug("Phone WS connection closed for chat {}".format(id))
+        child_spans = span_exporter.get_finished_spans()
+        database_exporter.export(child_spans)
+        
 
     def get_router(self) -> APIRouter:
         return self.router
