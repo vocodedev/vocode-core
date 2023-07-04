@@ -29,7 +29,6 @@ from vocode.streaming.models.synthesizer import (
 )
 from vocode.streaming.constants import (
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
-    PER_CHUNK_ALLOWANCE_SECONDS,
     ALLOWED_IDLE_TIME,
 )
 from vocode.streaming.agent.base_agent import (
@@ -334,7 +333,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         agent: BaseAgent,
         synthesizer: BaseSynthesizer,
         conversation_id: Optional[str] = None,
-        per_chunk_allowance_seconds: float = PER_CHUNK_ALLOWANCE_SECONDS,
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
@@ -395,7 +393,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         self.events_manager = events_manager or EventsManager()
         self.events_task: Optional[asyncio.Task] = None
-        self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
         self.transcript = Transcript()
         self.transcript.attach_events_manager(self.events_manager)
         self.bot_sentiment = None
@@ -558,7 +555,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         chunk_idx = 0
         async for chunk_result in synthesis_result.chunk_generator:
-            start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
                 len(chunk_result.chunk) / chunk_size
             )
@@ -576,12 +572,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if started_event:
                     started_event.set()
             self.output_device.consume_nonblocking(chunk_result.chunk)
-            end_time = time.time()
             await asyncio.sleep(
                 max(
-                    speech_length_seconds
-                    - (end_time - start_time)
-                    - self.per_chunk_allowance_seconds,
+                    speech_length_seconds,
                     0,
                 )
             )

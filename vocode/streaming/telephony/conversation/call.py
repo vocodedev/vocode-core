@@ -65,7 +65,6 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
             agent_factory.create_agent(agent_config, logger=logger),
             synthesizer_factory.create_synthesizer(synthesizer_config, logger=logger),
             conversation_id=conversation_id,
-            per_chunk_allowance_seconds=0.01,
             events_manager=events_manager,
             logger=logger,
         )
