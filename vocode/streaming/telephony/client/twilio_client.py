@@ -1,3 +1,6 @@
+import logging
+import time
+
 from typing import Optional
 from twilio.rest import Client
 
@@ -48,6 +51,8 @@ class TwilioClient(BaseTelephonyClient):
         )
 
     def end_call(self, twilio_sid):
+        logging.info("I am ending the call now within the twilio client code")
+        time.sleep(4)
         response = self.twilio_client.calls(twilio_sid).update(status="completed")
         return response.status == "completed"
 
