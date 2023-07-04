@@ -2,7 +2,8 @@ import logging
 import os
 import typing
 from fastapi import FastAPI
-from vocode.streaming.models.events import Event, EventType, TranscriptCompleteEvent
+from vocode.streaming.models.events import Event, EventType
+from vocode.streaming.models.transcript import TranscriptCompleteEvent
 from vocode.streaming.utils import events_manager
 
 from vocode.streaming.telephony.config_manager.redis_config_manager import (
@@ -11,6 +12,10 @@ from vocode.streaming.telephony.config_manager.redis_config_manager import (
 from vocode.streaming.telephony.server.base import TelephonyServer
 
 from call_transcript_utils import add_transcript
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(docs_url=None)
 
@@ -28,13 +33,13 @@ class EventsManager(events_manager.EventsManager):
             transcript_complete_event = typing.cast(TranscriptCompleteEvent, event)
             add_transcript(
                 transcript_complete_event.conversation_id,
-                transcript_complete_event.transcript,
+                transcript_complete_event.transcript.to_string(),
             )
 
 
 config_manager = RedisConfigManager()
 
-BASE_URL = os.getenv("TELEPHONY_SERVER_BASE_URL")
+BASE_URL = os.environ["TELEPHONY_SERVER_BASE_URL"]
 
 telephony_server = TelephonyServer(
     base_url=BASE_URL,

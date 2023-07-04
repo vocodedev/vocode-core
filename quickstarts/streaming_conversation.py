@@ -2,49 +2,19 @@ import asyncio
 import logging
 import signal
 from dotenv import load_dotenv
-from vocode.streaming.synthesizer.coqui_tts_synthesizer import CoquiTTSSynthesizer
 
-from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
-from vocode.streaming.synthesizer.gtts_synthesizer import GTTSSynthesizer
-from vocode.streaming.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
-from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
-from vocode.streaming.transcriber.google_transcriber import GoogleTranscriber
-from vocode.streaming.transcriber.whisper_cpp_transcriber import WhisperCPPTranscriber
 
 load_dotenv()
 
-from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.helpers import create_microphone_input_and_speaker_output
-from vocode.streaming.models.transcriber import (
-    DeepgramTranscriberConfig,
-    PunctuationEndpointingConfig,
-    GoogleTranscriberConfig,
-    WhisperCPPTranscriberConfig,
-)
-from vocode.streaming.models.agent import (
-    ChatGPTAgentConfig,
-    CutOffResponse,
-    FillerAudioConfig,
-    RESTfulUserImplementedAgentConfig,
-    WebSocketUserImplementedAgentConfig,
-    EchoAgentConfig,
-    LLMAgentConfig,
-    ChatGPTAgentConfig,
-)
+from vocode.helpers import create_streaming_microphone_input_and_speaker_output
+from vocode.streaming.transcriber import *
+from vocode.streaming.agent import *
+from vocode.streaming.synthesizer import *
+from vocode.streaming.models.transcriber import *
+from vocode.streaming.models.agent import *
+from vocode.streaming.models.synthesizer import *
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import (
-    AzureSynthesizerConfig,
-    CoquiTTSSynthesizerConfig,
-    ElevenLabsSynthesizerConfig,
-    GTTSSynthesizerConfig,
-    GoogleSynthesizerConfig,
-    PlayHtSynthesizerConfig,
-    RimeSynthesizerConfig,
-)
-import vocode
-from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 
 
 logging.basicConfig()
@@ -53,22 +23,26 @@ logger.setLevel(logging.DEBUG)
 
 
 async def main():
-    microphone_input, speaker_output = create_microphone_input_and_speaker_output(
-        streaming=True, use_default_devices=False
+    (
+        microphone_input,
+        speaker_output,
+    ) = create_streaming_microphone_input_and_speaker_output(
+        use_default_devices=False,
+        logger=logger,
     )
 
     conversation = StreamingConversation(
         output_device=speaker_output,
         transcriber=DeepgramTranscriber(
             DeepgramTranscriberConfig.from_input_device(
-                microphone_input, endpointing_config=PunctuationEndpointingConfig()
+                microphone_input,
+                endpointing_config=PunctuationEndpointingConfig(),
             )
         ),
         agent=ChatGPTAgent(
             ChatGPTAgentConfig(
                 initial_message=BaseMessage(text="What up"),
-                prompt_preamble="""You are a helpful gen Z AI assistant. You use slang like um, but, and like a LOT. All of your responses are 10 words or less. Be super chill, use slang like
-hella, down,     fire, totally, but like, slay, vibing, queen, go off, bet, sus, simp, cap, big yikes, main character, dank""",
+                prompt_preamble="""The AI is having a pleasant conversation about life""",
             )
         ),
         synthesizer=AzureSynthesizer(
@@ -80,10 +54,8 @@ hella, down,     fire, totally, but like, slay, vibing, queen, go off, bet, sus,
     print("Conversation started, press Ctrl+C to end")
     signal.signal(signal.SIGINT, lambda _0, _1: conversation.terminate())
     while conversation.is_active():
-        chunk = microphone_input.get_audio()
-        if chunk:
-            conversation.receive_audio(chunk)
-        await asyncio.sleep(0)
+        chunk = await microphone_input.get_audio()
+        conversation.receive_audio(chunk)
 
 
 if __name__ == "__main__":

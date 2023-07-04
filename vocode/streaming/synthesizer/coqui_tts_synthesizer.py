@@ -1,3 +1,5 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import logging
 from typing import Optional
 from pydub import AudioSegment
@@ -7,31 +9,57 @@ from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.message import BaseMessage
 
-from .base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode.streaming.synthesizer.base_synthesizer import (
+    BaseSynthesizer,
+    SynthesisResult,
+    tracer,
+)
 
-from vocode.streaming.models.synthesizer import CoquiTTSSynthesizerConfig
+from vocode.streaming.models.synthesizer import (
+    CoquiTTSSynthesizerConfig,
+    SynthesizerType,
+)
+
+from opentelemetry.context.context import Context
 
 
-class CoquiTTSSynthesizer(BaseSynthesizer):
+class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
     def __init__(
-        self, config: CoquiTTSSynthesizerConfig, logger: Optional[logging.Logger] = None
+        self,
+        synthesizer_config: CoquiTTSSynthesizerConfig,
+        logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(config)
+        super().__init__(synthesizer_config)
 
         from TTS.api import TTS
 
-        self.tts = TTS(**config.tts_kwargs)
-        self.speaker = config.speaker
-        self.language = config.language
+        self.tts = TTS(**synthesizer_config.tts_kwargs)
+        self.speaker = synthesizer_config.speaker
+        self.language = synthesizer_config.language
+        self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
-    def create_speech(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.COQUI_TTS.value.split('_', 1)[-1]}.create_total",
+        )
         tts = self.tts
-        audio_data = np.array(tts.tts(message.text, self.speaker, self.language))
+        audio_data = await asyncio.get_event_loop().run_in_executor(
+            self.thread_pool_executor,
+            tts.tts,
+            message.text,
+            self.speaker,
+            self.language,
+        )
+        create_speech_span.end()
+        convert_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.COQUI_TTS.value.split('_', 1)[-1]}.convert",
+        )
+        audio_data = np.array(audio_data)
 
         # Convert the NumPy array to bytes
         audio_data_bytes = (audio_data * 32767).astype(np.int16).tobytes()
@@ -40,11 +68,15 @@ class CoquiTTSSynthesizer(BaseSynthesizer):
         buffer = io.BytesIO(audio_data_bytes)
 
         audio_segment: AudioSegment = AudioSegment.from_raw(
-            buffer, frame_rate=22050, channels=1, sample_width=2
+            buffer, frame_rate=22050, channels=1, sample_width=2  # type: ignore
         )
 
         output_bytes_io = io.BytesIO()
-        audio_segment.export(output_bytes_io, format="wav")
-        return self.create_synthesis_result_from_wav(
+        audio_segment.export(output_bytes_io, format="wav")  # type: ignore
+
+        result = self.create_synthesis_result_from_wav(
             file=output_bytes_io, message=message, chunk_size=chunk_size
         )
+
+        convert_span.end()
+        return result

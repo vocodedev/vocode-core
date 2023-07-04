@@ -1,7 +1,13 @@
+from __future__ import annotations
+
+import asyncio
 from fastapi import WebSocket
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.models.websocket import AudioMessage
+from vocode.streaming.models.websocket import TranscriptMessage
+from vocode.streaming.models.transcript import TranscriptEvent
+
 
 
 class WebsocketOutputDevice(BaseOutputDevice):
@@ -10,15 +16,30 @@ class WebsocketOutputDevice(BaseOutputDevice):
     ):
         super().__init__(sampling_rate, audio_encoding)
         self.ws = ws
+        self.active = False
+        self.queue: asyncio.Queue[str] = asyncio.Queue()
+
+    def start(self):
         self.active = True
+        self.process_task = asyncio.create_task(self.process())
 
     def mark_closed(self):
         self.active = False
 
-    async def send_async(self, chunk: bytes):
+    async def process(self):
+        while self.active:
+            message = await self.queue.get()
+            await self.ws.send_text(message)
+
+    def consume_nonblocking(self, chunk: bytes):
         if self.active:
             audio_message = AudioMessage.from_bytes(chunk)
-            await self.ws.send_text(audio_message.json())
+            self.queue.put_nowait(audio_message.json())
 
-    async def maybe_send_mark_async(self, message):
-        pass
+    def consume_transcript(self, event: TranscriptEvent):
+        if self.active:
+            transcript_message = TranscriptMessage.from_event(event)
+            self.queue.put_nowait(transcript_message.json())
+
+    def terminate(self):
+        self.process_task.cancel()

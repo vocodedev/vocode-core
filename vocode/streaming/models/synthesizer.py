@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, validator
+from pydantic import validator
 from vocode.streaming.models.client_backend import OutputAudioConfig
 
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
@@ -9,7 +9,7 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_SAMPLING_RATE,
 )
-from .model import TypedModel
+from .model import BaseModel, TypedModel
 from .audio_encoding import AudioEncoding
 
 
@@ -54,6 +54,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
             **kwargs
         )
 
+    # TODO(EPD-186): switch to from_twilio_output_device and from_vonage_output_device
     @classmethod
     def from_telephone_output_device(cls, **kwargs):
         return cls(
@@ -105,6 +106,8 @@ class ElevenLabsSynthesizerConfig(
     voice_id: Optional[str] = ELEVEN_LABS_ADAM_VOICE_ID
     stability: Optional[float]
     similarity_boost: Optional[float]
+    optimize_streaming_latency: Optional[int]
+    model_id: Optional[str]
 
     @validator("voice_id")
     def set_name(cls, voice_id):
@@ -119,21 +122,34 @@ class ElevenLabsSynthesizerConfig(
             )
         return similarity_boost
 
+    @validator("optimize_streaming_latency")
+    def optimize_streaming_latency_check(cls, optimize_streaming_latency):
+        if optimize_streaming_latency is not None and not (
+            0 <= optimize_streaming_latency <= 4
+        ):
+            raise ValueError("optimize_streaming_latency must be between 0 and 4.")
+        return optimize_streaming_latency
+
+
+RIME_DEFAULT_SPEAKER = "young_male_unmarked-1"
+RIME_DEFAULT_SAMPLE_RATE = 22050
+RIME_DEFAULT_BASE_URL = "https://rjmopratfrdjgmfmaios.functions.supabase.co/rime-tts"
 
 class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME.value):
-    speaker: str
+    speaker: str = RIME_DEFAULT_SPEAKER
+    sampling_rate: int = RIME_DEFAULT_SAMPLE_RATE
+    base_url: str = RIME_DEFAULT_BASE_URL
 
 
-COQUI_DEFAULT_SPEAKER_ID = "d2bd7ccb-1b65-4005-9578-32c4e02d8ddf"
+
+COQUI_DEFAULT_SPEAKER_ID = "ebe2db86-62a6-49a1-907a-9a1360d4416e"
 
 
 class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value):
     api_key: Optional[str] = None
     voice_id: Optional[str] = COQUI_DEFAULT_SPEAKER_ID
     voice_prompt: Optional[str] = None
-    sentiment_config = SentimentConfig(
-        emotions=["neutral", "happy", "sad", "surprise", "angry", "dull"]
-    )
+    use_xtts: Optional[bool] = True
 
     @validator("voice_id", always=True)
     def override_voice_id_with_prompt(cls, voice_id, values):
@@ -142,8 +158,11 @@ class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value
         return voice_id or COQUI_DEFAULT_SPEAKER_ID
 
 
+PLAYHT_DEFAULT_VOICE_ID = "larry"
+
+
 class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.value):
-    voice_id: str
+    voice_id: str = PLAYHT_DEFAULT_VOICE_ID
     speed: Optional[str] = None
     preset: Optional[str] = None
 
@@ -170,5 +189,5 @@ class StreamElementsSynthesizerConfig(
 
 
 class BarkSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.BARK.value):
-    preload_kwargs = {}
-    generate_kwargs = {}
+    preload_kwargs: Dict[str, Any] = {}
+    generate_kwargs: Dict[str, Any] = {}

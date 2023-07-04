@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import validator
 
@@ -11,7 +11,7 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_SAMPLING_RATE,
 )
 from .audio_encoding import AudioEncoding
-from .model import BaseModel, TypedModel
+from .model import TypedModel
 
 
 class TranscriberType(str, Enum):
@@ -22,6 +22,7 @@ class TranscriberType(str, Enum):
     WHISPER_CPP = "transcriber_whisper_cpp"
     REV_AI = "transcriber_rev_ai"
     AZURE = "transcriber_azure"
+    GLADIA = "transcriber_gladia"
 
 
 class EndpointingType(str, Enum):
@@ -31,7 +32,7 @@ class EndpointingType(str, Enum):
 
 
 class EndpointingConfig(TypedModel, type=EndpointingType.BASE):
-    pass
+    time_cutoff_seconds: float
 
 
 class TimeEndpointingConfig(EndpointingConfig, type=EndpointingType.TIME_BASED):
@@ -51,6 +52,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     endpointing_config: Optional[EndpointingConfig] = None
     downsampling: Optional[int] = None
     min_interrupt_confidence: Optional[float] = None
+    mute_during_speech: bool = False
 
     @validator("min_interrupt_confidence")
     def min_interrupt_confidence_must_be_between_0_and_1(cls, v):
@@ -73,6 +75,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
             **kwargs,
         )
 
+    # TODO(EPD-186): switch to from_twilio_input_device and from_vonage_input_device
     @classmethod
     def from_telephone_input_device(
         cls,
@@ -100,23 +103,30 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
 
 class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM.value):
     language: Optional[str] = None
-    model: Optional[str] = None
+    model: Optional[str] = "nova"
     tier: Optional[str] = None
     version: Optional[str] = None
     keywords: Optional[list] = None
+
+
+class GladiaTranscriberConfig(TranscriberConfig, type=TranscriberType.GLADIA.value):
+    buffer_size_seconds: float = 0.1
 
 
 class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.value):
     model: Optional[str] = None
     language_code: str = "en-US"
 
+
 class AzureTranscriberConfig(TranscriberConfig, type=TranscriberType.AZURE.value):
     pass
+
 
 class AssemblyAITranscriberConfig(
     TranscriberConfig, type=TranscriberType.ASSEMBLY_AI.value
 ):
-    pass
+    buffer_size_seconds: float = 0.1
+    word_boost: Optional[List[str]] = None
 
 
 class WhisperCPPTranscriberConfig(

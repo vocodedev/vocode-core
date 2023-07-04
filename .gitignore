@@ -7,3 +7,5 @@ credentials.json
 *.npy
 *.bytes
 **/call_transcripts/*.txt
+benchmark_results/
+private.key

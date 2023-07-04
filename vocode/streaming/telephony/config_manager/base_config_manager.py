@@ -1,16 +1,14 @@
-import logging
 from typing import Optional
-from redis import Redis
 
-from vocode.streaming.models.telephony import CallConfig
+from vocode.streaming.models.telephony import BaseCallConfig
 
 
 class BaseConfigManager:
-    def save_config(self, conversation_id: str, config: CallConfig):
+    async def save_config(self, conversation_id: str, config: BaseCallConfig):
         raise NotImplementedError
 
-    def get_config(self, conversation_id) -> Optional[CallConfig]:
+    async def get_config(self, conversation_id) -> Optional[BaseCallConfig]:
         raise NotImplementedError
 
-    def delete_config(self, conversation_id):
+    async def delete_config(self, conversation_id):
         raise NotImplementedError

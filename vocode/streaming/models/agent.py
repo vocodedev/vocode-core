@@ -5,13 +5,19 @@ from pydantic import validator
 
 from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
+from .vector_db import VectorDBConfig
 
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
 LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
 LLM_AGENT_DEFAULT_MAX_TOKENS = 256
 LLM_AGENT_DEFAULT_MODEL_NAME = "text-curie-001"
-CHAT_GPT_AGENT_DEFAULT_MODEL_NAME = "gpt-3.5-turbo"
+CHAT_GPT_AGENT_DEFAULT_MODEL_NAME = "gpt-3.5-turbo-0613"
+ACTION_AGENT_DEFAULT_MODEL_NAME = "gpt-3.5-turbo-0613"
 CHAT_ANTHROPIC_DEFAULT_MODEL_NAME = "claude-v1"
+CHAT_VERTEX_AI_DEFAULT_MODEL_NAME = "chat-bison@001"
+AZURE_OPENAI_DEFAULT_API_TYPE = "azure"
+AZURE_OPENAI_DEFAULT_API_VERSION = "2023-03-15-preview"
+AZURE_OPENAI_DEFAULT_ENGINE = "gpt-35-turbo"
 
 
 class AgentType(str, Enum):
@@ -20,11 +26,13 @@ class AgentType(str, Enum):
     CHAT_GPT_ALPHA = "agent_chat_gpt_alpha"
     CHAT_GPT = "agent_chat_gpt"
     CHAT_ANTHROPIC = "agent_chat_anthropic"
+    CHAT_VERTEX_AI = "agent_chat_vertex_ai"
     ECHO = "agent_echo"
     GPT4ALL = "agent_gpt4all"
     INFORMATION_RETRIEVAL = "agent_information_retrieval"
     RESTFUL_USER_IMPLEMENTED = "agent_restful_user_implemented"
     WEBSOCKET_USER_IMPLEMENTED = "agent_websocket_user_implemented"
+    ACTION = "agent_action"
 
 
 class FillerAudioConfig(BaseModel):
@@ -45,6 +53,12 @@ class WebhookConfig(BaseModel):
     url: str
 
 
+class AzureOpenAIConfig(BaseModel):
+    api_type: str = AZURE_OPENAI_DEFAULT_API_TYPE
+    api_version: Optional[str] = AZURE_OPENAI_DEFAULT_API_VERSION
+    engine: str = AZURE_OPENAI_DEFAULT_ENGINE
+
+
 class AgentConfig(TypedModel, type=AgentType.BASE.value):
     initial_message: Optional[BaseMessage] = None
     generate_responses: bool = True
@@ -54,7 +68,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     send_filler_audio: Union[bool, FillerAudioConfig] = False
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
-
+    actions: Optional[List[str]] = None
 
 class CutOffResponse(BaseModel):
     messages: List[BaseMessage] = [BaseMessage(text="Sorry?")]
@@ -76,11 +90,22 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     cut_off_response: Optional[CutOffResponse] = None
+    azure_params: Optional[AzureOpenAIConfig] = None
+    vector_db_config: Optional[VectorDBConfig] = None
 
 
-class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC):
+
+class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):
+    prompt_preamble: str
     model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
     max_tokens_to_sample: int = 200
+
+
+class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):
+    prompt_preamble: str
+    model_name: str = CHAT_VERTEX_AI_DEFAULT_MODEL_NAME
+    generate_responses: bool = False  # Google Vertex AI doesn't support streaming
+
 
 
 class InformationRetrievalAgentConfig(
@@ -113,7 +138,6 @@ class RESTfulUserImplementedAgentConfig(
     respond: EndpointConfig
     generate_responses: bool = False
     # generate_response: Optional[EndpointConfig]
-    # update_last_bot_message_on_cut_off: Optional[EndpointConfig]
 
 
 class RESTfulAgentInput(BaseModel):
@@ -136,66 +160,4 @@ class RESTfulAgentText(RESTfulAgentOutput, type=RESTfulAgentOutputType.TEXT):
 
 
 class RESTfulAgentEnd(RESTfulAgentOutput, type=RESTfulAgentOutputType.END):
-    pass
-
-
-class WebSocketUserImplementedAgentConfig(
-    AgentConfig, type=AgentType.WEBSOCKET_USER_IMPLEMENTED.value
-):
-    class RouteConfig(BaseModel):
-        url: str
-
-    respond: RouteConfig
-    generate_responses: bool = False
-    # generate_response: Optional[RouteConfig]
-    # send_message_on_cut_off: bool = False
-
-
-class WebSocketAgentMessageType(str, Enum):
-    BASE = "websocket_agent_base"
-    START = "websocket_agent_start"
-    TEXT = "websocket_agent_text"
-    TEXT_END = "websocket_agent_text_end"
-    READY = "websocket_agent_ready"
-    STOP = "websocket_agent_stop"
-
-
-class WebSocketAgentMessage(TypedModel, type=WebSocketAgentMessageType.BASE):
-    conversation_id: Optional[str] = None
-
-
-class WebSocketAgentTextMessage(
-    WebSocketAgentMessage, type=WebSocketAgentMessageType.TEXT
-):
-    class Payload(BaseModel):
-        text: str
-
-    data: Payload
-
-    @classmethod
-    def from_text(cls, text: str, conversation_id: Optional[str] = None):
-        return cls(data=cls.Payload(text=text), conversation_id=conversation_id)
-
-
-class WebSocketAgentStartMessage(
-    WebSocketAgentMessage, type=WebSocketAgentMessageType.START
-):
-    pass
-
-
-class WebSocketAgentReadyMessage(
-    WebSocketAgentMessage, type=WebSocketAgentMessageType.READY
-):
-    pass
-
-
-class WebSocketAgentStopMessage(
-    WebSocketAgentMessage, type=WebSocketAgentMessageType.STOP
-):
-    pass
-
-
-class WebSocketAgentTextEndMessage(
-    WebSocketAgentMessage, type=WebSocketAgentMessageType.TEXT_END
-):
     pass

@@ -1,4 +1,4 @@
-from .base_agent import BaseAgent
+from .base_agent import BaseAgent, RespondAgent
 from ..models.agent import (
     RESTfulUserImplementedAgentConfig,
     RESTfulAgentInput,
@@ -12,7 +12,7 @@ import logging
 import aiohttp
 
 
-class RESTfulUserImplementedAgent(BaseAgent):
+class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig]):
     def __init__(
         self,
         agent_config: RESTfulUserImplementedAgentConfig,
@@ -23,14 +23,13 @@ class RESTfulUserImplementedAgent(BaseAgent):
             raise NotImplementedError(
                 "Use the WebSocket user implemented agent to stream responses"
             )
-        self.agent_config = agent_config
         self.logger = logger or logging.getLogger(__name__)
 
     async def respond(
         self,
         human_input,
+        conversation_id: str,
         is_interrupt: bool = False,
-        conversation_id: Optional[str] = None,
     ) -> Tuple[Optional[str], bool]:
         config = self.agent_config.respond
         try:
@@ -58,7 +57,3 @@ class RESTfulUserImplementedAgent(BaseAgent):
         except Exception as e:
             self.logger.error(f"Error in response from RESTful agent: {e}")
             return None, True
-
-    def generate_response(self, human_input, is_interrupt: bool = False) -> Generator:
-        """Returns a generator that yields a sentence at a time."""
-        raise NotImplementedError

@@ -5,6 +5,8 @@ from vocode.streaming.models.model import TypedModel
 class Sender(str, Enum):
     HUMAN = "human"
     BOT = "bot"
+    ACTION_WORKER = "action_worker"
+    VECTOR_DB = "vector_db"
 
 
 class EventType(str, Enum):
@@ -12,30 +14,21 @@ class EventType(str, Enum):
     TRANSCRIPT_COMPLETE = "event_transcript_complete"
     PHONE_CALL_CONNECTED = "event_phone_call_connected"
     PHONE_CALL_ENDED = "event_phone_call_ended"
+    RECORDING = "event_recording"
 
 
 class Event(TypedModel):
     conversation_id: str
 
 
-class TranscriptEvent(Event, type=EventType.TRANSCRIPT):
-    text: str
-    sender: Sender
-    timestamp: float
-
-    def to_string(self, include_timestamp: bool = False) -> str:
-        if include_timestamp:
-            return f"{self.sender.name}: {self.text} ({self.timestamp})"
-        return f"{self.sender.name}: {self.text}"
-
-
 class PhoneCallConnectedEvent(Event, type=EventType.PHONE_CALL_CONNECTED):
-    pass
+    to_phone_number: str
+    from_phone_number: str
 
 
 class PhoneCallEndedEvent(Event, type=EventType.PHONE_CALL_ENDED):
     conversation_minutes: float = 0
 
 
-class TranscriptCompleteEvent(Event, type=EventType.TRANSCRIPT_COMPLETE):
-    transcript: str
+class RecordingEvent(Event, type=EventType.RECORDING):
+    recording_url: str

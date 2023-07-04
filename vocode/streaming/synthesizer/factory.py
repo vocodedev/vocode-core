@@ -1,7 +1,19 @@
 import logging
 from typing import Optional
+import typing
 
-from vocode.streaming.models.synthesizer import SynthesizerConfig, SynthesizerType
+from vocode.streaming.models.synthesizer import (
+    AzureSynthesizerConfig,
+    CoquiTTSSynthesizerConfig,
+    ElevenLabsSynthesizerConfig,
+    GTTSSynthesizerConfig,
+    GoogleSynthesizerConfig,
+    PlayHtSynthesizerConfig,
+    RimeSynthesizerConfig,
+    StreamElementsSynthesizerConfig,
+    SynthesizerConfig,
+    SynthesizerType,
+)
 from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 from vocode.streaming.synthesizer.google_synthesizer import GoogleSynthesizer
@@ -20,21 +32,21 @@ class SynthesizerFactory:
         synthesizer_config: SynthesizerConfig,
         logger: Optional[logging.Logger] = None,
     ):
-        if synthesizer_config.type == SynthesizerType.GOOGLE:
+        if isinstance(synthesizer_config, GoogleSynthesizerConfig):
             return GoogleSynthesizer(synthesizer_config, logger=logger)
-        elif synthesizer_config.type == SynthesizerType.AZURE:
+        elif isinstance(synthesizer_config, AzureSynthesizerConfig):
             return AzureSynthesizer(synthesizer_config, logger=logger)
-        elif synthesizer_config.type == SynthesizerType.ELEVEN_LABS:
+        elif isinstance(synthesizer_config, ElevenLabsSynthesizerConfig):
             return ElevenLabsSynthesizer(synthesizer_config, logger=logger)
-        elif synthesizer_config.type == SynthesizerType.PLAY_HT:
+        elif isinstance(synthesizer_config, PlayHtSynthesizerConfig):
             return PlayHtSynthesizer(synthesizer_config, logger=logger)
-        elif synthesizer_config.type == SynthesizerType.RIME:
+        elif isinstance(synthesizer_config, RimeSynthesizerConfig):
             return RimeSynthesizer(synthesizer_config, logger=logger)
-        elif synthesizer_config.type == SynthesizerType.GTTS:
+        elif isinstance(synthesizer_config, GTTSSynthesizerConfig):
             return GTTSSynthesizer(synthesizer_config, logger=logger)
-        elif synthesizer_config.type == SynthesizerType.STREAM_ELEMENTS:
+        elif isinstance(synthesizer_config, StreamElementsSynthesizerConfig):
             return StreamElementsSynthesizer(synthesizer_config, logger=logger)
-        elif synthesizer_config.type == SynthesizerType.COQUI_TTS:
+        elif isinstance(synthesizer_config, CoquiTTSSynthesizerConfig):
             return CoquiTTSSynthesizer(synthesizer_config, logger=logger)
         else:
             raise Exception("Invalid synthesizer config")

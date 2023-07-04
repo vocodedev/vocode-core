@@ -1,5 +1,9 @@
+from __future__ import annotations
+
+import asyncio
 import json
 import base64
+from typing import Optional
 
 from fastapi import WebSocket
 
@@ -11,22 +15,32 @@ from vocode.streaming.telephony.constants import (
 
 
 class TwilioOutputDevice(BaseOutputDevice):
-    def __init__(self, ws: WebSocket = None, stream_sid: str = None):
+    def __init__(
+        self, ws: Optional[WebSocket] = None, stream_sid: Optional[str] = None
+    ):
         super().__init__(
             sampling_rate=DEFAULT_SAMPLING_RATE, audio_encoding=DEFAULT_AUDIO_ENCODING
         )
         self.ws = ws
         self.stream_sid = stream_sid
+        self.active = True
+        self.queue: asyncio.Queue[str] = asyncio.Queue()
+        self.process_task = asyncio.create_task(self.process())
 
-    async def send_async(self, chunk: bytes):
+    async def process(self):
+        while self.active:
+            message = await self.queue.get()
+            await self.ws.send_text(message)
+
+    def consume_nonblocking(self, chunk: bytes):
         twilio_message = {
             "event": "media",
             "streamSid": self.stream_sid,
             "media": {"payload": base64.b64encode(chunk).decode("utf-8")},
         }
-        await self.ws.send_text(json.dumps(twilio_message))
+        self.queue.put_nowait(json.dumps(twilio_message))
 
-    async def maybe_send_mark_async(self, message_sent):
+    def maybe_send_mark_nonblocking(self, message_sent):
         mark_message = {
             "event": "mark",
             "streamSid": self.stream_sid,
@@ -34,4 +48,7 @@ class TwilioOutputDevice(BaseOutputDevice):
                 "name": "Sent {}".format(message_sent),
             },
         }
-        await self.ws.send_text(json.dumps(mark_message))
+        self.queue.put_nowait(json.dumps(mark_message))
+
+    def terminate(self):
+        self.process_task.cancel()
