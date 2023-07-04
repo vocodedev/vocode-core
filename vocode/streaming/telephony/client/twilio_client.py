@@ -1,3 +1,6 @@
+import logging
+import time
+
 from typing import Optional
 from twilio.rest import Client
 
@@ -49,8 +52,9 @@ class TwilioClient(BaseTelephonyClient):
             base_url=self.base_url, call_id=conversation_id
         )
 
-    async def end_call(self, twilio_sid):
-        # TODO: Make this async. This is blocking.
+    def end_call(self, twilio_sid):
+        logging.info("I am ending the call now within the twilio client code")
+        time.sleep(4)
         response = self.twilio_client.calls(twilio_sid).update(status="completed")
         return response.status == "completed"
 
