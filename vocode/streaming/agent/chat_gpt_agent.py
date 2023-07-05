@@ -57,9 +57,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 self.agent_config.vector_db_config
             )
 
-        # TODO: MOVE THIS LOGIC TO RESPOND/BASE AGENT?
-        self.functions = self.get_functions() if self.agent_config.actions else None
-
     def get_functions(self):
         assert self.agent_config.actions
         if not self.action_factory:
