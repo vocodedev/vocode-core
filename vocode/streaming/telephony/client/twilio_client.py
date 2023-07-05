@@ -60,7 +60,7 @@ class TwilioClient(BaseTelephonyClient):
         self,
         to_phone: str,
         from_phone: str,
-        mobile_only: bool = False, # changed this way to conform with California law; we leave as False for testing purposes
+        mobile_only: bool = False, # originally to conform with California law; we leave as False for testing purposes
     ):
         if len(to_phone) < 8:
             raise ValueError("Invalid 'to' phone")
