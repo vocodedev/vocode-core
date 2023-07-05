@@ -30,32 +30,48 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 class DatabaseExporter:
     def __init__(self, conversation_id):
         self.conversation_id = conversation_id
+        self.base_url = f"https://api.airtable.com/v0/{os.getenv('AIRTABLE_BASE_ID')}/logs"
+        self.headers = {
+            "Authorization": f"Bearer {os.getenv('AIRTABLE_ACCESS_TOKEN')}",
+            "Content-Type": "application/json"
+        }
+
     def export(self, spans):
+        record_id = self.get_record_id()
         record_data = {"conversation_id": self.conversation_id, "log": []}
-        
+
         for span in spans:
             record_data["log"].append({
                 "name": span.name,
                 "duration": (span.end_time - span.start_time) / 1e9,
-                # "trace_id": span.context.trace_id,
-                # "span_id": span.context.span_id,
             })
 
         record_data["log"] = json.dumps(record_data["log"])
-        
-        record_data = {"records": [{"fields": record_data}]}
 
-        print(record_data)
+        payload = {"records": [{"id": record_id, "fields": record_data}]}
 
-        response = requests.post(f"https://api.airtable.com/v0/{os.getenv('AIRTABLE_BASE_ID')}/logs", headers={
-                "Authorization": f"Bearer {os.getenv('AIRTABLE_ACCESS_TOKEN')}", "Content-Type": "application/json"}
-            , json=record_data, params={"typecast": "true"})
+        response = requests.patch(self.base_url, headers=self.headers, json=payload)
+
         if response.status_code == 200:
-            print("Successfully logged to database")
+            print("Successfully logged to the database")
         else:
-            print("Failed to log to database", response.status_code, response.text)
+            print("Failed to log to the database", response.status_code, response.text)
 
-        
+    def get_record_id(self):
+        params = {
+            "filterByFormula": f"{{conversation_id}} = '{self.conversation_id}'",
+            "maxRecords": 1
+        }
+
+        response = requests.get(self.base_url, headers=self.headers, params=params)
+
+        if response.status_code == 200:
+            data = response.json()
+            records = data.get('records', [])
+            if records:
+                return records[0].get('id')
+        return None
+
     def shutdown(self):
         pass
 
