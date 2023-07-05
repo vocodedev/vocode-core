@@ -29,12 +29,14 @@ class VonageClient(BaseTelephonyClient):
         from_phone: str,
         record: bool = False,
         digits: Optional[str] = None,
+        **kwargs,
     ) -> str:  # identifier of the call on the telephony provider
         response = self.voice.create_call(
             {
                 "to": [{"type": "phone", "number": to_phone, "dtmfAnswer": digits}],
                 "from": {"type": "phone", "number": from_phone},
                 "ncco": self.create_call_ncco(self.base_url, conversation_id, record),
+                **kwargs,
             }
         )
         if response["status"] != "started":

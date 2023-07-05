@@ -109,7 +109,7 @@ class OutboundCall:
         else:
             raise ValueError("No telephony config provided")
 
-    async def start(self):
+    async def start(self, **create_call_kwargs):
         self.logger.debug("Starting outbound call")
         self.telephony_client.validate_outbound_call(
             to_phone=self.to_phone,
@@ -122,6 +122,7 @@ class OutboundCall:
             from_phone=self.from_phone,
             record=self.telephony_client.get_telephony_config().record,
             digits=self.digits,
+            **create_call_kwargs,
         )
         if isinstance(self.telephony_client, TwilioClient):
             call_config = TwilioCallConfig(
