@@ -140,6 +140,11 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
             )
         self.transcript: Optional[Transcript] = None
 
+        self.functions = self.get_functions() if self.agent_config.actions else None
+
+    def get_functions(self):
+        raise NotImplementedError
+
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript
 
