@@ -3,6 +3,7 @@ import time
 
 from typing import Optional
 from twilio.rest import Client
+from xml.etree import ElementTree as ET
 
 from vocode.streaming.models.telephony import BaseCallConfig, TwilioConfig
 from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
@@ -54,7 +55,30 @@ class TwilioClient(BaseTelephonyClient):
 
     def end_call(self, twilio_sid):
         logging.info("I am ending the call now within the twilio client code")
-        time.sleep(4)
+        current_twiml = self.twilio_client.calls(twilio_sid).fetch().annotations.list()[0].data
+
+        # for testing purposes only. we are currently checking whether it is a conference
+        # if so, then we should not end the call
+        root = ET.fromstring(current_twiml)
+
+        # Check for Conference tag anywhere in the document
+        conference_elements = root.findall('.//Conference')
+
+        # fail-safe in case something is really wrong with the call and it still hasn't hung up
+        call = self.twilio_client.calls(twilio_sid).fetch()
+
+        # Check the call's duration
+        if call.duration is not None and int(call.duration) > 5 * 60:  # duration is in seconds
+            # The call has been going for more than 4 minutes - terminate it
+            response = self.twilio_client.calls(twilio_sid).update(status="completed")
+            return response.status == "completed"
+
+        # if it has been less than 5 minutes and we are in a conference call, we should just let it keep going
+        if conference_elements:
+            return False
+
+        time.sleep(10) # for testing purposes only, if for some reason it just keeps going even when it's a conference
+
         response = self.twilio_client.calls(twilio_sid).update(status="completed")
         return response.status == "completed"
 
