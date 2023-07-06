@@ -19,61 +19,13 @@ from vocode.streaming.telephony.conversation.vonage_call import VonageCall
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.base_router import BaseRouter
 from vocode.streaming.utils.events_manager import EventsManager
-from opentelemetry import trace
-import requests
-import os
-import json
 
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry import trace
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-class DatabaseExporter:
-    def __init__(self, conversation_id):
-        self.conversation_id = conversation_id
-        self.base_url = f"https://api.airtable.com/v0/{os.getenv('AIRTABLE_BASE_ID')}/logs"
-        self.headers = {
-            "Authorization": f"Bearer {os.getenv('AIRTABLE_ACCESS_TOKEN')}",
-            "Content-Type": "application/json"
-        }
+from vocode.streaming.telephony.server.utils import SpanLogHandler, DatabaseExporter
 
-    def export(self, spans):
-        record_id = self.get_record_id()
-        record_data = {"conversation_id": self.conversation_id, "log": []}
-
-        for span in spans:
-            record_data["log"].append({
-                "name": span.name,
-                "duration": (span.end_time - span.start_time) / 1e9,
-            })
-
-        record_data["log"] = json.dumps(record_data["log"])
-
-        payload = {"records": [{"id": record_id, "fields": record_data}]}
-
-        response = requests.patch(self.base_url, headers=self.headers, json=payload)
-
-        if response.status_code == 200:
-            print("Successfully logged to the database")
-        else:
-            print("Failed to log to the database", response.status_code, response.text)
-
-    def get_record_id(self):
-        params = {
-            "filterByFormula": f"{{conversation_id}} = '{self.conversation_id}'",
-            "maxRecords": 1
-        }
-
-        response = requests.get(self.base_url, headers=self.headers, params=params)
-
-        if response.status_code == 200:
-            data = response.json()
-            records = data.get('records', [])
-            if records:
-                return records[0].get('id')
-        return None
-
-    def shutdown(self):
-        pass
 
 class CallsRouter(BaseRouter):
     def __init__(
@@ -152,11 +104,12 @@ class CallsRouter(BaseRouter):
     async def connect_call(self, websocket: WebSocket, id: str):
         span_exporter = InMemorySpanExporter()
         database_exporter = DatabaseExporter(id)
-        span_processor = BatchSpanProcessor(span_exporter)
+        span_processor = SimpleSpanProcessor(span_exporter)
         trace.get_tracer_provider().add_span_processor(span_processor)
         tracer = trace.get_tracer(__name__)
         with tracer.start_as_current_span("connect_call") as conversation:
-            conversation.set_attribute("conversation_id", id)
+            self.logger.addHandler(SpanLogHandler())
+
             await websocket.accept()
             self.logger.debug("Phone WS connection opened for chat {}".format(id))
             call_config = await self.config_manager.get_config(id)
@@ -178,8 +131,7 @@ class CallsRouter(BaseRouter):
             await call.attach_ws_and_start(websocket)
             self.logger.debug("Phone WS connection closed for chat {}".format(id))
         child_spans = span_exporter.get_finished_spans()
-        database_exporter.export(child_spans)
-        
+        await database_exporter.export(child_spans)
 
     def get_router(self) -> APIRouter:
         return self.router
