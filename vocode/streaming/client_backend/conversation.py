@@ -31,6 +31,8 @@ from vocode.streaming.models.events import Event, EventType
 from vocode.streaming.models.transcript import TranscriptEvent
 from vocode.streaming.utils import events_manager
 
+BASE_CONVERSATION_ENDPOINT = "/conversation"
+
 
 class ConversationRouter(BaseRouter):
     def __init__(
@@ -52,6 +54,7 @@ class ConversationRouter(BaseRouter):
             )
         ),
         logger: Optional[logging.Logger] = None,
+        conversation_endpoint: str = BASE_CONVERSATION_ENDPOINT,
     ):
         super().__init__()
         self.transcriber_thunk = transcriber_thunk
@@ -59,7 +62,7 @@ class ConversationRouter(BaseRouter):
         self.synthesizer_thunk = synthesizer_thunk
         self.logger = logger or logging.getLogger(__name__)
         self.router = APIRouter()
-        self.router.websocket("/conversation")(self.conversation)
+        self.router.websocket(conversation_endpoint)(self.conversation)
 
     def get_conversation(
         self,
