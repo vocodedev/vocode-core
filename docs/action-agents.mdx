@@ -1,6 +1,6 @@
 ---
-title: "Action Agents"
-description: "Empowering agents to take actions during conversations."
+title: 'Action Agents'
+description: 'Empowering agents to take actions during conversations.'
 ---
 
 ## Note: Support for actions is currently limited to `ChatGPTAgent`.
@@ -92,3 +92,5 @@ class NylasSendEmail(BaseAction[NylasSendEmailActionOutput]):
 
         return NylasSendEmailActionOutput(response=json.dumps({"success": True}))
 ```
+
+See [Agent Factory](/agent-factory) for more information on how to register your action with the agent factory.
