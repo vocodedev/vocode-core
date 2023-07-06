@@ -1,10 +1,9 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from openai.openai_object import OpenAIObject
 from pydantic import BaseModel
+from vocode.streaming.models.actions import FunctionCall
 import pytest
-from vocode.streaming.agent.utils import stream_openai_response_async
-
-GET_TEXT = lambda choice: choice.get("delta", {}).get("content")
+from vocode.streaming.agent.utils import collate_response_async, openai_get_tokens
 
 
 async def _agen_from_list(l):
@@ -22,7 +21,8 @@ def create_chatgpt_openai_object(
 
 class StreamOpenAIResponseTestCase(BaseModel):
     openai_objects: List[OpenAIObject]
-    expected_sentences: List[str]
+    expected_sentences: List[Union[str, FunctionCall]]
+    get_functions: bool
 
 
 OPENAI_OBJECTS = [
@@ -169,6 +169,40 @@ OPENAI_OBJECTS = [
         {"delta": {"content": "."}, "finish_reason": None},
         {"delta": {}, "finish_reason": "stop"},
     ],
+    [
+        {"delta": {"role": "assistant"}, "finish_reason": None},
+        {"delta": {"content": "Hello"}, "finish_reason": None},
+        {"delta": {"content": "."}, "finish_reason": None},
+        {"delta": {"content": " What"}, "finish_reason": None},
+        {"delta": {"content": " do"}, "finish_reason": None},
+        {"delta": {"content": " you"}, "finish_reason": None},
+        {"delta": {"content": " want"}, "finish_reason": None},
+        {"delta": {"content": " to"}, "finish_reason": None},
+        {"delta": {"content": " talk"}, "finish_reason": None},
+        {"delta": {"content": " about"}, "finish_reason": None},
+        {"delta": {"function_call": {"name": "wave"}}, "finish_reason": None},
+        {
+            "delta": {"function_call": {"name": "_hello", "arguments": "{\n"}},
+            "finish_reason": None,
+        },
+        {
+            "delta": {"function_call": {"arguments": '  "name": "user"\n}'}},
+            "finish_reason": None,
+        },
+        {"delta": {}, "finish_reason": "function_call"},
+    ],
+    [
+        {"delta": {"function_call": {"name": "wave"}}, "finish_reason": None},
+        {
+            "delta": {"function_call": {"name": "_hello", "arguments": "{\n"}},
+            "finish_reason": None,
+        },
+        {
+            "delta": {"function_call": {"arguments": '  "name": "user"\n}'}},
+            "finish_reason": None,
+        },
+        {"delta": {}, "finish_reason": "function_call"},
+    ]
 ]
 
 EXPECTED_SENTENCES = [
@@ -189,8 +223,64 @@ EXPECTED_SENTENCES = [
         "$2 + $3.00 is equal to $5.",
         "$6 + $4 is equal to $10.",
     ],
+    [
+        "Hello.",
+        "What do you want to talk about",
+        FunctionCall(name="wave_hello", arguments='{\n  "name": "user"\n}'),
+    ],
+    [
+        FunctionCall(name="wave_hello", arguments='{\n  "name": "user"\n}'),
+    ]
 ]
 
+FUNCTIONS_INPUT = [
+    [
+        {"delta": {"role": "assistant"}, "finish_reason": None},
+        {"delta": {"content": "Hello"}, "finish_reason": None},
+        {"delta": {"content": "."}, "finish_reason": None},
+        {"delta": {"content": " What"}, "finish_reason": None},
+        {"delta": {"content": " do"}, "finish_reason": None},
+        {"delta": {"content": " you"}, "finish_reason": None},
+        {"delta": {"content": " want"}, "finish_reason": None},
+        {"delta": {"content": " to"}, "finish_reason": None},
+        {"delta": {"content": " talk"}, "finish_reason": None},
+        {"delta": {"content": " about"}, "finish_reason": None},
+        {"delta": {"function_call": {"name": "wave"}}, "finish_reason": None},
+        {
+            "delta": {"function_call": {"name": "_hello", "arguments": "{\n"}},
+            "finish_reason": None,
+        },
+        {
+            "delta": {"function_call": {"arguments": '  "name": "user"\n}'}},
+            "finish_reason": None,
+        },
+        {"delta": {}, "finish_reason": "function_call"},
+    ],
+    [
+        {"delta": {"function_call": {"name": "wave"}}, "finish_reason": None},
+        {
+            "delta": {"function_call": {"name": "_hello", "arguments": "{\n"}},
+            "finish_reason": None,
+        },
+        {
+            "delta": {"function_call": {"arguments": '  "name": "user"\n}'}},
+            "finish_reason": None,
+        },
+        {"delta": {}, "finish_reason": "function_call"},
+    ]
+]
+
+FUNCTIONS_OUTPUT = [
+    [
+        "Hello.",
+        "What do you want to talk about",
+        FunctionCall(name="wave_hello", arguments='{\n  "name": "user"\n}'),
+    ],
+    [
+        FunctionCall(name="wave_hello", arguments='{\n  "name": "user"\n}'),
+    ]
+
+]
 
 @pytest.mark.asyncio
 async def test_stream_openai_response_async():
@@ -200,16 +290,18 @@ async def test_stream_openai_response_async():
                 create_chatgpt_openai_object(**obj) for obj in openai_objects
             ],
             expected_sentences=expected_sentences,
+            get_functions=any(isinstance(item, FunctionCall) for item in expected_sentences)
         )
         for openai_objects, expected_sentences in zip(
             OPENAI_OBJECTS, EXPECTED_SENTENCES
         )
     ]
-
+    
     for test_case in test_cases:
         actual_sentences = []
-        async for sentence in stream_openai_response_async(
-            _agen_from_list(test_case.openai_objects), GET_TEXT
+        async for sentence in collate_response_async(
+            openai_get_tokens(_agen_from_list(test_case.openai_objects)),
+            get_functions=test_case.get_functions
         ):
             actual_sentences.append(sentence)
         assert actual_sentences == test_case.expected_sentences

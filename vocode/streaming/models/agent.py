@@ -5,6 +5,7 @@ from pydantic import validator
 
 from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
+from .vector_db import VectorDBConfig
 
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
 LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
@@ -67,7 +68,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     send_filler_audio: Union[bool, FillerAudioConfig] = False
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
-
+    actions: Optional[List[str]] = None
 
 class CutOffResponse(BaseModel):
     messages: List[BaseMessage] = [BaseMessage(text="Sorry?")]
@@ -90,6 +91,8 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     cut_off_response: Optional[CutOffResponse] = None
     azure_params: Optional[AzureOpenAIConfig] = None
+    vector_db_config: Optional[VectorDBConfig] = None
+
 
 
 class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):
@@ -103,13 +106,6 @@ class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):
     model_name: str = CHAT_VERTEX_AI_DEFAULT_MODEL_NAME
     generate_responses: bool = False  # Google Vertex AI doesn't support streaming
 
-
-class ActionAgentConfig(AgentConfig, type=AgentType.ACTION.value):
-    prompt_preamble: str
-    actions: List[str]
-    model_name: str = ACTION_AGENT_DEFAULT_MODEL_NAME
-    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
-    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
 
 
 class InformationRetrievalAgentConfig(

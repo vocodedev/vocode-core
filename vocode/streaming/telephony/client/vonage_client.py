@@ -21,7 +21,6 @@ class VonageClient(BaseTelephonyClient):
     def get_telephony_config(self):
         return self.vonage_config
 
-    # TODO(EPD-186): support recording in Vonage
     def create_call(
         self,
         conversation_id: str,
@@ -45,21 +44,25 @@ class VonageClient(BaseTelephonyClient):
     def create_call_ncco(base_url, conversation_id, record):
         ncco = []
         if record:
-            ncco.append({
-                "action": "record",
-                "eventUrl": [f"https://{base_url}/recordings/{conversation_id}"]
-            })
-        ncco.append({
-            "action": "connect",
-            "endpoint": [
+            ncco.append(
                 {
-                    "type": "websocket",
-                    "uri": f"wss://{base_url}/connect_call/{conversation_id}",
-                    "content-type": VONAGE_CONTENT_TYPE,
-                    "headers": {},
+                    "action": "record",
+                    "eventUrl": [f"https://{base_url}/recordings/{conversation_id}"],
                 }
-            ],
-        })
+            )
+        ncco.append(
+            {
+                "action": "connect",
+                "endpoint": [
+                    {
+                        "type": "websocket",
+                        "uri": f"wss://{base_url}/connect_call/{conversation_id}",
+                        "content-type": VONAGE_CONTENT_TYPE,
+                        "headers": {},
+                    }
+                ],
+            }
+        )
         return ncco
 
     def end_call(self, id) -> bool:

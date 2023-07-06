@@ -75,7 +75,9 @@ class ConversationRouter(BaseRouter):
             agent=self.agent,
             synthesizer=synthesizer,
             conversation_id=start_message.conversation_id,
-            events_manager=TranscriptEventManager(output_device, self.logger) if start_message.subscribe_transcript else None,
+            events_manager=TranscriptEventManager(output_device, self.logger)
+            if start_message.subscribe_transcript
+            else None,
             logger=self.logger,
         )
 
@@ -101,13 +103,18 @@ class ConversationRouter(BaseRouter):
             audio_message = typing.cast(AudioMessage, message)
             conversation.receive_audio(audio_message.get_bytes())
         output_device.mark_closed()
-        conversation.terminate()
+        await conversation.terminate()
 
     def get_router(self) -> APIRouter:
         return self.router
 
+
 class TranscriptEventManager(events_manager.EventsManager):
-    def __init__(self, output_device: WebsocketOutputDevice, logger: Optional[logging.Logger] = None):
+    def __init__(
+        self,
+        output_device: WebsocketOutputDevice,
+        logger: Optional[logging.Logger] = None,
+    ):
         super().__init__(subscriptions=[EventType.TRANSCRIPT])
         self.output_device = output_device
         self.logger = logger or logging.getLogger(__name__)
