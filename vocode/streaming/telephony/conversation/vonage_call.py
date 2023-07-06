@@ -115,13 +115,13 @@ class VonageCall(Call[VonageOutputDevice]):
                 self.logger.debug("Websocket disconnected")
                 break
         await self.config_manager.delete_config(self.id)
-        self.tear_down()
+        await self.tear_down()
 
     def receive_audio(self, chunk: bytes):
         super().receive_audio(chunk)
         if self.output_to_speaker:
             self.output_speaker.consume_nonblocking(chunk)
 
-    def tear_down(self):
+    async def tear_down(self):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
-        self.terminate()
+        await self.terminate()
