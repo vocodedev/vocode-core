@@ -25,7 +25,7 @@ class TwilioConfig(BaseModel):
     account_sid: str
     auth_token: str
     record: bool = False
-    extra_params: Optional[Dict[str, Any]] = None
+    extra_params: Optional[Dict[str, Any]] = {}
 
 
 class VonageConfig(BaseModel):
