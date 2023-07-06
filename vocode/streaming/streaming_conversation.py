@@ -555,6 +555,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         chunk_idx = 0
         async for chunk_result in synthesis_result.chunk_generator:
+            start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
                 len(chunk_result.chunk) / chunk_size
             )
@@ -572,9 +573,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if started_event:
                     started_event.set()
             self.output_device.consume_nonblocking(chunk_result.chunk)
+            end_time = time.time()
             await asyncio.sleep(
                 max(
-                    speech_length_seconds,
+                    speech_length_seconds
+                    - (end_time - start_time),
                     0,
                 )
             )
