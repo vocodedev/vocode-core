@@ -150,3 +150,24 @@ if __name__ == "__main__":
 # 🌱 Documentation
 
 [docs.vocode.dev](https://docs.vocode.dev/)
+
+
+# Recording audio input (human speech):
+```
+    ...
+    await conversation.start()
+
+    from vocode.streaming.pubsub.base_pubsub import AudioFileWriterSubscriber
+
+    subscriber = AudioFileWriterSubscriber(
+        "AudioFileWriterSubscriber", sampling_rate=44100 # 8000 for Twilio
+    )
+    from vocode import pubsub
+
+    pubsub.subscribe(subscriber=subscriber, topic="test")
+    audio_sub_task = asyncio.create_task(subscriber._run_loop())
+
+    signal.signal(signal.SIGINT, lambda _0, _1: conversation.terminate())
+    signal.signal(signal.SIGINT, lambda _0, _1: subscriber.terminate())
+    signal.signal(signal.SIGINT, lambda _0, _1: audio_sub_task.cancel())
+```

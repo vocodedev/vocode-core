@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List
 from time import time
+import audioop
 
 import numpy as np
 
@@ -25,36 +26,42 @@ class PubsubEvent:
 class AudioFileWriterSubscriber(AsyncWorker):
     """Subscriber class which listens to topics it is subscribed to."""
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, sampling_rate=8000):
         self.name = name
         self.input_queue = asyncio.Queue()
         self.file_writers: Dict[int, FileOutputDevice] = {}
         self.buffers: Dict[int, List[np.ndarray]] = {}
         self.last_flush_time: Dict[int, float] = {}
         self.save_chunk_in_sec = 5
+        self.sampling_rate = sampling_rate
         super().__init__(input_queue=self.input_queue)
 
     async def _run_loop(self):
         """Listen to the topics subscribed to."""
         while True:
             event = await self.input_queue.get()
-            if event.payload_type == AudioEncoding.LINEAR16:
-                # accomulate {self.save_chunk_in_sec} seconds chunks based on event.event_id and flush them to disk to recording/{event.event_id}.wav
-                if event.event_id not in self.file_writers:
-                    self.file_writers[event.event_id] = FileOutputDevice(
-                        f"recordings/{event.event_id}.wav"
-                    )
-                    self.buffers[event.event_id] = []
-                    self.last_flush_time[event.event_id] = time()
-                self.buffers[event.event_id].append(event.payload)
-                if (
-                    time() - self.last_flush_time[event.event_id]
-                    >= self.save_chunk_in_sec
-                ):
-                    for chunk in self.buffers[event.event_id]:
-                        self.file_writers[event.event_id].consume_nonblocking(chunk)
-                    self.buffers[event.event_id] = []
-                    self.last_flush_time[event.event_id] = time()
+            if event is None:
+                continue
+
+            if event.payload_type == AudioEncoding.MULAW:
+                payload = audioop.ulaw2lin(event.payload, 2)
+            else:
+                payload = event.payload
+
+            if event.event_id not in self.file_writers:
+                self.file_writers[event.event_id] = FileOutputDevice(
+                    f"recordings/{event.event_id}.wav",
+                    sampling_rate=self.sampling_rate,
+                    audio_encoding=event.payload_type,
+                )
+                self.buffers[event.event_id] = []
+                self.last_flush_time[event.event_id] = time()
+            self.buffers[event.event_id].append(payload)
+            if time() - self.last_flush_time[event.event_id] >= self.save_chunk_in_sec:
+                for chunk in self.buffers[event.event_id]:
+                    self.file_writers[event.event_id].consume_nonblocking(chunk)
+                self.buffers[event.event_id] = []
+                self.last_flush_time[event.event_id] = time()
 
     def terminate(self):
         for writer in self.file_writers.values():
