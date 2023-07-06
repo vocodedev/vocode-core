@@ -52,7 +52,9 @@ if __name__ == "__main__":
 
         print("Start speaking...press Ctrl+C to end. ")
 
-        subscriber = AudioFileWriterSubscriber("AudioFileWriterSubscriber")
+        subscriber = AudioFileWriterSubscriber(
+            "AudioFileWriterSubscriber", sampling_rate=8000
+        )
         pubsub.subscribe(subscriber=subscriber, topic="test")
         subscriber.start()
 

@@ -78,7 +78,7 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
     def send_audio(self, chunk):
         """ """
         event_id = self.transcription_audio_id  # Update this with your own logic
-        topic = "test"
+        topic = "human_audio_streams"
 
         if self.publisher:
             _ = asyncio.create_task(
@@ -109,7 +109,7 @@ class BaseThreadAsyncTranscriber(
     ):
         self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
-        self.publisher: Publisher = Publisher("BaseAsyncTranscriberPublisher")
+        self.publisher: Publisher = Publisher("BaseThreadAsyncTranscriberPublisher")
         self.publish_events: bool = True
         self.transcription_audio_id = (
             f"transcription_audio_id_{secrets.token_urlsafe(16)}"
@@ -123,7 +123,7 @@ class BaseThreadAsyncTranscriber(
     def send_audio(self, chunk):
         """ """
         event_id = self.transcription_audio_id  # Update this with your own logic
-        topic = "test"
+        topic = "human_audio_streams"
 
         if self.publisher:
             _ = asyncio.create_task(
