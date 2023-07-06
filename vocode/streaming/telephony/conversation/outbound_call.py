@@ -122,7 +122,6 @@ class OutboundCall:
             from_phone=self.from_phone,
             record=self.telephony_client.get_telephony_config().record,
             digits=self.digits,
-            **create_call_kwargs,
         )
         if isinstance(self.telephony_client, TwilioClient):
             call_config = TwilioCallConfig(

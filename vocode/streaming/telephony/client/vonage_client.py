@@ -29,14 +29,12 @@ class VonageClient(BaseTelephonyClient):
         from_phone: str,
         record: bool = False,
         digits: Optional[str] = None,
-        **kwargs,
     ) -> str:  # identifier of the call on the telephony provider
         response = self.voice.create_call(
             {
                 "to": [{"type": "phone", "number": to_phone, "dtmfAnswer": digits}],
                 "from": {"type": "phone", "number": from_phone},
                 "ncco": self.create_call_ncco(self.base_url, conversation_id, record),
-                **kwargs,
             }
         )
         if response["status"] != "started":
@@ -47,21 +45,25 @@ class VonageClient(BaseTelephonyClient):
     def create_call_ncco(base_url, conversation_id, record):
         ncco = []
         if record:
-            ncco.append({
-                "action": "record",
-                "eventUrl": [f"https://{base_url}/recordings/{conversation_id}"]
-            })
-        ncco.append({
-            "action": "connect",
-            "endpoint": [
+            ncco.append(
                 {
-                    "type": "websocket",
-                    "uri": f"wss://{base_url}/connect_call/{conversation_id}",
-                    "content-type": VONAGE_CONTENT_TYPE,
-                    "headers": {},
+                    "action": "record",
+                    "eventUrl": [f"https://{base_url}/recordings/{conversation_id}"],
                 }
-            ],
-        })
+            )
+        ncco.append(
+            {
+                "action": "connect",
+                "endpoint": [
+                    {
+                        "type": "websocket",
+                        "uri": f"wss://{base_url}/connect_call/{conversation_id}",
+                        "content-type": VONAGE_CONTENT_TYPE,
+                        "headers": {},
+                    }
+                ],
+            }
+        )
         return ncco
 
     def end_call(self, id) -> bool:

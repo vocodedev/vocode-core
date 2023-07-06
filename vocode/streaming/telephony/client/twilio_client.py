@@ -31,7 +31,6 @@ class TwilioClient(BaseTelephonyClient):
         from_phone: str,
         record: bool = False,
         digits: Optional[str] = None,
-        **kwargs,
     ) -> str:
         twiml = self.get_connection_twiml(conversation_id=conversation_id)
         twilio_call = self.twilio_client.calls.create(
@@ -40,7 +39,7 @@ class TwilioClient(BaseTelephonyClient):
             from_=from_phone,
             send_digits=digits,
             record=record,
-            **kwargs,
+            **self.get_telephony_config().extra_params,
         )
         return twilio_call.sid
 

@@ -17,7 +17,6 @@ class BaseTelephonyClient:
         from_phone: str,
         record: bool = False,
         digits: Optional[str] = None,
-        **kwargs,
     ) -> str:  # identifier of the call on the telephony provider
         raise NotImplementedError
 
