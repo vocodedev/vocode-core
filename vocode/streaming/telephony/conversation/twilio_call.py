@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import WebSocket
 import base64
 from enum import Enum
@@ -152,4 +153,5 @@ class TwilioCall(Call[TwilioOutputDevice]):
 
     def mark_terminated(self):
         super().mark_terminated()
-        self.telephony_client.end_call(self.twilio_sid)
+        asyncio.create_task(self.telephony_client.end_call(self.twilio_sid))
+
