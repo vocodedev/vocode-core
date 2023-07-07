@@ -21,6 +21,7 @@ from vocode.streaming.utils.base_router import BaseRouter
 from vocode.streaming.utils.events_manager import EventsManager
 
 from opentelemetry import trace
+import traceback
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
@@ -115,20 +116,21 @@ class CallsRouter(BaseRouter):
             call_config = await self.config_manager.get_config(id)
             if not call_config:
                 raise HTTPException(status_code=400, detail="No active phone call")
-
-            call = self._from_call_config(
-                base_url=self.base_url,
-                call_config=call_config,
-                config_manager=self.config_manager,
-                conversation_id=id,
-                transcriber_factory=self.transcriber_factory,
-                agent_factory=self.agent_factory,
-                synthesizer_factory=self.synthesizer_factory,
-                events_manager=self.events_manager,
-                logger=self.logger,
-            )
-
-            await call.attach_ws_and_start(websocket)
+            try:
+                call = self._from_call_config(
+                    base_url=self.base_url,
+                    call_config=call_config,
+                    config_manager=self.config_manager,
+                    conversation_id=id,
+                    transcriber_factory=self.transcriber_factory,
+                    agent_factory=self.agent_factory,
+                    synthesizer_factory=self.synthesizer_factory,
+                    events_manager=self.events_manager,
+                    logger=self.logger,
+                )
+                await call.attach_ws_and_start(websocket)
+            except Exception as e:
+                self.logger.error(f"Error {e}, Trace: {traceback.format_exc()}")
             self.logger.debug("Phone WS connection closed for chat {}".format(id))
         child_spans = span_exporter.get_finished_spans()
         await database_exporter.export(child_spans)
