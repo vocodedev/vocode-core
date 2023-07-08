@@ -20,7 +20,7 @@ class BaseTelephonyClient:
     ) -> str:  # identifier of the call on the telephony provider
         raise NotImplementedError
 
-    def end_call(self, id) -> bool:
+    async def end_call(self, id) -> bool:
         raise NotImplementedError
 
     def validate_outbound_call(
