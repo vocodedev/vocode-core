@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 import asyncio
 from enum import Enum
 import json
@@ -220,7 +221,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     conversation_id=conversation_id,
                 )
         except Exception as e:
-            self.logger.error(f"Error while generating response: {e}", exc_info=True)
+            self.logger.error(f"Error {e}, Trace: {traceback.format_exc()}")
             response = None
             return True
         if response:
@@ -292,6 +293,8 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     self.logger.debug("Goodbye detection timed out")
         except asyncio.CancelledError:
             pass
+        except Exception as e:
+            self.logger.error(f"Error {e}, Trace: {traceback.format_exc()}")
 
     def call_function(self, function_call: FunctionCall, agent_input: AgentInput):
         action = self.action_factory.create_action(function_call.name)

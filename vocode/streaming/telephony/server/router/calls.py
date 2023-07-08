@@ -20,6 +20,13 @@ from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.base_router import BaseRouter
 from vocode.streaming.utils.events_manager import EventsManager
 
+from opentelemetry import trace
+import traceback
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+from vocode.streaming.telephony.server.utils import SpanLogHandler, DatabaseExporter
+
 
 class CallsRouter(BaseRouter):
     def __init__(
@@ -96,26 +103,37 @@ class CallsRouter(BaseRouter):
             raise ValueError(f"Unknown call config type {call_config.type}")
 
     async def connect_call(self, websocket: WebSocket, id: str):
-        await websocket.accept()
-        self.logger.debug("Phone WS connection opened for chat {}".format(id))
-        call_config = await self.config_manager.get_config(id)
-        if not call_config:
-            raise HTTPException(status_code=400, detail="No active phone call")
+        span_exporter = InMemorySpanExporter()
+        database_exporter = DatabaseExporter(id)
+        span_processor = SimpleSpanProcessor(span_exporter)
+        trace.get_tracer_provider().add_span_processor(span_processor)
+        tracer = trace.get_tracer(__name__)
+        with tracer.start_as_current_span("connect_call") as conversation:
+            self.logger.addHandler(SpanLogHandler())
 
-        call = self._from_call_config(
-            base_url=self.base_url,
-            call_config=call_config,
-            config_manager=self.config_manager,
-            conversation_id=id,
-            transcriber_factory=self.transcriber_factory,
-            agent_factory=self.agent_factory,
-            synthesizer_factory=self.synthesizer_factory,
-            events_manager=self.events_manager,
-            logger=self.logger,
-        )
-
-        await call.attach_ws_and_start(websocket)
-        self.logger.debug("Phone WS connection closed for chat {}".format(id))
+            await websocket.accept()
+            self.logger.debug("Phone WS connection opened for chat {}".format(id))
+            call_config = await self.config_manager.get_config(id)
+            if not call_config:
+                raise HTTPException(status_code=400, detail="No active phone call")
+            try:
+                call = self._from_call_config(
+                    base_url=self.base_url,
+                    call_config=call_config,
+                    config_manager=self.config_manager,
+                    conversation_id=id,
+                    transcriber_factory=self.transcriber_factory,
+                    agent_factory=self.agent_factory,
+                    synthesizer_factory=self.synthesizer_factory,
+                    events_manager=self.events_manager,
+                    logger=self.logger,
+                )
+                await call.attach_ws_and_start(websocket)
+            except Exception as e:
+                self.logger.error(f"Error {e}, Trace: {traceback.format_exc()}")
+            self.logger.debug("Phone WS connection closed for chat {}".format(id))
+        child_spans = span_exporter.get_finished_spans()
+        await database_exporter.export(child_spans)
 
     def get_router(self) -> APIRouter:
         return self.router

@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import traceback
 import asyncio
 import queue
 import random
@@ -10,6 +10,7 @@ import time
 import typing
 
 from vocode.streaming.action.worker import ActionsWorker
+from vocode.streaming.agent.action_agent import ActionAgent
 
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
@@ -95,46 +96,49 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.interruptible_event_factory = interruptible_event_factory
 
         async def process(self, transcription: Transcription):
-            self.conversation.mark_last_action_timestamp()
-            if transcription.message.strip() == "":
-                self.conversation.logger.info("Ignoring empty transcription")
-                return
-            if transcription.is_final:
-                self.conversation.logger.debug(
-                    "Got transcription: {}, confidence: {}".format(
-                        transcription.message, transcription.confidence
+            try:
+                self.conversation.mark_last_action_timestamp()
+                if transcription.message.strip() == "":
+                    self.conversation.logger.info("Ignoring empty transcription")
+                    return
+                if transcription.is_final:
+                    self.conversation.logger.debug(
+                        "Got transcription: {}, confidence: {}".format(
+                            transcription.message, transcription.confidence
+                        )
                     )
-                )
-            if (
-                not self.conversation.is_human_speaking
-                and transcription.confidence
-                >= (
-                    self.conversation.transcriber.get_transcriber_config().min_interrupt_confidence
-                    or 0
-                )
-            ):
-                self.conversation.current_transcription_is_interrupt = (
-                    self.conversation.broadcast_interrupt()
-                )
-                if self.conversation.current_transcription_is_interrupt:
-                    self.conversation.logger.debug("sending interrupt")
-                self.conversation.logger.debug("Human started speaking")
+                if (
+                    not self.conversation.is_human_speaking
+                    and transcription.confidence
+                    >= (
+                        self.conversation.transcriber.get_transcriber_config().min_interrupt_confidence
+                        or 0
+                    )
+                ):
+                    self.conversation.current_transcription_is_interrupt = (
+                        self.conversation.broadcast_interrupt()
+                    )
+                    if self.conversation.current_transcription_is_interrupt:
+                        self.conversation.logger.debug("sending interrupt")
+                    self.conversation.logger.debug("Human started speaking")
 
-            transcription.is_interrupt = (
-                self.conversation.current_transcription_is_interrupt
-            )
-            self.conversation.is_human_speaking = not transcription.is_final
-            if transcription.is_final:
-                # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
-                event = self.interruptible_event_factory.create(
-                    TranscriptionAgentInput(
-                        transcription=transcription,
-                        conversation_id=self.conversation.id,
-                        vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
-                        twilio_sid=getattr(self.conversation, "twilio_sid", None),
-                    )
+                transcription.is_interrupt = (
+                    self.conversation.current_transcription_is_interrupt
                 )
-                self.output_queue.put_nowait(event)
+                self.conversation.is_human_speaking = not transcription.is_final
+                if transcription.is_final:
+                    # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
+                    event = self.interruptible_event_factory.create(
+                        TranscriptionAgentInput(
+                            transcription=transcription,
+                            conversation_id=self.conversation.id,
+                            vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
+                            twilio_sid=getattr(self.conversation, "twilio_sid", None),
+                        )
+                    )
+                    self.output_queue.put_nowait(event)
+            except Exception as e:
+                self.conversation.logger.error(f"Error {e}, Trace: {traceback.format_exc()}")
 
     class FillerAudioWorker(InterruptibleWorker):
         """
@@ -276,6 +280,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
             except asyncio.CancelledError:
                 pass
+            except Exception as e:
+                self.conversation.logger.error(f"Error {e}, Trace: {traceback.format_exc()}")
 
     class SynthesisResultsWorker(InterruptibleWorker):
         """Plays SynthesisResults from the output queue on the output device"""
@@ -310,22 +316,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.transcript.update_last_bot_message_on_cut_off(
                         message_sent
                     )
-                if self.conversation.agent.agent_config.end_conversation_on_goodbye:
-                    goodbye_detected_task = (
-                        self.conversation.agent.create_goodbye_detection_task(
-                            message_sent
-                        )
-                    )
-                    try:
-                        if await asyncio.wait_for(goodbye_detected_task, 0.1):
-                            self.conversation.logger.debug(
-                                "Agent said goodbye, ending call"
-                            )
-                            self.conversation.terminate()
-                    except asyncio.TimeoutError:
-                        pass
             except asyncio.CancelledError:
                 pass
+            except Exception as e:
+                self.conversation.logger.error(f"Error {e}, Trace: {traceback.format_exc()}")
 
     def __init__(
         self,
@@ -375,7 +369,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             interruptible_event_factory=self.interruptible_event_factory,
         )
         self.actions_worker = None
-        if self.agent.get_agent_config().actions:
+        if isinstance(self.agent, ActionAgent):
             self.actions_worker = ActionsWorker(
                 input_queue=self.agent.actions_queue,
                 output_queue=self.agent.get_input_queue(),

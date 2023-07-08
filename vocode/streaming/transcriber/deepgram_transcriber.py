@@ -1,5 +1,6 @@
 import asyncio
 import json
+import traceback
 import logging
 from typing import Optional
 import websockets
@@ -179,7 +180,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 while not self._ended:
                     try:
                         data = await asyncio.wait_for(self.input_queue.get(), 5)
-                    except asyncio.exceptions.TimeoutError:
+                    except asyncio.exceptions.TimeoutError as e:
+                        self.logger.error(f"Got error {e} in Deepgram receiver {e}, Trace: {traceback.format_exc()}")
                         break
                     num_channels = 1
                     sample_width = 2
@@ -199,7 +201,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     try:
                         msg = await ws.recv()
                     except Exception as e:
-                        self.logger.debug(f"Got error {e} in Deepgram receiver")
+                        self.logger.error(f"Got error {e} in Deepgram receiver {e}, Trace: {traceback.format_exc()}")
                         break
                     data = json.loads(msg)
                     if (
