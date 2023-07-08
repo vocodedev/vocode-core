@@ -133,7 +133,11 @@ class CallsRouter(BaseRouter):
                 self.logger.error(f"Error {e}, Trace: {traceback.format_exc()}")
             self.logger.debug("Phone WS connection closed for chat {}".format(id))
         child_spans = span_exporter.get_finished_spans()
-        await database_exporter.export(child_spans)
+
+        try:
+            await database_exporter.export(child_spans)
+        except Exception as e:
+            self.logger.error(f"Error {e}, Trace: {traceback.format_exc()}")
 
     def get_router(self) -> APIRouter:
         return self.router
