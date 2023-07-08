@@ -48,4 +48,4 @@ async def test_streaming_conversation():
     )
     await conversation.start()
     await asyncio.sleep(1)
-    conversation.terminate()
+    await conversation.terminate()

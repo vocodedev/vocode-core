@@ -39,11 +39,17 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": ["welcome"]
+      "pages": [
+        "welcome"
+      ]
     },
     {
       "group": "Vocode 101",
-      "pages": ["what-is-vocode", "how-it-works", "how-to-use-it"]
+      "pages": [
+        "what-is-vocode",
+        "how-it-works",
+        "how-to-use-it"
+      ]
     },
     {
       "group": "Guides",
@@ -61,7 +67,8 @@
         "playground",
         "turn-based-conversation",
         "language-support",
-        "tracing"
+        "tracing",
+        "agent-factory"
       ]
     },
     {
