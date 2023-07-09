@@ -133,7 +133,7 @@ class TelephonyServer:
                 to_phone=twilio_to,
             )
 
-            conversation_id = create_conversation_id()
+            conversation_id = twilio_sid #create_conversation_id() could pass this in as optional part of inbound_call_config
             await self.config_manager.save_config(conversation_id, call_config)
             return self.templater.get_connection_twiml(
                 base_url=self.base_url, call_id=conversation_id
