@@ -43,8 +43,7 @@ async def main():
         agent=ChatGPTAgent(
             ChatGPTAgentConfig(
                 initial_message=BaseMessage(text="What up"),
-                prompt_preamble="""The AI is having a pleasant conversation about life. Keep sentences short. 
-                Use simple English. Do not jump to conclusions. Do not provide medical or mental health advice.""",
+                prompt_preamble="""The AI is having a pleasant conversation about life.""",
             )
         ),
         synthesizer=RimeSynthesizer(
