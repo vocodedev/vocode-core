@@ -159,15 +159,15 @@ if __name__ == "__main__":
 
     from vocode.streaming.pubsub.base_pubsub import AudioFileWriterSubscriber
 
-    subscriber = AudioFileWriterSubscriber(
+    audio_recording_subscriber = AudioFileWriterSubscriber(
         "AudioFileWriterSubscriber", sampling_rate=44100 # 8000 for Twilio
     )
     from vocode import pubsub
 
-    pubsub.subscribe(subscriber=subscriber, topic="human_audio_streams")
-    audio_sub_task = asyncio.create_task(subscriber._run_loop())
+    pubsub.subscribe(subscriber=audio_recording_subscriber, topic="human_audio_streams")
+    audio_sub_task = asyncio.create_task(audio_recording_subscriber.record())
 
-    signal.signal(signal.SIGINT, lambda _0, _1: conversation.terminate())
-    signal.signal(signal.SIGINT, lambda _0, _1: subscriber.terminate())
-    signal.signal(signal.SIGINT, lambda _0, _1: audio_sub_task.cancel())
+   ...
+   
+   pubsub.stop()
 ```

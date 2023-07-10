@@ -58,14 +58,10 @@ class AbstractTranscriber(Generic[TranscriberConfigType]):
 
 
 class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWorker):
-    def __init__(
-        self,
-        transcriber_config: TranscriberConfigType,
-    ):
+    def __init__(self, transcriber_config: TranscriberConfigType):
         self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
         self.publisher: Publisher = Publisher("BaseAsyncTranscriberPublisher")
-        self.publish_events: bool = True
         self.transcription_audio_id = (
             f"transcription_audio_id_{secrets.token_urlsafe(16)}"
         )
@@ -76,11 +72,9 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
         raise NotImplementedError
 
     def send_audio(self, chunk):
-        """ """
-        event_id = self.transcription_audio_id  # Update this with your own logic
-        topic = "human_audio_streams"
-
-        if self.publisher:
+        if self.publisher and self.transcriber_config.publish_audio:
+            event_id = self.transcription_audio_id
+            topic = "human_audio_streams"
             _ = asyncio.create_task(
                 self.publisher.publish(
                     event_id,
@@ -103,14 +97,11 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
 class BaseThreadAsyncTranscriber(
     AbstractTranscriber[TranscriberConfigType], ThreadAsyncWorker
 ):
-    def __init__(
-        self,
-        transcriber_config: TranscriberConfigType,
-    ):
+    def __init__(self, transcriber_config: TranscriberConfigType):
         self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
         self.publisher: Publisher = Publisher("BaseThreadAsyncTranscriberPublisher")
-        self.publish_events: bool = True
+
         self.transcription_audio_id = (
             f"transcription_audio_id_{secrets.token_urlsafe(16)}"
         )
@@ -121,11 +112,9 @@ class BaseThreadAsyncTranscriber(
         raise NotImplementedError
 
     def send_audio(self, chunk):
-        """ """
-        event_id = self.transcription_audio_id  # Update this with your own logic
-        topic = "human_audio_streams"
-
-        if self.publisher:
+        if self.publisher and self.transcriber_config.publish_audio:
+            event_id = self.transcription_audio_id  # Update this with your own logic
+            topic = "human_audio_streams"
             _ = asyncio.create_task(
                 self.publisher.publish(
                     event_id,

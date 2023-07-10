@@ -26,14 +26,15 @@ class PubsubEvent:
 class AudioFileWriterSubscriber(AsyncWorker):
     """Subscriber class which listens to topics it is subscribed to."""
 
-    def __init__(self, name: str, sampling_rate=8000):
+    def __init__(self, name: str, save_chunk_in_sec=5, sampling_rate=8000):
         self.name = name
         self.input_queue = asyncio.Queue()
-        self.file_writers: Dict[int, FileOutputDevice] = {}
-        self.buffers: Dict[int, List[np.ndarray]] = {}
-        self.last_flush_time: Dict[int, float] = {}
-        self.save_chunk_in_sec = 5
+        self.save_chunk_in_sec = save_chunk_in_sec
         self.sampling_rate = sampling_rate
+        self._file_writers: Dict[int, FileOutputDevice] = {}
+        self._buffers: Dict[int, List[np.ndarray]] = {}
+        self._last_flush_time: Dict[int, float] = {}
+
         super().__init__(input_queue=self.input_queue)
 
     async def _run_loop(self):
@@ -48,25 +49,26 @@ class AudioFileWriterSubscriber(AsyncWorker):
             else:
                 payload = event.payload
 
-            if event.event_id not in self.file_writers:
-                self.file_writers[event.event_id] = FileOutputDevice(
+            if event.event_id not in self._file_writers:
+                self._file_writers[event.event_id] = FileOutputDevice(
                     f"recordings/{event.event_id}.wav",
                     sampling_rate=self.sampling_rate,
                     audio_encoding=event.payload_type,
                 )
-                self.buffers[event.event_id] = []
-                self.last_flush_time[event.event_id] = time()
-            self.buffers[event.event_id].append(payload)
-            if time() - self.last_flush_time[event.event_id] >= self.save_chunk_in_sec:
-                for chunk in self.buffers[event.event_id]:
-                    self.file_writers[event.event_id].consume_nonblocking(chunk)
-                self.buffers[event.event_id] = []
-                self.last_flush_time[event.event_id] = time()
+                self._buffers[event.event_id] = []
+                self._last_flush_time[event.event_id] = time()
+            self._buffers[event.event_id].append(payload)
+            if time() - self._last_flush_time[event.event_id] >= self.save_chunk_in_sec:
+                for chunk in self._buffers[event.event_id]:
+                    self._file_writers[event.event_id].consume_nonblocking(chunk)
+                self._buffers[event.event_id] = []
+                self._last_flush_time[event.event_id] = time()
 
-    def terminate(self):
-        for writer in self.file_writers.values():
+    def stop(self):
+        for writer in self._file_writers.values():
             writer.terminate()
-        AsyncWorker.terminate(self)
+        self._buffers = None
+        super().terminate()
 
 
 class PubSubManager:
@@ -85,6 +87,12 @@ class PubSubManager:
         """Publish an event to a specific topic."""
         for subscriber in self.subscribers.get(event.topic, []):
             await subscriber.input_queue.put(event)
+
+    def stop(self):
+        for subscriptions in self.subscribers.values():
+            for subscriber in subscriptions:
+                print(f"subscriber: {subscriber}")
+                subscriber.stop()
 
 
 class Publisher:

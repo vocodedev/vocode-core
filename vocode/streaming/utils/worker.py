@@ -54,8 +54,8 @@ class ThreadAsyncWorker(AsyncWorker[WorkerInputType]):
         self.input_janus_queue: janus.Queue[WorkerInputType] = janus.Queue()
         self.output_janus_queue: janus.Queue = janus.Queue()
 
-    def start(self) -> asyncio.Task:
-        self.worker_thread = threading.Thread(target=self._run_loop)
+    def start(self, thread_name="worker_thread") -> asyncio.Task:
+        self.worker_thread = threading.Thread(target=self._run_loop, name=thread_name)
         self.worker_thread.start()
         self.worker_task = asyncio.create_task(self.run_thread_forwarding())
         return self.worker_task
@@ -83,6 +83,8 @@ class ThreadAsyncWorker(AsyncWorker[WorkerInputType]):
         raise NotImplementedError
 
     def terminate(self):
+        if self.worker_thread:
+            self.worker_thread.join(timeout=5)
         return super().terminate()
 
 

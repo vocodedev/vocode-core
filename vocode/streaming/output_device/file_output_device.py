@@ -1,6 +1,8 @@
+import os
+import threading
+from pathlib import Path
 import wave
 from asyncio import Queue
-import asyncio
 import numpy as np
 
 from .base_output_device import BaseOutputDevice
@@ -12,18 +14,21 @@ class FileWriterWorker(ThreadAsyncWorker):
     def __init__(self, input_queue: Queue, wave) -> None:
         super().__init__(input_queue)
         self.wav = wave
+        self.stop_event = threading.Event()
 
     def _run_loop(self):
-        while True:
+        while not self.stop_event.is_set():
             try:
                 block = self.input_janus_queue.sync_q.get()
                 self.wav.writeframes(block)
-            except asyncio.CancelledError:
+            except Exception as e:
+                print(f"Error in FileWriterWorker: {e}")
                 return
 
     def terminate(self):
-        super().terminate()
+        self.stop_event.set()
         self.wav.close()
+        super().terminate()
 
 
 class FileOutputDevice(BaseOutputDevice):
@@ -40,6 +45,9 @@ class FileOutputDevice(BaseOutputDevice):
         self.buffer = np.array([], dtype=np.int16)
         self.queue: Queue[np.ndarray] = Queue()
 
+        # Ensure the directory in file_path exists
+        os.makedirs(Path(file_path).parent, exist_ok=True)
+
         wav = wave.open(file_path, "wb")
         wav.setnchannels(1)  # Mono channel
         wav.setsampwidth(2)  # 16-bit samples
@@ -47,7 +55,7 @@ class FileOutputDevice(BaseOutputDevice):
         self.wav = wav
 
         self.thread_worker = FileWriterWorker(self.queue, wav)
-        self.thread_worker.start()
+        self.thread_worker.start(thread_name=f"FileOutputDevice {file_path}")
 
     def consume_nonblocking(self, chunk):
         chunk_arr = np.frombuffer(chunk, dtype=np.int16)
@@ -59,3 +67,4 @@ class FileOutputDevice(BaseOutputDevice):
 
     def terminate(self):
         self.thread_worker.terminate()
+        self.wav = None
