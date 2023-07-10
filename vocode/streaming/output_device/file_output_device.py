@@ -4,10 +4,13 @@ from pathlib import Path
 import wave
 from asyncio import Queue
 import numpy as np
+import logging
 
 from .base_output_device import BaseOutputDevice
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.utils.worker import ThreadAsyncWorker
+
+logger = logging.getLogger(__name__)
 
 
 class FileWriterWorker(ThreadAsyncWorker):
@@ -22,12 +25,13 @@ class FileWriterWorker(ThreadAsyncWorker):
                 block = self.input_janus_queue.sync_q.get()
                 self.wav.writeframes(block)
             except Exception as e:
-                print(f"Error in FileWriterWorker: {e}")
+                logger.exception(f"Error in FileWriterWorker: {e}")
                 return
 
     def terminate(self):
         self.stop_event.set()
-        self.wav.close()
+        if self.wav:
+            self.wav.close()
         super().terminate()
 
 
@@ -67,4 +71,3 @@ class FileOutputDevice(BaseOutputDevice):
 
     def terminate(self):
         self.thread_worker.terminate()
-        self.wav = None

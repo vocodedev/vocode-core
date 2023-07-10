@@ -12,8 +12,7 @@ from vocode.streaming.models.model import BaseModel
 
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
-from vocode.streaming.pubsub.base_pubsub import Publisher
-
+from vocode.streaming.pubsub.base_pubsub import Publisher, PubSubTopics
 
 tracer = trace.get_tracer(__name__)
 meter = metrics.get_meter(__name__)
@@ -74,7 +73,7 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
     def send_audio(self, chunk):
         if self.publisher and self.transcriber_config.publish_audio:
             event_id = self.transcription_audio_id
-            topic = "human_audio_streams"
+            topic = PubSubTopics.INPUT_AUDIO_STREAMS
             _ = asyncio.create_task(
                 self.publisher.publish(
                     event_id,
@@ -114,7 +113,7 @@ class BaseThreadAsyncTranscriber(
     def send_audio(self, chunk):
         if self.publisher and self.transcriber_config.publish_audio:
             event_id = self.transcription_audio_id  # Update this with your own logic
-            topic = "human_audio_streams"
+            topic = PubSubTopics.INPUT_AUDIO_STREAMS
             _ = asyncio.create_task(
                 self.publisher.publish(
                     event_id,

@@ -13,6 +13,11 @@ from vocode.streaming.output_device.file_output_device import FileOutputDevice
 
 
 @dataclass
+class PubSubTopics:
+    INPUT_AUDIO_STREAMS = "input_audio_streams"
+
+
+@dataclass
 class PubsubEvent:
     """Event Dataclass contains details about the event."""
 
@@ -67,7 +72,6 @@ class AudioFileWriterSubscriber(AsyncWorker):
     def stop(self):
         for writer in self._file_writers.values():
             writer.terminate()
-        self._buffers = None
         super().terminate()
 
 
@@ -91,7 +95,6 @@ class PubSubManager:
     def stop(self):
         for subscriptions in self.subscribers.values():
             for subscriber in subscriptions:
-                print(f"subscriber: {subscriber}")
                 subscriber.stop()
 
 

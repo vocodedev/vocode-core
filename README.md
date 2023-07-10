@@ -164,7 +164,7 @@ if __name__ == "__main__":
     )
     from vocode import pubsub
 
-    pubsub.subscribe(subscriber=audio_recording_subscriber, topic="human_audio_streams")
+    pubsub.subscribe(subscriber=audio_recording_subscriber, topic="input_audio_streams")
     audio_sub_task = asyncio.create_task(audio_recording_subscriber.record())
 
    ...

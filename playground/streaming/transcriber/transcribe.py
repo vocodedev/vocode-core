@@ -9,7 +9,7 @@ from vocode.streaming.models.transcriber import (
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber, Transcription
 from vocode.streaming.transcriber import *
 
-from vocode.streaming.pubsub.base_pubsub import AudioFileWriterSubscriber
+from vocode.streaming.pubsub.base_pubsub import AudioFileWriterSubscriber, PubSubTopics
 from vocode import pubsub
 
 
@@ -58,7 +58,7 @@ if __name__ == "__main__":
             "AudioFileWriterSubscriber", sampling_rate=transcriber_config.sampling_rate
         )
 
-        pubsub.subscribe(subscriber=subscriber, topic="human_audio_streams")
+        pubsub.subscribe(subscriber=subscriber, topic=PubSubTopics.INPUT_AUDIO_STREAMS)
         subscriber.start()
 
         print("Start speaking...press Ctrl+C to end. ")
