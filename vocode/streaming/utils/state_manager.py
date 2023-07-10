@@ -27,6 +27,9 @@ class ConversationStateManager:
     
     def enable_synthesis(self):
         self._conversation.synthesis_enabled = True
+    
+    def terminate_conversation(self):
+        self._conversation.terminate()
 
 
 class VonageCallStateManager(ConversationStateManager):
