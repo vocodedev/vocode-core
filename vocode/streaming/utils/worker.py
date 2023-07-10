@@ -120,7 +120,6 @@ class InterruptibleEvent(Generic[Payload]):
         """
         Returns True if the event was interruptible and is now interrupted.
         """
-        print(str(self.payload) + " is_interruptible: " + str(self.is_interruptible))
         if not self.is_interruptible:
             return False
         self.interruption_event.set()
@@ -153,7 +152,6 @@ class InterruptibleWorker(AsyncWorker):
     def produce_interruptible_event_nonblocking(
         self, item: Any, is_interruptible: bool = True
     ):
-        # EDITOR: WHY WASN'T THIS PASSED BEFORE? WAS THIS A BUG? 
         interruptible_event = self.interruptible_event_factory.create(item, is_interruptible=is_interruptible)
         return super().produce_nonblocking(interruptible_event)
 
