@@ -326,7 +326,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 agent_input.conversation_id,
                 params,
             )
-        event = self.interruptible_event_factory.create(action_input)
+        event = self.interruptible_event_factory.create(action_input, is_interruptible=action.is_interruptible)
         assert self.transcript is not None
         self.transcript.add_action_start_log(
             action_input=action_input,
