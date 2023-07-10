@@ -14,9 +14,10 @@ class BaseAction(Generic[ParametersType, ResponseType]):
     description: str = ""
     action_type: str = ActionType.BASE.value
 
-    def __init__(self, should_respond: bool = False, quiet: bool = False):
+    def __init__(self, should_respond: bool = False, quiet: bool = False, is_interruptible: bool = True):
         self.should_respond = should_respond
         self.quiet = quiet
+        self.is_interruptible = is_interruptible
 
     def attach_conversation_state_manager(
         self, conversation_state_manager: ConversationStateManager
