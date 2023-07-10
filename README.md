@@ -153,21 +153,6 @@ if __name__ == "__main__":
 
 
 # Recording audio input (human speech):
-```
-    ...
-    await conversation.start()
 
-    from vocode.streaming.pubsub.base_pubsub import AudioFileWriterSubscriber
-
-    audio_recording_subscriber = AudioFileWriterSubscriber(
-        "AudioFileWriterSubscriber", sampling_rate=44100 # 8000 for Twilio
-    )
-    from vocode import pubsub
-
-    pubsub.subscribe(subscriber=audio_recording_subscriber, topic="input_audio_streams")
-    audio_sub_task = asyncio.create_task(audio_recording_subscriber.record())
-
-   ...
-   
-   pubsub.stop()
-```
+To record input audio stream to a wav file to /recordings folder, you can see examples in: `quickstarts/streaming_conversation_audio_recorded.py` and
+`playground/streaming/transcribe/transcribe.py`
