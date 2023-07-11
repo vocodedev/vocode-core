@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 from vocode.streaming.models.model import TypedModel
 
 
@@ -15,6 +16,7 @@ class EventType(str, Enum):
     PHONE_CALL_CONNECTED = "event_phone_call_connected"
     PHONE_CALL_ENDED = "event_phone_call_ended"
     RECORDING = "event_recording"
+    ACTION = "event_action"
 
 
 class Event(TypedModel):
@@ -32,3 +34,8 @@ class PhoneCallEndedEvent(Event, type=EventType.PHONE_CALL_ENDED):
 
 class RecordingEvent(Event, type=EventType.RECORDING):
     recording_url: str
+
+
+class ActionEvent(Event, type=EventType.ACTION):
+    action_input: Optional[dict] = None
+    action_output: Optional[dict] = None
