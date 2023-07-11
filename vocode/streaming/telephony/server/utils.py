@@ -16,7 +16,7 @@ class SpanLogHandler(logging.Handler):
             span.set_attribute("level", record.levelname)
 
 class DatabaseExporter:
-    def __init__(self, conversation_id):
+    def __init__(self, conversation_id, logger):
         self.conversation_id = conversation_id
         self.base_url = (
             f"https://api.airtable.com/v0/{os.getenv('AIRTABLE_BASE_ID')}/logs"
@@ -25,6 +25,7 @@ class DatabaseExporter:
             "Authorization": f"Bearer {os.getenv('AIRTABLE_ACCESS_TOKEN')}",
             "Content-Type": "application/json",
         }
+        self.logger = logger
 
     async def export(self, spans):
         async with aiohttp.ClientSession() as session:
@@ -45,6 +46,6 @@ class DatabaseExporter:
             payload = {"performUpsert": {"fieldsToMergeOn": ["conversation_id"]}, "records": [{"fields": record_data}]}
             async with session.patch(self.base_url, headers=self.headers, json=payload) as response:
                 if response.status == 200:
-                    print("Successfully logged to the database")
+                    self.logger.debug("Successfully logged to the database")
                 else:
-                    print("Failed to log to the database", response.status, await response.text())
+                    self.logger.debug("Failed to log to the database", response.status, await response.text())
