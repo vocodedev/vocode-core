@@ -113,6 +113,7 @@ class CallsRouter(BaseRouter):
 
             await websocket.accept()
             self.logger.debug("Phone WS connection opened for chat {}".format(id))
+            self.logger.debug("Kwal vocode being used")
             call_config = await self.config_manager.get_config(id)
             if not call_config:
                 raise HTTPException(status_code=400, detail="No active phone call")
