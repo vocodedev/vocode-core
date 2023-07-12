@@ -154,7 +154,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             self.transcriber_config.endpointing_config.type
             == EndpointingType.CLASSIFIER_BASED
         ):
-            return self.classifier.classify_text(transcript) or deep_response["speech_final"]
+            self.logger.debug("We have selected classifier based endpointing")
+            return self.classifier.classify_text(transcript, return_as_int=True) #or deep_response["speech_final"]
         raise Exception("Endpointing config not supported")
     async def process(self):
         self.audio_cursor = 0.
@@ -210,6 +211,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
                     is_final = data["is_final"]
                     speech_final = self.is_speech_final(data, time_silent)
+                    self.logger.debug(f"Probability you stopped speaking: {speech_final}")
                     top_choice = data["channel"]["alternatives"][0]
                     confidence = top_choice["confidence"]
 
