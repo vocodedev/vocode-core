@@ -9,7 +9,7 @@ import openai
 from vocode import getenv
 
 from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
-from vocode.streaming.agent.utils import stream_openai_response_async
+from vocode.streaming.agent.utils import collate_response_async, openai_get_tokens
 from vocode.streaming.models.agent import LLMAgentConfig
 
 
@@ -109,9 +109,8 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
             stop=self.stop_tokens,
             stream=True,
         )
-        async for sentence in stream_openai_response_async(
-            stream,
-            get_text=lambda choice: choice.get("text"),
+        async for sentence in collate_response_async(
+            openai_get_tokens(gen=stream),
         ):
             yield sentence
 

@@ -10,7 +10,6 @@ import time
 import typing
 
 from vocode.streaming.action.worker import ActionsWorker
-from vocode.streaming.agent.action_agent import ActionAgent
 
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
@@ -247,7 +246,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     return
                 if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")
-                    self.conversation.terminate()
+                    await self.conversation.terminate()
                     return
                 if isinstance(agent_response, AgentResponseMessage):
                     self.conversation.transcript.add_bot_message(
@@ -311,6 +310,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.transcript.update_last_bot_message_on_cut_off(
                         message_sent
                     )
+                if self.conversation.agent.agent_config.end_conversation_on_goodbye:
+                    goodbye_detected_task = (
+                        self.conversation.agent.create_goodbye_detection_task(
+                            message_sent
+                        )
+                    )
+                    try:
+                        if await asyncio.wait_for(goodbye_detected_task, 0.1):
+                            self.conversation.logger.debug(
+                                "Agent said goodbye, ending call"
+                            )
+                            await self.conversation.terminate()
+                    except asyncio.TimeoutError:
+                        pass
             except asyncio.CancelledError:
                 pass
 
@@ -362,7 +375,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             interruptible_event_factory=self.interruptible_event_factory,
         )
         self.actions_worker = None
-        if isinstance(self.agent, ActionAgent):
+        if self.agent.get_agent_config().actions:
             self.actions_worker = ActionsWorker(
                 input_queue=self.agent.actions_queue,
                 output_queue=self.agent.get_input_queue(),
@@ -458,7 +471,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 or ALLOWED_IDLE_TIME
             ):
                 self.logger.debug("Conversation idle for too long, terminating")
-                self.terminate()
+                await self.terminate()
                 return
             await asyncio.sleep(15)
 
@@ -585,7 +598,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
     def mark_terminated(self):
         self.active = False
 
-    def terminate(self):
+    async def terminate(self):
         self.mark_terminated()
         self.events_manager.publish_event(
             TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
@@ -598,7 +611,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.track_bot_sentiment_task.cancel()
         if self.events_manager and self.events_task:
             self.logger.debug("Terminating events Task")
-            self.events_manager.end()
+            await self.events_manager.flush()
         self.logger.debug("Terminating agent")
         self.agent.terminate()
         self.logger.debug("Terminating output device")

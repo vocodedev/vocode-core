@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Any, Dict, Optional
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.model import BaseModel, TypedModel
 from vocode.streaming.models.agent import AgentConfig
@@ -25,6 +25,7 @@ class TwilioConfig(BaseModel):
     account_sid: str
     auth_token: str
     record: bool = False
+    extra_params: Optional[Dict[str, Any]] = {}
 
 
 class VonageConfig(BaseModel):

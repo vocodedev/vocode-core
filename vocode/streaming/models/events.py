@@ -6,6 +6,7 @@ class Sender(str, Enum):
     HUMAN = "human"
     BOT = "bot"
     ACTION_WORKER = "action_worker"
+    VECTOR_DB = "vector_db"
 
 
 class EventType(str, Enum):

@@ -3,8 +3,8 @@ import typing
 from dotenv import load_dotenv
 from playground.streaming.tracing_utils import make_parser_and_maybe_trace
 from vocode.streaming.action.worker import ActionsWorker
-from vocode.streaming.agent.action_agent import ActionAgent
 from vocode.streaming.models.actions import ActionType
+from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.utils.state_manager import ConversationStateManager
 
@@ -17,9 +17,7 @@ from vocode.streaming.agent.base_agent import (
     AgentResponseType,
     TranscriptionAgentInput,
 )
-from vocode.streaming.models.agent import (
-    ActionAgentConfig,
-)
+
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import create_conversation_id
 
@@ -77,7 +75,7 @@ async def run_agent(agent: BaseAgent):
                 break
 
     actions_worker = None
-    if isinstance(agent, ActionAgent):
+    if isinstance(agent, ChatGPTAgent):
         actions_worker = ActionsWorker(
             input_queue=agent.actions_queue,
             output_queue=agent.get_input_queue(),
@@ -96,8 +94,8 @@ async def run_agent(agent: BaseAgent):
 async def agent_main():
     transcript = Transcript()
     # Replace with your agent!
-    agent = ActionAgent(
-        ActionAgentConfig(
+    agent = ChatGPTAgent(
+        ChatGPTAgentConfig(
             prompt_preamble="the assistant is ready to help you send emails",
             actions=[ActionType.NYLAS_SEND_EMAIL.value],
         )
