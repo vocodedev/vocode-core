@@ -8,6 +8,9 @@ import audioop
 from urllib.parse import urlencode
 from vocode import getenv
 
+from vocode.streaming.models.endpoint_classifier_model import EndpointClassifier
+
+
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
     Transcription,
@@ -19,7 +22,7 @@ from vocode.streaming.models.transcriber import (
     EndpointingType,
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
-
+from vocode.streaming.models.endpoint_classifier_model import EndpointClassifier
 
 PUNCTUATION_TERMINATORS = [".", "!", "?"]
 NUM_RESTARTS = 5
@@ -60,6 +63,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
         self.audio_cursor = 0.
+        self.classifier = EndpointClassifier() 
 
     async def _run_loop(self):
         restarts = 0
@@ -166,7 +170,29 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         if words:
             return end - words[-1]["end"]
         return data["duration"]
+    def is_speech_final(
+        self, deep_response: dict
+    ):
+        transcript = deep_response["channel"]["alternatives"][0]["transcript"]
 
+        # this will be parameter based by default
+        if not self.transcriber_config.endpointing_config:
+            return (transcript and deep_response["speech_final"])
+        elif (
+            self.transcriber_config.endpointing_config.type
+            == EndpointingType.PUNCTUATION_BASED
+        ):
+            return (
+                transcript and transcript.strip()[-1] in PUNCTUATION_TERMINATORS and deep_response["speech_final"]
+            ) or (
+                False
+            )
+        elif (
+            self.transcriber_config.endpointing_config.type
+            == EndpointingType.CLASSIFIER_BASED
+        ):
+            return self.classifier.classify_text(transcript) or deep_response["speech_final"]
+        raise Exception("Endpointing config not supported")
     async def process(self):
         self.audio_cursor = 0.
         extra_headers = {"Authorization": f"Token {self.api_key}"}
@@ -240,7 +266,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                             Transcription(
                                 message=buffer,
                                 confidence=confidence,
-                                is_final=False,
+                                is_final=is_final,
                             )
                         )
                         time_silent = self.calculate_time_silent(data)
