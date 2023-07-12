@@ -47,7 +47,7 @@ class ConversationRouter(BaseRouter):
             )
         ),
         synthesizer_thunk: Callable[
-            [OutputAudioConfig], BaseSynthesizer
+            [OutputAudioConfig, Optional[str]], BaseSynthesizer
         ] = lambda output_audio_config: AzureSynthesizer(
             AzureSynthesizerConfig.from_output_audio_config(
                 output_audio_config=output_audio_config
