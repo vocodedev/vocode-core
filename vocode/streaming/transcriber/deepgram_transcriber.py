@@ -127,43 +127,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         url_params.update(extra_params)
         return f"wss://api.deepgram.com/v1/listen?{urlencode(url_params)}"
 
-    def is_speech_final(
-        self, current_buffer: str, deepgram_response: dict, time_silent: float
-    ):
-        transcript = deepgram_response["channel"]["alternatives"][0]["transcript"]
-
-        # if it is not time based, then return true if speech is final and there is a transcript
-        if not self.transcriber_config.endpointing_config:
-            return transcript and deepgram_response["speech_final"]
-        elif (
-            self.transcriber_config.endpointing_config.type
-            == EndpointingType.TIME_BASED
-        ):
-            # if it is time based, then return true if there is no transcript
-            # and there is some speech to send
-            # and the time_silent is greater than the cutoff
-            return (
-                not transcript
-                and current_buffer
-                and (time_silent + deepgram_response["duration"])
-                > self.transcriber_config.endpointing_config.time_cutoff_seconds
-            )
-        elif (
-            self.transcriber_config.endpointing_config.type
-            == EndpointingType.PUNCTUATION_BASED
-        ):
-            return (
-                transcript
-                and deepgram_response["speech_final"]
-                and transcript.strip()[-1] in PUNCTUATION_TERMINATORS
-            ) or (
-                not transcript
-                and current_buffer
-                and (time_silent + deepgram_response["duration"])
-                > self.transcriber_config.endpointing_config.time_cutoff_seconds
-            )
-        raise Exception("Endpointing config not supported")
-
     def calculate_time_silent(self, data: dict):
         end = data["start"] + data["duration"]
         words = data["channel"]["alternatives"][0]["words"]
@@ -171,7 +134,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             return end - words[-1]["end"]
         return data["duration"]
     def is_speech_final(
-        self, deep_response: dict
+        self, deep_response: dict, time_silent: float = 0.0
     ):
         transcript = deep_response["channel"]["alternatives"][0]["transcript"]
 
@@ -246,7 +209,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     min_latency_hist.record(max(cur_min_latency, 0))
 
                     is_final = data["is_final"]
-                    speech_final = self.is_speech_final(buffer, data, time_silent)
+                    speech_final = self.is_speech_final(data, time_silent)
                     top_choice = data["channel"]["alternatives"][0]
                     confidence = top_choice["confidence"]
 
