@@ -140,6 +140,11 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
             )
         self.transcript: Optional[Transcript] = None
 
+        self.functions = self.get_functions() if self.agent_config.actions else None
+
+    def get_functions(self):
+        raise NotImplementedError
+
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript
 
@@ -321,7 +326,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 agent_input.conversation_id,
                 params,
             )
-        event = self.interruptible_event_factory.create(action_input)
+        event = self.interruptible_event_factory.create(action_input, is_interruptible=action.is_interruptible)
         assert self.transcript is not None
         self.transcript.add_action_start_log(
             action_input=action_input,

@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import WebSocket
 import base64
 from enum import Enum
@@ -90,7 +91,10 @@ class TwilioCall(Call[TwilioOutputDevice]):
         twilio_call = twilio_call_ref.fetch()
 
         if self.twilio_config.record:
-            recording = twilio_call_ref.recordings.create()
+            recordings_create_params = self.twilio_config.extra_params.get("recordings_create_params") if self.twilio_config.extra_params else None
+            recording = twilio_call_ref.recordings.create(
+                **recordings_create_params
+            ) if recordings_create_params else twilio_call_ref.recordings.create()
             self.logger.info(f"Recording: {recording.sid}")
 
         if twilio_call.answered_by in ("machine_start", "fax"):
@@ -114,7 +118,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 if response == PhoneCallWebsocketAction.CLOSE_WEBSOCKET:
                     break
         await self.config_manager.delete_config(self.id)
-        self.tear_down()
+        await self.tear_down()
 
     async def wait_for_twilio_start(self, ws: WebSocket):
         assert isinstance(self.output_device, TwilioOutputDevice)
@@ -155,4 +159,5 @@ class TwilioCall(Call[TwilioOutputDevice]):
 
     def mark_terminated(self):
         super().mark_terminated()
-        self.telephony_client.end_call(self.twilio_sid)
+        asyncio.create_task(self.telephony_client.end_call(self.twilio_sid))
+

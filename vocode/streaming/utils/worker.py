@@ -152,7 +152,7 @@ class InterruptibleWorker(AsyncWorker):
     def produce_interruptible_event_nonblocking(
         self, item: Any, is_interruptible: bool = True
     ):
-        interruptible_event = self.interruptible_event_factory.create(item)
+        interruptible_event = self.interruptible_event_factory.create(item, is_interruptible=is_interruptible)
         return super().produce_nonblocking(interruptible_event)
 
     async def _run_loop(self):
