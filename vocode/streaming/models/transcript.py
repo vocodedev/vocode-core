@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 from enum import Enum
 from vocode.streaming.models.actions import ActionInput, ActionOutput
-from vocode.streaming.models.events import Sender, Event, EventType
+from vocode.streaming.models.events import ActionEvent, Sender, Event, EventType
 
 from vocode.streaming.utils.events_manager import EventsManager
 
@@ -116,9 +116,15 @@ class Transcript(BaseModel):
                 timestamp=timestamp,
             )
         )
-        # TODO: add to event manager
+        if self.events_manager is not None:
+            self.events_manager.publish_event(
+                ActionEvent(
+                    action_input=action_input.dict(),
+                    conversation_id=conversation_id,
+                )
+            )
 
-    def add_action_finish_log(self, action_output: ActionOutput, conversation_id: str):
+    def add_action_finish_log(self, action_input: ActionInput, action_output: ActionOutput, conversation_id: str):
         timestamp = time.time()
         self.event_logs.append(
             ActionFinish(
@@ -127,7 +133,14 @@ class Transcript(BaseModel):
                 timestamp=timestamp,
             )
         )
-        # TODO: add to event manager
+        if self.events_manager is not None:
+            self.events_manager.publish_event(
+                ActionEvent(
+                    action_input=action_input.dict(),
+                    action_output=action_output.dict(),
+                    conversation_id=conversation_id,
+                )
+            )
 
     def update_last_bot_message_on_cut_off(self, text: str):
         # TODO: figure out what to do for the event

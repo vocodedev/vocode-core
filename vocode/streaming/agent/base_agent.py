@@ -52,6 +52,7 @@ class TranscriptionAgentInput(AgentInput, type=AgentInputType.TRANSCRIPTION.valu
 
 
 class ActionResultAgentInput(AgentInput, type=AgentInputType.ACTION_RESULT.value):
+    action_input: ActionInput
     action_output: ActionOutput
     is_quiet: bool = False
 
@@ -244,6 +245,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             agent_input = item.payload
             if isinstance(agent_input, ActionResultAgentInput):
                 self.transcript.add_action_finish_log(
+                    action_input=agent_input.action_input,
                     action_output=agent_input.action_output,
                     conversation_id=agent_input.conversation_id,
                 )

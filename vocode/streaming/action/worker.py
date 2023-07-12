@@ -44,6 +44,7 @@ class ActionsWorker(InterruptibleWorker):
         self.produce_interruptible_event_nonblocking(
             ActionResultAgentInput(
                 conversation_id=action_input.conversation_id,
+                action_input=action_input,
                 action_output=action_output,
                 vonage_uuid=action_input.vonage_uuid
                 if isinstance(action_input, VonagePhoneCallActionInput)
