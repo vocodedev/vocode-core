@@ -10,8 +10,16 @@ import typing
 from opentelemetry import trace
 from opentelemetry.trace import Span
 from vocode.streaming.action.factory import ActionFactory
-from vocode.streaming.action.phone_call_action import TwilioPhoneCallAction, VonagePhoneCallAction
-from vocode.streaming.models.actions import ActionInput, ActionOutput, FunctionCall, FunctionFragment
+from vocode.streaming.action.phone_call_action import (
+    TwilioPhoneCallAction,
+    VonagePhoneCallAction,
+)
+from vocode.streaming.models.actions import (
+    ActionInput,
+    ActionOutput,
+    FunctionCall,
+    FunctionFragment,
+)
 
 from vocode.streaming.models.agent import (
     AgentConfig,
@@ -211,7 +219,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
-                self.call_function(function_call, agent_input)
+            self.call_function(function_call, agent_input)
         return False
 
     async def handle_respond(
@@ -253,6 +261,15 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     # Do not generate a response to quiet actions
                     self.logger.debug("Action is quiet, skipping response generation")
                     return
+                else:
+                    should_stop = await self.handle_generate_response(
+                        Transcription(
+                            message=agent_input.action_output.response.json(),
+                            confidence=1.0,
+                            is_final=True,
+                        ),
+                        agent_input,
+                    )
             if agent_input.type != AgentInputType.TRANSCRIPTION:
                 return
             transcription = typing.cast(
@@ -328,7 +345,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 agent_input.conversation_id,
                 params,
             )
-        event = self.interruptible_event_factory.create(action_input, is_interruptible=action.is_interruptible)
+        event = self.interruptible_event_factory.create(
+            action_input, is_interruptible=action.is_interruptible
+        )
         assert self.transcript is not None
         self.transcript.add_action_start_log(
             action_input=action_input,
