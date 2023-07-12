@@ -49,7 +49,7 @@ class ClassifierEndpointingConfig(
     EndpointingConfig, type=EndpointingType.CLASSIFIER_BASED
 ):
     use_delta: bool = False #default is to just use .5 as the threshold
-
+    time_cutoff_seconds: float = 0.4
 
 class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     sampling_rate: int
