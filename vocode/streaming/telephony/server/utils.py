@@ -48,4 +48,5 @@ class DatabaseExporter:
                 if response.status == 200:
                     self.logger.debug("Successfully logged to the database")
                 else:
-                    self.logger.debug("Failed to log to the database", response.status, await response.text())
+                    resp = await response.text()
+                    self.logger.debug(f"Failed to log to the database, {response.status}, {resp}")
