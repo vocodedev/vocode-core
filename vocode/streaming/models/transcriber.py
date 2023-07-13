@@ -49,7 +49,7 @@ class ClassifierEndpointingConfig(
     EndpointingConfig, type=EndpointingType.CLASSIFIER_BASED
 ):
     use_delta: bool = False #default is to just use .5 as the threshold
-    time_cutoff_seconds: float = 0.4
+    time_cutoff_seconds: float = 0.0
 
 class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     sampling_rate: int
@@ -113,6 +113,8 @@ class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM
     tier: Optional[str] = None
     version: Optional[str] = None
     keywords: Optional[list] = None
+    ##classifier endpointing config
+    endpointing_config: Optional[EndpointingConfig] = ClassifierEndpointingConfig()
 
 
 class GladiaTranscriberConfig(TranscriberConfig, type=TranscriberType.GLADIA.value):
