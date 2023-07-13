@@ -532,7 +532,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self,
         message: str,
         synthesis_result: SynthesisResult,
-        stop_event: asyncio.Event,
+        stop_event: threading.Event,
         seconds_per_chunk: int,
         started_event: Optional[threading.Event] = None,
     ):
