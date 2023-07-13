@@ -218,7 +218,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     if top_choice["transcript"] and confidence > 0.0 and is_final:
                         buffer = f"{buffer} {top_choice['transcript']}"
 
-                    if speech_final:
+                    if speech_final and time_silent > 0.05:
                         self.output_queue.put_nowait(
                             Transcription(
                                 message=buffer, confidence=confidence, is_final=True
@@ -226,15 +226,16 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         )
                         buffer = ""
                         time_silent = 0
-                    elif top_choice["transcript"] and confidence > 0.0:
-                        self.output_queue.put_nowait(
-                            Transcription(
-                                message=buffer,
-                                confidence=confidence,
-                                is_final=is_final,
-                            )
-                        )
-                        time_silent = self.calculate_time_silent(data)
+                    # elif top_choice["transcript"] and confidence > 0.0:
+                        
+                    #     self.output_queue.put_nowait(
+                    #         Transcription(
+                    #             message=buffer,
+                    #             confidence=confidence,
+                    #             is_final=is_final,
+                    #         )
+                    #     )
+                    #     time_silent = self.calculate_time_silent(data)
                     else:
                         time_silent += data["duration"]
                 self.logger.debug("Terminating Deepgram transcriber receiver")
