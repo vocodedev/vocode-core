@@ -49,6 +49,7 @@ class CallsRouter(BaseRouter):
         self.logger = logger or logging.getLogger(__name__)
         self.router = APIRouter()
         self.router.websocket("/connect_call/{id}")(self.connect_call)
+        self.handler_set = False
 
     def _from_call_config(
         self,
@@ -109,8 +110,8 @@ class CallsRouter(BaseRouter):
         trace.get_tracer_provider().add_span_processor(span_processor)
         tracer = trace.get_tracer(__name__)
         with tracer.start_as_current_span("connect_call") as conversation:
-            self.logger.addHandler(SpanLogHandler())
-
+            if not self.handler_set: self.logger.addHandler(SpanLogHandler())
+            self.handler_set = True
             await websocket.accept()
             self.logger.debug("Phone WS connection opened for chat {}".format(id))
             self.logger.debug("Kwal vocode being used")
