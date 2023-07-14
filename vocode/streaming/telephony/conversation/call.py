@@ -1,34 +1,38 @@
-from fastapi import WebSocket
-from enum import Enum
+import inspect
 import logging
+from enum import Enum
 from typing import Optional, TypeVar, Union
+
+from fastapi import WebSocket
+from pydantic import BaseModel
+
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import PhoneCallEndedEvent
-from vocode.streaming.output_device.vonage_output_device import VonageOutputDevice
-
-from vocode.streaming.streaming_conversation import StreamingConversation
+from vocode.streaming.models.synthesizer import SynthesizerConfig
+from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
-from vocode.streaming.models.synthesizer import (
-    SynthesizerConfig,
-)
-from vocode.streaming.models.transcriber import (
-    TranscriberConfig,
-)
+from vocode.streaming.output_device.vonage_output_device import VonageOutputDevice
+from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.synthesizer.factory import SynthesizerFactory
 from vocode.streaming.telephony.config_manager.base_config_manager import (
     BaseConfigManager,
 )
 from vocode.streaming.telephony.constants import DEFAULT_SAMPLING_RATE
-from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.transcriber.factory import TranscriberFactory
-from vocode.streaming.utils.events_manager import EventsManager
-from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils import create_conversation_id
+from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
+from vocode.streaming.utils.events_manager import EventsManager
 
 TelephonyOutputDeviceType = TypeVar(
     "TelephonyOutputDeviceType", bound=Union[TwilioOutputDevice, VonageOutputDevice]
 )
+
+
+class CallParams(BaseModel):
+    to_phone: str
+    from_phone: str
+    conversation_id: str
 
 
 class Call(StreamingConversation[TelephonyOutputDeviceType]):
@@ -59,10 +63,21 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
         self.to_phone = to_phone
         self.base_url = base_url
         self.config_manager = config_manager
+
         super().__init__(
             output_device,
             transcriber_factory.create_transcriber(transcriber_config, logger=logger),
-            agent_factory.create_agent(agent_config, logger=logger),
+            agent_factory.create_agent(
+                self,
+                agent_config=agent_config,
+                logger=logger,
+                call_params={
+                    "to_phone": to_phone,
+                    "from_phone": from_phone,
+                    "conversation_id": conversation_id,
+                    "base_url": base_url,
+                },
+            ),
             synthesizer_factory.create_synthesizer(synthesizer_config, logger=logger),
             conversation_id=conversation_id,
             per_chunk_allowance_seconds=0.01,
