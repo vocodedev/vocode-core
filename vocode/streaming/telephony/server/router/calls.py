@@ -49,6 +49,7 @@ class CallsRouter(BaseRouter):
         self.logger = logger or logging.getLogger(__name__)
         self.router = APIRouter()
         self.router.websocket("/connect_call/{id}")(self.connect_call)
+        self.handler_set = False
 
     def _from_call_config(
         self,
@@ -104,15 +105,16 @@ class CallsRouter(BaseRouter):
 
     async def connect_call(self, websocket: WebSocket, id: str):
         span_exporter = InMemorySpanExporter()
-        database_exporter = DatabaseExporter(id)
+        database_exporter = DatabaseExporter(id, self.logger)
         span_processor = SimpleSpanProcessor(span_exporter)
         trace.get_tracer_provider().add_span_processor(span_processor)
         tracer = trace.get_tracer(__name__)
         with tracer.start_as_current_span("connect_call") as conversation:
-            self.logger.addHandler(SpanLogHandler())
-
+            if not self.handler_set: self.logger.addHandler(SpanLogHandler())
+            self.handler_set = True
             await websocket.accept()
             self.logger.debug("Phone WS connection opened for chat {}".format(id))
+            self.logger.debug("Kwal vocode being used")
             call_config = await self.config_manager.get_config(id)
             if not call_config:
                 raise HTTPException(status_code=400, detail="No active phone call")
@@ -135,7 +137,7 @@ class CallsRouter(BaseRouter):
         child_spans = span_exporter.get_finished_spans()
 
         try:
-            await database_exporter.export(child_spans)
+            await database_exporter.export(child_spans, from_phone=call_config.from_phone, to_phone=call_config.to_phone)
         except Exception as e:
             self.logger.error(f"Error {e}, Trace: {traceback.format_exc()}")
 
