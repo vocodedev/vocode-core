@@ -137,7 +137,7 @@ class CallsRouter(BaseRouter):
         child_spans = span_exporter.get_finished_spans()
 
         try:
-            await database_exporter.export(child_spans)
+            await database_exporter.export(child_spans, from_phone=call_config.from_phone, to_phone=call_config.to_phone)
         except Exception as e:
             self.logger.error(f"Error {e}, Trace: {traceback.format_exc()}")
 

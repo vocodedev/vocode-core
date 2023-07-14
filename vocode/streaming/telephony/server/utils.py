@@ -27,14 +27,15 @@ class DatabaseExporter:
         }
         self.logger = logger
 
-    async def export(self, spans):
+    async def export(self, spans, from_phone, to_phone):
         async with aiohttp.ClientSession() as session:
-            record_data = {"conversation_id": self.conversation_id, "log": []}
+            record_data = {"conversation_id": self.conversation_id, "log": [], "from_phone": from_phone, "to_phone": to_phone}
             for span in spans:
                 if span.name == "log_span":
                     if span.attributes["level"] == "ERROR":
                         # Can send logs to Slack from here
                         record_data["log"].append({"ERROR": span.attributes["message"]})
+                        record_data.setdefault("error_log", []).append({"ERROR": span.attributes["message"]})
                     else:
                         record_data["log"].append({"message": span.attributes["message"]})
                 else:
@@ -43,6 +44,7 @@ class DatabaseExporter:
                         "duration": (span.end_time - span.start_time) / 1e9,
                     })
             record_data["log"] = json.dumps(record_data["log"], indent=4)
+            if "error_log" in record_data: record_data["error_log"] = json.dumps(record_data["error_log"], indent=4)
             payload = {"performUpsert": {"fieldsToMergeOn": ["conversation_id"]}, "records": [{"fields": record_data}]}
             async with session.patch(self.base_url, headers=self.headers, json=payload) as response:
                 if response.status == 200:
