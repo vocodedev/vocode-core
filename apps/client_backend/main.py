@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 conversation_router = ConversationRouter(
-    agent_thunk=lambda: ChatGPTAgent(
+    agent=ChatGPTAgent(
         ChatGPTAgentConfig(
             initial_message=BaseMessage(text="Hello!"),
             prompt_preamble="Have a pleasant conversation about life",
