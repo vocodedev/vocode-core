@@ -1,4 +1,5 @@
 from typing import Optional
+import aiohttp
 from vocode.streaming.models.telephony import VonageConfig
 from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
 import vonage
@@ -65,9 +66,19 @@ class VonageClient(BaseTelephonyClient):
         )
         return ncco
 
-    def end_call(self, id) -> bool:
-        # TODO(EPD-186): return True if the call was ended successfully
-        self.voice.update_call(uuid=id, action="hangup")
+    async def end_call(self, id) -> bool:
+        async with aiohttp.ClientSession() as session:
+            async with session.put(
+                f"https://api.nexmo.com/v1/calls/{id}",
+                json={"action": "hangup"},
+                headers={
+                    "Authorization": f"Bearer {self.client._generate_application_jwt().decode()}"
+                },
+            ) as response:
+                if not response.ok:
+                    raise RuntimeError(
+                        f"Failed to end call: {response.status} {response.reason}"
+                    )
         return True
 
     # TODO(EPD-186)
