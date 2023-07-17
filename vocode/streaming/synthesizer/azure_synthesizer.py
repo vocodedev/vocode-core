@@ -221,6 +221,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         offset = 0
         self.logger.debug(f"Synthesizing message: {message}")
 
+        synthesis_span = tracer.start_span(f"synthesizer.azure")
         # Azure will return no audio for certain strings like "-", "[-", and "!"
         # which causes the `chunk_generator` below to hang. Return an empty
         # generator for these cases.
@@ -238,11 +239,13 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 await asyncio.sleep(0)
             filled_size = audio_data_stream.read_data(audio_buffer)
             if filled_size != chunk_size:
+                synthesis_span.end()
                 yield SynthesisResult.ChunkResult(
                     chunk_transform(audio_buffer[offset:]), True
                 )
                 return
             else:
+                synthesis_span.end()
                 yield SynthesisResult.ChunkResult(
                     chunk_transform(audio_buffer[offset:]), False
                 )
