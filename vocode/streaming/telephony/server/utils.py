@@ -52,3 +52,16 @@ class DatabaseExporter:
                 else:
                     resp = await response.text()
                     self.logger.debug(f"Failed to log to the database, {response.status}, {resp}")
+    
+    async def recording(self, url):
+        async with aiohttp.ClientSession() as session:
+            record_data = {"conversation_id": self.conversation_id, "recording_url": url}
+            payload = {"performUpsert": {"fieldsToMergeOn": ["conversation_id"]}, "records": [{"fields": record_data}]}
+            async with session.patch(self.base_url, headers=self.headers, json=payload) as response:
+                if response.status == 200:
+                    self.logger.debug("Successfully logged Recording URl to the database")
+                else:
+                    resp = await response.text()
+                    self.logger.debug(f"Failed to log recording URL to the database, {response.status}, {resp}")
+
+

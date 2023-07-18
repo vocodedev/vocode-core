@@ -16,6 +16,8 @@ from vocode.streaming.telephony.client.vonage_client import VonageClient
 from vocode.streaming.telephony.config_manager.base_config_manager import (
     BaseConfigManager,
 )
+import urllib.parse
+from vocode.streaming.telephony.server.utils import DatabaseExporter
 from vocode.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_CHUNK_SIZE,
@@ -106,9 +108,11 @@ class TelephonyServer:
         return Response()
 
     async def recordings(self, request: Request, conversation_id: str):
-        recording_url = (await request.json())["recording_url"]
-        if self.events_manager is not None and recording_url is not None:
-            self.events_manager.publish_event(RecordingEvent(recording_url=recording_url, conversation_id=conversation_id))
+        form_data = await request.body()
+        parsed_data = urllib.parse.parse_qs(form_data.decode())
+        recording_url = parsed_data.get('RecordingUrl', [None])[0]
+        exporter = DatabaseExporter(conversation_id=conversation_id, logger=self.logger)
+        await exporter.recording(recording_url)
         return Response()
 
     def create_inbound_route(
