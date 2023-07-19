@@ -21,6 +21,11 @@
   },
   "anchors": [
     {
+      "name": "API Reference",
+      "icon": "rectangle-terminal",
+      "url": "api-reference"
+    },
+    {
       "name": "Community",
       "icon": "discord",
       "url": "https://discord.gg/NaU4mMgcnC"
@@ -39,17 +44,11 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": [
-        "welcome"
-      ]
+      "pages": ["welcome"]
     },
     {
       "group": "Vocode 101",
-      "pages": [
-        "what-is-vocode",
-        "how-it-works",
-        "how-to-use-it"
-      ]
+      "pages": ["what-is-vocode", "how-it-works", "how-to-use-it"]
     },
     {
       "group": "Guides",
@@ -78,8 +77,79 @@
         "agent-reference",
         "synthesizer-reference"
       ]
+    },
+    {
+      "group": "Numbers",
+      "pages": [
+        "api-reference/numbers-list",
+        "api-reference/numbers-get",
+        "api-reference/numbers-buy",
+        "api-reference/numbers-update",
+        "api-reference/numbers-cancel"
+      ]
+    },
+    {
+      "group": "Calls",
+      "pages": [
+        "api-reference/calls-list",
+        "api-reference/calls-get",
+        "api-reference/calls-end",
+        "api-reference/calls-create"
+      ]
+    },
+    {
+      "group": "Usage",
+      "pages": ["api-reference/usage-get"]
+    },
+    {
+      "group": "Actions",
+      "pages": [
+        "api-reference/actions-list",
+        "api-reference/actions-get",
+        "api-reference/actions-create",
+        "api-reference/actions-update"
+      ]
+    },
+    {
+      "group": "Agents",
+      "pages": [
+        "api-reference/agents-list",
+        "api-reference/agents-get",
+        "api-reference/agents-create",
+        "api-reference/agents-update"
+      ]
+    },
+    {
+      "group": "Voices",
+      "pages": [
+        "api-reference/voices-list",
+        "api-reference/voices-get",
+        "api-reference/voices-create",
+        "api-reference/voices-update"
+      ]
+    },
+    {
+      "group": "Webhooks",
+      "pages": [
+        "api-reference/webhooks-list",
+        "api-reference/webhooks-get",
+        "api-reference/webhooks-create",
+        "api-reference/webhooks-update"
+      ]
+    },
+    {
+      "group": "Schemas",
+      "pages": [
+        "api-reference/schemas/action-config",
+        "api-reference/schemas/action-type"
+      ]
     }
   ],
+  "api": {
+    "playground": {
+      "mode": "simple"
+    }
+  },
   "footerSocials": {
     "twitter": "https://twitter.com/vocodehq",
     "website": "https://www.vocode.dev/"
