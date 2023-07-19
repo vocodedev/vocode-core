@@ -8,6 +8,7 @@ from vocode.streaming.models.model import TypedModel
 class ActionType(str, Enum):
     BASE = "action_base"
     NYLAS_SEND_EMAIL = "action_nylas_send_email"
+    TRANSFER_CALL = "action_transfer_call"
 
 
 class ActionConfig(TypedModel, type=ActionType.BASE):
@@ -25,6 +26,7 @@ class ActionInput(BaseModel, Generic[ParametersType]):
 
     class Config:
         arbitrary_types_allowed = True
+
 
 
 class FunctionFragment(BaseModel):
