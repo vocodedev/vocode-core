@@ -1,0 +1,124 @@
+---
+title: "Python Quickstart"
+description: "Get up and running using Python"
+---
+
+# Installation
+
+Install the [vocode package](https://pypi.org/project/vocode/):
+
+```bash
+pip install 'vocode[io]'
+```
+
+# Getting started
+
+The `io` extra installs the packages necessary to run our voice conversations locally, but is not needed for other surfaces, e.g. [phone calls](/telephony).
+You may need to install [portaudio](https://formulae.brew.sh/formula/portaudio) and [ffmpeg](https://formulae.brew.sh/formula/ffmpeg) on your system.
+
+## Working with system audio
+
+We provide helper methods to hook into your system audio.
+
+```python
+microphone_input, speaker_output = create_microphone_input_and_speaker_output(
+    use_default_devices=True
+)
+```
+
+If the default I/O devices are not being set properly, set `use_default_devices` to `False` to select them before kicking off the conversation.
+
+## Self-hosted
+
+### Environments
+
+Vocode provides a unified interface across various speech transcription, speech synthesis, and AI/NLU providers.
+To use these providers with Vocode, you'll need to grab credentials from these providers and set them in the Vocode environment.
+
+```python
+# these can also be set as environment variables
+vocode.setenv(
+    OPENAI_API_KEY="<your OpenAI key>",
+    DEEPGRAM_API_KEY="<your Deepgram key>",
+    AZURE_SPEECH_KEY="<your Azure key>",
+    AZURE_SPEECH_REGION="<your Azure region>",
+)
+```
+
+For AZURE_SPEECH_REGION you should use the URL format. For example, if you're using the "East US" region, the value should be "eastus". See [Azure Region list](https://learn.microsoft.com/en-us/azure/cognitive-services/speech-service/rest-text-to-speech?tabs=streaming#prebuilt-neural-voices).
+
+We also offer a hosted solution where you don't need to worry about getting these credentials — see [below](#hosted).
+
+### `StreamingConversation` example
+
+```python
+import asyncio
+import signal
+
+import vocode
+from vocode.streaming.streaming_conversation import StreamingConversation
+from vocode.helpers import create_streaming_microphone_input_and_speaker_output
+from vocode.streaming.models.transcriber import (
+    DeepgramTranscriberConfig,
+    PunctuationEndpointingConfig,
+)
+from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode.streaming.models.agent import ChatGPTAgentConfig
+from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
+from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
+
+# these can also be set as environment variables
+vocode.setenv(
+    OPENAI_API_KEY="<your OpenAI key>",
+    DEEPGRAM_API_KEY="<your Deepgram key>",
+    AZURE_SPEECH_KEY="<your Azure key>",
+    AZURE_SPEECH_REGION="<your Azure region>",
+)
+
+
+async def main():
+    microphone_input, speaker_output = create_streaming_microphone_input_and_speaker_output(
+        use_default_devices=True,
+    )
+
+    conversation = StreamingConversation(
+        output_device=speaker_output,
+        transcriber=DeepgramTranscriber(
+            DeepgramTranscriberConfig.from_input_device(
+                microphone_input, endpointing_config=PunctuationEndpointingConfig()
+            )
+        ),
+        agent=ChatGPTAgent(
+            ChatGPTAgentConfig(
+                initial_message=BaseMessage(text="Hello!"),
+                prompt_preamble="Have a pleasant conversation about life",
+            ),
+        ),
+        synthesizer=AzureSynthesizer(
+            AzureSynthesizerConfig.from_output_device(speaker_output)
+        ),
+    )
+    await conversation.start()
+    print("Conversation started, press Ctrl+C to end")
+    signal.signal(
+        signal.SIGINT, lambda _0, _1: asyncio.create_task(conversation.terminate())
+    )
+    while conversation.is_active():
+        chunk = await microphone_input.get_audio()
+        conversation.receive_audio(chunk)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## A note on echo cancellation
+
+As of now, there is no default echo cancellation enabled for system audio conversation, so this works best with headphones, otherwise the bot audio feeds back into the input audio stream. On some speakers
+(eg phone calls) this is handled by the device itself.
+
+Another fix for this is to pipe your microphone / speaker to [Krisp.AI](https://krisp.ai/). Download their application and select the Krisp virtual audio devices when running the script!
+
+Stay tuned for updates here, tracking in [this GitHub issue](https://github.com/vocodedev/vocode-python/issues/16).

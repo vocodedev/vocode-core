@@ -1,0 +1,96 @@
+---
+title: 'Action Agents'
+description: 'Empowering agents to take actions during conversations.'
+---
+
+## Note: Support for actions is currently limited to `ChatGPTAgent`.
+
+## What are actions?
+
+Actions refer to specific tools an agent can execute during the conversation. These actions can encompass various activities like writing an email,
+scheduling an appointment, and so forth. They are implemented as classes derived from the `BaseAction` class.
+
+The `BaseAction` class is defined as follows:
+
+```python
+class BaseAction(Generic[ActionOutputType]):
+    def run(self, params: str) -> ActionOutputType:
+        raise NotImplementedError
+```
+
+Every action class derived from BaseAction must implement the run method, which is called to execute the action.
+Importantly, each action class should include a docstring for this method that explains the expected parameters.
+This docstring is critical as it provides the information that the AI will consume in its prompt when instructing the execution of the action.
+
+## Agent Actions
+
+The agent is responsible for managing and executing actions within a conversation. The agent consumes a configuration object at instantiation,
+which specifies the actions that the agent can perform.
+
+The agent configuration lists the actions available to the agent:
+
+```python
+class AgentConfig(AgentConfig, type=AgentType.Base.value):
+    actions: List[ActionType]
+    # ...
+```
+
+## `ActionsWorker`: how actions are executed and consumed
+
+The `ActionsWorker` class plays a crucial role in the async processing of actions within the system. It's a specialized form of the `InterruptibleWorker` class,
+designed to handle the execution of actions and passing results back to the agent.
+
+The `ActionsWorker` is initialized with an input queue and an output queue. It uses an `ActionFactory` instance to create and execute actions based on the inputs it receives.
+
+The flow of actions is as follows:
+
+1. Agent sends action requests to the `ActionsWorker` through the worker's input queue.
+2. `ActionsWorker` reads the action request from the input queue. It then creates an instance of the appropriate action using the `ActionFactory`, and executes it using the provided parameters.
+3. The executed action returns an `ActionOutput` object which encapsulates the result of the action.
+4. `ActionsWorker` creates an `ActionResultAgentInput` from the `ActionOutput`, and puts it in its output queue.
+5. The agent then consumes the `ActionResultAgentInput` from the queue in its process method. This
+   result is added to the transcript of the conversation, and can influence the behavior of the agent in subsequent interactions.
+
+### Implementing your own action: Nylas email example
+
+In this section, we provide an example of an action, `NylasSendEmail`, which extends the `BaseAction` class. It implements the run method to send an email using the Nylas API.
+
+```python
+class NylasSendEmail(BaseAction[NylasSendEmailActionOutput]):
+    def run(self, params: str) -> NylasSendEmailActionOutput:
+        """Sends an email using Nylas API.
+        The input to this action is a pipe separated list of the recipient email, email body, optional subject. But always include
+        the pipe character even if the subject or message IDs are not included and just leave it blank.
+        The subject should only be included if it is a new email thread.
+        If there is no message id, the email will be sent as a new email. Otherwise, it will be sent as a reply to the given message. Make sure to include the previous message_id
+        if you are replying to an email.
+
+        For example, `recipient@example.com|Hello, this is the email body.|this is the subject` would send an email to recipient@example.com with the provided body and subject.
+        """
+        recipient_email, email_body, email_subject = params.split("|")
+
+        from nylas import APIClient
+
+        # Initialize the Nylas client
+        nylas = APIClient(
+            client_id=os.getenv("NYLAS_CLIENT_ID"),
+            client_secret=os.getenv("NYLAS_CLIENT_SECRET"),
+            access_token=os.getenv("NYLAS_ACCESS_TOKEN"),
+        )
+
+        # Create the email draft
+        draft = nylas.drafts.create()
+        draft.body = email_body
+
+        draft.subject = (
+            email_subject.strip() if email_subject.strip() else "Email from Vocode"
+        )
+        draft.to = [{"email": recipient_email.strip()}]
+
+        # Send the email
+        draft.send()
+
+        return NylasSendEmailActionOutput(response=json.dumps({"success": True}))
+```
+
+See [Agent Factory](/agent-factory) for more information on how to register your action with the agent factory.
