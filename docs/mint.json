@@ -143,13 +143,13 @@
       ]
     },
     {
-      "group": "API Guides",
+      "group": "Hosted Walkthrough",
       "pages": [
-        "agents",
-        "inbound-calls",
-        "outbound-calls",
-        "webhooks",
-        "call-object"
+        "getting-number",
+        "configuring-number",
+        "retrieve-call-data",
+        "setting-up-webhook",
+        "using-actions"
       ]
     }
   ],
