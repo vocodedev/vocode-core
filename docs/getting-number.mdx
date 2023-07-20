@@ -1,0 +1,49 @@
+---
+title: "Getting a number"
+---
+
+If you're on the Free plan, you'll have to head to the dashboard to buy numbers. The Developer and
+Enterprise plans both come with numbers included in the subscription. For more info, see [Pricing](https://vocode.dev/pricing).
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://api.vocode.dev/v1/numbers/buy \
+  --header 'Authorization: Bearer <API_KEY>'
+```
+
+```python Python
+from vocode.client import Vocode
+
+client = Vocode(environment="https://api.vocode.dev", token="<API_KEY>")
+print(client.numbers.buy_number().json())
+```
+
+```typescript TypeScript
+import { VocodeClient } from "@vocode/vocode-api";
+
+const vocode = new VocodeClient({
+  environment: "https://api.vocode.dev",
+  token: "<API_KEY>",
+});
+
+vocode.numbers.buyNumber().then((number) => {
+  console.log(number);
+});
+```
+
+</CodeGroup>
+
+You'll get a response that looks like:
+
+```json
+{
+  "id": "***",
+  "user_id": "***",
+  "number": "11234567890",
+  "inbound_agent": {...}
+}
+```
+
+Your phone number is now active! Call the phone number and have a conversation with your AI.
