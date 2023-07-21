@@ -162,11 +162,9 @@ vocode_client = Vocode(
 )
 
 number = vocode_client.numbers.update_number(
-    phone_number="12016496441", inbound_agent=AgentUpdateParams(initial_message="Hello, I am a wizzard.")
+    phone_number="12016496441", inbound_agent=AgentUpdateParams(initial_message="Hello, I am a wizard.")
 )
 
-print(number.json())
->>> {"id": "07188b6c-0937-42c1-8a6d-6218924248de", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "number": "12016496441", "active": true, "inbound_agent": {"id": "1d832201-14fb-4bd5-9cc7-7c4e20e538d1", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "prompt": "I want you to act as a wizzard. Respond as a wizzard would.", "actions": [], "voice": {"id": "40d2d523-0976-4ce4-9a48-ff0187758e86", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "type": "voice_eleven_labs", "voice_id": "21m00Tcm4TlvDq8ikWAM", "stability": null, "similarity_boost": null, "api_key": "4961624890fb18aeca58d5225d504e08"}, "initial_message": "Hello, I am a wizzard.", "webhook": null}}
 ```
 
 </CodeGroup>
