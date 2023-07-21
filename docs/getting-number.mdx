@@ -10,27 +10,16 @@ Enterprise plans both come with numbers included in the subscription. For more i
 ```bash cURL
 curl --request POST \
   --url https://api.vocode.dev/v1/numbers/buy \
+  --header 'Content-Type: application/json' \
   --header 'Authorization: Bearer <API_KEY>'
 ```
 
 ```python Python
-from vocode.client import Vocode
-
-client = Vocode(environment="https://api.vocode.dev", token="<API_KEY>")
-print(client.numbers.buy_number().json())
+phone_number = vocode_client.numbers.buy_number()
 ```
 
 ```typescript TypeScript
-import { VocodeClient } from "@vocode/vocode-api";
-
-const vocode = new VocodeClient({
-  environment: "https://api.vocode.dev",
-  token: "<API_KEY>",
-});
-
-vocode.numbers.buyNumber().then((number) => {
-  console.log(number);
-});
+const phoneNumber = await vocode.numbers.buyNumber();
 ```
 
 </CodeGroup>
