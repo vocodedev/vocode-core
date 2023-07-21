@@ -14,32 +14,17 @@ First, list your numbers and pick the number you want to configure.
 <CodeGroup>
 
 ```javascript listNumbers.js
-import { VocodeClient } from '@vocode/vocode-api';
-
-const vocode = new VocodeClient({
-    token: 'baeadc4558ae060d367ed65bf0ad7914',
-    environment: 'https://api.vocode.dev/'
-});
-
 async function main() {
-    const numbers = await vocode.numbers.listNumbers();
-    console.log(numbers);
+  const numbers = await vocode.numbers.listNumbers();
+  console.log(numbers);
 }
 
 main();
 ```
 
 ```python list_numbers.py
-from vocode.client import Vocode
-
-vocode_client = Vocode(
-  token="baeadc4558ae060d367ed65bf0ad7914", environment="https://api.vocode.dev/"
-)
-
 numbers = vocode_client.numbers.list_numbers()
-
-print([x.json() for x in numbers])
->>> ['{"id": "07188b6c-0937-42c1-8a6d-6218924248de", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "number": "12016496441", "active": true, "inbound_agent": {"id": "1d832201-14fb-4bd5-9cc7-7c4e20e538d1", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "prompt": "I want you to act as a wizzard. Respond as a wizzard would.", "actions": [], "voice": {"id": "40d2d523-0976-4ce4-9a48-ff0187758e86", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "type": "voice_eleven_labs", "voice_id": "21m00Tcm4TlvDq8ikWAM", "stability": null, "similarity_boost": null, "api_key": "4961624890fb18aeca58d5225d504e08"}, "initial_message": null, "webhook": null}}']
+print(numbers)
 ```
 
 </CodeGroup>
@@ -51,22 +36,14 @@ The above is the default agent configuration. Let's change the prompt so the AI 
 <CodeGroup>
 
 ```javascript updateNumber.js
-import { VocodeClient } from '@vocode/vocode-api';
-
-const vocode = new VocodeClient({
-    token: 'baeadc4558ae060d367ed65bf0ad7914',
-    environment: 'https://api.vocode.dev/'
-});
-
 async function main() {
-    const wizzard_prompt = "I want you to act as a wizzard. Respond as a wizzard would."
-    const number = await vocode.numbers.updateNumber(
-        {
-            "phoneNumber": "12016496441",
-            "inboundAgent": {"prompt": wizzard_prompt}
-        }
-    )
-    console.log(number);
+  const wizard_prompt =
+    "I want you to act as a wizard. Respond as a wizard would.";
+  const number = await vocode.numbers.updateNumber({
+    phoneNumber: "YOUR_NUMBER",
+    inboundAgent: { prompt: wizard_prompt },
+  });
+  console.log(number);
 }
 
 main();
@@ -74,19 +51,13 @@ main();
 
 ```python update_number.py
 from vocode import AgentUpdateParams
-from vocode.client import Vocode
 
-vocode_client = Vocode(
-    token="baeadc4558ae060d367ed65bf0ad7914", environment="https://api.vocode.dev/"
-)
-
-wizzard_prompt = "I want you to act as a wizzard. Respond as a wizzard would."
+wizard_prompt = "I want you to act as a wizard. Respond as a wizard would."
 number = vocode_client.numbers.update_number(
-    phone_number="12016496441", inbound_agent=AgentUpdateParams(prompt=wizzard_prompt)
+    phone_number="YOUR_NUMBER", inbound_agent=AgentUpdateParams(prompt=wizard_prompt)
 )
 
 print(number.json())
->>> {"id": "07188b6c-0937-42c1-8a6d-6218924248de", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "number": "12016496441", "active": true, "inbound_agent": {"id": "1d832201-14fb-4bd5-9cc7-7c4e20e538d1", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "prompt": "I want you to act as a wizzard. Respond as a wizzard would.", "actions": [], "voice": {"id": "47de1dd6-0771-4fd6-8905-8b2aa48291ca", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "type": "voice_azure", "voice_name": "en-US-SteffanNeural", "pitch": 0, "rate": 15}, "initial_message": null, "webhook": null}}
 ```
 
 </CodeGroup>
@@ -98,22 +69,16 @@ Our prompt has been updated. Now let's use a more realistic voice provided by El
 <CodeGroup>
 
 ```javascript useElevenLabs.js
-import { VocodeClient } from '@vocode/vocode-api';
-import { VoiceType } from '@vocode/vocode-api/api';
-
-const vocode = new VocodeClient({
-    token: 'baeadc4558ae060d367ed65bf0ad7914',
-    environment: 'https://api.vocode.dev/'
-});
+import { VoiceType } from "@vocode/vocode-api/api";
 
 async function main() {
-    const elevenlabsVoice = {
-        "type": VoiceType.VoiceElevenLabs,
-        "voiceId": "21m00Tcm4TlvDq8ikWAM",
-        "apiKey": "4961624890fb18aeca58d5225d504e08"
-    }
-    const number = await vocode.voices.createVoice(elevenlabsVoice);
-    console.log(number);
+  const elevenlabsVoice = {
+    type: VoiceType.VoiceElevenLabs,
+    voiceId: "ELEVEN_LABS_VOICE_ID",
+    apiKey: "ELEVEN_LABS_API_KEY",
+  };
+  const number = await vocode.voices.createVoice(elevenlabsVoice);
+  console.log(number);
 }
 
 main();
@@ -121,45 +86,30 @@ main();
 
 ```python use_eleven_labs.py
 from vocode import ElevenLabsVoiceParams, VoiceType
-from vocode.client import Vocode
-
-vocode_client = Vocode(
-    token="baeadc4558ae060d367ed65bf0ad7914", environment="https://api.vocode.dev/"
-)
 
 elevenlabs_voice = ElevenLabsVoiceParams(
     type=VoiceType.VOICE_ELEVEN_LABS,
-    voice_id="21m00Tcm4TlvDq8ikWAM",
-    api_key="4961624890fb18aeca58d5225d504e08",
+    voice_id="ELEVEN_LABS_VOICE_ID",
+    api_key="ELEVEN_LABS_API_KEY",
 )
 voice = vocode_client.voices.create_voice(request=elevenlabs_voice)
 
 print(voice.json())
->>> {"id": "40d2d523-0976-4ce4-9a48-ff0187758e86", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "type": "voice_eleven_labs", "voice_id": "21m00Tcm4TlvDq8ikWAM", "stability": null, "similarity_boost": null, "api_key": "4961624890fb18aeca58d5225d504e08"}
 ```
 
 </CodeGroup>
 
-Now, we have our voice id "40d2d523-0976-4ce4-9a48-ff0187758e86" and can update our number's agent to use it.
+Now, we have our `voice id` and can update our number's agent to use it.
 
 <CodeGroup>
 
 ```javascript updateAgent.js
-import { VocodeClient } from '@vocode/vocode-api';
-
-const vocode = new VocodeClient({
-    token: 'baeadc4558ae060d367ed65bf0ad7914',
-    environment: 'https://api.vocode.dev/'
-});
-
 async function main() {
-    const agent = await vocode.agents.updateAgent(
-        {
-            "id": "1d832201-14fb-4bd5-9cc7-7c4e20e538d1",
-            "body": {"voice": "40d2d523-0976-4ce4-9a48-ff0187758e86"}
-        }
-    )
-    console.log(agent);
+  const agent = await vocode.agents.updateAgent({
+    id: "AGENT_ID",
+    body: { voice: "VOICE_ID" },
+  });
+  console.log(agent);
 }
 
 main();
@@ -167,19 +117,13 @@ main();
 
 ```python update_agent.py
 from vocode import AgentUpdateParams
-from vocode.client import Vocode
-
-vocode_client = Vocode(
-    token="baeadc4558ae060d367ed65bf0ad7914", environment="https://api.vocode.dev/"
-)
 
 agent = vocode_client.agents.update_agent(
-    id="1d832201-14fb-4bd5-9cc7-7c4e20e538d1",
-    request=AgentUpdateParams(voice="40d2d523-0976-4ce4-9a48-ff0187758e86"),
+    id="AGENT_ID",
+    request=AgentUpdateParams(voice="VOICE_ID"),
 )
 
 print(agent.json())
->>> {"id": "1d832201-14fb-4bd5-9cc7-7c4e20e538d1", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "prompt": "I want you to act as a wizzard. Respond as a wizzard would.", "actions": [], "voice": {"id": "40d2d523-0976-4ce4-9a48-ff0187758e86", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "type": "voice_eleven_labs", "voice_id": "21m00Tcm4TlvDq8ikWAM", "stability": null, "similarity_boost": null, "api_key": "4961624890fb18aeca58d5225d504e08"}, "initial_message": null, "webhook": null}
 ```
 
 </CodeGroup>
@@ -191,21 +135,19 @@ The initial message will be spoken as soon as the call starts before the user sa
 <CodeGroup>
 
 ```javascript addInitialMessage.js
-import { VocodeClient } from '@vocode/vocode-api';
+import { VocodeClient } from "@vocode/vocode-api";
 
 const vocode = new VocodeClient({
-    token: 'baeadc4558ae060d367ed65bf0ad7914',
-    environment: 'https://api.vocode.dev/'
+  token: "baeadc4558ae060d367ed65bf0ad7914",
+  environment: "https://api.vocode.dev/",
 });
 
 async function main() {
-    const number = await vocode.numbers.updateNumber(
-        {
-            "phoneNumber": "12016496441",
-            "inboundAgent": {"initialMessage": "Hello, I am a wizzard."}
-        }
-    )
-    console.log(number);
+  const number = await vocode.numbers.updateNumber({
+    phoneNumber: "12016496441",
+    inboundAgent: { initialMessage: "Hello, I am a wizzard." },
+  });
+  console.log(number);
 }
 
 main();
@@ -229,37 +171,27 @@ print(number.json())
 
 </CodeGroup>
 
-
 ## Adding Webhooks
 
 To get data from the agent during a call, you can add a webhook and assign it to listen for specific events. Let's send a POST request to "https://example.com" every time a call ends.
 
-
 <CodeGroup>
 
 ```javascript configureWebhook.js
-import { VocodeClient } from '@vocode/vocode-api';
-import { EventType, HttpMethod } from '@vocode/vocode-api/api';
-
-const vocode = new VocodeClient({
-    token: 'baeadc4558ae060d367ed65bf0ad7914',
-    environment: 'https://api.vocode.dev/'
-});
+import { EventType, HttpMethod } from "@vocode/vocode-api/api";
 
 async function main() {
-    const number = await vocode.numbers.updateNumber(
-        {
-            "phoneNumber": "12016496441",
-            "inboundAgent": {
-                "webhook": {
-                    "subscriptions": [EventType.EventPhoneCallConnected],
-                    "url": "https://example.com",
-                    "method": HttpMethod.Post,
-                }
-            }
-        }
-    )
-    console.log(number);
+  const number = await vocode.numbers.updateNumber({
+    phoneNumber: "YOUR_NUMBER",
+    inboundAgent: {
+      webhook: {
+        subscriptions: [EventType.EventPhoneCallConnected],
+        url: "https://example.com",
+        method: HttpMethod.Post,
+      },
+    },
+  });
+  console.log(number);
 }
 
 main();
@@ -267,11 +199,6 @@ main();
 
 ```python configure_webhook.py
 from vocode import AgentUpdateParams, EventType, HttpMethod, WebhookUpdateParams
-from vocode.client import Vocode
-
-vocode_client = Vocode(
-    token="baeadc4558ae060d367ed65bf0ad7914", environment="https://api.vocode.dev/"
-)
 
 new_webhook = WebhookUpdateParams(
     subscriptions=[EventType.EVENT_PHONE_CALL_ENDED],
@@ -280,14 +207,13 @@ new_webhook = WebhookUpdateParams(
 )
 
 number = vocode_client.numbers.update_number(
-    phone_number="12016496441",
+    phone_number="YOUR_NUMBER",
     inbound_agent=AgentUpdateParams(
         webhook=new_webhook,
     ),
 )
 
 print(number.json())
->>> {"id": "07188b6c-0937-42c1-8a6d-6218924248de", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "number": "12016496441", "active": true, "inbound_agent": {"id": "1d832201-14fb-4bd5-9cc7-7c4e20e538d1", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "prompt": "I want you to act as a wizzard. Respond as a wizzard would.", "actions": [], "voice": {"id": "40d2d523-0976-4ce4-9a48-ff0187758e86", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "type": "voice_eleven_labs", "voice_id": "21m00Tcm4TlvDq8ikWAM", "stability": null, "similarity_boost": null, "api_key": "4961624890fb18aeca58d5225d504e08"}, "initial_message": "Hello, I am a wizzard.", "webhook": {"id": "a8f7b110-44d2-4bdb-87a3-a6fdea956456", "user_id": "57a90292-b966-4536-99b0-f1152c59348b", "subscriptions": ["event_phone_call_ended"], "url": "https://example.com", "method": "POST"}}}
 ```
 
 </CodeGroup>
