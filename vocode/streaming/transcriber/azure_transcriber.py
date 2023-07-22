@@ -54,9 +54,18 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
             region=getenv("AZURE_SPEECH_REGION"),
         )
 
-        self.speech = speechsdk.SpeechRecognizer(
-            speech_config=speech_config, audio_config=config
-        )
+        if self.transcriber_config.candidate_languages:
+            speech_config.set_property(property_id=speechsdk.PropertyId.SpeechServiceConnection_LanguageIdMode, value='Continuous')
+            auto_detect_source_language_config = speechsdk.languageconfig.AutoDetectSourceLanguageConfig(
+                languages=self.transcriber_config.candidate_languages
+            )
+            self.speech = speechsdk.SpeechRecognizer(
+                speech_config=speech_config, auto_detect_source_language_config=auto_detect_source_language_config, audio_config=config
+            )
+        else:
+            self.speech = speechsdk.SpeechRecognizer(
+                speech_config=speech_config, language=self.transcriber_config.language, audio_config=config
+            )
 
         self._ended = False
         self.is_ready = False

@@ -9,3 +9,5 @@ credentials.json
 **/call_transcripts/*.txt
 benchmark_results/
 private.key
+.vscode/settings.json
+.gitignore
