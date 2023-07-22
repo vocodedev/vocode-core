@@ -25,7 +25,7 @@ opentelemetry-sdk = "^1.17.0"
 janus = "^1.0.0"
 scipy = "^1.10.1"
 anthropic = "^0.2.9"
-torch ="^1.8.1+cpu"
+torch ="^2.0.0"
 transformers="^4.30.2"
 
 elevenlabs = {version = "^0.2.6", optional = false}
