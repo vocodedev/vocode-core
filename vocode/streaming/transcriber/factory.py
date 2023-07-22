@@ -25,7 +25,7 @@ class TranscriberFactory:
         logger: Optional[logging.Logger] = None,
     ):
         if isinstance(transcriber_config, WhisperCPPTranscriberConfig):
-            return WhisperCPPTranscriber(transcriber_config, logger=logger)
+            return WhisperCPPTranscriber(transcriber_config)#, logger=logger)
         elif isinstance(transcriber_config, DeepgramTranscriberConfig):
             return DeepgramTranscriber(transcriber_config, logger=logger)
         elif isinstance(transcriber_config, GoogleTranscriberConfig):
