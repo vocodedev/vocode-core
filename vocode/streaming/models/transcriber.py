@@ -13,6 +13,8 @@ from vocode.streaming.telephony.constants import (
 from .audio_encoding import AudioEncoding
 from .model import TypedModel
 
+AZURE_DEFAULT_LANGUAGE = "en-US"
+
 
 class TranscriberType(str, Enum):
     BASE = "transcriber_base"
@@ -118,17 +120,9 @@ class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.val
     language_code: str = "en-US"
 
 
-from typing import Union
-
 class AzureTranscriberConfig(TranscriberConfig, type=TranscriberType.AZURE.value):
-    language: Optional[str] = None
+    language: str = AZURE_DEFAULT_LANGUAGE
     candidate_languages: Optional[List[str]] = None
-
-    @validator("language", "candidate_languages")
-    def must_have_a_language(cls, v, values, field):
-        if field == "language" and v is None and values.get("candidate_languages") is None:
-            raise ValueError("Either language or candidate_languages must be set.")
-        return v
 
 
 class AssemblyAITranscriberConfig(
