@@ -219,7 +219,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     top_choice = data["channel"]["alternatives"][0]
                     confidence = top_choice["confidence"]
 
-                    if top_choice["transcript"] and confidence > 0.0 and is_final:
+                    if top_choice["transcript"] and is_final:
                         buffer = f"{buffer} {top_choice['transcript']}"
 
                     if speech_final and time_silent > 0.05:

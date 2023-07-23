@@ -42,4 +42,4 @@ class EndpointClassifier:
             probability = 1 - probability
         if return_as_int:
             return probability
-        return probability > 0.17
+        return probability > 0.09
