@@ -65,12 +65,16 @@ class TwilioClient(BaseTelephonyClient):
         call = self.twilio_client.calls(twilio_sid).fetch()
 
         # Check the call's duration
-        if call.duration is not None and int(call.duration) > 5 * 60:  # duration is in seconds
+        if (
+            call.duration is not None and int(call.duration) > 5 * 60
+        ):  # duration is in seconds
             # The call has been going for more than 5 minutes - terminate it
             response = self.twilio_client.calls(twilio_sid).update(status="completed")
             return response.status == "completed"
 
-        time.sleep(10) # for testing purposes only, if for some reason it just keeps going even when it's a conference
+        time.sleep(
+            10
+        )  # for testing purposes only, if for some reason it just keeps going even when it's a conference
         response = self.twilio_client.calls(twilio_sid).update(status="completed")
         return response.status == "completed"
 
@@ -78,7 +82,7 @@ class TwilioClient(BaseTelephonyClient):
         self,
         to_phone: str,
         from_phone: str,
-        mobile_only: bool = False, # originally to conform with California law; we leave as False for testing purposes
+        mobile_only: bool = False,  # originally to conform with California law; we leave as False for testing purposes
     ):
         if len(to_phone) < 8:
             raise ValueError("Invalid 'to' phone")

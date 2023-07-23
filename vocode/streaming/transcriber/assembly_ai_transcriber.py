@@ -66,7 +66,9 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
         self.buffer = bytearray()
         self.audio_cursor = 0
         self.terminate_msg = str.encode(json.dumps({"terminate_session": True}))
-        self.classifier = EndpointClassifier() #classification = classifier.classify_text(text)
+        self.classifier = (
+            EndpointClassifier()
+        )  # classification = classifier.classify_text(text)
 
     async def ready(self):
         return True
@@ -101,29 +103,30 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
                 {"word_boost": json.dumps(self.transcriber_config.word_boost)}
             )
         return ASSEMBLY_AI_URL + f"?{urlencode(url_params)}"
-    
-    def is_speech_final(
-        self, assembly_response: dict
-    ):
+
+    def is_speech_final(self, assembly_response: dict):
         transcript = assembly_response["channel"]["alternatives"][0]["transcript"]
 
         # this will be parameter based by default
         if not self.transcriber_config.endpointing_config:
-            return (transcript and assembly_response["speech_final"])
+            return transcript and assembly_response["speech_final"]
         elif (
             self.transcriber_config.endpointing_config.type
             == EndpointingType.PUNCTUATION_BASED
         ):
             return (
-                transcript and transcript.strip()[-1] in PUNCTUATION_TERMINATORS and assembly_response["speech_final"]
-            ) or (
-                False
-            )
+                transcript
+                and transcript.strip()[-1] in PUNCTUATION_TERMINATORS
+                and assembly_response["speech_final"]
+            ) or (False)
         elif (
             self.transcriber_config.endpointing_config.type
             == EndpointingType.CLASSIFIER_BASED
         ):
-            return self.classifier.classify_text(transcript) or assembly_response["speech_final"]
+            return (
+                self.classifier.classify_text(transcript)
+                or assembly_response["speech_final"]
+            )
         raise Exception("Endpointing config not supported")
 
     async def process(self):
