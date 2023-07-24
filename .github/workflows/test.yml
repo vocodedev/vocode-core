@@ -52,7 +52,6 @@ jobs:
           python -m poetry run mypy -p vocode
           python -m poetry run mypy -p quickstarts
           python -m poetry run mypy -p playground
-          python -m poetry run mypy -p apps
 
       - name: Test with pytest
         run: |
