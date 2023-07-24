@@ -129,7 +129,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             and self.transcriber_config.endpointing_config.type
             == EndpointingType.PUNCTUATION_BASED
         ):
-            extra_params["punctuate"] = "true"
+            extra_params["punctuate"] = "false"
         url_params.update(extra_params)
         return f"wss://api.deepgram.com/v1/listen?{urlencode(url_params)}"
 
@@ -145,6 +145,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
         # this will be parameter based by default
         if not self.transcriber_config.endpointing_config:
+            self.logger.debug("We have selected default based endpointing")
+
             return transcript and deep_response["speech_final"]
         elif (
             self.transcriber_config.endpointing_config.type
@@ -161,7 +163,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         ):
             self.logger.debug("We have selected classifier based endpointing")
             return self.classifier.classify_text(
-                transcript, return_as_int=True
+                transcript, return_as_int=False
             ).item()  # or deep_response["speech_final"]
         raise Exception("Endpointing config not supported")
 
@@ -229,7 +231,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     if top_choice["transcript"] and is_final:
                         buffer = f"{buffer} {top_choice['transcript']}"
 
-                    if speech_final and time_silent > 0.05:
+                    if speech_final:
                         self.output_queue.put_nowait(
                             Transcription(
                                 message=buffer, confidence=confidence, is_final=is_final
