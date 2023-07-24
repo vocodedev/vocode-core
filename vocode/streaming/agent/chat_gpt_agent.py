@@ -140,14 +140,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             return
         assert self.transcript is not None
 
-        def get_last_user_message():
-            for message in self.transcript.event_logs[::-1]:
-                if message.sender == Sender.HUMAN:
-                    return message.to_string()
-
         if self.agent_config.vector_db_config:
             docs_with_scores = await self.vector_db.similarity_search_with_score(
-                get_last_user_message()
+                self.transcript.get_last_user_message()[1]
             )
             docs_with_scores_str = "\n\n".join(
                 [
@@ -162,8 +157,13 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 f"Found {len(docs_with_scores)} similar documents:\n{docs_with_scores_str}",
                 conversation_id,
             )
-
-        chat_parameters = self.get_chat_parameters()
+            messages = format_openai_chat_messages_from_transcript(
+                self.transcript, self.agent_config.prompt_preamble
+            )
+            chat_parameters = self.get_chat_parameters(messages)
+            self.transcript.remove_last_vector_db_log()
+        else:
+            chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
         async for message in collate_response_async(
