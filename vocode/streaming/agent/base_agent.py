@@ -10,8 +10,16 @@ import typing
 from opentelemetry import trace
 from opentelemetry.trace import Span
 from vocode.streaming.action.factory import ActionFactory
-from vocode.streaming.action.phone_call_action import TwilioPhoneCallAction, VonagePhoneCallAction
-from vocode.streaming.models.actions import ActionInput, ActionOutput, FunctionCall, FunctionFragment
+from vocode.streaming.action.phone_call_action import (
+    TwilioPhoneCallAction,
+    VonagePhoneCallAction,
+)
+from vocode.streaming.models.actions import (
+    ActionInput,
+    ActionOutput,
+    FunctionCall,
+    FunctionFragment,
+)
 
 from vocode.streaming.models.agent import (
     AgentConfig,
@@ -211,7 +219,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
-                self.call_function(function_call, agent_input)
+            self.call_function(function_call, agent_input)
         return False
 
     async def handle_respond(
@@ -314,21 +322,23 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 agent_input.vonage_uuid is not None
             ), "Cannot use VonagePhoneCallActionFactory unless the attached conversation is a VonageCall"
             action_input = action.create_phone_call_action_input(
-                function_call.name, params, agent_input.vonage_uuid
+                agent_input.conversation_id, params, agent_input.vonage_uuid
             )
         elif isinstance(action, TwilioPhoneCallAction):
             assert (
                 agent_input.twilio_sid is not None
             ), "Cannot use TwilioPhoneCallActionFactory unless the attached conversation is a TwilioCall"
             action_input = action.create_phone_call_action_input(
-                function_call.name, params, agent_input.twilio_sid
+                agent_input.conversation_id, params, agent_input.twilio_sid
             )
         else:
             action_input = action.create_action_input(
                 agent_input.conversation_id,
                 params,
             )
-        event = self.interruptible_event_factory.create(action_input, is_interruptible=action.is_interruptible)
+        event = self.interruptible_event_factory.create(
+            action_input, is_interruptible=action.is_interruptible
+        )
         assert self.transcript is not None
         self.transcript.add_action_start_log(
             action_input=action_input,
