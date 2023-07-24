@@ -107,7 +107,9 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             "channels": 1,
             "interim_results": "true",
         }
+        # trial
         extra_params = {}
+        extra_params["endpointing"] = "false"
         if self.transcriber_config.language:
             extra_params["language"] = self.transcriber_config.language
         if self.transcriber_config.model:
