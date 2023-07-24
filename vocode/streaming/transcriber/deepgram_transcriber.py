@@ -110,10 +110,12 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         # trial
         extra_params = {}
         extra_params["endpointing"] = "false"
+        extra_params["diarize"] = "true"
+        extra_params["tier"] = "phonecall"
         if self.transcriber_config.language:
             extra_params["language"] = self.transcriber_config.language
         if self.transcriber_config.model:
-            extra_params["model"] = self.transcriber_config.model
+            extra_params["model"] = "nova"
         if self.transcriber_config.tier:
             extra_params["tier"] = self.transcriber_config.tier
         if self.transcriber_config.version:
