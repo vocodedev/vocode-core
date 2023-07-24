@@ -45,6 +45,8 @@ duration_hist = meter.create_histogram(
     unit="seconds",
 )
 
+classy = EndpointClassifier()
+
 
 class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
     def __init__(
@@ -63,7 +65,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
         self.audio_cursor = 0.0
-        self.classifier = EndpointClassifier()
+        self.classifier = classy
 
     async def _run_loop(self):
         restarts = 0
@@ -217,6 +219,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
                     is_final = data["is_final"]
                     speech_final = self.is_speech_final(data, time_silent)
+                    is_final = is_final or speech_final
                     self.logger.debug(
                         f"Probability you stopped speaking: {speech_final}"
                     )
@@ -229,7 +232,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     if speech_final and time_silent > 0.05:
                         self.output_queue.put_nowait(
                             Transcription(
-                                message=buffer, confidence=confidence, is_final=True
+                                message=buffer, confidence=confidence, is_final=is_final
                             )
                         )
                         buffer = ""
