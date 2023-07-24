@@ -22,7 +22,7 @@ class VonageClient(BaseTelephonyClient):
     def get_telephony_config(self):
         return self.vonage_config
 
-    def create_call(
+    async def create_call(
         self,
         conversation_id: str,
         to_phone: str,
@@ -30,16 +30,28 @@ class VonageClient(BaseTelephonyClient):
         record: bool = False,
         digits: Optional[str] = None,
     ) -> str:  # identifier of the call on the telephony provider
-        response = self.voice.create_call(
-            {
-                "to": [{"type": "phone", "number": to_phone, "dtmfAnswer": digits}],
-                "from": {"type": "phone", "number": from_phone},
-                "ncco": self.create_call_ncco(self.base_url, conversation_id, record),
-            }
-        )
-        if response["status"] != "started":
-            raise RuntimeError(f"Failed to start call: {response}")
-        return response["uuid"]
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"https://api.nexmo.com/v1/calls",
+                json={
+                    "to": [{"type": "phone", "number": to_phone, "dtmfAnswer": digits}],
+                    "from": {"type": "phone", "number": from_phone},
+                    "ncco": self.create_call_ncco(
+                        self.base_url, conversation_id, record
+                    ),
+                },
+                headers={
+                    "Authorization": f"Bearer {self.client._generate_application_jwt().decode()}"
+                },
+            ) as response:
+                if not response.ok:
+                    raise RuntimeError(
+                        f"Failed to start call: {response.status} {response.reason}"
+                    )
+                data = await response.json()
+                if not data["status"] == "started":
+                    raise RuntimeError(f"Failed to start call: {response}")
+                return data["uuid"]
 
     @staticmethod
     def create_call_ncco(base_url, conversation_id, record):
