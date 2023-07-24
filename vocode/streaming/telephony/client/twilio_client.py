@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 
 from typing import Optional
@@ -34,7 +35,7 @@ class TwilioClient(BaseTelephonyClient):
         to_phone: str,
         from_phone: str,
         record: bool = False,
-        digits: Optional[str] = None,
+        digits: Optional[str] = None
     ) -> str:
         twiml = self.get_connection_twiml(conversation_id=conversation_id)
         twilio_call = self.twilio_client.calls.create(
@@ -43,6 +44,10 @@ class TwilioClient(BaseTelephonyClient):
             from_=from_phone,
             send_digits=digits,
             record=record,
+            status_callback=f"{os.getenv('BASE_URL')}/update_call_status",
+            status_callback_event=['busy', 'completed', 'failed', 'in-progress',
+                                   'initiated', 'no-answer', 'queued', 'ringing'],
+            status_callback_method="POST",
             **self.get_telephony_config().extra_params,
         )
         return twilio_call.sid
