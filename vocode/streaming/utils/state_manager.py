@@ -28,8 +28,8 @@ class ConversationStateManager:
     def enable_synthesis(self):
         self._conversation.synthesis_enabled = True
     
-    def terminate_conversation(self):
-        self._conversation.terminate()
+    async def terminate_conversation(self):
+        await self._conversation.terminate()
 
 
 class VonageCallStateManager(ConversationStateManager):
