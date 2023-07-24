@@ -22,23 +22,16 @@ class VonageClient(BaseTelephonyClient):
     def get_telephony_config(self):
         return self.vonage_config
 
-    async def create_call(
-        self,
-        conversation_id: str,
-        to_phone: str,
-        from_phone: str,
-        record: bool = False,
-        digits: Optional[str] = None,
-    ) -> str:  # identifier of the call on the telephony provider
+    async def create_vonage_call(
+        self, to_phone: str, from_phone: str, ncco: str, digits: Optional[str] = None
+    ) -> str:  # returns the Vonage UUID
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"https://api.nexmo.com/v1/calls",
                 json={
                     "to": [{"type": "phone", "number": to_phone, "dtmfAnswer": digits}],
                     "from": {"type": "phone", "number": from_phone},
-                    "ncco": self.create_call_ncco(
-                        self.base_url, conversation_id, record
-                    ),
+                    "ncco": ncco,
                 },
                 headers={
                     "Authorization": f"Bearer {self.client._generate_application_jwt().decode()}"
@@ -52,6 +45,21 @@ class VonageClient(BaseTelephonyClient):
                 if not data["status"] == "started":
                     raise RuntimeError(f"Failed to start call: {response}")
                 return data["uuid"]
+
+    async def create_call(
+        self,
+        conversation_id: str,
+        to_phone: str,
+        from_phone: str,
+        record: bool = False,
+        digits: Optional[str] = None,
+    ) -> str:  # identifier of the call on the telephony provider
+        return await self.create_vonage_call(
+            to_phone,
+            from_phone,
+            self.create_call_ncco(self.base_url, conversation_id, record),
+            digits,
+        )
 
     @staticmethod
     def create_call_ncco(base_url, conversation_id, record):
