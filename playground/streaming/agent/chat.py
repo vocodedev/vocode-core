@@ -2,8 +2,16 @@ import asyncio
 import typing
 from dotenv import load_dotenv
 from playground.streaming.tracing_utils import make_parser_and_maybe_trace
+from pydantic import BaseModel
+from vocode.streaming.action.base_action import BaseAction
+from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.action.worker import ActionsWorker
-from vocode.streaming.models.actions import ActionType
+from vocode.streaming.models.actions import (
+    ActionConfig,
+    ActionInput,
+    ActionOutput,
+    ActionType,
+)
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.utils.state_manager import ConversationStateManager
@@ -20,6 +28,46 @@ from vocode.streaming.agent.base_agent import (
 
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import create_conversation_id
+
+
+class ShoutActionConfig(ActionConfig):
+    type = "shout"
+    num_exclamation_marks: int
+
+
+class ShoutActionParameters(BaseModel):
+    name: str
+
+
+class ShoutActionResponse(BaseModel):
+    success: bool
+
+
+class ShoutAction(
+    BaseAction[ShoutActionConfig, ShoutActionParameters, ShoutActionResponse]
+):
+    description: str = "Shouts someone's name"
+    parameters_type: typing.Type[ShoutActionParameters] = ShoutActionParameters
+    response_type: typing.Type[ShoutActionResponse] = ShoutActionResponse
+
+    async def run(
+        self, action_input: ActionInput[ShoutActionParameters]
+    ) -> ActionOutput[ShoutActionResponse]:
+        print(
+            f"HI THERE {action_input.params.name}{self.action_config.num_exclamation_marks * '!'}"
+        )
+        return ActionOutput(
+            action_type=self.action_config.type,
+            response=ShoutActionResponse(success=True),
+        )
+
+
+class ShoutActionFactory(ActionFactory):
+    def create_action(self, action_config: ActionConfig) -> BaseAction:
+        if isinstance(action_config, ShoutActionConfig):
+            return ShoutAction(action_config, should_respond=True)
+        else:
+            raise Exception("Invalid action type")
 
 
 class DummyConversationManager(ConversationStateManager):
@@ -96,9 +144,12 @@ async def agent_main():
     # Replace with your agent!
     agent = ChatGPTAgent(
         ChatGPTAgentConfig(
-            prompt_preamble="the assistant is ready to help you send emails",
-            actions=[ActionType.NYLAS_SEND_EMAIL.value],
-        )
+            prompt_preamble="have a conversation",
+            actions=[
+                ShoutActionConfig(num_exclamation_marks=3),
+            ],
+        ),
+        action_factory=ShoutActionFactory(),
     )
     agent.attach_conversation_state_manager(DummyConversationManager(conversation=None))
     agent.attach_transcript(transcript)
