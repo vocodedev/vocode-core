@@ -227,9 +227,9 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         data["channel"]["alternatives"][0]["transcript"],
                         return_as_int=False,
                     )
-                    if speech_final is False:
-                        self.logger.debug("Classifier returned false")
-                        break
+                    # if speech_final is False:
+                    #     self.logger.debug("Classifier returned false")
+                    #     break
 
                     is_final = is_final or speech_final
                     self.logger.debug(
@@ -238,10 +238,9 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     top_choice = data["channel"]["alternatives"][0]
                     confidence = top_choice["confidence"]
 
-                    if top_choice["transcript"] and is_final:
+                    if is_final and top_choice["transcript"]:
                         buffer = f"{buffer} {top_choice['transcript']}"
 
-                    if speech_final:
                         self.output_queue.put_nowait(
                             Transcription(
                                 message=buffer, confidence=confidence, is_final=is_final
@@ -249,16 +248,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         )
                         buffer = ""
                         time_silent = 0
-                    # elif top_choice["transcript"] and confidence > 0.0:
-
-                    #     self.output_queue.put_nowait(
-                    #         Transcription(
-                    #             message=buffer,
-                    #             confidence=confidence,
-                    #             is_final=is_final,
-                    #         )
-                    #     )
-                    #     time_silent = self.calculate_time_silent(data)
+                    elif top_choice["transcript"] and data["is_final"]:
+                        buffer = f"{buffer} {top_choice['transcript']}"
                     else:
                         time_silent += data["duration"]
                 self.logger.debug("Terminating Deepgram transcriber receiver")

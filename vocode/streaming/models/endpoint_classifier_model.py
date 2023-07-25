@@ -42,7 +42,7 @@ class EndpointClassifier:
             probability = 1 - probability
         # if return_as_int:
         #     return probability
-        if probability > 0.09:
+        if probability > 0.15:
             return True
         else:
             return False
