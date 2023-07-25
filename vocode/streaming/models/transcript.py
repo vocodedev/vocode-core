@@ -128,7 +128,7 @@ class Transcript(BaseModel):
         self.event_logs.append(
             ActionStart(
                 action_input=action_input,
-                action_type=action_input.action_type,
+                action_type=action_input.action_config.type,
                 timestamp=timestamp,
             )
         )

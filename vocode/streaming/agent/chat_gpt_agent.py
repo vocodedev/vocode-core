@@ -64,8 +64,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         if not self.action_factory:
             return None
         return [
-            self.action_factory.create_action(action_type).get_openai_function()
-            for action_type in self.agent_config.actions
+            self.action_factory.create_action(action_config).get_openai_function()
+            for action_config in self.agent_config.actions
         ]
 
     def get_chat_parameters(self, messages: Optional[List] = None):

@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from vocode.streaming.action.base_action import BaseAction
+from vocode.streaming.action.base_action import ActionConfigType, BaseAction
 from vocode.streaming.models.actions import (
     ActionInput,
     ActionOutput,
@@ -10,14 +10,14 @@ from vocode.streaming.models.actions import (
 )
 
 
-class VonagePhoneCallAction(BaseAction[ParametersType, ResponseType]):
+class VonagePhoneCallAction(BaseAction[ActionConfigType, ParametersType, ResponseType]):
     def create_phone_call_action_input(
         self, conversation_id: str, params: Dict[str, Any], vonage_uuid: str
     ) -> VonagePhoneCallActionInput[ParametersType]:
         if "user_message" in params:
             del params["user_message"]
         return VonagePhoneCallActionInput(
-            action_type=self.action_type,
+            action_config=self.action_config,
             conversation_id=conversation_id,
             params=self.parameters_type(**params),
             vonage_uuid=vonage_uuid,
@@ -28,14 +28,14 @@ class VonagePhoneCallAction(BaseAction[ParametersType, ResponseType]):
         return action_input.vonage_uuid
 
 
-class TwilioPhoneCallAction(BaseAction[ParametersType, ResponseType]):
+class TwilioPhoneCallAction(BaseAction[ActionConfigType, ParametersType, ResponseType]):
     def create_phone_call_action_input(
         self, conversation_id: str, params: Dict[str, Any], twilio_sid: str
     ) -> TwilioPhoneCallActionInput[ParametersType]:
         if "user_message" in params:
             del params["user_message"]
         return TwilioPhoneCallActionInput(
-            action_type=self.action_type,
+            action_config=self.action_config,
             conversation_id=conversation_id,
             params=self.parameters_type(**params),
             twilio_sid=twilio_sid,

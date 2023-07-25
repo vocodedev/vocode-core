@@ -15,6 +15,7 @@ from vocode.streaming.action.phone_call_action import (
     VonagePhoneCallAction,
 )
 from vocode.streaming.models.actions import (
+    ActionConfig,
     ActionInput,
     ActionOutput,
     FunctionCall,
@@ -315,8 +316,22 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         except asyncio.CancelledError:
             pass
 
+    def _get_action_config(self, function_name: str) -> Optional[ActionConfig]:
+        if self.agent_config.actions is None:
+            return None
+        for action_config in self.agent_config.actions:
+            if action_config.type == function_name:
+                return action_config
+        return None
+
     def call_function(self, function_call: FunctionCall, agent_input: AgentInput):
-        action = self.action_factory.create_action(function_call.name)
+        action_config = self._get_action_config(function_call.name)
+        if action_config is None:
+            self.logger.error(
+                f"Function {function_call.name} not found in agent config, skipping"
+            )
+            return
+        action = self.action_factory.create_action(action_config)
         params = json.loads(function_call.arguments)
         if "user_message" in params:
             user_message = params["user_message"]
