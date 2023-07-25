@@ -32,7 +32,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         openai_api_key: Optional[str] = None,
         vector_db_factory=VectorDBFactory(),
     ):
-        super().__init__(agent_config=agent_config, action_factory=action_factory, logger=logger)
+        super().__init__(
+            agent_config=agent_config, action_factory=action_factory, logger=logger
+        )
         if agent_config.azure_params:
             openai.api_type = agent_config.azure_params.api_type
             openai.api_base = getenv("AZURE_OPENAI_API_BASE")
@@ -125,7 +127,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             text = chat_completion.choices[0].message.content
         self.logger.debug(f"LLM response: {text}")
         return text, False
-    
+
     async def generate_response(
         self,
         human_input: str,
@@ -138,25 +140,33 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             return
         assert self.transcript is not None
 
-        def get_last_user_message():
-            for message in self.transcript.event_logs[::-1]:
-                if message.sender == Sender.HUMAN:
-                    return message.to_string()
-
         if self.agent_config.vector_db_config:
             docs_with_scores = await self.vector_db.similarity_search_with_score(
-                get_last_user_message()
+                self.transcript.get_last_user_message()[1]
+            )
+            docs_with_scores_str = "\n\n".join(
+                [
+                    "Document: "
+                    + doc[0].metadata["source"]
+                    + f" (Confidence: {doc[1]})\n"
+                    + doc[0].lc_kwargs["page_content"].replace(r"\n", "\n")
+                    for doc in docs_with_scores
+                ]
             )
             self.transcript.add_vector_db_results(
-                f"Found {len(docs_with_scores)} similar documents: {docs_with_scores}",
+                f"Found {len(docs_with_scores)} similar documents:\n{docs_with_scores_str}",
                 conversation_id,
             )
-
-        chat_parameters = self.get_chat_parameters()
+            messages = format_openai_chat_messages_from_transcript(
+                self.transcript, self.agent_config.prompt_preamble
+            )
+            chat_parameters = self.get_chat_parameters(messages)
+            self.transcript.remove_last_vector_db_log()
+        else:
+            chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
         async for message in collate_response_async(
-            openai_get_tokens(stream),
-            get_functions=True
+            openai_get_tokens(stream), get_functions=True
         ):
             yield message
