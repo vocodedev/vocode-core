@@ -227,6 +227,9 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         data["channel"]["alternatives"][0]["transcript"],
                         return_as_int=False,
                     ).item()
+                    if speech_final is False:
+                        break
+
                     is_final = is_final or speech_final
                     self.logger.debug(
                         f"Probability you stopped speaking: {speech_final}"
