@@ -2,6 +2,7 @@ from typing import List, Optional, Union
 from enum import Enum
 
 from pydantic import validator
+from vocode.streaming.models.actions import ActionConfig
 
 from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
@@ -68,7 +69,8 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     send_filler_audio: Union[bool, FillerAudioConfig] = False
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
-    actions: Optional[List[str]] = None
+    actions: Optional[List[ActionConfig]] = None
+
 
 class CutOffResponse(BaseModel):
     messages: List[BaseMessage] = [BaseMessage(text="Sorry?")]
@@ -94,7 +96,6 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     vector_db_config: Optional[VectorDBConfig] = None
 
 
-
 class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):
     prompt_preamble: str
     model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
@@ -105,7 +106,6 @@ class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):
     prompt_preamble: str
     model_name: str = CHAT_VERTEX_AI_DEFAULT_MODEL_NAME
     generate_responses: bool = False  # Google Vertex AI doesn't support streaming
-
 
 
 class InformationRetrievalAgentConfig(
