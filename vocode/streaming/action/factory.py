@@ -1,10 +1,9 @@
-from app.lib.models.api.action import ActionConfig
 from vocode.streaming.action.base_action import BaseAction
 from vocode.streaming.action.nylas_send_email import (
     NylasSendEmail,
     NylasSendEmailActionConfig,
 )
-from vocode.streaming.models.actions import ActionType
+from vocode.streaming.models.actions import ActionConfig
 
 
 class ActionFactory:
