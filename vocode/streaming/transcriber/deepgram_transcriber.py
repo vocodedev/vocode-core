@@ -205,9 +205,11 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         self.logger.debug(f"Got error {e} in Deepgram receiver")
                         break
                     data = json.loads(msg)
+                    self.logger.debug(f"Received message from Deepgram: {data['type']}")
                     if (
                         not "is_final" in data
                     ):  # means we've finished receiving transcriptions
+                        self.logger.debug("No is_final in Deepgram response, breaking")
                         break
                     cur_max_latency = self.audio_cursor - transcript_cursor
                     transcript_cursor = data["start"] + data["duration"]
@@ -233,12 +235,15 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
                     is_final = is_final or speech_final
                     self.logger.debug(
-                        f"Probability you stopped speaking: {speech_final}"
+                        f"Probability you stopped speaking: {str(speech_final)}"
                     )
                     top_choice = data["channel"]["alternatives"][0]
                     confidence = top_choice["confidence"]
 
                     if is_final and top_choice["transcript"]:
+                        self.logger.debug(
+                            f"Received final transcript: {top_choice['transcript']}"
+                        )
                         buffer = f"{buffer} {top_choice['transcript']}"
 
                         self.output_queue.put_nowait(
@@ -249,9 +254,13 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         buffer = ""
                         time_silent = 0
                     elif top_choice["transcript"] and data["is_final"]:
+                        self.logger.debug(
+                            "we should not be here, but we are, so we are going to send this"
+                        )
                         buffer = f"{buffer} {top_choice['transcript']}"
                     else:
                         time_silent += data["duration"]
+                    self.logger.debug(f"Time silent: {time_silent}")
                 self.logger.debug("Terminating Deepgram transcriber receiver")
 
             await asyncio.gather(sender(ws), receiver(ws))
