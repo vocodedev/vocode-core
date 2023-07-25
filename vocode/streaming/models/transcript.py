@@ -99,7 +99,7 @@ class Transcript(BaseModel):
             sender=Sender.BOT,
             conversation_id=conversation_id,
         )
-    
+
     def add_vector_db_results(self, text: str, conversation_id: str):
         self.add_message(
             text=text,
@@ -112,7 +112,7 @@ class Transcript(BaseModel):
         self.event_logs.append(
             ActionStart(
                 action_input=action_input,
-                action_type=action_input.action_type,
+                action_type=action_input.action_config.type,
                 timestamp=timestamp,
             )
         )
@@ -124,7 +124,12 @@ class Transcript(BaseModel):
                 )
             )
 
-    def add_action_finish_log(self, action_input: ActionInput, action_output: ActionOutput, conversation_id: str):
+    def add_action_finish_log(
+        self,
+        action_input: ActionInput,
+        action_output: ActionOutput,
+        conversation_id: str,
+    ):
         timestamp = time.time()
         self.event_logs.append(
             ActionFinish(
