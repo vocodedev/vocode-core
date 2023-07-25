@@ -251,7 +251,15 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         assert self.transcript is not None
         try:
             agent_input = item.payload
-            if isinstance(agent_input, ActionResultAgentInput):
+            if isinstance(agent_input, TranscriptionAgentInput):
+                transcription = typing.cast(
+                    TranscriptionAgentInput, agent_input
+                ).transcription
+                self.transcript.add_human_message(
+                    text=transcription.message,
+                    conversation_id=agent_input.conversation_id,
+                )
+            elif isinstance(agent_input, ActionResultAgentInput):
                 self.transcript.add_action_finish_log(
                     action_input=agent_input.action_input,
                     action_output=agent_input.action_output,
@@ -261,15 +269,14 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     # Do not generate a response to quiet actions
                     self.logger.debug("Action is quiet, skipping response generation")
                     return
-            if agent_input.type != AgentInputType.TRANSCRIPTION:
-                return
-            transcription = typing.cast(
-                TranscriptionAgentInput, agent_input
-            ).transcription
-            self.transcript.add_human_message(
-                text=transcription.message,
-                conversation_id=agent_input.conversation_id,
-            )
+                transcription = Transcription(
+                    message=agent_input.action_output.response.json(),
+                    confidence=1.0,
+                    is_final=True,
+                )
+            else:
+                raise ValueError("Invalid AgentInput type")
+
             goodbye_detected_task = None
             if self.agent_config.end_conversation_on_goodbye:
                 goodbye_detected_task = self.create_goodbye_detection_task(
