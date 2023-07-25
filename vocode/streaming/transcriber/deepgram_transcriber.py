@@ -223,7 +223,10 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     min_latency_hist.record(max(cur_min_latency, 0))
 
                     is_final = data["is_final"]
-                    speech_final = self.is_speech_final(data, time_silent)
+                    speech_final = self.classifier.classify_text(
+                        data["channel"]["alternatives"][0]["transcript"],
+                        return_as_int=False,
+                    ).item()
                     is_final = is_final or speech_final
                     self.logger.debug(
                         f"Probability you stopped speaking: {speech_final}"
