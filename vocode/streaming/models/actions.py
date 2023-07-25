@@ -1,15 +1,16 @@
 from enum import Enum
 from typing import Generic, TypeVar
 from pydantic import BaseModel
-
-
-class ActionConfig(BaseModel):
-    type: str
+from vocode.streaming.models.model import TypedModel
 
 
 class ActionType(str, Enum):
     BASE = "action_base"
     NYLAS_SEND_EMAIL = "action_nylas_send_email"
+
+
+class ActionConfig(TypedModel, type=ActionType.BASE):
+    pass
 
 
 ParametersType = TypeVar("ParametersType", bound=BaseModel)
