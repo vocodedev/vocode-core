@@ -111,7 +111,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         }
         # trial
         extra_params = {}
-        extra_params["endpointing"] = "false"
+        extra_params["interim_results"] = "true"
         extra_params["diarize"] = "true"
         extra_params["tier"] = "phonecall"
         if self.transcriber_config.language:
@@ -226,8 +226,9 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     speech_final = self.classifier.classify_text(
                         data["channel"]["alternatives"][0]["transcript"],
                         return_as_int=False,
-                    ).item()
+                    )
                     if speech_final is False:
+                        self.logger.debug("Classifier returned false")
                         break
 
                     is_final = is_final or speech_final
