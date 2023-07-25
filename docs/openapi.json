@@ -4,7 +4,7 @@
     "title": "Vocode Hosted API",
     "description": "\n        Vocode's Hosted API helps you automate phone calls in minutes. 🚀\n\n        ## Numbers\n\n        You can buy phone lines and place agents on them.\n\n        ## Calls\n\n        You can start, end, and get information about calls.\n        ",
     "termsOfService": "http://example.com/terms/",
-    "contact": { "name": "Kian", "email": "kian@vocode.dev" },
+    "contact": { "name": "Support", "email": "support@vocode.dev" },
     "version": "1.0.0"
   },
   "servers": [
@@ -31,7 +31,9 @@
                 "schema": {
                   "title": "Response List Numbers V1 Numbers List Get",
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/PhoneNumber" }
+                  "items": {
+                    "$ref": "#/components/schemas/NormalizedPhoneNumber"
+                  }
                 }
               }
             }
@@ -181,7 +183,7 @@
                 "schema": {
                   "title": "Response List Calls V1 Calls List Get",
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/Call" }
+                  "items": { "$ref": "#/components/schemas/NormalizedCall" }
                 }
               }
             }
@@ -198,7 +200,7 @@
         "parameters": [
           {
             "required": true,
-            "schema": { "title": "Id", "type": "string" },
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
             "name": "id",
             "in": "query"
           }
@@ -232,7 +234,7 @@
         "parameters": [
           {
             "required": true,
-            "schema": { "title": "Id", "type": "string" },
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
             "name": "id",
             "in": "query"
           }
@@ -292,6 +294,36 @@
         "security": [{ "HTTPBearer": [] }]
       }
     },
+    "/v1/calls/recording": {
+      "get": {
+        "tags": ["calls"],
+        "summary": "Recording",
+        "operationId": "recording",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Id", "type": "string" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
     "/v1/usage/": {
       "get": {
         "tags": ["usage"],
@@ -318,7 +350,7 @@
         "parameters": [
           {
             "required": true,
-            "schema": { "title": "Id", "type": "string" },
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
             "name": "id",
             "in": "query"
           }
@@ -331,6 +363,7 @@
                 "schema": {
                   "title": "Response Get Action V1 Actions  Get",
                   "anyOf": [
+                    { "$ref": "#/components/schemas/TransferCallAction" },
                     { "$ref": "#/components/schemas/EndConversationAction" },
                     { "$ref": "#/components/schemas/DTMFAction" }
                   ]
@@ -365,6 +398,7 @@
                   "type": "array",
                   "items": {
                     "anyOf": [
+                      { "$ref": "#/components/schemas/TransferCallAction" },
                       { "$ref": "#/components/schemas/EndConversationAction" },
                       { "$ref": "#/components/schemas/DTMFAction" }
                     ]
@@ -388,6 +422,7 @@
               "schema": {
                 "title": "Params",
                 "anyOf": [
+                  { "$ref": "#/components/schemas/TransferCallActionParams" },
                   {
                     "$ref": "#/components/schemas/EndConversationActionParams"
                   },
@@ -406,6 +441,7 @@
                 "schema": {
                   "title": "Response Create Action V1 Actions Create Post",
                   "anyOf": [
+                    { "$ref": "#/components/schemas/TransferCallAction" },
                     { "$ref": "#/components/schemas/EndConversationAction" },
                     { "$ref": "#/components/schemas/DTMFAction" }
                   ]
@@ -433,7 +469,7 @@
         "parameters": [
           {
             "required": true,
-            "schema": { "title": "Id", "type": "string" },
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
             "name": "id",
             "in": "query"
           }
@@ -444,6 +480,9 @@
               "schema": {
                 "title": "Update Params",
                 "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/TransferCallActionUpdateParams"
+                  },
                   {
                     "$ref": "#/components/schemas/EndConversationActionUpdateParams"
                   },
@@ -462,6 +501,7 @@
                 "schema": {
                   "title": "Response Update Action V1 Actions Update Post",
                   "anyOf": [
+                    { "$ref": "#/components/schemas/TransferCallAction" },
                     { "$ref": "#/components/schemas/EndConversationAction" },
                     { "$ref": "#/components/schemas/DTMFAction" }
                   ]
@@ -489,7 +529,7 @@
         "parameters": [
           {
             "required": true,
-            "schema": { "title": "Id", "type": "string" },
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
             "name": "id",
             "in": "query"
           }
@@ -528,7 +568,7 @@
                 "schema": {
                   "title": "Response List Agents V1 Agents List Get",
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/Agent" }
+                  "items": { "$ref": "#/components/schemas/NormalizedAgent" }
                 }
               }
             }
@@ -579,7 +619,7 @@
         "parameters": [
           {
             "required": true,
-            "schema": { "title": "Id", "type": "string" },
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
             "name": "id",
             "in": "query"
           }
@@ -621,7 +661,7 @@
         "parameters": [
           {
             "required": true,
-            "schema": { "title": "Id", "type": "string" },
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
             "name": "id",
             "in": "query"
           }
@@ -738,7 +778,7 @@
         "parameters": [
           {
             "required": true,
-            "schema": { "title": "Id", "type": "string" },
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
             "name": "id",
             "in": "query"
           }
@@ -794,7 +834,7 @@
         "parameters": [
           {
             "required": true,
-            "schema": { "title": "Id", "type": "string" },
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
             "name": "id",
             "in": "query"
           }
@@ -884,7 +924,7 @@
         "parameters": [
           {
             "required": true,
-            "schema": { "title": "Id", "type": "string" },
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
             "name": "id",
             "in": "query"
           }
@@ -921,14 +961,13 @@
   },
   "components": {
     "schemas": {
-      "ActionConfig": {
-        "title": "ActionConfig",
-        "type": "object",
-        "properties": {}
-      },
       "ActionType": {
         "title": "ActionType",
-        "enum": ["action_end_conversation", "action_dtmf"],
+        "enum": [
+          "action_end_conversation",
+          "action_dtmf",
+          "action_transfer_call"
+        ],
         "type": "string",
         "description": "An enumeration."
       },
@@ -937,15 +976,15 @@
         "required": ["id", "user_id", "prompt", "actions", "voice"],
         "type": "object",
         "properties": {
-          "id": { "title": "Id", "type": "string" },
-          "user_id": { "title": "User Id", "type": "string" },
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
           "prompt": { "title": "Prompt", "type": "string" },
           "actions": {
             "title": "Actions",
             "type": "array",
             "items": {
               "anyOf": [
-                { "type": "string" },
+                { "$ref": "#/components/schemas/TransferCallAction" },
                 { "$ref": "#/components/schemas/EndConversationAction" },
                 { "$ref": "#/components/schemas/DTMFAction" }
               ]
@@ -954,20 +993,13 @@
           "voice": {
             "title": "Voice",
             "anyOf": [
-              { "type": "string" },
               { "$ref": "#/components/schemas/AzureVoice" },
               { "$ref": "#/components/schemas/RimeVoice" },
               { "$ref": "#/components/schemas/ElevenLabsVoice" }
             ]
           },
           "initial_message": { "title": "Initial Message", "type": "string" },
-          "webhook": {
-            "title": "Webhook",
-            "anyOf": [
-              { "type": "string" },
-              { "$ref": "#/components/schemas/Webhook" }
-            ]
-          }
+          "webhook": { "$ref": "#/components/schemas/Webhook" }
         }
       },
       "AgentParams": {
@@ -981,7 +1013,8 @@
             "type": "array",
             "items": {
               "anyOf": [
-                { "type": "string" },
+                { "type": "string", "format": "uuid" },
+                { "$ref": "#/components/schemas/TransferCallActionParams" },
                 { "$ref": "#/components/schemas/EndConversationActionParams" },
                 { "$ref": "#/components/schemas/DTMFActionParams" }
               ]
@@ -991,7 +1024,7 @@
           "voice": {
             "title": "Voice",
             "anyOf": [
-              { "type": "string" },
+              { "type": "string", "format": "uuid" },
               { "$ref": "#/components/schemas/AzureVoiceParams" },
               { "$ref": "#/components/schemas/RimeVoiceParams" },
               { "$ref": "#/components/schemas/ElevenLabsVoiceParams" }
@@ -1001,7 +1034,7 @@
           "webhook": {
             "title": "Webhook",
             "anyOf": [
-              { "type": "string" },
+              { "type": "string", "format": "uuid" },
               { "$ref": "#/components/schemas/WebhookParams" }
             ]
           }
@@ -1025,7 +1058,10 @@
                 "type": "array",
                 "items": {
                   "anyOf": [
-                    { "type": "string" },
+                    { "type": "string", "format": "uuid" },
+                    {
+                      "$ref": "#/components/schemas/TransferCallActionUpdateParams"
+                    },
                     {
                       "$ref": "#/components/schemas/EndConversationActionUpdateParams"
                     },
@@ -1039,7 +1075,7 @@
           "voice": {
             "title": "Voice",
             "anyOf": [
-              { "type": "string" },
+              { "type": "string", "format": "uuid" },
               { "$ref": "#/components/schemas/AzureVoiceUpdateParams" },
               { "$ref": "#/components/schemas/RimeVoiceUpdateParams" },
               { "$ref": "#/components/schemas/ElevenLabsVoiceUpdateParams" },
@@ -1056,7 +1092,7 @@
           "webhook": {
             "title": "Webhook",
             "anyOf": [
-              { "type": "string" },
+              { "type": "string", "format": "uuid" },
               { "$ref": "#/components/schemas/WebhookUpdateParams" },
               { "$ref": "#/components/schemas/Undefined" }
             ]
@@ -1068,8 +1104,8 @@
         "required": ["id", "user_id", "voice_name"],
         "type": "object",
         "properties": {
-          "id": { "title": "Id", "type": "string" },
-          "user_id": { "title": "User Id", "type": "string" },
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
           "type": {
             "allOf": [{ "$ref": "#/components/schemas/VoiceType" }],
             "default": "voice_azure"
@@ -1121,31 +1157,25 @@
       },
       "Call": {
         "title": "Call",
-        "required": [
-          "id",
-          "user_id",
-          "to_number",
-          "from_number",
-          "agent",
-          "status"
-        ],
+        "required": ["id", "user_id", "to_number", "from_number", "agent"],
         "type": "object",
         "properties": {
-          "id": { "title": "Id", "type": "string" },
-          "user_id": { "title": "User Id", "type": "string" },
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "status": {
+            "allOf": [{ "$ref": "#/components/schemas/CallStatus" }],
+            "default": "not_started"
+          },
+          "error_message": { "title": "Error Message", "type": "string" },
+          "recording_available": {
+            "title": "Recording Available",
+            "type": "boolean",
+            "default": false
+          },
+          "transcript": { "title": "Transcript", "type": "string" },
           "to_number": { "title": "To Number", "type": "string" },
           "from_number": { "title": "From Number", "type": "string" },
-          "agent": {
-            "title": "Agent",
-            "anyOf": [
-              { "type": "string" },
-              { "$ref": "#/components/schemas/Agent" }
-            ]
-          },
-          "goal": { "title": "Goal", "type": "string" },
-          "transcript": { "title": "Transcript", "type": "string" },
-          "recording_url": { "title": "Recording Url", "type": "string" },
-          "status": { "$ref": "#/components/schemas/CallStatus" }
+          "agent": { "$ref": "#/components/schemas/Agent" }
         }
       },
       "CallStatus": {
@@ -1156,16 +1186,15 @@
       },
       "CreateCallRequest": {
         "title": "CreateCallRequest",
-        "required": ["from_number", "to_number", "goal", "agent"],
+        "required": ["from_number", "to_number", "agent"],
         "type": "object",
         "properties": {
           "from_number": { "title": "From Number", "type": "string" },
           "to_number": { "title": "To Number", "type": "string" },
-          "goal": { "title": "Goal", "type": "string" },
           "agent": {
             "title": "Agent",
             "anyOf": [
-              { "type": "string" },
+              { "type": "string", "format": "uuid" },
               { "$ref": "#/components/schemas/AgentParams" }
             ]
           }
@@ -1176,17 +1205,13 @@
         "required": ["id", "user_id"],
         "type": "object",
         "properties": {
-          "id": { "title": "Id", "type": "string" },
-          "user_id": { "title": "User Id", "type": "string" },
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
           "type": {
             "allOf": [{ "$ref": "#/components/schemas/ActionType" }],
             "default": "action_dtmf"
           },
-          "config": {
-            "title": "Config",
-            "allOf": [{ "$ref": "#/components/schemas/ActionConfig" }],
-            "default": {}
-          }
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" }
         }
       },
       "DTMFActionParams": {
@@ -1195,11 +1220,7 @@
         "type": "object",
         "properties": {
           "type": { "$ref": "#/components/schemas/ActionType" },
-          "config": {
-            "title": "Config",
-            "allOf": [{ "$ref": "#/components/schemas/ActionConfig" }],
-            "default": {}
-          }
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" }
         }
       },
       "DTMFActionUpdateParams": {
@@ -1211,7 +1232,7 @@
           "config": {
             "title": "Config",
             "anyOf": [
-              { "$ref": "#/components/schemas/ActionConfig" },
+              { "$ref": "#/components/schemas/EmptyActionConfig" },
               { "$ref": "#/components/schemas/Undefined" }
             ]
           }
@@ -1222,8 +1243,8 @@
         "required": ["id", "user_id", "voice_id", "api_key"],
         "type": "object",
         "properties": {
-          "id": { "title": "Id", "type": "string" },
-          "user_id": { "title": "User Id", "type": "string" },
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
           "type": {
             "allOf": [{ "$ref": "#/components/schemas/VoiceType" }],
             "default": "voice_eleven_labs"
@@ -1282,22 +1303,23 @@
           }
         }
       },
+      "EmptyActionConfig": {
+        "title": "EmptyActionConfig",
+        "type": "object",
+        "properties": {}
+      },
       "EndConversationAction": {
         "title": "EndConversationAction",
         "required": ["id", "user_id"],
         "type": "object",
         "properties": {
-          "id": { "title": "Id", "type": "string" },
-          "user_id": { "title": "User Id", "type": "string" },
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
           "type": {
             "allOf": [{ "$ref": "#/components/schemas/ActionType" }],
             "default": "action_end_conversation"
           },
-          "config": {
-            "title": "Config",
-            "allOf": [{ "$ref": "#/components/schemas/ActionConfig" }],
-            "default": {}
-          }
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" }
         }
       },
       "EndConversationActionParams": {
@@ -1306,11 +1328,7 @@
         "type": "object",
         "properties": {
           "type": { "$ref": "#/components/schemas/ActionType" },
-          "config": {
-            "title": "Config",
-            "allOf": [{ "$ref": "#/components/schemas/ActionConfig" }],
-            "default": {}
-          }
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" }
         }
       },
       "EndConversationActionUpdateParams": {
@@ -1322,7 +1340,7 @@
           "config": {
             "title": "Config",
             "anyOf": [
-              { "$ref": "#/components/schemas/ActionConfig" },
+              { "$ref": "#/components/schemas/EmptyActionConfig" },
               { "$ref": "#/components/schemas/Undefined" }
             ]
           }
@@ -1358,22 +1376,73 @@
           }
         }
       },
-      "PhoneNumber": {
-        "title": "PhoneNumber",
-        "required": ["id", "user_id", "number", "active", "inbound_agent"],
+      "NormalizedAgent": {
+        "title": "NormalizedAgent",
+        "required": ["id", "user_id", "prompt", "actions", "voice"],
         "type": "object",
         "properties": {
-          "id": { "title": "Id", "type": "string" },
-          "user_id": { "title": "User Id", "type": "string" },
-          "number": { "title": "Number", "type": "string" },
-          "active": { "title": "Active", "type": "boolean" },
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "prompt": { "title": "Prompt", "type": "string" },
+          "actions": {
+            "title": "Actions",
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          },
+          "voice": { "title": "Voice", "type": "string", "format": "uuid" },
+          "initial_message": { "title": "Initial Message", "type": "string" },
+          "webhook": { "title": "Webhook", "type": "string", "format": "uuid" }
+        }
+      },
+      "NormalizedCall": {
+        "title": "NormalizedCall",
+        "required": ["id", "user_id", "to_number", "from_number", "agent"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "status": {
+            "allOf": [{ "$ref": "#/components/schemas/CallStatus" }],
+            "default": "not_started"
+          },
+          "error_message": { "title": "Error Message", "type": "string" },
+          "recording_available": {
+            "title": "Recording Available",
+            "type": "boolean",
+            "default": false
+          },
+          "transcript": { "title": "Transcript", "type": "string" },
+          "to_number": { "title": "To Number", "type": "string" },
+          "from_number": { "title": "From Number", "type": "string" },
+          "agent": { "title": "Agent", "type": "string", "format": "uuid" }
+        }
+      },
+      "NormalizedPhoneNumber": {
+        "title": "NormalizedPhoneNumber",
+        "required": ["id", "user_id", "inbound_agent", "number"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "active": { "title": "Active", "type": "boolean", "default": true },
           "inbound_agent": {
             "title": "Inbound Agent",
-            "anyOf": [
-              { "type": "string" },
-              { "$ref": "#/components/schemas/Agent" }
-            ]
-          }
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": { "title": "Number", "type": "string" }
+        }
+      },
+      "PhoneNumber": {
+        "title": "PhoneNumber",
+        "required": ["id", "user_id", "inbound_agent", "number"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "active": { "title": "Active", "type": "boolean", "default": true },
+          "inbound_agent": { "$ref": "#/components/schemas/Agent" },
+          "number": { "title": "Number", "type": "string" }
         }
       },
       "PlanType": {
@@ -1387,8 +1456,8 @@
         "required": ["id", "user_id", "speaker"],
         "type": "object",
         "properties": {
-          "id": { "title": "Id", "type": "string" },
-          "user_id": { "title": "User Id", "type": "string" },
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
           "type": {
             "allOf": [{ "$ref": "#/components/schemas/VoiceType" }],
             "default": "voice_rime"
@@ -1420,6 +1489,52 @@
           }
         }
       },
+      "TransferCallAction": {
+        "title": "TransferCallAction",
+        "required": ["id", "user_id", "config"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "type": {
+            "allOf": [{ "$ref": "#/components/schemas/ActionType" }],
+            "default": "action_transfer_call"
+          },
+          "config": { "$ref": "#/components/schemas/TransferCallConfig" }
+        }
+      },
+      "TransferCallActionParams": {
+        "title": "TransferCallActionParams",
+        "required": ["type", "config"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/ActionType" },
+          "config": { "$ref": "#/components/schemas/TransferCallConfig" }
+        }
+      },
+      "TransferCallActionUpdateParams": {
+        "title": "TransferCallActionUpdateParams",
+        "required": ["type"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/ActionType" },
+          "config": {
+            "title": "Config",
+            "anyOf": [
+              { "$ref": "#/components/schemas/TransferCallConfig" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          }
+        }
+      },
+      "TransferCallConfig": {
+        "title": "TransferCallConfig",
+        "required": ["phone_number"],
+        "type": "object",
+        "properties": {
+          "phone_number": { "title": "Phone Number", "type": "string" }
+        }
+      },
       "Undefined": { "title": "Undefined", "type": "object", "properties": {} },
       "UpdateNumberRequest": {
         "title": "UpdateNumberRequest",
@@ -1429,7 +1544,7 @@
           "inbound_agent": {
             "title": "Inbound Agent",
             "anyOf": [
-              { "type": "string" },
+              { "type": "string", "format": "uuid" },
               { "$ref": "#/components/schemas/AgentUpdateParams" }
             ]
           }
@@ -1487,8 +1602,8 @@
         "required": ["id", "user_id", "subscriptions", "url"],
         "type": "object",
         "properties": {
-          "id": { "title": "Id", "type": "string" },
-          "user_id": { "title": "User Id", "type": "string" },
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
           "subscriptions": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/EventType" }
