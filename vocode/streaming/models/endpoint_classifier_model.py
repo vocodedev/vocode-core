@@ -40,6 +40,9 @@ class EndpointClassifier:
         ]  # this is the probability the sentence is complete
         if predicted_class == 0:
             probability = 1 - probability
-        if return_as_int:
-            return probability
-        return probability > 0.09
+        # if return_as_int:
+        #     return probability
+        if probability > 0.09:
+            return True
+        else:
+            return False
