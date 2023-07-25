@@ -10,8 +10,8 @@ from vocode.streaming.models.actions import (
 )
 
 
-class NylasSendEmailActionConfig(ActionConfig):
-    type = ActionType.NYLAS_SEND_EMAIL
+class NylasSendEmailActionConfig(ActionConfig, type=ActionType.NYLAS_SEND_EMAIL):
+    pass
 
 
 class NylasSendEmailParameters(BaseModel):

@@ -30,8 +30,7 @@ from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import create_conversation_id
 
 
-class ShoutActionConfig(ActionConfig):
-    type = "shout"
+class ShoutActionConfig(ActionConfig, type="shout"):
     num_exclamation_marks: int
 
 
