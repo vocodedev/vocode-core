@@ -168,7 +168,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self, message: str, bot_sentiment: Optional[BotSentiment] = None
     ) -> str:
         ssml_root = ElementTree.fromstring(
-            '<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="en-US"></speak>'
+            '<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis"></speak>'
         )
         voice = ElementTree.SubElement(ssml_root, "voice")
         voice.set("name", self.voice_name)
