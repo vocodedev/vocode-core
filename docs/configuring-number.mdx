@@ -1,5 +1,5 @@
 ---
-title: "Configuring Numbers"
+title: "Configuring your number"
 description: "Learn how to configure your phone number with an agent."
 ---
 
@@ -14,74 +14,58 @@ First, list your numbers and pick the number you want to configure.
 <CodeGroup>
 
 ```javascript listNumbers.js
-async function main() {
-  const numbers = await vocode.numbers.listNumbers();
-  console.log(numbers);
-}
-
-main();
+const numbers = await vocode.numbers.listNumbers();
 ```
 
 ```python list_numbers.py
 numbers = vocode_client.numbers.list_numbers()
-print(numbers)
 ```
 
 </CodeGroup>
 
 ## Changing the Prompt
 
-The above is the default agent configuration. Let's change the prompt so the AI responds like a wizzard.
+All phone numbers come with the default agent configuration. Let's change the
+prompt so the AI responds like Yoda.
 
 <CodeGroup>
 
 ```javascript updateNumber.js
-async function main() {
-  const wizard_prompt =
-    "I want you to act as a wizard. Respond as a wizard would.";
-  const number = await vocode.numbers.updateNumber({
-    phoneNumber: "YOUR_NUMBER",
-    inboundAgent: { prompt: wizard_prompt },
-  });
-  console.log(number);
-}
-
-main();
+const yoda_prompt = "I want you to act as Yoda. Respond as Yoda would.";
+const number = await vocode.numbers.updateNumber({
+  phoneNumber: "YOUR_NUMBER",
+  inboundAgent: { prompt: yoda_prompt },
+});
 ```
 
 ```python update_number.py
 from vocode import AgentUpdateParams
 
-wizard_prompt = "I want you to act as a wizard. Respond as a wizard would."
+yoda_prompt = "I want you to act as Yoda. Respond as Yoda would."
 number = vocode_client.numbers.update_number(
-    phone_number="YOUR_NUMBER", inbound_agent=AgentUpdateParams(prompt=wizard_prompt)
+    phone_number="YOUR_NUMBER", inbound_agent=AgentUpdateParams(prompt=yoda_prompt)
 )
-
-print(number.json())
 ```
 
 </CodeGroup>
 
 ## Changing the Voice
 
-Our prompt has been updated. Now let's use a more realistic voice provided by ElevenLabs instead of Azure. We will use ElevenLab's "Rachel" voice. Instead of updating our existing agent directly, we'll create a new voice config and set the agent to use it.
+Our prompt has been updated. Now let's use a voice provided by ElevenLabs instead of Azure.
+We will use the `rachel` voice from ElevenLabs. Instead of updating our existing agent directly,
+we'll create a new voice config and set the agent to use it.
 
 <CodeGroup>
 
 ```javascript useElevenLabs.js
 import { VoiceType } from "@vocode/vocode-api/api";
 
-async function main() {
-  const elevenlabsVoice = {
-    type: VoiceType.VoiceElevenLabs,
-    voiceId: "ELEVEN_LABS_VOICE_ID",
-    apiKey: "ELEVEN_LABS_API_KEY",
-  };
-  const number = await vocode.voices.createVoice(elevenlabsVoice);
-  console.log(number);
-}
-
-main();
+const elevenlabsVoice = {
+  type: VoiceType.VoiceElevenLabs,
+  voiceId: "ELEVEN_LABS_VOICE_ID",
+  apiKey: "ELEVEN_LABS_API_KEY",
+};
+const number = await vocode.voices.createVoice(elevenlabsVoice);
 ```
 
 ```python use_eleven_labs.py
@@ -93,26 +77,20 @@ elevenlabs_voice = ElevenLabsVoiceParams(
     api_key="ELEVEN_LABS_API_KEY",
 )
 voice = vocode_client.voices.create_voice(request=elevenlabs_voice)
-
-print(voice.json())
 ```
 
 </CodeGroup>
 
-Now, we have our `voice id` and can update our number's agent to use it.
+Now, we have our `voice_id` and can update our agent to use it.
 
 <CodeGroup>
 
 ```javascript updateAgent.js
-async function main() {
-  const agent = await vocode.agents.updateAgent({
-    id: "AGENT_ID",
-    body: { voice: "VOICE_ID" },
-  });
-  console.log(agent);
-}
-
-main();
+const agent = await vocode.agents.updateAgent({
+  id: "AGENT_ID",
+  body: { voice: "VOICE_ID" },
+});
+console.log(agent);
 ```
 
 ```python update_agent.py
@@ -122,96 +100,32 @@ agent = vocode_client.agents.update_agent(
     id="AGENT_ID",
     request=AgentUpdateParams(voice="VOICE_ID"),
 )
-
-print(agent.json())
 ```
 
 </CodeGroup>
 
 ## Adding an Initial Message
 
-The initial message will be spoken as soon as the call starts before the user says anything. Let's make our agent say "Hello, I am a wizzard" when the call starts.
+The initial message will be spoken as soon as the call starts before the user says anything. Let's make our agent say "Hello, I am Yoda" when the call starts.
 
 <CodeGroup>
 
 ```javascript addInitialMessage.js
 import { VocodeClient } from "@vocode/vocode-api";
 
-const vocode = new VocodeClient({
-  token: "baeadc4558ae060d367ed65bf0ad7914",
-  environment: "https://api.vocode.dev/",
+const number = await vocode.numbers.updateNumber({
+  phoneNumber: "YOUR_NUMBER",
+  inboundAgent: { initialMessage: "Hello, I am Yoda." },
 });
-
-async function main() {
-  const number = await vocode.numbers.updateNumber({
-    phoneNumber: "12016496441",
-    inboundAgent: { initialMessage: "Hello, I am a wizzard." },
-  });
-  console.log(number);
-}
-
-main();
 ```
 
 ```python add_initial_message.py
 from vocode import AgentUpdateParams
-from vocode.client import Vocode
-
-vocode_client = Vocode(
-    token="baeadc4558ae060d367ed65bf0ad7914", environment="https://api.vocode.dev/"
-)
 
 number = vocode_client.numbers.update_number(
-    phone_number="12016496441", inbound_agent=AgentUpdateParams(initial_message="Hello, I am a wizard.")
+    phone_number="YOUR_NUMBER", inbound_agent=AgentUpdateParams(initial_message="Hello, I am Yoda.")
 )
 
-```
-
-</CodeGroup>
-
-## Adding Webhooks
-
-To get data from the agent during a call, you can add a webhook and assign it to listen for specific events. Let's send a POST request to "https://example.com" every time a call ends.
-
-<CodeGroup>
-
-```javascript configureWebhook.js
-import { EventType, HttpMethod } from "@vocode/vocode-api/api";
-
-async function main() {
-  const number = await vocode.numbers.updateNumber({
-    phoneNumber: "YOUR_NUMBER",
-    inboundAgent: {
-      webhook: {
-        subscriptions: [EventType.EventPhoneCallConnected],
-        url: "https://example.com",
-        method: HttpMethod.Post,
-      },
-    },
-  });
-  console.log(number);
-}
-
-main();
-```
-
-```python configure_webhook.py
-from vocode import AgentUpdateParams, EventType, HttpMethod, WebhookUpdateParams
-
-new_webhook = WebhookUpdateParams(
-    subscriptions=[EventType.EVENT_PHONE_CALL_ENDED],
-    url="https://example.com",
-    method=HttpMethod.POST,
-)
-
-number = vocode_client.numbers.update_number(
-    phone_number="YOUR_NUMBER",
-    inbound_agent=AgentUpdateParams(
-        webhook=new_webhook,
-    ),
-)
-
-print(number.json())
 ```
 
 </CodeGroup>
