@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict, List, Optional
 import aiohttp
 from vocode.streaming.models.telephony import VonageConfig
 from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
@@ -57,13 +57,15 @@ class VonageClient(BaseTelephonyClient):
         return await self.create_vonage_call(
             to_phone,
             from_phone,
-            self.create_call_ncco(self.base_url, conversation_id, record),
+            self.create_call_ncco(
+                self.base_url, conversation_id, record, is_outbound=True
+            ),
             digits,
         )
 
     @staticmethod
-    def create_call_ncco(base_url, conversation_id, record):
-        ncco = []
+    def create_call_ncco(base_url, conversation_id, record, is_outbound: bool = False):
+        ncco: List[Dict[str, Any]] = []
         if record:
             ncco.append(
                 {
