@@ -13,22 +13,7 @@ Let's send a POST request to "https://example.com" every time a call ends.
 
 <CodeGroup>
 
-```javascript configureWebhook.js
-import { EventType, HttpMethod } from "@vocode/vocode-api/api";
-
-const number = await vocode.numbers.updateNumber({
-  phoneNumber: "YOUR_NUMBER",
-  inboundAgent: {
-    webhook: {
-      subscriptions: [EventType.EventPhoneCallConnected],
-      url: "https://example.com",
-      method: HttpMethod.Post,
-    },
-  },
-});
-```
-
-```python configure_webhook.py
+```python Python
 from vocode import AgentUpdateParams, EventType, HttpMethod, WebhookUpdateParams
 
 new_webhook = WebhookUpdateParams(
@@ -43,6 +28,21 @@ number = vocode_client.numbers.update_number(
         webhook=new_webhook,
     ),
 )
+```
+
+```javascript TypeScript
+import { EventType, HttpMethod } from "@vocode/vocode-api/api";
+
+const number = await vocode.numbers.updateNumber({
+  phoneNumber: "YOUR_NUMBER",
+  inboundAgent: {
+    webhook: {
+      subscriptions: [EventType.EventPhoneCallConnected],
+      url: "https://example.com",
+      method: HttpMethod.Post,
+    },
+  },
+});
 ```
 
 </CodeGroup>

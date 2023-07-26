@@ -13,12 +13,12 @@ First, list your numbers and pick the number you want to configure.
 
 <CodeGroup>
 
-```javascript listNumbers.js
-const numbers = await vocode.numbers.listNumbers();
+```python Python
+numbers = vocode_client.numbers.list_numbers()
 ```
 
-```python list_numbers.py
-numbers = vocode_client.numbers.list_numbers()
+```javascript TypeScript
+const numbers = await vocode.numbers.listNumbers();
 ```
 
 </CodeGroup>
@@ -30,21 +30,21 @@ prompt so the AI responds like Yoda.
 
 <CodeGroup>
 
-```javascript updateNumber.js
-const yoda_prompt = "I want you to act as Yoda. Respond as Yoda would.";
-const number = await vocode.numbers.updateNumber({
-  phoneNumber: "YOUR_NUMBER",
-  inboundAgent: { prompt: yoda_prompt },
-});
-```
-
-```python update_number.py
+```python Python
 from vocode import AgentUpdateParams
 
 yoda_prompt = "I want you to act as Yoda. Respond as Yoda would."
 number = vocode_client.numbers.update_number(
     phone_number="YOUR_NUMBER", inbound_agent=AgentUpdateParams(prompt=yoda_prompt)
 )
+```
+
+```javascript TypeScript
+const yoda_prompt = "I want you to act as Yoda. Respond as Yoda would.";
+const number = await vocode.numbers.updateNumber({
+  phoneNumber: "YOUR_NUMBER",
+  inboundAgent: { prompt: yoda_prompt },
+});
 ```
 
 </CodeGroup>
@@ -57,18 +57,7 @@ we'll create a new voice config and set the agent to use it.
 
 <CodeGroup>
 
-```javascript useElevenLabs.js
-import { VoiceType } from "@vocode/vocode-api/api";
-
-const elevenlabsVoice = {
-  type: VoiceType.VoiceElevenLabs,
-  voiceId: "ELEVEN_LABS_VOICE_ID",
-  apiKey: "ELEVEN_LABS_API_KEY",
-};
-const number = await vocode.voices.createVoice(elevenlabsVoice);
-```
-
-```python use_eleven_labs.py
+```python Python
 from vocode import ElevenLabsVoiceParams, VoiceType
 
 elevenlabs_voice = ElevenLabsVoiceParams(
@@ -79,27 +68,38 @@ elevenlabs_voice = ElevenLabsVoiceParams(
 voice = vocode_client.voices.create_voice(request=elevenlabs_voice)
 ```
 
+```javascript TypeScript
+import { VoiceType } from "@vocode/vocode-api/api";
+
+const elevenlabsVoice = {
+  type: VoiceType.VoiceElevenLabs,
+  voiceId: "ELEVEN_LABS_VOICE_ID",
+  apiKey: "ELEVEN_LABS_API_KEY",
+};
+const number = await vocode.voices.createVoice(elevenlabsVoice);
+```
+
 </CodeGroup>
 
 Now, we have our `voice_id` and can update our agent to use it.
 
 <CodeGroup>
 
-```javascript updateAgent.js
-const agent = await vocode.agents.updateAgent({
-  id: "AGENT_ID",
-  body: { voice: "VOICE_ID" },
-});
-console.log(agent);
-```
-
-```python update_agent.py
+```python Python
 from vocode import AgentUpdateParams
 
 agent = vocode_client.agents.update_agent(
     id="AGENT_ID",
     request=AgentUpdateParams(voice="VOICE_ID"),
 )
+```
+
+```javascript TypeScript
+const agent = await vocode.agents.updateAgent({
+  id: "AGENT_ID",
+  body: { voice: "VOICE_ID" },
+});
+console.log(agent);
 ```
 
 </CodeGroup>
@@ -110,22 +110,22 @@ The initial message will be spoken as soon as the call starts before the user sa
 
 <CodeGroup>
 
-```javascript addInitialMessage.js
-import { VocodeClient } from "@vocode/vocode-api";
-
-const number = await vocode.numbers.updateNumber({
-  phoneNumber: "YOUR_NUMBER",
-  inboundAgent: { initialMessage: "Hello, I am Yoda." },
-});
-```
-
-```python add_initial_message.py
+```python Python
 from vocode import AgentUpdateParams
 
 number = vocode_client.numbers.update_number(
     phone_number="YOUR_NUMBER", inbound_agent=AgentUpdateParams(initial_message="Hello, I am Yoda.")
 )
 
+```
+
+```javascript TypeScript
+import { VocodeClient } from "@vocode/vocode-api";
+
+const number = await vocode.numbers.updateNumber({
+  phoneNumber: "YOUR_NUMBER",
+  inboundAgent: { initialMessage: "Hello, I am Yoda." },
+});
 ```
 
 </CodeGroup>

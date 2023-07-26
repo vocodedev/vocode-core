@@ -7,19 +7,19 @@ Enterprise plans both come with numbers included in the subscription. For more i
 
 <CodeGroup>
 
-```bash cURL
-curl --request POST \
-  --url https://api.vocode.dev/v1/numbers/buy \
-  --header 'Content-Type: application/json' \
-  --header 'Authorization: Bearer <API_KEY>'
-```
-
 ```python Python
 phone_number = vocode_client.numbers.buy_number()
 ```
 
 ```typescript TypeScript
 const phoneNumber = await vocode.numbers.buyNumber();
+```
+
+```bash cURL
+curl --request POST \
+  --url https://api.vocode.dev/v1/numbers/buy \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
 ```
 
 </CodeGroup>
