@@ -1,4 +1,4 @@
-from typing import Any, Dict, Generic, Type, TypeVar
+from typing import Any, Dict, Generic, Type, TypeVar, TYPE_CHECKING
 from vocode.streaming.action.utils import exclude_keys_recursive
 from vocode.streaming.models.actions import (
     ActionConfig,
@@ -8,7 +8,9 @@ from vocode.streaming.models.actions import (
     ParametersType,
     ResponseType,
 )
-from vocode.streaming.utils.state_manager import ConversationStateManager
+
+if TYPE_CHECKING:
+    from vocode.streaming.utils.state_manager import ConversationStateManager
 
 ActionConfigType = TypeVar("ActionConfigType", bound=ActionConfig)
 
@@ -29,7 +31,7 @@ class BaseAction(Generic[ActionConfigType, ParametersType, ResponseType]):
         self.is_interruptible = is_interruptible
 
     def attach_conversation_state_manager(
-        self, conversation_state_manager: ConversationStateManager
+        self, conversation_state_manager: "ConversationStateManager"
     ):
         self.conversation_state_manager = conversation_state_manager
 

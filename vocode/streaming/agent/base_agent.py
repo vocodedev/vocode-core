@@ -5,7 +5,16 @@ from enum import Enum
 import json
 import logging
 import random
-from typing import AsyncGenerator, Generator, Generic, Optional, Tuple, TypeVar, Union
+from typing import (
+    AsyncGenerator,
+    Generator,
+    Generic,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+    TYPE_CHECKING,
+)
 import typing
 from opentelemetry import trace
 from opentelemetry.trace import Span
@@ -33,12 +42,15 @@ from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import remove_non_letters_digits
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.models.transcript import Transcript
-from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
+    InterruptibleAgentResponseEvent,
     InterruptibleEvent,
     InterruptibleEventFactory,
     InterruptibleWorker,
 )
+
+if TYPE_CHECKING:
+    from vocode.streaming.utils.state_manager import ConversationStateManager
 
 tracer = trace.get_tracer(__name__)
 AGENT_TRACE_NAME = "agent"
@@ -128,7 +140,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
             InterruptibleEvent[AgentInput]
         ] = asyncio.Queue()
         self.output_queue: asyncio.Queue[
-            InterruptibleEvent[AgentResponse]
+            InterruptibleAgentResponseEvent[AgentResponse]
         ] = asyncio.Queue()
         AbstractAgent.__init__(self, agent_config=agent_config)
         InterruptibleWorker.__init__(
@@ -167,7 +179,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
     def start(self):
         super().start()
         if self.agent_config.initial_message is not None:
-            self.produce_interruptible_event_nonblocking(
+            self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=self.agent_config.initial_message),
                 is_interruptible=False,
             )
@@ -180,7 +192,9 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
     ) -> asyncio.Queue[InterruptibleEvent[AgentInput]]:
         return self.input_queue
 
-    def get_output_queue(self) -> asyncio.Queue[InterruptibleEvent[AgentResponse]]:
+    def get_output_queue(
+        self,
+    ) -> asyncio.Queue[InterruptibleAgentResponseEvent[AgentResponse]]:
         return self.output_queue
 
     def create_goodbye_detection_task(self, message: str) -> asyncio.Task:
@@ -214,7 +228,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             if is_first_response:
                 agent_span_first.end()
                 is_first_response = False
-            self.produce_interruptible_event_nonblocking(
+            self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
@@ -240,7 +254,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             response = None
             return True
         if response:
-            self.produce_interruptible_event_nonblocking(
+            self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
@@ -288,7 +302,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     transcription.message
                 )
             if self.agent_config.send_filler_audio:
-                self.produce_interruptible_event_nonblocking(AgentResponseFillerAudio())
+                self.produce_interruptible_agent_response_event_nonblocking(
+                    AgentResponseFillerAudio()
+                )
             self.logger.debug("Responding to transcription")
             should_stop = False
             if self.agent_config.generate_responses:
@@ -302,7 +318,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
 
             if should_stop:
                 self.logger.debug("Agent requested to stop")
-                self.produce_interruptible_event_nonblocking(AgentResponseStop())
+                self.produce_interruptible_agent_response_event_nonblocking(
+                    AgentResponseStop()
+                )
                 return
             if goodbye_detected_task:
                 try:
@@ -311,7 +329,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     )
                     if goodbye_detected:
                         self.logger.debug("Goodbye detected, ending conversation")
-                        self.produce_interruptible_event_nonblocking(
+                        self.produce_interruptible_agent_response_event_nonblocking(
                             AgentResponseStop()
                         )
                         return
@@ -339,7 +357,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         params = json.loads(function_call.arguments)
         if "user_message" in params:
             user_message = params["user_message"]
-            self.produce_interruptible_event_nonblocking(
+            self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=user_message))
             )
         action_input: ActionInput
@@ -362,7 +380,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 agent_input.conversation_id,
                 params,
             )
-        event = self.interruptible_event_factory.create(
+        event = self.interruptible_event_factory.create_interruptible_event(
             action_input, is_interruptible=action.is_interruptible
         )
         assert self.transcript is not None
