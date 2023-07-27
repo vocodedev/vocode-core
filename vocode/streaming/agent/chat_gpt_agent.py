@@ -17,6 +17,7 @@ from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
     collate_response_async,
     openai_get_tokens,
+    vector_db_result_to_openai_chat_message,
 )
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import Transcript
@@ -153,18 +154,18 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     for doc in docs_with_scores
                 ]
             )
-            self.transcript.add_vector_db_results(
-                f"Found {len(docs_with_scores)} similar documents:\n{docs_with_scores_str}",
-                conversation_id,
-            )
+            vector_db_result = f"Found {len(docs_with_scores)} similar documents:\n{docs_with_scores_str}"
             messages = format_openai_chat_messages_from_transcript(
                 self.transcript, self.agent_config.prompt_preamble
             )
+            messages.insert(
+                -1, vector_db_result_to_openai_chat_message(vector_db_result)
+            )
             chat_parameters = self.get_chat_parameters(messages)
-            self.transcript.remove_last_vector_db_log()
         else:
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
+        print(chat_parameters)
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
         async for message in collate_response_async(
             openai_get_tokens(stream), get_functions=True

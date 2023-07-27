@@ -1,4 +1,5 @@
-from typing import Any, Dict, Generic, Type, TypeVar
+import asyncio
+from typing import Any, Dict, Generic, Optional, Type, TypeVar, TYPE_CHECKING
 from vocode.streaming.action.utils import exclude_keys_recursive
 from vocode.streaming.models.actions import (
     ActionConfig,
@@ -8,7 +9,9 @@ from vocode.streaming.models.actions import (
     ParametersType,
     ResponseType,
 )
-from vocode.streaming.utils.state_manager import ConversationStateManager
+
+if TYPE_CHECKING:
+    from vocode.streaming.utils.state_manager import ConversationStateManager
 
 ActionConfigType = TypeVar("ActionConfigType", bound=ActionConfig)
 
@@ -29,7 +32,7 @@ class BaseAction(Generic[ActionConfigType, ParametersType, ResponseType]):
         self.is_interruptible = is_interruptible
 
     def attach_conversation_state_manager(
-        self, conversation_state_manager: ConversationStateManager
+        self, conversation_state_manager: "ConversationStateManager"
     ):
         self.conversation_state_manager = conversation_state_manager
 
@@ -53,7 +56,9 @@ class BaseAction(Generic[ActionConfigType, ParametersType, ResponseType]):
             parameters_schema["properties"][
                 "user_message"
             ] = self._user_message_param_info()
-            parameters_schema["required"].append("user_message")
+            required = parameters_schema.get("required", [])
+            required.append("user_message")
+            parameters_schema["required"] = required
 
         return {
             "name": self.action_config.type,
@@ -65,6 +70,7 @@ class BaseAction(Generic[ActionConfigType, ParametersType, ResponseType]):
         self,
         conversation_id: str,
         params: Dict[str, Any],
+        user_message_tracker: Optional[asyncio.Event] = None,
     ) -> ActionInput[ParametersType]:
         if "user_message" in params:
             del params["user_message"]
@@ -72,6 +78,7 @@ class BaseAction(Generic[ActionConfigType, ParametersType, ResponseType]):
             action_config=self.action_config,
             conversation_id=conversation_id,
             params=self.parameters_type(**params),
+            user_message_tracker=user_message_tracker,
         )
 
     def _user_message_param_info(self):

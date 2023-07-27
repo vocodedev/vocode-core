@@ -3,7 +3,10 @@ import json
 import logging
 from typing import Dict
 from vocode.streaming.transcriber.base_transcriber import Transcription
-from vocode.streaming.utils.worker import InterruptibleEvent
+from vocode.streaming.utils.worker import (
+    InterruptibleAgentResponseEvent,
+    InterruptibleEvent,
+)
 import websockets
 from websockets.client import (
     connect,
@@ -33,7 +36,7 @@ NUM_RESTARTS = 5
 
 class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfig]):
     input_queue: asyncio.Queue[InterruptibleEvent[AgentInput]]
-    output_queue: asyncio.Queue[InterruptibleEvent[AgentResponse]]
+    output_queue: asyncio.Queue[InterruptibleAgentResponseEvent[AgentResponse]]
 
     def __init__(
         self,
@@ -75,7 +78,7 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
             raise Exception("Unknown Socket message type")
 
         self.logger.info("Putting interruptible agent response event in output queue")
-        self.produce_interruptible_event_nonblocking(
+        self.produce_interruptible_agent_response_event_nonblocking(
             agent_response, self.get_agent_config().allow_agent_to_be_cut_off
         )
 
@@ -161,5 +164,5 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
             await asyncio.gather(sender(ws), receiver(ws))
 
     def terminate(self):
-        self.output_queue.put_nowait(AgentResponseStop())
+        self.produce_interruptible_agent_response_event_nonblocking(AgentResponseStop())
         super().terminate()

@@ -341,7 +341,9 @@ async def run_agents():
                 ),
                 conversation_id=0,
             )
-            agent.consume_nonblocking(agent.interruptible_event_factory.create(message))
+            agent.consume_nonblocking(
+                agent.interruptible_event_factory.create_interruptible_event(message)
+            )
 
             while True:
                 try:

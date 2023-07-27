@@ -9,8 +9,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+WorkerInputType = TypeVar("WorkerInputType")
 
-class AsyncWorker:
+
+class AsyncWorker(Generic[WorkerInputType]):
     def __init__(
         self,
         input_queue: asyncio.Queue,
@@ -24,7 +26,7 @@ class AsyncWorker:
         self.worker_task = asyncio.create_task(self._run_loop())
         return self.worker_task
 
-    def consume_nonblocking(self, item):
+    def consume_nonblocking(self, item: WorkerInputType):
         self.input_queue.put_nowait(item)
 
     def produce_nonblocking(self, item):
@@ -129,15 +131,44 @@ class InterruptibleEvent(Generic[Payload]):
         return self.is_interruptible and self.interruption_event.is_set()
 
 
-class InterruptibleEventFactory:
-    def create(self, payload: Any, is_interruptible: bool = True) -> InterruptibleEvent:
-        return InterruptibleEvent(payload, is_interruptible=is_interruptible)
-
-
-class InterruptibleWorker(AsyncWorker):
+class InterruptibleAgentResponseEvent(InterruptibleEvent[Payload]):
     def __init__(
         self,
-        input_queue: asyncio.Queue[InterruptibleEvent],
+        payload: Payload,
+        agent_response_tracker: asyncio.Event,
+        is_interruptible: bool = True,
+        interruption_event: Optional[threading.Event] = None,
+    ):
+        super().__init__(payload, is_interruptible, interruption_event)
+        self.agent_response_tracker = agent_response_tracker
+
+
+class InterruptibleEventFactory:
+    def create_interruptible_event(
+        self, payload: Any, is_interruptible: bool = True
+    ) -> InterruptibleEvent:
+        return InterruptibleEvent(payload, is_interruptible=is_interruptible)
+
+    def create_interruptible_agent_response_event(
+        self,
+        payload: Any,
+        is_interruptible: bool = True,
+        agent_response_tracker: Optional[asyncio.Event] = None,
+    ) -> InterruptibleAgentResponseEvent:
+        return InterruptibleAgentResponseEvent(
+            payload,
+            is_interruptible=is_interruptible,
+            agent_response_tracker=agent_response_tracker or asyncio.Event(),
+        )
+
+
+InterruptibleEventType = TypeVar("InterruptibleEventType", bound=InterruptibleEvent)
+
+
+class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
+    def __init__(
+        self,
+        input_queue: asyncio.Queue[InterruptibleEventType],
         output_queue: asyncio.Queue = asyncio.Queue(),
         interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
         max_concurrency=2,
@@ -152,8 +183,27 @@ class InterruptibleWorker(AsyncWorker):
     def produce_interruptible_event_nonblocking(
         self, item: Any, is_interruptible: bool = True
     ):
-        interruptible_event = self.interruptible_event_factory.create(item, is_interruptible=is_interruptible)
+        interruptible_event = (
+            self.interruptible_event_factory.create_interruptible_event(
+                item, is_interruptible=is_interruptible
+            )
+        )
         return super().produce_nonblocking(interruptible_event)
+
+    def produce_interruptible_agent_response_event_nonblocking(
+        self,
+        item: Any,
+        is_interruptible: bool = True,
+        agent_response_tracker: Optional[asyncio.Event] = None,
+    ):
+        interruptible_utterance_event = (
+            self.interruptible_event_factory.create_interruptible_agent_response_event(
+                item,
+                is_interruptible=is_interruptible,
+                agent_response_tracker=agent_response_tracker or asyncio.Event(),
+            )
+        )
+        return super().produce_nonblocking(interruptible_utterance_event)
 
     async def _run_loop(self):
         # TODO Implement concurrency with max_nb_of_thread
@@ -172,7 +222,7 @@ class InterruptibleWorker(AsyncWorker):
             self.interruptible_event.is_interruptible = False
             self.current_task = None
 
-    async def process(self, item: InterruptibleEvent):
+    async def process(self, item: InterruptibleEventType):
         """
         Publish results onto output queue.
         Calls to async function / task should be able to handle asyncio.CancelledError gracefully:
@@ -193,3 +243,9 @@ class InterruptibleWorker(AsyncWorker):
             return self.current_task.cancel()
 
         return False
+
+
+class InterruptibleAgentResponseWorker(
+    InterruptibleWorker[InterruptibleAgentResponseEvent]
+):
+    pass
