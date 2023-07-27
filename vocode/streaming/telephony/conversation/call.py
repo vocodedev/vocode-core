@@ -16,11 +16,13 @@ from vocode.streaming.models.transcriber import (
     TranscriberConfig,
 )
 from vocode.streaming.synthesizer.factory import SynthesizerFactory
+from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
 from vocode.streaming.telephony.config_manager.base_config_manager import (
     BaseConfigManager,
 )
 from vocode.streaming.telephony.constants import DEFAULT_SAMPLING_RATE
 from vocode.streaming.streaming_conversation import StreamingConversation
+from vocode.streaming.telephony.conversation import create_telephony_client
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
@@ -34,6 +36,7 @@ TelephonyOutputDeviceType = TypeVar(
 class Call(StreamingConversation[TelephonyOutputDeviceType]):
     def __init__(
         self,
+        telephony_id: str,
         from_phone: str,
         to_phone: str,
         base_url: str,
@@ -49,6 +52,8 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
+        self.telephony_id = telephony_id
+        self.telephony_client: BaseTelephonyClient = create_telephony_client()
         conversation_id = conversation_id or create_conversation_id()
         logger = wrap_logger(
             logger or logging.getLogger(__name__),
@@ -78,6 +83,8 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
     async def attach_ws_and_start(self, ws: WebSocket):
         raise NotImplementedError
 
-    async def tear_down(self):
+    async def tear_down(self, end_call: bool = True):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
         await self.terminate()
+        if end_call:
+            await self.telephony_client.end_call(self.telephony_id)

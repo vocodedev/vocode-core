@@ -52,6 +52,7 @@ class VonageCall(Call[VonageOutputDevice]):
         logger: Optional[logging.Logger] = None,
     ):
         super().__init__(
+            vonage_uuid,
             from_phone,
             to_phone,
             base_url,
