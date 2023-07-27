@@ -67,19 +67,19 @@ class TwilioClient(BaseTelephonyClient):
         # Make an async version of the Twilio client
         twilio_client_async = aioify(obj=self.twilio_client, name='twilio_client_async')
         logging.info("I am ending the call now within the twilio client code")
-        current_call = await twilio_client_async.calls(twilio_sid).fetch()
+        current_call = twilio_client_async.calls(twilio_sid).fetch()
 
         logging.info(f"The current parent call SID is {current_call.parent_call_sid}")
         # if the call is part of a conference, we should just let it keep going
         if current_call.parent_call_sid is not None:
             return False
 
-        # fail-safe in case something is really wrong with the call and it still hasn't hung up
         call = twilio_client_async.calls(twilio_sid).fetch()
 
-        # Check the call's duration
-        if call.duration is not None and int(call.duration) > 5 * 60:  # duration is in seconds
-            # The call has been going for more than 5 minutes - terminate it
+        # Fail-safe in case something is really wrong with the call and it still hasn't hung up
+        if call.duration is not None and int(call.duration) > 10 * 60:  # duration is in seconds
+            # The call has been going for more than 10 minutes - terminate it
+            # (we don't expect calls to go on for this long)
             response = await twilio_client_async.calls(twilio_sid).update(status="completed")
             return response.status == "completed"
 
