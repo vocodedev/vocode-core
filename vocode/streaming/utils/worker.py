@@ -168,7 +168,7 @@ InterruptibleEventType = TypeVar("InterruptibleEventType", bound=InterruptibleEv
 class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
     def __init__(
         self,
-        input_queue: asyncio.Queue[InterruptibleEvent],
+        input_queue: asyncio.Queue[InterruptibleEventType],
         output_queue: asyncio.Queue = asyncio.Queue(),
         interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
         max_concurrency=2,

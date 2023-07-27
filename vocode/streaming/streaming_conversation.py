@@ -150,11 +150,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             input_queue: asyncio.Queue[InterruptibleAgentResponseEvent[FillerAudio]],
             conversation: "StreamingConversation",
         ):
-            super().__init__(
-                input_queue=cast(
-                    asyncio.Queue[InterruptibleEvent[FillerAudio]], input_queue
-                )
-            )
+            super().__init__(input_queue=input_queue)
             self.input_queue = input_queue
             self.conversation = conversation
             self.current_filler_seconds_per_chunk: Optional[int] = None
@@ -210,9 +206,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             interruptible_event_factory: InterruptibleEventFactory,
         ):
             super().__init__(
-                input_queue=cast(
-                    asyncio.Queue[InterruptibleEvent[AgentResponse]], input_queue
-                ),
+                input_queue=input_queue,
                 output_queue=output_queue,
             )
             self.input_queue = input_queue
@@ -302,14 +296,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             ],
             conversation: "StreamingConversation",
         ):
-            super().__init__(
-                input_queue=cast(
-                    asyncio.Queue[
-                        InterruptibleEvent[Tuple[BaseMessage, SynthesisResult]]
-                    ],
-                    input_queue,
-                )
-            )
+            super().__init__(input_queue=input_queue)
             self.input_queue = input_queue
             self.conversation = conversation
 
