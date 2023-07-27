@@ -1,6 +1,7 @@
 import io
 import logging
-from typing import Any, Optional
+from typing import Any, AsyncGenerator, Optional
+import time
 import aiohttp
 from pydub import AudioSegment
 
@@ -45,6 +46,78 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.words_per_minute = 150
 
     async def create_speech(
+    self,
+    message: BaseMessage,
+    chunk_size: int,
+    bot_sentiment: Optional[BotSentiment] = None,
+    ) -> SynthesisResult:
+        voice = self.elevenlabs.Voice(voice_id=self.voice_id)
+        if self.stability is not None and self.similarity_boost is not None:
+            voice.settings = self.elevenlabs.VoiceSettings(
+                stability=self.stability, similarity_boost=self.similarity_boost
+            )
+        url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
+        if self.optimize_streaming_latency:
+            url += f"?optimize_streaming_latency={self.optimize_streaming_latency}"
+        headers = {"xi-api-key": self.api_key}
+        body = {
+            "text": message.text,
+            "voice_settings": voice.settings.dict() if voice.settings else None,
+        }
+        if self.model_id:
+            body["model_id"] = self.model_id
+
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_total",
+        )
+
+        session = aiohttp.ClientSession()
+
+        response = await session.request(
+                "POST",
+                url,
+                json=body,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=15),
+            )
+        
+        if not response.ok:
+            raise Exception(
+                f"ElevenLabs API returned {response.status} status code"
+            )
+        
+        async def output_generator(response, session) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
+            buffer = bytearray()
+            stream_reader = response.content
+            async for chunk in stream_reader.iter_any():
+                start_time = time.time()
+                audio_segment: AudioSegment = AudioSegment.from_mp3(
+                    io.BytesIO(chunk)  # type: ignore
+                )
+                audio_segment.set_frame_rate(44100)
+                output_bytes_io = io.BytesIO()
+                audio_segment.export("test.wav", format="wav")  # type: ignore
+                print(f"Time to convert: {time.time() - start_time}")
+
+                buffer.extend(output_bytes_io.getvalue())
+
+                at_eof = stream_reader.at_eof()
+
+                if len(buffer) >= chunk_size or at_eof:
+                    if at_eof:
+                        await session.close()
+                    yield SynthesisResult.ChunkResult(buffer, at_eof)
+                    buffer.clear()
+
+
+        create_speech_span.end()
+
+        return SynthesisResult(
+            output_generator(response, session), # should be wav
+            lambda _: "" # useless for now
+        )
+
+    async def old_create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
@@ -102,3 +175,12 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 convert_span.end()
 
                 return result
+        # async with aiohttp.ClientSession() as session:
+        #     async with session.post(ENDPOINT, headers=headers, data=data, stream=True) as response:
+        #         if response.status_code != 200:
+        #             raise Exception(f"API request failed with status code {response.status_code}")
+        #         if response.content_type != "audio/mpeg":
+        #             raise Exception(f"API response is not in mp3 format")
+        #         audio_iterator = response.iter_chunks(chunk_size=1024)
+        #         output_generator = (AudioSegment.from_file(io.BytesIO(chunk), format="mp3").set_frame_rate(16000).raw_data for chunk in audio_iterator)
+        #         return SynthesisResult(output_generator, lambda seconds: 0)

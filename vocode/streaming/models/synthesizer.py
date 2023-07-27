@@ -104,9 +104,9 @@ class ElevenLabsSynthesizerConfig(
 ):
     api_key: Optional[str] = None
     voice_id: Optional[str] = ELEVEN_LABS_ADAM_VOICE_ID
+    optimize_streaming_latency: Optional[int] = 4
     stability: Optional[float]
     similarity_boost: Optional[float]
-    optimize_streaming_latency: Optional[int]
     model_id: Optional[str]
 
     @validator("voice_id")
