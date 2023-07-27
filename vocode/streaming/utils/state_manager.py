@@ -41,16 +41,17 @@ class ConversationStateManager:
         await self._conversation.terminate()
 
     def send_bot_message(self, message: BaseMessage) -> asyncio.Event:
-        utterance_tracker = asyncio.Event()
-        self._conversation.agent.produce_interruptible_utterance_event_nonblocking(
+        # returns an asyncio.Event that will be set when the agent has finished uttering the message
+        agent_response_tracker = asyncio.Event()
+        self._conversation.agent.produce_interruptible_agent_response_event_nonblocking(
             item=AgentResponseMessage(
                 message=message,
                 is_interruptible=False,
             ),
             is_interruptible=False,
-            utterance_tracker=utterance_tracker,
+            agent_response_tracker=agent_response_tracker,
         )
-        return utterance_tracker
+        return agent_response_tracker
 
 
 class VonageCallStateManager(ConversationStateManager):

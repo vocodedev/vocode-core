@@ -109,7 +109,7 @@ async def run_agent(agent: BaseAgent):
                     None, lambda: input("Human: ")
                 )
                 agent.consume_nonblocking(
-                    agent.interruptible_event_factory.create(
+                    agent.interruptible_event_factory.create_interruptible_event(
                         TranscriptionAgentInput(
                             transcription=Transcription(
                                 message=message, confidence=1.0, is_final=True
