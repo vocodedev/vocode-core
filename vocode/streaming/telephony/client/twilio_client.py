@@ -13,6 +13,9 @@ from vocode.streaming.models.telephony import BaseCallConfig, TwilioConfig
 from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
 from vocode.streaming.telephony.templater import Templater
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 
 class TwilioClient(BaseTelephonyClient):
     def __init__(self, base_url: str, twilio_config: TwilioConfig):
@@ -73,7 +76,7 @@ class TwilioClient(BaseTelephonyClient):
             return False
 
         # fail-safe in case something is really wrong with the call and it still hasn't hung up
-        call = await twilio_client_async.calls(twilio_sid).fetch()
+        call = twilio_client_async.calls(twilio_sid).fetch()
 
         # Check the call's duration
         if call.duration is not None and int(call.duration) > 5 * 60:  # duration is in seconds
