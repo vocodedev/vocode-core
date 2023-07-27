@@ -1,5 +1,8 @@
+import asyncio
 from typing import TYPE_CHECKING, Optional
+from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import EndpointingConfig
+from vocode.streaming.agent.base_agent import AgentResponseMessage
 
 if TYPE_CHECKING:
     from vocode.streaming.streaming_conversation import StreamingConversation
@@ -36,6 +39,18 @@ class ConversationStateManager:
 
     async def terminate_conversation(self):
         await self._conversation.terminate()
+
+    def send_bot_message(self, message: BaseMessage) -> asyncio.Event:
+        utterance_tracker = asyncio.Event()
+        self._conversation.agent.produce_interruptible_utterance_event_nonblocking(
+            item=AgentResponseMessage(
+                message=message,
+                is_interruptible=False,
+            ),
+            is_interruptible=False,
+            utterance_tracker=utterance_tracker,
+        )
+        return utterance_tracker
 
 
 class VonageCallStateManager(ConversationStateManager):

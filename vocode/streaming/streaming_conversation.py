@@ -57,6 +57,7 @@ from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
     InterruptibleEvent,
     InterruptibleEventFactory,
+    InterruptibleUtteranceEvent,
     InterruptibleWorker,
 )
 
@@ -270,10 +271,17 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.chunk_size,
                     bot_sentiment=self.conversation.bot_sentiment,
                 )
-                self.produce_interruptible_event_nonblocking(
-                    (agent_response_message.message, synthesis_result),
-                    is_interruptible=item.is_interruptible,
-                )
+                if isinstance(item, InterruptibleUtteranceEvent):
+                    self.produce_interruptible_utterance_event_nonblocking(
+                        (agent_response_message.message, synthesis_result),
+                        is_interruptible=item.is_interruptible,
+                        utterance_tracker=item.utterance_tracker,
+                    )
+                else:
+                    self.produce_interruptible_event_nonblocking(
+                        (agent_response_message.message, synthesis_result),
+                        is_interruptible=item.is_interruptible,
+                    )
             except asyncio.CancelledError:
                 pass
 
@@ -302,6 +310,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     item.interruption_event,
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
                 )
+                if isinstance(item, InterruptibleUtteranceEvent):
+                    if item.utterance_tracker is not None:
+                        item.utterance_tracker.set()
                 self.conversation.logger.debug("Message sent: {}".format(message_sent))
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(

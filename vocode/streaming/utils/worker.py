@@ -129,6 +129,18 @@ class InterruptibleEvent(Generic[Payload]):
         return self.is_interruptible and self.interruption_event.is_set()
 
 
+class InterruptibleUtteranceEvent(InterruptibleEvent[Payload]):
+    def __init__(
+        self,
+        payload: Payload,
+        is_interruptible: bool = True,
+        interruption_event: Optional[threading.Event] = None,
+        utterance_tracker: Optional[asyncio.Event] = None,
+    ):
+        super().__init__(payload, is_interruptible, interruption_event)
+        self.utterance_tracker = utterance_tracker
+
+
 class InterruptibleEventFactory:
     def create(self, payload: Any, is_interruptible: bool = True) -> InterruptibleEvent:
         return InterruptibleEvent(payload, is_interruptible=is_interruptible)
@@ -152,8 +164,21 @@ class InterruptibleWorker(AsyncWorker):
     def produce_interruptible_event_nonblocking(
         self, item: Any, is_interruptible: bool = True
     ):
-        interruptible_event = self.interruptible_event_factory.create(item, is_interruptible=is_interruptible)
+        interruptible_event = self.interruptible_event_factory.create(
+            item, is_interruptible=is_interruptible
+        )
         return super().produce_nonblocking(interruptible_event)
+
+    def produce_interruptible_utterance_event_nonblocking(
+        self,
+        item: Any,
+        is_interruptible: bool = True,
+        utterance_tracker: Optional[asyncio.Event] = None,
+    ):
+        interruptible_utterance_event = InterruptibleUtteranceEvent(
+            item, is_interruptible=is_interruptible, utterance_tracker=utterance_tracker
+        )
+        return super().produce_nonblocking(interruptible_utterance_event)
 
     async def _run_loop(self):
         # TODO Implement concurrency with max_nb_of_thread

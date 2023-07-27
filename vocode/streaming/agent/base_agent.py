@@ -5,7 +5,16 @@ from enum import Enum
 import json
 import logging
 import random
-from typing import AsyncGenerator, Generator, Generic, Optional, Tuple, TypeVar, Union
+from typing import (
+    AsyncGenerator,
+    Generator,
+    Generic,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+    TYPE_CHECKING,
+)
 import typing
 from opentelemetry import trace
 from opentelemetry.trace import Span
@@ -33,12 +42,14 @@ from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import remove_non_letters_digits
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.models.transcript import Transcript
-from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     InterruptibleEvent,
     InterruptibleEventFactory,
     InterruptibleWorker,
 )
+
+if TYPE_CHECKING:
+    from vocode.streaming.utils.state_manager import ConversationStateManager
 
 tracer = trace.get_tracer(__name__)
 AGENT_TRACE_NAME = "agent"
