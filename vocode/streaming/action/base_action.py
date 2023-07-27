@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Dict, Generic, Type, TypeVar, TYPE_CHECKING
+from typing import Any, Dict, Generic, Optional, Type, TypeVar, TYPE_CHECKING
 from vocode.streaming.action.utils import exclude_keys_recursive
 from vocode.streaming.models.actions import (
     ActionConfig,
@@ -70,7 +70,7 @@ class BaseAction(Generic[ActionConfigType, ParametersType, ResponseType]):
         self,
         conversation_id: str,
         params: Dict[str, Any],
-        user_message_tracker: asyncio.Event,
+        user_message_tracker: Optional[asyncio.Event] = None,
     ) -> ActionInput[ParametersType]:
         if "user_message" in params:
             del params["user_message"]
