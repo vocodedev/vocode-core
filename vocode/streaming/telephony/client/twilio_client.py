@@ -81,13 +81,13 @@ class TwilioClient(BaseTelephonyClient):
         if call.duration is not None and int(call.duration) > 10 * 60:  # duration is in seconds
             # The call has been going for more than 10 minutes - terminate it
             # (we don't expect calls to go on for this long)
-            response = await twilio_client_async.calls(twilio_sid).update(status="completed")
+            response = twilio_client_async.calls(twilio_sid).update(status="completed")
             return response.status == "completed"
 
         # for testing purposes only, if for some reason it just keeps going even when it's a conference
         await asyncio.sleep(20)
 
-        response = await twilio_client_async.calls(twilio_sid).update(status="completed")
+        response = twilio_client_async.calls(twilio_sid).update(status="completed")
         return response.status == "completed"
 
     def validate_outbound_call(
