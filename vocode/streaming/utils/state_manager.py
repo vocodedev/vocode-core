@@ -21,13 +21,13 @@ class ConversationStateManager:
         self._conversation.transcriber.get_transcriber_config().endpointing_config = (
             endpointing_config
         )
-    
+
     def disable_synthesis(self):
         self._conversation.synthesis_enabled = False
-    
+
     def enable_synthesis(self):
         self._conversation.synthesis_enabled = True
-    
+
     async def terminate_conversation(self):
         await self._conversation.terminate()
 
@@ -37,8 +37,14 @@ class VonageCallStateManager(ConversationStateManager):
         super().__init__(call)
         self._call = call
 
+    async def terminate_conversation(self):
+        await self._call.tear_down()
+
 
 class TwilioCallStateManager(ConversationStateManager):
     def __init__(self, call: "TwilioCall"):
         super().__init__(call)
         self._call = call
+
+    async def terminate_conversation(self):
+        await self._call.tear_down()
