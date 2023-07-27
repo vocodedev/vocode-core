@@ -4,13 +4,13 @@ import base64
 from enum import Enum
 import json
 import logging
-from typing import Optional
+from typing import Optional, Union
 from vocode import getenv
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import PhoneCallConnectedEvent
 
-from vocode.streaming.models.telephony import TwilioConfig
+from vocode.streaming.models.telephony import TwilioConfig, VonageConfig
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
 from vocode.streaming.models.synthesizer import (
     SynthesizerConfig,
@@ -80,6 +80,9 @@ class TwilioCall(Call[TwilioOutputDevice]):
         )
         self.twilio_sid = twilio_sid
         self.latest_media_timestamp = 0
+
+    def get_telephony_client_config(self):
+        return self.twilio_config
 
     def create_state_manager(self) -> TwilioCallStateManager:
         return TwilioCallStateManager(self)
@@ -160,7 +163,3 @@ class TwilioCall(Call[TwilioOutputDevice]):
             self.logger.debug("Stopping...")
             return PhoneCallWebsocketAction.CLOSE_WEBSOCKET
         return None
-
-    def mark_terminated(self):
-        super().mark_terminated()
-        asyncio.create_task(self.telephony_client.end_call(self.twilio_sid))

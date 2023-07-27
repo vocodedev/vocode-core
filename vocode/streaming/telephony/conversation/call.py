@@ -1,3 +1,5 @@
+from app.lib.telephony.client.twilio_client import TwilioClient
+from app.lib.telephony.client.vonage_client import VonageClient
 from fastapi import WebSocket
 from enum import Enum
 import logging
@@ -5,6 +7,7 @@ from typing import Optional, TypeVar, Union
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import PhoneCallEndedEvent
+from vocode.streaming.models.telephony import TwilioConfig, VonageConfig
 from vocode.streaming.output_device.vonage_output_device import VonageOutputDevice
 
 from vocode.streaming.streaming_conversation import StreamingConversation
@@ -53,7 +56,6 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
         logger: Optional[logging.Logger] = None,
     ):
         self.telephony_id = telephony_id
-        self.telephony_client: BaseTelephonyClient = create_telephony_client()
         conversation_id = conversation_id or create_conversation_id()
         logger = wrap_logger(
             logger or logging.getLogger(__name__),
@@ -75,6 +77,22 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
             logger=logger,
         )
 
+    def get_telephony_client_config(self) -> Union[TwilioConfig, VonageConfig]:
+        raise NotImplementedError
+
+    def create_telephony_client(self) -> BaseTelephonyClient:
+        telephony_client_config = self.get_telephony_client_config()
+        if isinstance(telephony_client_config, TwilioConfig):
+            return TwilioClient(
+                base_url=self.base_url, twilio_config=telephony_client_config
+            )
+        elif isinstance(telephony_client_config, VonageConfig):
+            return VonageClient(
+                base_url=self.base_url, vonage_config=telephony_client_config
+            )
+        else:
+            raise ValueError("No telephony config provided")
+
     def attach_ws(self, ws: WebSocket):
         self.logger.debug("Trying to attach WS to outbound call")
         self.output_device.ws = ws
@@ -87,4 +105,5 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
         await self.terminate()
         if end_call:
-            await self.telephony_client.end_call(self.telephony_id)
+            telephony_client = self.create_telephony_client()
+            await telephony_client.end_call(self.telephony_id)

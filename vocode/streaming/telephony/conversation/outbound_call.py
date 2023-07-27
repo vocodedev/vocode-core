@@ -22,7 +22,6 @@ from vocode.streaming.telephony.client.vonage_client import VonageClient
 from vocode.streaming.telephony.config_manager.base_config_manager import (
     BaseConfigManager,
 )
-from vocode.streaming.telephony.conversation import create_telephony_client
 from vocode.streaming.utils import create_conversation_id
 
 
@@ -65,9 +64,7 @@ class OutboundCall:
                 account_sid=getenv("TWILIO_ACCOUNT_SID"),
                 auth_token=getenv("TWILIO_AUTH_TOKEN"),
             )
-        self.telephony_client = create_telephony_client(
-            self.base_url, self.twilio_config, self.vonage_config
-        )
+        self.telephony_client = self.create_telephony_client()
         assert not output_to_speaker or isinstance(
             self.telephony_client, VonageClient
         ), "Output to speaker is only supported for Vonage calls"
@@ -75,6 +72,18 @@ class OutboundCall:
         self.synthesizer_config = self.create_synthesizer_config(synthesizer_config)
         self.telephony_id = None
         self.output_to_speaker = output_to_speaker
+
+    def create_telephony_client(self) -> BaseTelephonyClient:
+        if self.twilio_config is not None:
+            return TwilioClient(
+                base_url=self.base_url, twilio_config=self.twilio_config
+            )
+        elif self.vonage_config is not None:
+            return VonageClient(
+                base_url=self.base_url, vonage_config=self.vonage_config
+            )
+        else:
+            raise ValueError("No telephony config provided")
 
     def create_transcriber_config(
         self, transcriber_config_override: Optional[TranscriberConfig]

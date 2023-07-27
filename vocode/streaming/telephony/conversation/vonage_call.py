@@ -86,6 +86,9 @@ class VonageCall(Call[VonageOutputDevice]):
                 sampling_rate=VONAGE_SAMPLING_RATE, blocksize=VONAGE_CHUNK_SIZE // 2
             )
 
+    def get_telephony_client_config(self):
+        return self.vonage_config
+
     def create_state_manager(self) -> VonageCallStateManager:
         return VonageCallStateManager(self)
 
