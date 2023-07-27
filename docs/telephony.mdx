@@ -121,7 +121,7 @@ uvicorn main:app --port 3000
 Make sure the server we just set up is already running. Then, in `outbound_call.py`
 
 1. Replace the `to_phone` with the number you want to call and the `from_phone` with the number you want to call from.
-   In order to make a call from the `to_phone`, you must have access to it via Twilio (either a number purchased via Twilio or verify the caller ID).
+   In order to make a call from the `from_phone`, you must have access to it via Twilio (either a number purchased via Twilio or verify the caller ID).
 
 > Note: To ensure legal compliance with robocall regulations in California, the following code snippet from the [Vocode library](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/telephony/conversation/outbound_call.py#L83-L96) utilizes Twilio Line Intelligence to check if calls are made to mobile phones: For Canadian phone numbers, the Twilio Lookup API may not return carrier data due to the Canadian Local Number Portability Consortium (CLNPC) requirements. More information on this issue can be found in the [Twilio Support Article](https://support.twilio.com/hc/en-us/articles/360004563433-Twilio-Lookup-API-is-Not-Returning-Carrier-Data-for-Canadian-Phone-Numbers).
 
