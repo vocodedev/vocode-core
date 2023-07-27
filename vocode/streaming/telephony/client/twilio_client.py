@@ -1,7 +1,9 @@
+import asyncio
 import logging
 import os
 import time
 
+from aioify import aioify
 from typing import Optional
 from twilio.rest import Client
 from xml.etree import ElementTree as ET
@@ -57,9 +59,11 @@ class TwilioClient(BaseTelephonyClient):
             base_url=self.base_url, call_id=conversation_id
         )
 
-    def end_call(self, twilio_sid):
+    async def end_call(self, twilio_sid):
+        # Make an async version of the Twilio client
+        twilio_client_async = aioify(obj=self.twilio_client, name='twilio_client_async')
         logging.info("I am ending the call now within the twilio client code")
-        current_call = self.twilio_client.calls(twilio_sid).fetch()
+        current_call = await twilio_client_async.calls(twilio_sid).fetch()
 
         logging.info(f"The current parent call SID is {current_call.parent_call_sid}")
         # if the call is part of a conference, we should just let it keep going
@@ -67,18 +71,20 @@ class TwilioClient(BaseTelephonyClient):
             return False
 
         # fail-safe in case something is really wrong with the call and it still hasn't hung up
-        call = self.twilio_client.calls(twilio_sid).fetch()
+        call = await twilio_client_async.calls(twilio_sid).fetch()
 
         # Check the call's duration
         if call.duration is not None and int(call.duration) > 5 * 60:  # duration is in seconds
             # The call has been going for more than 5 minutes - terminate it
-            response = self.twilio_client.calls(twilio_sid).update(status="completed")
+            response = await twilio_client_async.calls(twilio_sid).update(status="completed")
             return response.status == "completed"
 
-        time.sleep(10) # for testing purposes only, if for some reason it just keeps going even when it's a conference
+        # for testing purposes only, if for some reason it just keeps going even when it's a conference
+        await asyncio.sleep(20)
 
-        response = self.twilio_client.calls(twilio_sid).update(status="completed")
+        response = await twilio_client_async.calls(twilio_sid).update(status="completed")
         return response.status == "completed"
+
 
     def validate_outbound_call(
         self,
