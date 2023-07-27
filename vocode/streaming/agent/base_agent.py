@@ -151,6 +151,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
         self.transcript: Optional[Transcript] = None
 
         self.functions = self.get_functions() if self.agent_config.actions else None
+        self.is_muted = False
 
     def get_functions(self):
         raise NotImplementedError
@@ -249,6 +250,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         return False
 
     async def process(self, item: InterruptibleEvent[AgentInput]):
+        if self.is_muted:
+            self.logger.debug("Agent is muted, skipping processing")
+            return
         assert self.transcript is not None
         try:
             agent_input = item.payload
