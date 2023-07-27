@@ -1,3 +1,4 @@
+import asyncio
 from enum import Enum
 from typing import Generic, TypeVar
 from pydantic import BaseModel
@@ -20,6 +21,10 @@ class ActionInput(BaseModel, Generic[ParametersType]):
     action_config: ActionConfig
     conversation_id: str
     params: ParametersType
+    user_message_tracker: asyncio.Event
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class FunctionFragment(BaseModel):
