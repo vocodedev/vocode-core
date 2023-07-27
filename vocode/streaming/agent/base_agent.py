@@ -355,6 +355,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             return
         action = self.action_factory.create_action(action_config)
         params = json.loads(function_call.arguments)
+        user_message_tracker = None
         if "user_message" in params:
             user_message = params["user_message"]
             user_message_tracker = asyncio.Event()
