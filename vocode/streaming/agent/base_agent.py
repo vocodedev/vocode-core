@@ -235,7 +235,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
-            self.call_function(function_call, agent_input)
+            await self.call_function(function_call, agent_input)
         return False
 
     async def handle_respond(
@@ -346,7 +346,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 return action_config
         return None
 
-    def call_function(self, function_call: FunctionCall, agent_input: AgentInput):
+    async def call_function(self, function_call: FunctionCall, agent_input: AgentInput):
         action_config = self._get_action_config(function_call.name)
         if action_config is None:
             self.logger.error(
@@ -357,8 +357,10 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         params = json.loads(function_call.arguments)
         if "user_message" in params:
             user_message = params["user_message"]
+            user_message_tracker = asyncio.Event()
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=user_message))
+                AgentResponseMessage(message=BaseMessage(text=user_message)),
+                agent_response_tracker=user_message_tracker,
             )
         action_input: ActionInput
         if isinstance(action, VonagePhoneCallAction):
@@ -366,19 +368,26 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 agent_input.vonage_uuid is not None
             ), "Cannot use VonagePhoneCallActionFactory unless the attached conversation is a VonageCall"
             action_input = action.create_phone_call_action_input(
-                agent_input.conversation_id, params, agent_input.vonage_uuid
+                agent_input.conversation_id,
+                params,
+                agent_input.vonage_uuid,
+                user_message_tracker,
             )
         elif isinstance(action, TwilioPhoneCallAction):
             assert (
                 agent_input.twilio_sid is not None
             ), "Cannot use TwilioPhoneCallActionFactory unless the attached conversation is a TwilioCall"
             action_input = action.create_phone_call_action_input(
-                agent_input.conversation_id, params, agent_input.twilio_sid
+                agent_input.conversation_id,
+                params,
+                agent_input.twilio_sid,
+                user_message_tracker,
             )
         else:
             action_input = action.create_action_input(
                 agent_input.conversation_id,
                 params,
+                user_message_tracker,
             )
         event = self.interruptible_event_factory.create_interruptible_event(
             action_input, is_interruptible=action.is_interruptible
