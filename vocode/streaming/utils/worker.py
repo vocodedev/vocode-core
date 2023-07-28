@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import threading
 import janus
 from typing import Any, Optional
 from typing import TypeVar, Generic
 import logging
+from pydub import AudioSegment
+
+
+from vocode.streaming.models.synthesizer import SynthesizerConfig
+from vocode.streaming.utils import convert_wav
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +90,7 @@ class ThreadAsyncWorker(AsyncWorker):
     def terminate(self):
         return super().terminate()
 
-
+# ThreadedAsyncWorker with a run loop that exposes something
 class AsyncQueueWorker(AsyncWorker):
     async def _run_loop(self):
         while True:
@@ -249,3 +255,37 @@ class InterruptibleAgentResponseWorker(
     InterruptibleWorker[InterruptibleAgentResponseEvent]
 ):
     pass
+
+class PydubWorker(ThreadAsyncWorker):
+    def __init__(
+        self,
+        synthesizer_config: SynthesizerConfig,
+        input_queue: asyncio.Queue,
+        output_queue: asyncio.Queue = asyncio.Queue(),
+    ) -> None:
+        super().__init__(input_queue, output_queue)
+        self.synthesizer_config = synthesizer_config
+
+    def _run_loop(self):
+        while True:
+            # Get a tuple of (mp3_chunk, is_last) from the input queue
+            mp3_chunk, is_last = self.input_janus_queue.sync_q.get()
+
+            mp3_chunk = io.BytesIO(mp3_chunk)
+            # Convert it to a wav chunk using pydub
+            wav_chunk = AudioSegment.from_mp3(mp3_chunk)
+
+            output_bytes_io = io.BytesIO()
+
+            wav_chunk.export(output_bytes_io, format="wav")
+
+            output_bytes_io = convert_wav(
+                output_bytes_io,
+                output_sample_rate=self.synthesizer_config.sampling_rate,
+                output_encoding=self.synthesizer_config.audio_encoding,
+            )
+            # Put a tuple of (wav_chunk, is_last) in the output queue
+            self.output_janus_queue.sync_q.put((output_bytes_io, is_last))
+            # If this is the last chunk, break the loop
+            if is_last:
+                break
