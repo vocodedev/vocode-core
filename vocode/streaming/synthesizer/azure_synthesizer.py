@@ -64,11 +64,13 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         azure_speech_key: Optional[str] = None,
         azure_speech_region: Optional[str] = None,
         aiohttp_session: Optional[aiohttp.ClientSession] = None,
+        azure_endpoint_id: Optional[str] = None,
     ):
         super().__init__(synthesizer_config, aiohttp_session)
         # Instantiates a client
         azure_speech_key = azure_speech_key or getenv("AZURE_SPEECH_KEY")
         azure_speech_region = azure_speech_region or getenv("AZURE_SPEECH_REGION")
+        azure_endpoint_id = azure_endpoint_id or getenv("AZURE_ENDPOINT_ID")
         if not azure_speech_key:
             raise ValueError(
                 "Please set AZURE_SPEECH_KEY environment variable or pass it as a parameter"
@@ -76,6 +78,10 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         if not azure_speech_region:
             raise ValueError(
                 "Please set AZURE_SPEECH_REGION environment variable or pass it as a parameter"
+            )
+        if not azure_endpoint_id:
+            raise ValueError(
+                "Please set AZURE_ENDPOINT_ID environment variable or pass it as a parameter"
             )
         speech_config = speechsdk.SpeechConfig(
             subscription=azure_speech_key, region=azure_speech_region
