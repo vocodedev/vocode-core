@@ -12,6 +12,7 @@ from typing import (
 import math
 import io
 import wave
+import aiohttp
 from nltk.tokenize import word_tokenize
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 from opentelemetry import trace
@@ -122,6 +123,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
                 synthesizer_config.sampling_rate == 8000
             ), "MuLaw encoding only supports 8kHz sampling rate"
         self.filler_audios: List[FillerAudio] = []
+        self.aiohttp_session = aiohttp.ClientSession()
 
     async def empty_generator(self):
         yield SynthesisResult.ChunkResult(b"", True)
@@ -219,3 +221,6 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
                 message, seconds, len(output_bytes)
             ),
         )
+
+    async def tear_down(self):
+        await self.aiohttp_session.close()
