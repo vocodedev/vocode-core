@@ -86,32 +86,31 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         )
         speech_config.endpoint_id = azure_endpoint_id
         speech_config.speech_synthesis_voice_name = "PlaygroundLiteNeural"
-        speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Riff8Khz16BitMonoPcm)
-        # if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
-        #     if self.synthesizer_config.sampling_rate == 44100:
-        #         speech_config.set_speech_synthesis_output_format(
-        #             speechsdk.SpeechSynthesisOutputFormat.Raw44100Hz16BitMonoPcm
-        #         )
-        #     if self.synthesizer_config.sampling_rate == 48000:
-        #         speech_config.set_speech_synthesis_output_format(
-        #             speechsdk.SpeechSynthesisOutputFormat.Raw48Khz16BitMonoPcm
-        #         )
-        #     if self.synthesizer_config.sampling_rate == 24000:
-        #         speech_config.set_speech_synthesis_output_format(
-        #             speechsdk.SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm
-        #         )
-        #     elif self.synthesizer_config.sampling_rate == 16000:
-        #         speech_config.set_speech_synthesis_output_format(
-        #             speechsdk.SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm
-        #         )
-        #     elif self.synthesizer_config.sampling_rate == 8000:
-        #         speech_config.set_speech_synthesis_output_format(
-        #             speechsdk.SpeechSynthesisOutputFormat.Raw8Khz16BitMonoPcm
-        #         )
-        # elif self.synthesizer_config.audio_encoding == AudioEncoding.MULAW:
-        #     speech_config.set_speech_synthesis_output_format(
-        #         speechsdk.SpeechSynthesisOutputFormat.Raw8Khz8BitMonoMULaw
-        #     )
+        if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
+            if self.synthesizer_config.sampling_rate == 44100:
+                speech_config.set_speech_synthesis_output_format(
+                    speechsdk.SpeechSynthesisOutputFormat.Raw44100Hz16BitMonoPcm
+                )
+            if self.synthesizer_config.sampling_rate == 48000:
+                speech_config.set_speech_synthesis_output_format(
+                    speechsdk.SpeechSynthesisOutputFormat.Raw48Khz16BitMonoPcm
+                )
+            if self.synthesizer_config.sampling_rate == 24000:
+                speech_config.set_speech_synthesis_output_format(
+                    speechsdk.SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm
+                )
+            elif self.synthesizer_config.sampling_rate == 16000:
+                speech_config.set_speech_synthesis_output_format(
+                    speechsdk.SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm
+                )
+            elif self.synthesizer_config.sampling_rate == 8000:
+                speech_config.set_speech_synthesis_output_format(
+                    speechsdk.SpeechSynthesisOutputFormat.Raw8Khz16BitMonoPcm
+                )
+        elif self.synthesizer_config.audio_encoding == AudioEncoding.MULAW:
+            speech_config.set_speech_synthesis_output_format(
+                speechsdk.SpeechSynthesisOutputFormat.Raw8Khz8BitMonoMULaw
+            )
         self.synthesizer = speechsdk.SpeechSynthesizer(
             speech_config=speech_config, audio_config=None
         )
