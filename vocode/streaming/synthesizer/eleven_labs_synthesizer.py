@@ -53,6 +53,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         )
         # Start the PydubWorker and store the task
         self.pydub_worker_task = self.pydub_worker.start()
+        # TODO: I NEED TO TEAR THIS DOWN.
 
     async def create_speech(
         self,
