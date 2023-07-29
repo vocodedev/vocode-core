@@ -52,6 +52,7 @@ class GTTSSynthesizer(BaseSynthesizer):
             f"synthesizer.{SynthesizerType.GTTS.value.split('_', 1)[-1]}.convert",
         )
         audio_file.seek(0)
+        # TODO: probably needs to be in a thread
         audio_segment: AudioSegment = AudioSegment.from_mp3(audio_file)  # type: ignore
         output_bytes_io = BytesIO()
         audio_segment.export(output_bytes_io, format="wav")  # type: ignore

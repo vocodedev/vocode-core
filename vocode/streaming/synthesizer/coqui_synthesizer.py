@@ -67,29 +67,28 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.create_total"
         )
-        async with aiohttp.ClientSession() as session:
-            async with session.request(
-                "POST",
-                url,
-                json=body,
-                headers=headers,
-                timeout=aiohttp.ClientTimeout(total=15),
+        async with self.aiohttp_session.request(
+            "POST",
+            url,
+            json=body,
+            headers=headers,
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as response:
+            sample = await response.json()
+            async with self.aiohttp_session.request(
+                "GET",
+                sample["audio_url"],
             ) as response:
-                sample = await response.json()
-                async with session.request(
-                    "GET",
-                    sample["audio_url"],
-                ) as response:
-                    read_response = await response.read()
-                    create_speech_span.end()
-                    convert_span = tracer.start_span(
-                        f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.convert",
-                    )
+                read_response = await response.read()
+                create_speech_span.end()
+                convert_span = tracer.start_span(
+                    f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.convert",
+                )
 
-                    result = self.create_synthesis_result_from_wav(
-                        file=io.BytesIO(read_response),
-                        message=message,
-                        chunk_size=chunk_size,
-                    )
-                    convert_span.end()
-                    return result
+                result = self.create_synthesis_result_from_wav(
+                    file=io.BytesIO(read_response),
+                    message=message,
+                    chunk_size=chunk_size,
+                )
+                convert_span.end()
+                return result
