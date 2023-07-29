@@ -82,7 +82,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 "Please set AZURE_ENDPOINT_ID environment variable or pass it as a parameter"
             )
         speech_config = speechsdk.SpeechConfig(
-            subscription=azure_speech_key, region=azure_speech_region
+            subscription=azure_speech_key, endpoint=azure_endpoint_id
         )
         speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Riff8Khz16BitMonoPcm)
         # if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
