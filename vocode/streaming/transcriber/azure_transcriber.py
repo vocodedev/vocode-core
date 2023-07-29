@@ -48,8 +48,7 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
 
         speech_config = speechsdk.SpeechConfig(
             subscription=getenv("AZURE_SPEECH_KEY"),
-            # region=getenv("AZURE_SPEECH_REGION"),
-            endpoint=getenv("AZURE_ENDPOINT_ID")
+            region=getenv("AZURE_SPEECH_REGION"),
         )
 
         speech_params = {

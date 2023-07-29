@@ -84,8 +84,10 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 "Please set AZURE_ENDPOINT_ID environment variable or pass it as a parameter"
             )
         speech_config = speechsdk.SpeechConfig(
-            subscription=azure_speech_key, endpoint=azure_endpoint_id
+            subscription=azure_speech_key, region=azure_speech_region
         )
+        speech_config.endpoint_id = azure_endpoint_id
+        speech_config.speech_synthesis_voice_name = "PlaygroundLiteNeural"
         speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Riff8Khz16BitMonoPcm)
         # if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
         #     if self.synthesizer_config.sampling_rate == 44100:
