@@ -27,8 +27,9 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
         api_key: Optional[str] = None,
         user_id: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
         self.synthesizer_config = synthesizer_config
         self.api_key = api_key or getenv("PLAY_HT_API_KEY")
         self.user_id = user_id or getenv("PLAY_HT_USER_ID")

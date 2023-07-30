@@ -31,8 +31,9 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         self,
         synthesizer_config: RimeSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
         self.api_key = getenv("RIME_API_KEY")
         self.speaker = synthesizer_config.speaker
         self.sampling_rate = synthesizer_config.sampling_rate
