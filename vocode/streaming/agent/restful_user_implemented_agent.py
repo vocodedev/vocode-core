@@ -33,7 +33,7 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
     ) -> Tuple[Optional[str], bool]:
         config = self.agent_config.respond
         try:
-            # todo: cache session
+            # TODO: cache session
             async with aiohttp.ClientSession() as session:
                 payload = RESTfulAgentInput(
                     human_input=human_input, conversation_id=conversation_id

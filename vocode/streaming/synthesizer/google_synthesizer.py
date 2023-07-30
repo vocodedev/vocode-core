@@ -5,6 +5,7 @@ import logging
 import os
 import wave
 from typing import Any, Optional
+import aiohttp
 
 from vocode import getenv
 
@@ -24,13 +25,13 @@ from opentelemetry.context.context import Context
 
 
 class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
-
     def __init__(
         self,
         synthesizer_config: GoogleSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
 
         from google.cloud import texttospeech_v1beta1 as tts
         import google.auth

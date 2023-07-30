@@ -27,8 +27,9 @@ class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]
         self,
         synthesizer_config: StreamElementsSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
         self.voice = synthesizer_config.voice
 
     async def create_speech(

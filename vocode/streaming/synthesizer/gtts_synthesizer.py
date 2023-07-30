@@ -1,6 +1,7 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import logging
+import aiohttp
 from pydub import AudioSegment
 from typing import Optional
 from io import BytesIO
@@ -21,8 +22,9 @@ class GTTSSynthesizer(BaseSynthesizer):
         self,
         synthesizer_config: GTTSSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
 
         from gtts import gTTS
 
