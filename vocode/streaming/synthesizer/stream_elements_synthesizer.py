@@ -27,8 +27,9 @@ class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]
         self,
         synthesizer_config: StreamElementsSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
         self.voice = synthesizer_config.voice
 
     async def create_speech(
@@ -44,28 +45,28 @@ class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.STREAM_ELEMENTS.value.split('_', 1)[-1]}.create_total",
         )
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                self.TTS_ENDPOINT,
-                params=url_params,
-                timeout=aiohttp.ClientTimeout(total=15),
-            ) as response:
-                read_response = await response.read()
-                create_speech_span.end()
-                convert_span = tracer.start_span(
-                    f"synthesizer.{SynthesizerType.STREAM_ELEMENTS.value.split('_', 1)[-1]}.convert",
-                )
+        async with self.aiohttp_session.get(
+            self.TTS_ENDPOINT,
+            params=url_params,
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as response:
+            read_response = await response.read()
+            create_speech_span.end()
+            convert_span = tracer.start_span(
+                f"synthesizer.{SynthesizerType.STREAM_ELEMENTS.value.split('_', 1)[-1]}.convert",
+            )
 
-                audio_segment: AudioSegment = AudioSegment.from_mp3(
-                    io.BytesIO(read_response)  # type: ignore
-                )
-                output_bytes_io = io.BytesIO()
-                audio_segment.export(output_bytes_io, format="wav")  # type: ignore
+            # TODO: probably needs to be in a thread
+            audio_segment: AudioSegment = AudioSegment.from_mp3(
+                io.BytesIO(read_response)  # type: ignore
+            )
+            output_bytes_io = io.BytesIO()
+            audio_segment.export(output_bytes_io, format="wav")  # type: ignore
 
-                result = self.create_synthesis_result_from_wav(
-                    file=output_bytes_io,
-                    message=message,
-                    chunk_size=chunk_size,
-                )
-                convert_span.end()
-                return result
+            result = self.create_synthesis_result_from_wav(
+                file=output_bytes_io,
+                message=message,
+                chunk_size=chunk_size,
+            )
+            convert_span.end()
+            return result

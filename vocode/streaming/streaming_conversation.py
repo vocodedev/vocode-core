@@ -623,6 +623,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.events_manager and self.events_task:
             self.logger.debug("Terminating events Task")
             await self.events_manager.flush()
+        self.logger.debug("Tearing down synthesizer")
+        await self.synthesizer.tear_down()
         self.logger.debug("Terminating agent")
         self.agent.terminate()
         self.logger.debug("Terminating output device")
