@@ -424,6 +424,15 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         self.tracer_name_start: str = tracer_name_start
         return tracer_name_start
 
+    def terminate(self):
+        if (
+            hasattr(self.agent_config, "vector_db_config")
+            and self.agent_config.vector_db_config
+        ):
+            self.logger.debug("Terminating vector db")
+            self.vector_db.tear_down()
+        return super().terminate()
+
     async def respond(
         self,
         human_input,
