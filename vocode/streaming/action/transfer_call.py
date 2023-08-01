@@ -14,7 +14,7 @@ from vocode.streaming.models.actions import (
 
 
 class TransferCallActionConfig(ActionConfig):
-    type: str = ActionType.TRANSFER_CALL
+    action_type: str = ActionType.TRANSFER_CALL
     to_phone: str
 
 
@@ -38,7 +38,7 @@ class TransferCall(
     async def run(
         self, action_input: ActionInput[TransferCallParameters]
     ) -> ActionOutput[TransferCallResponse]:
-        twilio_call_sid = self.get_twilio_sid()
+        twilio_call_sid = self.get_twilio_sid(action_input)
 
         twilio_client = TwilioClient(
             os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"]
