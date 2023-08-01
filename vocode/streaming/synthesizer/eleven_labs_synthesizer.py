@@ -1,10 +1,7 @@
 import asyncio
-import io
 import logging
 from typing import Any, AsyncGenerator, Optional
-import time
 import aiohttp
-from pydub import AudioSegment
 
 from vocode import getenv
 from vocode.streaming.synthesizer.base_synthesizer import (
@@ -19,8 +16,7 @@ from vocode.streaming.models.synthesizer import (
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
 
-from opentelemetry.context.context import Context
-from vocode.streaming.utils.worker import PydubWorker
+from vocode.streaming.utils.worker import MiniaudioWorker
 
 
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
@@ -49,7 +45,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.words_per_minute = 150
 
         # Create a PydubWorker instance as an attribute
-        self.pydub_worker = PydubWorker(
+        self.pydub_worker = MiniaudioWorker(
             synthesizer_config, asyncio.Queue(), asyncio.Queue()
         )
         # Start the PydubWorker and store the task
@@ -91,12 +87,11 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             headers=headers,
             timeout=aiohttp.ClientTimeout(total=15),
         )
-
         if not response.ok:
             raise Exception(f"ElevenLabs API returned {response.status} status code")
 
         async def output_generator(
-            response, session
+            response
         ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
             stream_reader = response.content
             buffer = bytearray()
@@ -121,8 +116,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 buffer.extend(wav_chunk)
 
                 if len(buffer) >= chunk_size or is_last:
-                    if is_last:
-                        await session.close()
                     yield SynthesisResult.ChunkResult(buffer, is_last)
                     buffer.clear()
                 # If this is the last chunk, break the loop
@@ -130,15 +123,11 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     create_speech_span.end()
                     break
 
-            # Wait for the send task to finish and close the session
-            await asyncio.gather(
-                send_task,
-                session.close(),
-            )
-
         
 
         return SynthesisResult(
-            output_generator(response, session),  # should be wav
-            lambda _: "",  # useless for now
+            output_generator(response),  # should be wav
+            lambda seconds: self.get_message_cutoff_from_voice_speed(
+                message, seconds, 150
+            ),
         )

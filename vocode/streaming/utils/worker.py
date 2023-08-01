@@ -4,6 +4,8 @@ import asyncio
 import io
 import threading
 import janus
+import miniaudio
+import wave
 from typing import Any, Optional
 from typing import TypeVar, Generic
 import logging
@@ -256,7 +258,7 @@ class InterruptibleAgentResponseWorker(
 ):
     pass
 
-class PydubWorker(ThreadAsyncWorker):
+class MiniaudioWorker(ThreadAsyncWorker):
     def __init__(
         self,
         synthesizer_config: SynthesizerConfig,
@@ -272,12 +274,20 @@ class PydubWorker(ThreadAsyncWorker):
             mp3_chunk, is_last = self.input_janus_queue.sync_q.get()
 
             mp3_chunk = io.BytesIO(mp3_chunk)
-            # Convert it to a wav chunk using pydub
-            wav_chunk = AudioSegment.from_mp3(mp3_chunk)
 
+            # Convert it to a wav chunk using miniaudio
+            wav_chunk = miniaudio.decode(mp3_chunk.read(), nchannels=1)
+
+            # Write wav_chunks.samples to io.BytesIO with builtin WAVE
             output_bytes_io = io.BytesIO()
 
-            wav_chunk.export(output_bytes_io, format="wav")
+            with wave.open(output_bytes_io, "wb") as wave_obj:
+                wave_obj.setnchannels(1)
+                wave_obj.setsampwidth(2)
+                wave_obj.setframerate(44100)
+                wave_obj.writeframes(wav_chunk.samples)
+            output_bytes_io.seek(0)
+
 
             output_bytes_io = convert_wav(
                 output_bytes_io,
@@ -286,6 +296,3 @@ class PydubWorker(ThreadAsyncWorker):
             )
             # Put a tuple of (wav_chunk, is_last) in the output queue
             self.output_janus_queue.sync_q.put((output_bytes_io, is_last))
-            # If this is the last chunk, break the loop
-            if is_last:
-                break
