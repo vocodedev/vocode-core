@@ -48,6 +48,7 @@ class PineconeDB(VectorDB):
         Returns:
             List of ids from adding the texts into the vectorstore.
         """
+        # Adapted from: langchain/vectorstores/pinecone.py. Made langchain implementation async.
         if namespace is None:
             namespace = ""
         # Embed and create the documents
@@ -89,6 +90,7 @@ class PineconeDB(VectorDB):
         Returns:
             List of Documents most similar to the query and score for each
         """
+        # Adapted from: langchain/vectorstores/pinecone.py. Made langchain implementation async.
         if namespace is None:
             namespace = ""
         query_obj = self._embedding_function(query)
