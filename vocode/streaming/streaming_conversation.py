@@ -627,6 +627,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         await self.synthesizer.tear_down()
         self.logger.debug("Terminating agent")
         self.agent.terminate()
+        if hasattr(self.agent.agent_config, "vector_db_config") and self.agent.agent_config.vector_db_config:
+            self.logger.debug("Terminating vector db")
+            self.agent.vector_db.tear_down()
         self.logger.debug("Terminating output device")
         self.output_device.terminate()
         self.logger.debug("Terminating speech transcriber")
