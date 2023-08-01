@@ -92,7 +92,6 @@ class ThreadAsyncWorker(AsyncWorker):
     def terminate(self):
         return super().terminate()
 
-# ThreadedAsyncWorker with a run loop that exposes something
 class AsyncQueueWorker(AsyncWorker):
     async def _run_loop(self):
         while True:
@@ -276,7 +275,14 @@ class MiniaudioWorker(ThreadAsyncWorker):
             mp3_chunk = io.BytesIO(mp3_chunk)
 
             # Convert it to a wav chunk using miniaudio
-            wav_chunk = miniaudio.decode(mp3_chunk.read(), nchannels=1)
+            try:
+                wav_chunk = miniaudio.decode(mp3_chunk.read(), nchannels=1)
+            except miniaudio.DecodeError as e:
+                # How should I log this
+                logger.exception("MiniaudioWorker error: " + str(e), exc_info=True)
+                print("MiniaudioWorker error: ", e)
+                print("MP3 Chunk Size: ", mp3_chunk.getbuffer().nbytes)
+                continue
 
             # Write wav_chunks.samples to io.BytesIO with builtin WAVE
             output_bytes_io = io.BytesIO()
