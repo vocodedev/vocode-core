@@ -61,7 +61,7 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
             interim_results=True,
         )
 
-    def _run_loop(self):
+    async def _run_loop(self):
         stream = self.generator()
         requests = (
             self.speech.StreamingRecognizeRequest(audio_content=content)

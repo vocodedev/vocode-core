@@ -14,6 +14,7 @@ from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
 tracer = trace.get_tracer(__name__)
 meter = metrics.get_meter(__name__)
 
+
 class Transcription(BaseModel):
     message: str
     confidence: float
@@ -87,7 +88,7 @@ class BaseThreadAsyncTranscriber(
         ThreadAsyncWorker.__init__(self, self.input_queue, self.output_queue)
         AbstractTranscriber.__init__(self, transcriber_config)
 
-    def _run_loop(self):
+    async def _run_loop(self):
         raise NotImplementedError
 
     def send_audio(self, chunk):

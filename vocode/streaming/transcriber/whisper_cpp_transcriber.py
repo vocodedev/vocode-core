@@ -63,7 +63,7 @@ class WhisperCPPTranscriber(BaseThreadAsyncTranscriber[WhisperCPPTranscriberConf
         wav.setframerate(self.transcriber_config.sampling_rate)
         return wav, buffer
 
-    def _run_loop(self):
+    async def _run_loop(self):
         in_memory_wav, audio_buffer = self.create_new_buffer()
         message_buffer = ""
         while not self._ended:

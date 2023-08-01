@@ -60,6 +60,7 @@ from vocode.streaming.utils.worker import (
     InterruptibleEventFactory,
     InterruptibleAgentResponseEvent,
     InterruptibleWorker,
+    ThreadInterruptibleAgentResponseWorker,
 )
 
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
@@ -286,7 +287,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             except asyncio.CancelledError:
                 pass
 
-    class SynthesisResultsWorker(InterruptibleAgentResponseWorker):
+    class SynthesisResultsWorker(ThreadInterruptibleAgentResponseWorker):
         """Plays SynthesisResults from the output queue on the output device"""
 
         def __init__(

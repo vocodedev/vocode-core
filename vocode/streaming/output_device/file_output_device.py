@@ -13,7 +13,7 @@ class FileWriterWorker(ThreadAsyncWorker):
         super().__init__(input_queue)
         self.wav = wave
 
-    def _run_loop(self):
+    async def _run_loop(self):
         while True:
             try:
                 block = self.input_janus_queue.sync_q.get()

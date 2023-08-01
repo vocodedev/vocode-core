@@ -37,7 +37,7 @@ class BlockingSpeakerOutput(BaseOutputDevice, ThreadAsyncWorker):
     def start(self):
         ThreadAsyncWorker.start(self)
 
-    def _run_loop(self):
+    async def _run_loop(self):
         while not self._ended:
             try:
                 chunk = self.input_janus_queue.sync_q.get(timeout=1)

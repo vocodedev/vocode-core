@@ -88,7 +88,7 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
             Transcription(message=evt.result.text, confidence=1.0, is_final=False)
         )
 
-    def _run_loop(self):
+    async def _run_loop(self):
         stream = self.generator()
 
         def stop_cb(evt):

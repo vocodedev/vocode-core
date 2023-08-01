@@ -35,6 +35,9 @@ class AsyncWorker(Generic[WorkerInputType]):
     async def _run_loop(self):
         raise NotImplementedError
 
+    async def get_next_event(self) -> WorkerInputType:
+        return await self.input_queue.get()
+
     def terminate(self):
         if self.worker_task:
             return self.worker_task.cancel()
@@ -42,19 +45,23 @@ class AsyncWorker(Generic[WorkerInputType]):
         return False
 
 
-class ThreadAsyncWorker(AsyncWorker):
+class ThreadAsyncWorker(AsyncWorker[WorkerInputType]):
     def __init__(
         self,
-        input_queue: asyncio.Queue,
+        input_queue: asyncio.Queue[WorkerInputType],
         output_queue: asyncio.Queue = asyncio.Queue(),
     ) -> None:
-        super().__init__(input_queue, output_queue)
+        AsyncWorker.__init__(self, input_queue, output_queue)
         self.worker_thread: Optional[threading.Thread] = None
         self.input_janus_queue: janus.Queue = janus.Queue()
         self.output_janus_queue: janus.Queue = janus.Queue()
+        self.loop_task: Optional[asyncio.Task] = None
+        self.loop = asyncio.new_event_loop()
 
     def start(self) -> asyncio.Task:
-        self.worker_thread = threading.Thread(target=self._run_loop)
+        self.worker_thread = threading.Thread(
+            target=self._run_loop_sync, args=(self.loop,)
+        )
         self.worker_thread.start()
         self.worker_task = asyncio.create_task(self.run_thread_forwarding())
         return self.worker_task
@@ -78,11 +85,21 @@ class ThreadAsyncWorker(AsyncWorker):
             item = await self.output_janus_queue.async_q.get()
             self.output_queue.put_nowait(item)
 
-    def _run_loop(self):
+    def _run_loop_sync(self, loop: asyncio.AbstractEventLoop):
+        asyncio.set_event_loop(loop)
+        self.loop_task = loop.create_task(self._run_loop())
+        loop.run_until_complete(self.loop_task)
+
+    async def _run_loop(self):
         raise NotImplementedError
 
+    async def get_next_event(self) -> WorkerInputType:
+        return self.input_janus_queue.sync_q.get()
+
     def terminate(self):
-        return super().terminate()
+        super().terminate()
+        self.loop.call_soon_threadsafe(self.loop_task.cancel)
+        self.loop.call_soon_threadsafe(self.loop.stop)
 
 
 class AsyncQueueWorker(AsyncWorker):
@@ -208,7 +225,7 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
     async def _run_loop(self):
         # TODO Implement concurrency with max_nb_of_thread
         while True:
-            item = await self.input_queue.get()
+            item = await self.get_next_event()
             if item.is_interrupted():
                 continue
             self.interruptible_event = item
@@ -245,7 +262,37 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
         return False
 
 
+class ThreadInterruptibleWorker(
+    ThreadAsyncWorker[InterruptibleEventType],
+    InterruptibleWorker[InterruptibleEventType],
+):
+    def __init__(
+        self,
+        input_queue: asyncio.Queue[InterruptibleEventType],
+        output_queue: asyncio.Queue = asyncio.Queue(),
+        interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
+        max_concurrency=2,
+    ) -> None:
+        InterruptibleWorker.__init__(
+            self,
+            input_queue,
+            output_queue,
+            interruptible_event_factory,
+            max_concurrency,
+        )
+        ThreadAsyncWorker.__init__(self, input_queue, output_queue)
+
+    async def _run_loop(self):
+        return await InterruptibleWorker._run_loop(self)
+
+
 class InterruptibleAgentResponseWorker(
     InterruptibleWorker[InterruptibleAgentResponseEvent]
+):
+    pass
+
+
+class ThreadInterruptibleAgentResponseWorker(
+    ThreadInterruptibleWorker[InterruptibleAgentResponseEvent]
 ):
     pass
