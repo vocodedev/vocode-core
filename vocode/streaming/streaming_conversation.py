@@ -631,7 +631,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             and self.agent.agent_config.vector_db_config
         ):
             self.logger.debug("Terminating vector db")
-            self.agent.vector_db.tear_down()
+            await self.agent.vector_db.tear_down()
         self.agent.terminate()
         self.logger.debug("Terminating output device")
         self.output_device.terminate()
