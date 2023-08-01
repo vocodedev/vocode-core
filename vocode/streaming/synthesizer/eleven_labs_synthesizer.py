@@ -1,7 +1,10 @@
 import asyncio
 import logging
+import time
 from typing import Any, AsyncGenerator, Optional
+import wave
 import aiohttp
+from opentelemetry.trace import Span
 
 from vocode import getenv
 from vocode.streaming.synthesizer.base_synthesizer import (
@@ -15,8 +18,8 @@ from vocode.streaming.models.synthesizer import (
 )
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
-
-from vocode.streaming.utils.worker import MiniaudioWorker
+from vocode.streaming.utils.mp3_helper import decode_mp3
+from vocode.streaming.synthesizer.MiniaudioWorker import MiniaudioWorker
 
 
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
@@ -43,14 +46,50 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.model_id = synthesizer_config.model_id
         self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
+        self.experimental_streaming = synthesizer_config.experimental_streaming
 
         # Create a PydubWorker instance as an attribute
-        self.pydub_worker = MiniaudioWorker(
-            synthesizer_config, asyncio.Queue(), asyncio.Queue()
-        )
-        # Start the PydubWorker and store the task
-        self.pydub_worker_task = self.pydub_worker.start()
-        # TODO: I NEED TO TEAR THIS DOWN.
+        if self.experimental_streaming:
+            self.pydub_worker = MiniaudioWorker(
+                synthesizer_config, asyncio.Queue(), asyncio.Queue()
+            )
+            self.pydub_worker.start()
+
+    async def output_generator(
+        self,
+        response: aiohttp.ClientResponse,
+        chunk_size: int,
+        create_speech_span: Optional[Span],
+    ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
+        stream_reader = response.content
+        buffer = bytearray()
+
+        # Create a task to send the mp3 chunks to the PydubWorker's input queue in a separate loop
+        async def send_chunks():
+            async for chunk in stream_reader.iter_any():
+                at_eof = stream_reader.at_eof()
+                # Send the mp3 chunk and the flag to the PydubWorker's input queue
+                self.pydub_worker.consume_nonblocking((chunk, at_eof))
+                # If this is the last chunk, break the loop
+                if at_eof:
+                    break
+
+        asyncio.create_task(send_chunks())
+
+        # Await the output queue of the PydubWorker and yield the wav chunks in another loop
+        while True:
+            # Get the wav chunk and the flag from the output queue of the PydubWorker
+            wav_chunk, is_last = await self.pydub_worker.output_queue.get()
+
+            buffer.extend(wav_chunk)
+
+            if len(buffer) >= chunk_size or is_last:
+                yield SynthesisResult.ChunkResult(buffer, is_last)
+                buffer.clear()
+            # If this is the last chunk, break the loop
+            if is_last:
+                create_speech_span.end()
+                break
 
     async def create_speech(
         self,
@@ -89,45 +128,28 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         )
         if not response.ok:
             raise Exception(f"ElevenLabs API returned {response.status} status code")
+        if self.experimental_streaming:
+            return SynthesisResult(
+                self.output_generator(
+                    response, chunk_size, create_speech_span
+                ),  # should be wav
+                lambda seconds: self.get_message_cutoff_from_voice_speed(
+                    message, seconds, self.words_per_minute
+                ),
+            )
+        else:
+            audio_data = await response.read()
+            create_speech_span.end()
+            convert_span = tracer.start_span(
+                f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.convert",
+            )
+            output_bytes_io = decode_mp3(audio_data)
 
-        async def output_generator(
-            response
-        ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
-            stream_reader = response.content
-            buffer = bytearray()
+            result = self.create_synthesis_result_from_wav(
+                file=output_bytes_io,
+                message=message,
+                chunk_size=chunk_size,
+            )
+            convert_span.end()
 
-            # Create a task to send the mp3 chunks to the PydubWorker's input queue in a separate loop
-            async def send_chunks():
-                async for chunk in stream_reader.iter_any():
-                    at_eof = stream_reader.at_eof()
-                    # Send the mp3 chunk and the flag to the PydubWorker's input queue
-                    self.pydub_worker.consume_nonblocking((chunk, at_eof))
-                    # If this is the last chunk, break the loop
-                    if at_eof:
-                        break
-
-            send_task = asyncio.create_task(send_chunks())
-
-            # Await the output queue of the PydubWorker and yield the wav chunks in another loop
-            while True:
-                # Get the wav chunk and the flag from the output queue of the PydubWorker
-                wav_chunk, is_last = await self.pydub_worker.output_queue.get()
-
-                buffer.extend(wav_chunk)
-
-                if len(buffer) >= chunk_size or is_last:
-                    yield SynthesisResult.ChunkResult(buffer, is_last)
-                    buffer.clear()
-                # If this is the last chunk, break the loop
-                if is_last:
-                    create_speech_span.end()
-                    break
-
-        
-
-        return SynthesisResult(
-            output_generator(response),  # should be wav
-            lambda seconds: self.get_message_cutoff_from_voice_speed(
-                message, seconds, 150
-            ),
-        )
+            return result

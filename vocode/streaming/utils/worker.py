@@ -1,19 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-import io
 import threading
 import janus
-import miniaudio
-import wave
 from typing import Any, Optional
 from typing import TypeVar, Generic
 import logging
-from pydub import AudioSegment
 
 
-from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.utils import convert_wav
 
 logger = logging.getLogger(__name__)
 
@@ -257,48 +251,3 @@ class InterruptibleAgentResponseWorker(
 ):
     pass
 
-class MiniaudioWorker(ThreadAsyncWorker):
-    def __init__(
-        self,
-        synthesizer_config: SynthesizerConfig,
-        input_queue: asyncio.Queue,
-        output_queue: asyncio.Queue = asyncio.Queue(),
-    ) -> None:
-        super().__init__(input_queue, output_queue)
-        self.synthesizer_config = synthesizer_config
-
-    def _run_loop(self):
-        while True:
-            # Get a tuple of (mp3_chunk, is_last) from the input queue
-            mp3_chunk, is_last = self.input_janus_queue.sync_q.get()
-
-            mp3_chunk = io.BytesIO(mp3_chunk)
-
-            # Convert it to a wav chunk using miniaudio
-            try:
-                wav_chunk = miniaudio.decode(mp3_chunk.read(), nchannels=1)
-            except miniaudio.DecodeError as e:
-                # How should I log this
-                logger.exception("MiniaudioWorker error: " + str(e), exc_info=True)
-                print("MiniaudioWorker error: ", e)
-                print("MP3 Chunk Size: ", mp3_chunk.getbuffer().nbytes)
-                continue
-
-            # Write wav_chunks.samples to io.BytesIO with builtin WAVE
-            output_bytes_io = io.BytesIO()
-
-            with wave.open(output_bytes_io, "wb") as wave_obj:
-                wave_obj.setnchannels(1)
-                wave_obj.setsampwidth(2)
-                wave_obj.setframerate(44100)
-                wave_obj.writeframes(wav_chunk.samples)
-            output_bytes_io.seek(0)
-
-
-            output_bytes_io = convert_wav(
-                output_bytes_io,
-                output_sample_rate=self.synthesizer_config.sampling_rate,
-                output_encoding=self.synthesizer_config.audio_encoding,
-            )
-            # Put a tuple of (wav_chunk, is_last) in the output queue
-            self.output_janus_queue.sync_q.put((output_bytes_io, is_last))
