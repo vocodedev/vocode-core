@@ -60,13 +60,16 @@ class PineconeDB(VectorDB):
             docs.append({"id": ids[i], "values": embedding, "metadata": metadata})
         # upsert to Pinecone
         async with self.aiohttp_session.post(
-            f"{self.pinecone_url}/upsert",
+            f"{self.pinecone_url}/vectors/upsert",
             headers={"Api-Key": self.pinecone_api_key},
             json={
                 "vectors": docs,
+                "namespace": namespace,
             },
         ) as response:
-            print(await response.text())
+            response_json = await response.json()
+            if "message" in response_json:
+                logger.error(f"Error upserting vectors: {response_json}")
 
         return ids
 
