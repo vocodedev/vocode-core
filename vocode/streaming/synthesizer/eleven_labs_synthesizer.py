@@ -55,6 +55,11 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             )
             self.pydub_worker.start()
 
+    async def tear_down(self):
+        await super().tear_down()
+        if self.experimental_streaming:
+            await self.pydub_worker.terminate()
+
     async def output_generator(
         self,
         response: aiohttp.ClientResponse,
