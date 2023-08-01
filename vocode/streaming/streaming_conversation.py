@@ -626,6 +626,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.logger.debug("Tearing down synthesizer")
         await self.synthesizer.tear_down()
         self.logger.debug("Terminating agent")
+        if (
+            hasattr(self.agent.agent_config, "vector_db_config")
+            and self.agent.agent_config.vector_db_config
+        ):
+            # Shutting down the vector db should be done in the agent's terminate method,
+            # but it is done here because `vector_db.tear_down()` is async and
+            # `agent.terminate()` is not async.
+            self.logger.debug("Terminating vector db")
+            await self.agent.vector_db.tear_down()
         self.agent.terminate()
         self.logger.debug("Terminating output device")
         self.output_device.terminate()
