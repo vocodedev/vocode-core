@@ -1,5 +1,5 @@
 import logging
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple
 import uuid
 from langchain.docstore.document import Document
 from vocode import getenv
@@ -73,7 +73,7 @@ class PineconeDB(VectorDB):
         query: str,
         filter: Optional[dict] = None,
         namespace: Optional[str] = None,
-    ):
+    ) -> List[Tuple[Document, float]]:
         """Return pinecone documents most similar to query, along with scores.
 
         Args:

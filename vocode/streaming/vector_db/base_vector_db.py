@@ -1,7 +1,8 @@
 import os
-from typing import List, Optional
+from typing import Iterable, List, Optional, Tuple
 import aiohttp
 import openai
+from langchain.docstore.document import Document
 
 DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-ada-002"
 
@@ -34,10 +35,21 @@ class VectorDB:
 
         return list((await openai.Embedding.acreate(**params))["data"][0]["embedding"])
 
-    async def add_texts(self):
+    async def add_texts(
+        self,
+        texts: Iterable[str],
+        metadatas: Optional[List[dict]] = None,
+        ids: Optional[List[str]] = None,
+        namespace: Optional[str] = None,
+    ) -> List[str]:
         raise NotImplementedError
 
-    async def similarity_search_with_score(self):
+    async def similarity_search_with_score(
+        self,
+        query: str,
+        filter: Optional[dict] = None,
+        namespace: Optional[str] = None,
+    ) -> List[Tuple[Document, float]]:
         raise NotImplementedError
 
     async def tear_down(self):
