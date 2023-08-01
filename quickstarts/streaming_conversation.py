@@ -27,8 +27,8 @@ async def main():
         microphone_input,
         speaker_output,
     ) = create_streaming_microphone_input_and_speaker_output(
-        use_default_devices=False,
-        logger=logger,
+        use_default_devices=False, logger=logger, 
+        use_blocking_speaker_output=True
     )
 
     conversation = StreamingConversation(

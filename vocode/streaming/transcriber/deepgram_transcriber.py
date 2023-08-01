@@ -10,6 +10,7 @@ from vocode import getenv
 
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
+    BaseThreadAsyncTranscriber,
     Transcription,
     meter,
 )
@@ -59,7 +60,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self._ended = False
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
-        self.audio_cursor = 0.
+        self.audio_cursor = 0.0
 
     async def _run_loop(self):
         restarts = 0
@@ -168,7 +169,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         return data["duration"]
 
     async def process(self):
-        self.audio_cursor = 0.
+        self.audio_cursor = 0.0
         extra_headers = {"Authorization": f"Token {self.api_key}"}
 
         async with websockets.connect(
@@ -178,7 +179,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             async def sender(ws: WebSocketClientProtocol):  # sends audio to websocket
                 while not self._ended:
                     try:
-                        data = await asyncio.wait_for(self.input_queue.get(), 5)
+                        data = await asyncio.wait_for(self.get_next_event(), 5)
                     except asyncio.exceptions.TimeoutError:
                         break
                     num_channels = 1
@@ -228,7 +229,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         buffer = f"{buffer} {top_choice['transcript']}"
 
                     if speech_final:
-                        self.output_queue.put_nowait(
+                        self.produce_nonblocking(
                             Transcription(
                                 message=buffer, confidence=confidence, is_final=True
                             )
@@ -236,7 +237,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         buffer = ""
                         time_silent = 0
                     elif top_choice["transcript"] and confidence > 0.0:
-                        self.output_queue.put_nowait(
+                        self.produce_nonblocking(
                             Transcription(
                                 message=buffer,
                                 confidence=confidence,

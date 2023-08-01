@@ -287,7 +287,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             except asyncio.CancelledError:
                 pass
 
-    class SynthesisResultsWorker(ThreadInterruptibleAgentResponseWorker):
+    class SynthesisResultsWorker(InterruptibleAgentResponseWorker):
         """Plays SynthesisResults from the output queue on the output device"""
 
         def __init__(
@@ -460,7 +460,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
             await self.synthesizer.set_filler_audios(self.filler_audio_config)
-        self.agent.start()
+        self.agent.start()  # sends the initial message
         self.agent.attach_transcript(self.transcript)
         if mark_ready:
             await mark_ready()

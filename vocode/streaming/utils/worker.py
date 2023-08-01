@@ -96,6 +96,12 @@ class ThreadAsyncWorker(AsyncWorker[WorkerInputType]):
     async def get_next_event(self) -> WorkerInputType:
         return self.input_janus_queue.sync_q.get()
 
+    def consume_nonblocking(self, item: WorkerInputType):
+        self.input_janus_queue.sync_q.put_nowait(item)
+
+    def produce_nonblocking(self, item):
+        self.output_janus_queue.sync_q.put_nowait(item)
+
     def terminate(self):
         super().terminate()
         self.loop.call_soon_threadsafe(self.loop_task.cancel)
