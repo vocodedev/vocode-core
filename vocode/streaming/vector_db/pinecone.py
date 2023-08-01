@@ -1,13 +1,9 @@
-import asyncio
 import logging
-from functools import partial
-from typing import Any, Iterable, List, Optional
+from typing import Iterable, List, Optional
 import uuid
-from langchain.vectorstores import Pinecone
 from langchain.docstore.document import Document
 from vocode import getenv
 from vocode.streaming.models.vector_db import PineconeConfig
-from langchain.embeddings.openai import OpenAIEmbeddings
 from vocode.streaming.vector_db.base_vector_db import VectorDB
 
 logger = logging.getLogger(__name__)
@@ -26,9 +22,7 @@ class PineconeDB(VectorDB):
         self.pinecone_url = (
             f"https://{self.index_name}.svc.{self.pinecone_environment}.pinecone.io"
         )
-        self.embeddings = OpenAIEmbeddings()  # type: ignore
         self._text_key = "text"
-        self._embedding_function = self.embeddings.embed_query
 
     async def add_texts(
         self,
@@ -55,7 +49,7 @@ class PineconeDB(VectorDB):
         docs = []
         ids = ids or [str(uuid.uuid4()) for _ in texts]
         for i, text in enumerate(texts):
-            embedding = self._embedding_function(text)
+            embedding = await self.create_openai_embedding(text)
             metadata = metadatas[i] if metadatas else {}
             metadata[self._text_key] = text
             docs.append({"id": ids[i], "values": embedding, "metadata": metadata})
@@ -93,7 +87,7 @@ class PineconeDB(VectorDB):
         # Adapted from: langchain/vectorstores/pinecone.py. Made langchain implementation async.
         if namespace is None:
             namespace = ""
-        query_obj = self._embedding_function(query)
+        query_obj = await self.create_openai_embedding(query)
         docs = []
         async with self.aiohttp_session.post(
             f"{self.pinecone_url}/query",
