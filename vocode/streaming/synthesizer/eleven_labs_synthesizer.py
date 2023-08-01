@@ -92,7 +92,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 yield SynthesisResult.ChunkResult(buffer, is_last)
                 buffer.clear()
             # If this is the last chunk, break the loop
-            if is_last:
+            if is_last and create_speech_span is not None:
                 create_speech_span.end()
                 break
 

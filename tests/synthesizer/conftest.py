@@ -40,21 +40,21 @@ def mock_eleven_labs_api():
 
 
 @pytest.fixture(scope="module")
-async def eleven_labs_synthesizer_with_api_key():
+async def fixture_eleven_labs_synthesizer_with_api_key():
     params = DEFAULT_PARAMS.copy()
     params["api_key"] = MOCK_API_KEY
     return ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
 
 
 @pytest.fixture(scope="module")
-async def eleven_labs_synthesizer_wrong_api_key():
+async def fixture_eleven_labs_synthesizer_wrong_api_key():
     params = DEFAULT_PARAMS.copy()
     params["api_key"] = "wrong_api_key"
     return ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
 
 
 @pytest.fixture(scope="module")
-async def eleven_labs_synthesizer_env_api_key():
+async def fixture_eleven_labs_synthesizer_env_api_key():
     params = DEFAULT_PARAMS.copy()
     import os
 

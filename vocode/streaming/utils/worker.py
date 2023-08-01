@@ -250,4 +250,3 @@ class InterruptibleAgentResponseWorker(
     InterruptibleWorker[InterruptibleAgentResponseEvent]
 ):
     pass
-
