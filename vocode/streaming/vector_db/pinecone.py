@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class PineconeDB(VectorDB):
-    def __init__(self, config: PineconeConfig) -> None:
-        super().__init__()
+    def __init__(self, config: PineconeConfig, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.config = config
 
         self.index_name = self.config.index
