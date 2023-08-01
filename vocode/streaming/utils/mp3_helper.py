@@ -4,12 +4,11 @@ import miniaudio
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.utils import convert_wav
 
+
 # sampling_rate is the rate of the input, not expected output
 def decode_mp3(mp3_bytes: bytes) -> io.BytesIO:
-    mp3_chunk = io.BytesIO(mp3_bytes)
-
     # Convert it to a wav chunk using miniaudio
-    wav_chunk = miniaudio.decode(mp3_chunk.read(), nchannels=1)
+    wav_chunk = miniaudio.decode(mp3_bytes, nchannels=1)
 
     # Write wav_chunks.samples to io.BytesIO with builtin WAVE
     output_bytes_io = io.BytesIO()

@@ -19,7 +19,7 @@ from vocode.streaming.models.synthesizer import (
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.utils.mp3_helper import decode_mp3
-from vocode.streaming.synthesizer.MiniaudioWorker import MiniaudioWorker
+from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 
 
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
@@ -108,6 +108,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 stability=self.stability, similarity_boost=self.similarity_boost
             )
         url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
+
+        if self.experimental_streaming:
+            url += "/stream"
+
         if self.optimize_streaming_latency:
             url += f"?optimize_streaming_latency={self.optimize_streaming_latency}"
         headers = {"xi-api-key": self.api_key}
