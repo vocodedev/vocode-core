@@ -149,7 +149,8 @@
         "configuring-number",
         "retrieve-call-data",
         "setting-up-webhook",
-        "using-actions"
+        "using-actions",
+        "vectordb"
       ]
     }
   ],
