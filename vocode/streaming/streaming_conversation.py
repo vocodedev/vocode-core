@@ -79,6 +79,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.interruptible_events.put_nowait(interruptible_event)
             return interruptible_event
 
+        def create_interruptible_agent_response_event(
+            self,
+            payload: Any,
+            is_interruptible: bool = True,
+            agent_response_tracker: Optional[asyncio.Event] = None,
+        ) -> InterruptibleAgentResponseEvent:
+            interruptible_event = super().create_interruptible_agent_response_event(
+                payload,
+                is_interruptible=is_interruptible,
+                agent_response_tracker=agent_response_tracker,
+            )
+            self.conversation.interruptible_events.put_nowait(interruptible_event)
+            return interruptible_event
+
     class TranscriptionsWorker(AsyncQueueWorker):
         """Processes all transcriptions: sends an interrupt if needed
         and sends final transcriptions to the output queue"""
