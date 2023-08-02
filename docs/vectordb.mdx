@@ -1,30 +1,74 @@
 ---
-title: "Vector Database"
-description: "Give your agents documents to guide their responses"
+title: "Vector databases"
+description: "Give your agents knowledge via embeddings"
 ---
 
 ## Introduction
 
-If you have a collection of documents that you want your agent to be able to pull information from,
-you can store their embeddings in a vector database. Then, each time the bot recieves a message,
-it will create an embeddfing of the user message and query the vector database for the most similar
-documents. These documents will be shown to the agent to guide its response to the user message.
+For many practical use cases it may be necessary to give bots information; but, due to limited
+context windows, there may not be enough room in the prompt. Thus, Vocode allows you to plug into
+vector databases that contain embeddings.
+
+Each time the bot receives a message, it can query for the most similar embeddings; these embeddings will
+be shown to the agent to guide its responses.
 
 Currently, we support [Pinecone](https://www.pinecone.io/). Under the hood, we use an approach similar
-to langchain to store the documents in pinecone. Each vector in pinecone must have two pieces of metadata
+to Langchain to store the documents in Pinecone. Each vector in Pinecone must have two pieces of metadata
 to be compatible with Vocode:
-    - `text`: The text that will be shown to the agent.
-    - `source`: The name of the document where the text comes from. This could be the title of an article,
-    for example.
 
-## Adding Documents to Pinecone
+- `text`: The text that will be shown to the agent.
+- `source`: The name of the document where the text comes from. This could be the title of an article,
+  for example.
 
-You can manaully add documents to pinecone any way you like as long as you include the required metadata.
+## Connecting to Pinecone
+
+To add your vector database to your agent, you need to add a vector database config to your agent:
+
+<CodeGroup>
+
+```python update_agent.py
+from vocode import PineconeVectorDatabaseUpdateParams
+
+agent = vocode_client.agents.update_agent(
+    id="AGENT_ID",
+    request=PineconeVectorDatabaseUpdateParams(
+        type="vector_database_pinecone",
+        index="PINECONE_INDEX",
+        api_key="PINECONE_API_KEY",
+        api_environment="PINECONE_API_ENVIRONMENT",
+    ),
+)
+```
+
+```javascript updateAgent.js
+const agent = await vocode.agents.updateAgent({
+  id: "AGENT_ID",
+  body: {
+    vector_database: {
+      type: "vector_database_pinecone",
+      index: "PINECONE_INDEX",
+      api_key: "PINECONE_API_KEY",
+      api_environment: "PINECONE_API_ENVIRONMENTr",
+    },
+  },
+});
+
+main();
+```
+
+</CodeGroup>
+
+Now your agent will query the vector database for each user message.
+
+## Document loading script
+
+You can manaully add documents to Pinecone any way you like as long as you include the required metadata.
 If you have a folder of PDFs, docx files, text files, etc. that you want to add to pinecone, you can use
 the below script which uses [Unstructured](https://github.com/Unstructured-IO/unstructured) to parse
 many kinds of files types, extract the text, and add it to pinecone.
 
 The script was tested with these package versions:
+
 ```
 python = "^3.10"
 langchain = "^0.0.237"
@@ -69,53 +113,3 @@ index_name = "your_index_name"
 print("Creating index...")
 docsearch = Pinecone.from_documents(docs, embeddings, index_name=index_name)
 ```
-
-## Configuring Your Agent
-
-To add your vector database to your agent, you need to add a vector database config to your agent:
-
-<CodeGroup>
-
-```javascript updateAgent.js
-import { VocodeClient } from '@vocode/vocode-api';
-
-const vocode = new VocodeClient({
-    token: 'baeadc4558ae060d367ed65bf0ad7914',
-    environment: 'https://api.vocode.dev/'
-});
-
-async function main() {
-    const agent = await vocode.agents.updateAgent(
-        {
-            "id": "6897c5a6-db0b-431c-a50d-913b087aa1f3",
-            "body": { "vector_database": { "type": "vector_database_pinecone", "index": "my-index-98a371d", "api_key": "45dd33fa-a072-4f01-b102-d490e3d78325", "api_environment": "gcp-starter" } }
-        }
-    )
-    console.log(agent);
-}
-
-main();
-```
-
-```python update_agent.py
-from vocode import PineconeVectorDatabaseUpdateParams
-from vocode.client import Vocode
-
-vocode_client = Vocode(
-    token="baeadc4558ae060d367ed65bf0ad7914", environment="https://api.vocode.dev/"
-)
-
-agent = vocode_client.agents.update_agent(
-    id="6897c5a6-db0b-431c-a50d-913b087aa1f3",
-    request=PineconeVectorDatabaseUpdateParams(
-        type="vector_database_pinecone",
-        index="my-index-98a371d",
-        api_key="45dd33fa-a072-4f01-b102-d490e3d78325",
-        api_environment="gcp-starter",
-    ),
-)
-```
-
-</CodeGroup>
-
-Now your agent will query the vector database for each user message.
