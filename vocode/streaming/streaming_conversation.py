@@ -173,8 +173,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def wait_for_filler_audio_to_finish(self):
             if (
-                self.filler_audio_started_event
-                and not self.filler_audio_started_event.set()
+                self.filler_audio_started_event is None
+                or not self.filler_audio_started_event.set()
             ):
                 self.conversation.logger.debug(
                     "Not waiting for filler audio to finish since we didn't send any chunks"
