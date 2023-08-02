@@ -1,4 +1,5 @@
 from __future__ import annotations
+import queue
 
 from typing import Optional, Tuple
 import asyncio
@@ -21,11 +22,15 @@ class MiniaudioWorker(ThreadAsyncWorker[QueueType]):
     ) -> None:
         super().__init__(input_queue, output_queue)
         self.synthesizer_config = synthesizer_config
+        self._ended = False
 
     def _run_loop(self):
-        while True:
+        while not self._ended:
             # Get a tuple of (mp3_chunk, is_last) from the input queue
-            mp3_chunk, is_last = self.input_janus_queue.sync_q.get()
+            try:
+                mp3_chunk, is_last = self.input_janus_queue.sync_q.get(timeout=1)
+            except queue.Empty:
+                continue
             if mp3_chunk is None:
                 self.output_janus_queue.sync_q.put((None, True))
                 continue
@@ -45,3 +50,7 @@ class MiniaudioWorker(ThreadAsyncWorker[QueueType]):
             )
             # Put a tuple of (wav_chunk, is_last) in the output queue
             self.output_janus_queue.sync_q.put((output_bytes_io, is_last))
+
+    def terminate(self):
+        self._ended = True
+        super().terminate()
