@@ -94,7 +94,7 @@ synthesizer_classes = {
 
 
 # These synthesizers stream output so they need to be traced within this file.
-STREAMING_SYNTHESIZERS = ["azure"]
+STREAMING_SYNTHESIZERS = ["azure", "elevenlabs"]
 
 
 TRANSCRIBER_CHOICES = ["deepgram", "assemblyai"]

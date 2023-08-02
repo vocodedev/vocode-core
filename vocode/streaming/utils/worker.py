@@ -7,6 +7,7 @@ from typing import Any, Optional
 from typing import TypeVar, Generic
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 WorkerInputType = TypeVar("WorkerInputType")
@@ -42,15 +43,15 @@ class AsyncWorker(Generic[WorkerInputType]):
         return False
 
 
-class ThreadAsyncWorker(AsyncWorker):
+class ThreadAsyncWorker(AsyncWorker[WorkerInputType]):
     def __init__(
         self,
-        input_queue: asyncio.Queue,
+        input_queue: asyncio.Queue[WorkerInputType],
         output_queue: asyncio.Queue = asyncio.Queue(),
     ) -> None:
         super().__init__(input_queue, output_queue)
         self.worker_thread: Optional[threading.Thread] = None
-        self.input_janus_queue: janus.Queue = janus.Queue()
+        self.input_janus_queue: janus.Queue[WorkerInputType] = janus.Queue()
         self.output_janus_queue: janus.Queue = janus.Queue()
 
     def start(self) -> asyncio.Task:
