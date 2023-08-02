@@ -1,20 +1,21 @@
+from typing import Optional, Tuple
+import asyncio
 import miniaudio
+
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.utils import convert_wav
 from vocode.streaming.utils.mp3_helper import decode_mp3
 from vocode.streaming.utils.worker import ThreadAsyncWorker, logger
 
-
-import asyncio
-import io
+QueueType = Tuple[Optional[bytes], bool]
 
 
-class MiniaudioWorker(ThreadAsyncWorker):
+class MiniaudioWorker(ThreadAsyncWorker[QueueType]):
     def __init__(
         self,
         synthesizer_config: SynthesizerConfig,
-        input_queue: asyncio.Queue,
-        output_queue: asyncio.Queue = asyncio.Queue(),
+        input_queue: asyncio.Queue[QueueType],
+        output_queue: asyncio.Queue[QueueType],
     ) -> None:
         super().__init__(input_queue, output_queue)
         self.synthesizer_config = synthesizer_config
@@ -23,6 +24,9 @@ class MiniaudioWorker(ThreadAsyncWorker):
         while True:
             # Get a tuple of (mp3_chunk, is_last) from the input queue
             mp3_chunk, is_last = self.input_janus_queue.sync_q.get()
+            if mp3_chunk is None:
+                self.output_janus_queue.sync_q.put((None, True))
+                continue
             try:
                 output_bytes_io = decode_mp3(
                     mp3_chunk,
@@ -30,7 +34,7 @@ class MiniaudioWorker(ThreadAsyncWorker):
             except miniaudio.DecodeError as e:
                 # How should I log this
                 logger.exception("MiniaudioWorker error: " + str(e), exc_info=True)
-                self.output_janus_queue.sync_q.put((io.BytesIO(), True))
+                self.output_janus_queue.sync_q.put((None, True))
                 continue
             output_bytes_io = convert_wav(
                 output_bytes_io,

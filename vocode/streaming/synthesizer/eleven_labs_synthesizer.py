@@ -50,15 +50,15 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
         # Create a PydubWorker instance as an attribute
         if self.experimental_streaming:
-            self.pydub_worker = MiniaudioWorker(
+            self.miniaudio_worker = MiniaudioWorker(
                 synthesizer_config, asyncio.Queue(), asyncio.Queue()
             )
-            self.pydub_worker.start()
+            self.miniaudio_worker.start()
 
     async def tear_down(self):
         await super().tear_down()
         if self.experimental_streaming:
-            await self.pydub_worker.terminate()
+            self.miniaudio_worker.terminate()
 
     async def output_generator(
         self,
@@ -72,21 +72,18 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         # Create a task to send the mp3 chunks to the PydubWorker's input queue in a separate loop
         async def send_chunks():
             async for chunk in stream_reader.iter_any():
-                at_eof = stream_reader.at_eof()
-                # Send the mp3 chunk and the flag to the PydubWorker's input queue
-                self.pydub_worker.consume_nonblocking((chunk, at_eof))
-                # If this is the last chunk, break the loop
-                if at_eof:
-                    break
+                self.miniaudio_worker.consume_nonblocking((chunk, False))
+            self.miniaudio_worker.consume_nonblocking((None, True))
 
         asyncio.create_task(send_chunks())
 
         # Await the output queue of the PydubWorker and yield the wav chunks in another loop
         while True:
             # Get the wav chunk and the flag from the output queue of the PydubWorker
-            wav_chunk, is_last = await self.pydub_worker.output_queue.get()
+            wav_chunk, is_last = await self.miniaudio_worker.output_queue.get()
 
-            buffer.extend(wav_chunk)
+            if wav_chunk is not None:
+                buffer.extend(wav_chunk)
 
             if len(buffer) >= chunk_size or is_last:
                 yield SynthesisResult.ChunkResult(buffer, is_last)
