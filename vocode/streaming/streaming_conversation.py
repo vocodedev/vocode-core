@@ -14,6 +14,7 @@ from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
+from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.transcript import Transcript, TranscriptCompleteEvent
 from vocode.streaming.models.message import BaseMessage
@@ -23,7 +24,7 @@ from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 
-from vocode.streaming.models.agent import FillerAudioConfig
+from vocode.streaming.models.agent import ChatGPTAgentConfig, FillerAudioConfig
 from vocode.streaming.models.synthesizer import (
     SentimentConfig,
 )
@@ -171,7 +172,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.filler_audio_started_event: Optional[threading.Event] = None
 
         async def wait_for_filler_audio_to_finish(self):
-            if not self.filler_audio_started_event.set():
+            if (
+                self.filler_audio_started_event is None
+                or not self.filler_audio_started_event.set()
+            ):
                 self.conversation.logger.debug(
                     "Not waiting for filler audio to finish since we didn't send any chunks"
                 )
@@ -179,10 +183,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             if self.interruptible_event and isinstance(
                 self.interruptible_event, InterruptibleAgentResponseEvent
             ):
-                await self.interruptible_event.agent_response_tracker()
+                await self.interruptible_event.agent_response_tracker.wait()
 
         def interrupt_current_filler_audio(self):
-            self.interruptible_event and self.interruptible_event.interrupt()
+            return self.interruptible_event and self.interruptible_event.interrupt()
 
         async def process(self, item: InterruptibleAgentResponseEvent[FillerAudio]):
             try:
@@ -641,7 +645,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         await self.synthesizer.tear_down()
         self.logger.debug("Terminating agent")
         if (
-            hasattr(self.agent.agent_config, "vector_db_config")
+            isinstance(self.agent, ChatGPTAgent)
             and self.agent.agent_config.vector_db_config
         ):
             # Shutting down the vector db should be done in the agent's terminate method,
