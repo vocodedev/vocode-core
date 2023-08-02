@@ -7,15 +7,13 @@ from vocode.streaming.utils import convert_wav
 from vocode.streaming.utils.mp3_helper import decode_mp3
 from vocode.streaming.utils.worker import ThreadAsyncWorker, logger
 
-QueueType = Tuple[Optional[bytes], bool]
 
-
-class MiniaudioWorker(ThreadAsyncWorker[QueueType]):
+class MiniaudioWorker(ThreadAsyncWorker[Tuple[Optional[bytes], bool]]):
     def __init__(
         self,
         synthesizer_config: SynthesizerConfig,
-        input_queue: asyncio.Queue[QueueType],
-        output_queue: asyncio.Queue[QueueType],
+        input_queue: asyncio.Queue[Tuple[Optional[bytes], bool]],
+        output_queue: asyncio.Queue[Tuple[Optional[bytes], bool]],
     ) -> None:
         super().__init__(input_queue, output_queue)
         self.synthesizer_config = synthesizer_config
