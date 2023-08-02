@@ -59,6 +59,8 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
             body["speed"] = self.synthesizer_config.speed
         if self.synthesizer_config.preset:
             body["preset"] = self.synthesizer_config.preset
+        if self.synthesizer_config.quality:
+            body["quality"] = self.synthesizer_config.quality            
 
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.create_total",
