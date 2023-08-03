@@ -25,6 +25,8 @@ class MiniaudioWorker(ThreadAsyncWorker[QueueType]):
         self._ended = False
 
     def _run_loop(self):
+        current_mp3_buffer = bytearray()
+        current_wav_buffer = bytearray()
         while not self._ended:
             # Get a tuple of (mp3_chunk, is_last) from the input queue
             try:
@@ -32,24 +34,29 @@ class MiniaudioWorker(ThreadAsyncWorker[QueueType]):
             except queue.Empty:
                 continue
             if mp3_chunk is None:
+                current_mp3_buffer.clear()
+                current_wav_buffer.clear()
                 self.output_janus_queue.sync_q.put((None, True))
                 continue
             try:
-                output_bytes_io = decode_mp3(
-                    mp3_chunk,
-                )
+                current_mp3_buffer.extend(mp3_chunk)
+                output_bytes = decode_mp3(bytes(current_mp3_buffer))
             except miniaudio.DecodeError as e:
                 # How should I log this
                 logger.exception("MiniaudioWorker error: " + str(e), exc_info=True)
                 self.output_janus_queue.sync_q.put((None, True))
                 continue
-            output_bytes_io = convert_wav(
-                output_bytes_io,
+            converted_output_bytes = convert_wav(
+                output_bytes,
                 output_sample_rate=self.synthesizer_config.sampling_rate,
                 output_encoding=self.synthesizer_config.audio_encoding,
             )
+            # take the difference between the current_wav_buffer and the converted_output_bytes
+            # and put the difference in the output queue
+            new_bytes = converted_output_bytes[len(current_wav_buffer) :]
             # Put a tuple of (wav_chunk, is_last) in the output queue
-            self.output_janus_queue.sync_q.put((output_bytes_io, is_last))
+            self.output_janus_queue.sync_q.put((new_bytes, is_last))
+            current_wav_buffer.extend(new_bytes)
 
     def terminate(self):
         self._ended = True

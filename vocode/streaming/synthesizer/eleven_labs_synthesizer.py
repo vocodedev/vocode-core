@@ -86,7 +86,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 buffer.extend(wav_chunk)
 
             if len(buffer) >= chunk_size or is_last:
-                yield SynthesisResult.ChunkResult(buffer, is_last)
+                yield SynthesisResult.ChunkResult(bytes(buffer), is_last)
                 buffer.clear()
             # If this is the last chunk, break the loop
             if is_last and create_speech_span is not None:
