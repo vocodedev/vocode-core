@@ -44,6 +44,7 @@ class TransferCall(
             os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"]
         )
 
+        # TODO: this is a blocking call, use aiohttp to do this asynchronously
         twilio_client.calls(twilio_call_sid).update(
             twiml="<Response><Dial>{to_phone}</Dial></Response>".format(
                 to_phone=self.action_config.to_phone
