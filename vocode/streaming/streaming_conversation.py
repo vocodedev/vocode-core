@@ -473,7 +473,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
             await self.synthesizer.set_filler_audios(self.filler_audio_config)
+
         self.agent.start()
+        initial_message = self.agent.get_agent_config().initial_message
+        if initial_message:
+            asyncio.create_task(self.send_initial_message(initial_message))
         self.agent.attach_transcript(self.transcript)
         if mark_ready:
             await mark_ready()
@@ -487,6 +491,21 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.check_for_idle_task = asyncio.create_task(self.check_for_idle())
         if len(self.events_manager.subscriptions) > 0:
             self.events_task = asyncio.create_task(self.events_manager.start())
+
+    async def send_initial_message(self, initial_message: BaseMessage):
+        # TODO: configure if initial message is interruptible
+        self.transcriber.mute()
+        initial_message_tracker = asyncio.Event()
+        agent_response_event = (
+            self.interruptible_event_factory.create_interruptible_agent_response_event(
+                AgentResponseMessage(message=initial_message),
+                is_interruptible=False,
+                agent_response_tracker=initial_message_tracker,
+            )
+        )
+        self.agent_responses_worker.consume_nonblocking(agent_response_event)
+        await initial_message_tracker.wait()
+        self.transcriber.unmute()
 
     async def check_for_idle(self):
         """Terminates the conversation after 15 seconds if no activity is detected"""

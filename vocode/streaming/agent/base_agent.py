@@ -176,14 +176,6 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
     ):
         self.conversation_state_manager = conversation_state_manager
 
-    def start(self):
-        super().start()
-        if self.agent_config.initial_message is not None:
-            self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=self.agent_config.initial_message),
-                is_interruptible=False,
-            )
-
     def set_interruptible_event_factory(self, factory: InterruptibleEventFactory):
         self.interruptible_event_factory = factory
 
