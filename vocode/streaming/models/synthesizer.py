@@ -166,6 +166,7 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.va
     voice_id: str = PLAYHT_DEFAULT_VOICE_ID
     speed: Optional[str] = None
     preset: Optional[str] = None
+    quality: Optional[str] = None
 
 
 class CoquiTTSSynthesizerConfig(
