@@ -184,11 +184,16 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 "styledegree", str(bot_sentiment.degree * 2)
             )  # Azure specific, it's a scale of 0-2
             voice_root = styled
-        silence = ElementTree.SubElement(
-            voice_root, "{%s}silence" % NAMESPACES.get("mstts")
-        )
-        silence.set("value", "500ms")
-        silence.set("type", "Tailing-exact")
+        # this ugly hack is necessary so we can limit the gap between sentences
+        # for normal sentences, it seems like the gap is > 500ms, so we're able to reduce it to 500ms
+        # for very tiny sentences, the API hangs - so we heuristically only update the silence gap
+        # if there is more than one word in the sentence
+        if " " in message:
+            silence = ElementTree.SubElement(
+                voice_root, "{%s}silence" % NAMESPACES.get("mstts")
+            )
+            silence.set("value", "500ms")
+            silence.set("type", "Tailing-exact")
         prosody = ElementTree.SubElement(voice_root, "prosody")
         prosody.set("pitch", f"{self.pitch}%")
         prosody.set("rate", f"{self.rate}%")
