@@ -69,7 +69,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         miniaudio_worker.start()
         stream_reader = response.content
 
-        # Create a task to send the mp3 chunks to the PydubWorker's input queue in a separate loop
+        # Create a task to send the mp3 chunks to the MiniaudioWorker's input queue in a separate loop
         async def send_chunks():
             async for chunk in stream_reader.iter_any():
                 miniaudio_worker.consume_nonblocking(chunk)
@@ -78,9 +78,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         try:
             asyncio.create_task(send_chunks())
 
-            # Await the output queue of the PydubWorker and yield the wav chunks in another loop
+            # Await the output queue of the MiniaudioWorker and yield the wav chunks in another loop
             while True:
-                # Get the wav chunk and the flag from the output queue of the PydubWorker
+                # Get the wav chunk and the flag from the output queue of the MiniaudioWorker
                 wav_chunk, is_last = await miniaudio_worker.output_queue.get()
 
                 yield SynthesisResult.ChunkResult(wav_chunk, is_last)
