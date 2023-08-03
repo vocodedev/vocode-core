@@ -32,6 +32,7 @@ class BlockingSpeakerOutput(BaseOutputDevice, ThreadAsyncWorker):
             device=int(self.device_info["index"]),
         )
         self._ended = False
+        self.input_queue.put_nowait(self.sampling_rate * b"\x00")
         self.stream.start()
 
     def start(self):
