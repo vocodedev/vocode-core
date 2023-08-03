@@ -184,6 +184,11 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 "styledegree", str(bot_sentiment.degree * 2)
             )  # Azure specific, it's a scale of 0-2
             voice_root = styled
+        silence = ElementTree.SubElement(
+            voice_root, "{%s}silence" % NAMESPACES.get("mstts")
+        )
+        silence.set("value", "500ms")
+        silence.set("type", "Tailing-exact")
         prosody = ElementTree.SubElement(voice_root, "prosody")
         prosody.set("pitch", f"{self.pitch}%")
         prosody.set("rate", f"{self.rate}%")
