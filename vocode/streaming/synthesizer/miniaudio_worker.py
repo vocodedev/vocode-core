@@ -17,11 +17,13 @@ class MiniaudioWorker(ThreadAsyncWorker[QueueType]):
     def __init__(
         self,
         synthesizer_config: SynthesizerConfig,
+        chunk_size: int,
         input_queue: asyncio.Queue[QueueType],
         output_queue: asyncio.Queue[QueueType],
     ) -> None:
         super().__init__(input_queue, output_queue)
         self.synthesizer_config = synthesizer_config
+        self.chunk_size = chunk_size
         self._ended = False
 
     def _run_loop(self):
@@ -54,8 +56,12 @@ class MiniaudioWorker(ThreadAsyncWorker[QueueType]):
             # take the difference between the current_wav_buffer and the converted_output_bytes
             # and put the difference in the output queue
             new_bytes = converted_output_bytes[len(current_wav_buffer) :]
-            # Put a tuple of (wav_chunk, is_last) in the output queue
-            self.output_janus_queue.sync_q.put((new_bytes, is_last))
+            # chunk up new_bytes in chunks of chunk_size bytes
+
+            for i in range(0, len(new_bytes), self.chunk_size):
+                chunk = new_bytes[i : i + self.chunk_size]
+                self.output_janus_queue.sync_q.put((chunk, False))
+
             current_wav_buffer.extend(new_bytes)
 
     def terminate(self):

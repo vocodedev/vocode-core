@@ -48,39 +48,32 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.words_per_minute = 150
         self.experimental_streaming = synthesizer_config.experimental_streaming
 
-        # Create a PydubWorker instance as an attribute
-        if self.experimental_streaming:
-            self.miniaudio_worker = MiniaudioWorker(
-                synthesizer_config, asyncio.Queue(), asyncio.Queue()
-            )
-            self.miniaudio_worker.start()
-
-    async def tear_down(self):
-        await super().tear_down()
-        if self.experimental_streaming:
-            self.miniaudio_worker.terminate()
-
     async def output_generator(
         self,
         response: aiohttp.ClientResponse,
         chunk_size: int,
         create_speech_span: Optional[Span],
     ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
+        # Create a PydubWorker instance as an attribute
+        miniaudio_worker = MiniaudioWorker(
+            self.synthesizer_config, chunk_size, asyncio.Queue(), asyncio.Queue()
+        )
+        miniaudio_worker.start()
         stream_reader = response.content
         buffer = bytearray()
 
         # Create a task to send the mp3 chunks to the PydubWorker's input queue in a separate loop
         async def send_chunks():
             async for chunk in stream_reader.iter_any():
-                self.miniaudio_worker.consume_nonblocking((chunk, False))
-            self.miniaudio_worker.consume_nonblocking((None, True))
+                miniaudio_worker.consume_nonblocking((chunk, False))
+            miniaudio_worker.consume_nonblocking((None, True))
 
         asyncio.create_task(send_chunks())
 
         # Await the output queue of the PydubWorker and yield the wav chunks in another loop
         while True:
             # Get the wav chunk and the flag from the output queue of the PydubWorker
-            wav_chunk, is_last = await self.miniaudio_worker.output_queue.get()
+            wav_chunk, is_last = await miniaudio_worker.output_queue.get()
 
             if wav_chunk is not None:
                 buffer.extend(wav_chunk)
@@ -92,6 +85,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             if is_last and create_speech_span is not None:
                 create_speech_span.end()
                 break
+        miniaudio_worker.terminate()
 
     async def create_speech(
         self,
