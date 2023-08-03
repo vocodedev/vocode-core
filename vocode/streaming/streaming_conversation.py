@@ -124,11 +124,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
             if (
                 not self.conversation.is_human_speaking
-                and transcription.confidence
-                >= (
-                    self.conversation.transcriber.get_transcriber_config().min_interrupt_confidence
-                    or 0
-                )
+                and self.conversation.is_interrupt(transcription)
             ):
                 self.conversation.current_transcription_is_interrupt = (
                     self.conversation.broadcast_interrupt()
@@ -556,6 +552,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent.cancel_current_task()
         self.agent_responses_worker.cancel_current_task()
         return num_interrupts > 0
+
+    def is_interrupt(self, transcription: Transcription):
+        return transcription.confidence >= (
+            self.transcriber.get_transcriber_config().min_interrupt_confidence or 0
+        )
 
     async def send_speech_to_output(
         self,
