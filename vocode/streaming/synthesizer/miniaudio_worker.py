@@ -72,7 +72,9 @@ class MiniaudioWorker(ThreadAsyncWorker[Union[bytes, None]]):
                 chunk = current_wav_output_buffer[
                     output_buffer_idx : output_buffer_idx + self.chunk_size
                 ]
-                self.output_janus_queue.sync_q.put((chunk, False))
+                self.output_janus_queue.sync_q.put(
+                    (chunk, False)
+                )  # don't need to use bytes() since we already sliced it (which is a copy)
                 output_buffer_idx += self.chunk_size
 
             current_wav_output_buffer = current_wav_output_buffer[output_buffer_idx:]
