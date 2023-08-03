@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, Tuple, Union
 import wave
 import aiohttp
 from opentelemetry.trace import Span
@@ -48,50 +48,50 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.words_per_minute = 150
         self.experimental_streaming = synthesizer_config.experimental_streaming
 
-        # Create a PydubWorker instance as an attribute
-        if self.experimental_streaming:
-            self.miniaudio_worker = MiniaudioWorker(
-                synthesizer_config, asyncio.Queue(), asyncio.Queue()
-            )
-            self.miniaudio_worker.start()
-
-    async def tear_down(self):
-        await super().tear_down()
-        if self.experimental_streaming:
-            self.miniaudio_worker.terminate()
-
-    async def output_generator(
+    async def experimental_streaming_output_generator(
         self,
         response: aiohttp.ClientResponse,
         chunk_size: int,
         create_speech_span: Optional[Span],
     ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
+        miniaudio_worker_input_queue: asyncio.Queue[
+            Union[bytes, None]
+        ] = asyncio.Queue()
+        miniaudio_worker_output_queue: asyncio.Queue[
+            Tuple[bytes, bool]
+        ] = asyncio.Queue()
+        miniaudio_worker = MiniaudioWorker(
+            self.synthesizer_config,
+            chunk_size,
+            miniaudio_worker_input_queue,
+            miniaudio_worker_output_queue,
+        )
+        miniaudio_worker.start()
         stream_reader = response.content
-        buffer = bytearray()
 
-        # Create a task to send the mp3 chunks to the PydubWorker's input queue in a separate loop
+        # Create a task to send the mp3 chunks to the MiniaudioWorker's input queue in a separate loop
         async def send_chunks():
             async for chunk in stream_reader.iter_any():
-                self.miniaudio_worker.consume_nonblocking((chunk, False))
-            self.miniaudio_worker.consume_nonblocking((None, True))
+                miniaudio_worker.consume_nonblocking(chunk)
+            miniaudio_worker.consume_nonblocking(None)  # sentinel
 
-        asyncio.create_task(send_chunks())
+        try:
+            asyncio.create_task(send_chunks())
 
-        # Await the output queue of the PydubWorker and yield the wav chunks in another loop
-        while True:
-            # Get the wav chunk and the flag from the output queue of the PydubWorker
-            wav_chunk, is_last = await self.miniaudio_worker.output_queue.get()
+            # Await the output queue of the MiniaudioWorker and yield the wav chunks in another loop
+            while True:
+                # Get the wav chunk and the flag from the output queue of the MiniaudioWorker
+                wav_chunk, is_last = await miniaudio_worker.output_queue.get()
 
-            if wav_chunk is not None:
-                buffer.extend(wav_chunk)
-
-            if len(buffer) >= chunk_size or is_last:
-                yield SynthesisResult.ChunkResult(buffer, is_last)
-                buffer.clear()
-            # If this is the last chunk, break the loop
-            if is_last and create_speech_span is not None:
-                create_speech_span.end()
-                break
+                yield SynthesisResult.ChunkResult(wav_chunk, is_last)
+                # If this is the last chunk, break the loop
+                if is_last and create_speech_span is not None:
+                    create_speech_span.end()
+                    break
+        except asyncio.CancelledError:
+            pass
+        finally:
+            miniaudio_worker.terminate()
 
     async def create_speech(
         self,
@@ -136,7 +136,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             raise Exception(f"ElevenLabs API returned {response.status} status code")
         if self.experimental_streaming:
             return SynthesisResult(
-                self.output_generator(
+                self.experimental_streaming_output_generator(
                     response, chunk_size, create_speech_span
                 ),  # should be wav
                 lambda seconds: self.get_message_cutoff_from_voice_speed(
