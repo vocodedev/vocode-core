@@ -638,10 +638,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if started_event:
                     started_event.set()
             self.output_device.consume_nonblocking(chunk_result.chunk)
-            if transcript_message:
-                transcript_message.text = synthesis_result.get_message_up_to(
-                    seconds_spoken
-                )
             end_time = time.time()
             await asyncio.sleep(
                 max(
@@ -657,6 +653,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.mark_last_action_timestamp()
             chunk_idx += 1
             seconds_spoken += seconds_per_chunk
+            if transcript_message:
+                transcript_message.text = synthesis_result.get_message_up_to(
+                    seconds_spoken
+                )
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()
