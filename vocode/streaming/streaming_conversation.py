@@ -660,6 +660,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()
+        if transcript_message:
+            transcript_message.text = message_sent
         return message_sent, cut_off
 
     def mark_terminated(self):
