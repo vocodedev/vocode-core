@@ -19,6 +19,7 @@ from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import (
     ActionFinish,
     ActionStart,
+    EventLog,
     Message,
     Transcript,
 )
@@ -118,7 +119,7 @@ def format_openai_chat_messages_from_transcript(
         [{"role": "system", "content": prompt_preamble}] if prompt_preamble else []
     )
 
-    new_event_logs = []
+    new_event_logs: List[EventLog] = []
     idx = 0
     while idx < len(transcript.event_logs):
         event_log_queue = []
