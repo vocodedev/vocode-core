@@ -224,7 +224,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 agent_span_first.end()
                 is_first_response = False
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message_id=response_id, message=BaseMessage(text=response)),
+                AgentResponseMessage(
+                    message_id=response_id, message=BaseMessage(text=response)
+                ),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
         # TODO: implement should_stop for generate_responses
@@ -250,7 +252,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             return True
         if response:
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=response)),
+                AgentResponseMessage(
+                    message_id=str(uuid.uuid4()), message=BaseMessage(text=response)
+                ),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
             return should_stop
@@ -355,7 +359,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             user_message = params["user_message"]
             user_message_tracker = asyncio.Event()
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=user_message)),
+                AgentResponseMessage(
+                    message_id=str(uuid.uuid4()), message=BaseMessage(text=user_message)
+                ),
                 agent_response_tracker=user_message_tracker,
             )
         action_input: ActionInput

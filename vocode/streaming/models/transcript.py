@@ -1,5 +1,6 @@
 import time
 from typing import Any, Dict, List, Optional, Union
+import typing
 from pydantic import BaseModel, Field
 from enum import Enum
 from vocode.streaming.models.actions import ActionInput, ActionOutput
@@ -78,7 +79,8 @@ class Transcript(BaseModel):
     ):
         if (
             self.event_logs
-            and (last_event := self.event_logs[-1]).sender == Sender.BOT
+            and (last_event := typing.cast(Message, self.event_logs[-1])).sender
+            == Sender.BOT
             and message_id
             and last_event.message_id == message_id
         ):
