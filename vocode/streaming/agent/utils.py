@@ -116,7 +116,28 @@ def format_openai_chat_messages_from_transcript(
     chat_messages: List[Dict[str, Optional[Any]]] = (
         [{"role": "system", "content": prompt_preamble}] if prompt_preamble else []
     )
-    for event_log in transcript.event_logs:
+
+    new_event_logs = []
+    idx = 0
+    while idx < len(transcript.event_logs):
+        event_log_queue = []
+        current_log = transcript.event_logs[idx]
+        while isinstance(current_log, Message) and current_log.sender == Sender.BOT:
+            event_log_queue.append(current_log)
+            idx += 1
+            try:
+                current_log = transcript.event_logs[idx]
+            except IndexError:
+                break
+        if event_log_queue:
+            last_message = event_log_queue[-1]
+            last_message.text = " ".join([x.text for x in event_log_queue])
+            new_event_logs.append(last_message)
+        else:
+            new_event_logs.append(current_log)
+            idx += 1
+
+    for event_log in new_event_logs:
         if isinstance(event_log, Message):
             chat_messages.append(
                 {
