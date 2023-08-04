@@ -275,11 +275,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     item.agent_response_tracker.set()
                     await self.conversation.terminate()
                     return
-                # if isinstance(agent_response, AgentResponseMessage):
-                #     self.conversation.transcript.add_bot_message(
-                #         text=agent_response.message.text,
-                #         conversation_id=self.conversation.id,
-                #     )
 
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
