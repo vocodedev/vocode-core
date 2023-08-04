@@ -1,6 +1,5 @@
 import time
 from typing import Any, Dict, List, Optional, Union
-import typing
 from pydantic import BaseModel, Field
 from enum import Enum
 from vocode.streaming.models.actions import ActionInput, ActionOutput
@@ -18,7 +17,6 @@ class EventLog(BaseModel):
 
 
 class Message(EventLog):
-    message_id: Optional[str]
     text: str
 
     def to_string(self, include_timestamp: bool = False) -> str:
@@ -75,23 +73,9 @@ class Transcript(BaseModel):
         text: str,
         sender: Sender,
         conversation_id: str,
-        message_id: Optional[str] = None,
     ):
-        if (
-            self.event_logs
-            and (last_event := typing.cast(Message, self.event_logs[-1])).sender
-            == Sender.BOT
-            and message_id
-            and last_event.message_id == message_id
-        ):
-            last_event.text += f" {text}"
-        else:
-            timestamp = time.time()
-            self.event_logs.append(
-                Message(
-                    text=text, sender=sender, timestamp=timestamp, message_id=message_id
-                )
-            )
+        timestamp = time.time()
+        self.event_logs.append(Message(text=text, sender=sender, timestamp=timestamp))
         if self.events_manager is not None:
             self.events_manager.publish_event(
                 TranscriptEvent(
@@ -109,12 +93,11 @@ class Transcript(BaseModel):
             conversation_id=conversation_id,
         )
 
-    def add_bot_message(self, text: str, conversation_id: str, message_id: str):
+    def add_bot_message(self, text: str, conversation_id: str):
         self.add_message(
             text=text,
             sender=Sender.BOT,
             conversation_id=conversation_id,
-            message_id=message_id,
         )
 
     def get_last_user_message(self):

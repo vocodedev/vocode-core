@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 from typing import Dict
-import uuid
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils.worker import (
     InterruptibleAgentResponseEvent,
@@ -70,8 +69,7 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
 
         if isinstance(message, WebSocketAgentTextMessage):
             agent_response = AgentResponseMessage(
-                message_id=str(uuid.uuid4()),
-                message=BaseMessage(text=message.data.text),
+                message=BaseMessage(text=message.data.text)
             )
         elif isinstance(message, WebSocketAgentStopMessage):
             agent_response = AgentResponseStop()

@@ -1,6 +1,5 @@
 import asyncio
 from typing import TYPE_CHECKING, Optional
-import uuid
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import EndpointingConfig
 from vocode.streaming.agent.base_agent import AgentResponseMessage
@@ -46,7 +45,6 @@ class ConversationStateManager:
         agent_response_tracker = asyncio.Event()
         self._conversation.agent.produce_interruptible_agent_response_event_nonblocking(
             item=AgentResponseMessage(
-                message_id=str(uuid.uuid4()),
                 message=message,
                 is_interruptible=False,
             ),

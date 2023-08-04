@@ -274,7 +274,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.transcript.add_bot_message(
                         text=agent_response.message.text,
                         conversation_id=self.conversation.id,
-                        message_id=agent_response.message_id,
                     )
 
                 agent_response_message = typing.cast(
@@ -499,7 +498,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         initial_message_tracker = asyncio.Event()
         agent_response_event = (
             self.interruptible_event_factory.create_interruptible_agent_response_event(
-                AgentResponseMessage(message=initial_message, message_id="initial_message"),
+                AgentResponseMessage(message=initial_message),
                 is_interruptible=False,
                 agent_response_tracker=initial_message_tracker,
             )

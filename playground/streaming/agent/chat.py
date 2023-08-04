@@ -93,7 +93,7 @@ async def run_agent(agent: BaseAgent):
                     agent_response = typing.cast(AgentResponseMessage, response)
 
                     agent.transcript.add_bot_message(
-                        agent_response.message.text, conversation_id, agent_response.message_id
+                        agent_response.message.text, conversation_id
                     )
                     print(
                         "AI: "

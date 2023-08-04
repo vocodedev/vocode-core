@@ -16,7 +16,6 @@ from typing import (
     TYPE_CHECKING,
 )
 import typing
-import uuid
 from opentelemetry import trace
 from opentelemetry.trace import Span
 from vocode.streaming.action.factory import ActionFactory
@@ -91,7 +90,6 @@ class AgentResponse(TypedModel, type=AgentResponseType.BASE.value):
 
 
 class AgentResponseMessage(AgentResponse, type=AgentResponseType.MESSAGE.value):
-    message_id: str
     message: BaseMessage
     is_interruptible: bool = True
 
@@ -208,7 +206,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         agent_span_first = tracer.start_span(
             f"{tracer_name_start}.generate_first"  # type: ignore
         )
-        response_id = str(uuid.uuid4())
         responses = self.generate_response(
             transcription.message,
             is_interrupt=transcription.is_interrupt,
@@ -224,9 +221,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 agent_span_first.end()
                 is_first_response = False
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(
-                    message_id=response_id, message=BaseMessage(text=response)
-                ),
+                AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
         # TODO: implement should_stop for generate_responses
@@ -252,9 +247,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             return True
         if response:
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(
-                    message_id=str(uuid.uuid4()), message=BaseMessage(text=response)
-                ),
+                AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
             return should_stop
@@ -359,9 +352,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             user_message = params["user_message"]
             user_message_tracker = asyncio.Event()
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(
-                    message_id=str(uuid.uuid4()), message=BaseMessage(text=user_message)
-                ),
+                AgentResponseMessage(message=BaseMessage(text=user_message)),
                 agent_response_tracker=user_message_tracker,
             )
         action_input: ActionInput
