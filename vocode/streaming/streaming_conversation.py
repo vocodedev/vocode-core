@@ -320,6 +320,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         ):
             try:
                 message, synthesis_result = item.payload
+                # create an empty transcript message and attach it to the transcript
                 transcript_message = Message(
                     text="",
                     sender=Sender.BOT,
@@ -336,6 +337,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
                     transcript_message=transcript_message,
                 )
+                # publish the transcript message now that it includes what was said during send_speech_to_output
                 self.conversation.transcript.maybe_publish_transcript_event_from_message(
                     message=transcript_message,
                     conversation_id=self.conversation.id,
@@ -599,6 +601,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
     ):
         """
         - Sends the speech chunk by chunk to the output device
+          - update the transcript message as chunks come in (transcript_message is always provided for non filler audio utterances)
         - If the stop_event is set, the output is stopped
         - Sets started_event when the first chunk is sent
 
