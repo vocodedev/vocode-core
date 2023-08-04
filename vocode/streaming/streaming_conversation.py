@@ -325,12 +325,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
         ):
             try:
                 message, synthesis_result = item.payload
-                empty_transcript_message = Message(
+                transcript_message = Message(
                     text="",
                     sender=Sender.BOT,
                 )
                 self.conversation.transcript.add_message(
-                    message=empty_transcript_message,
+                    message=transcript_message,
                     conversation_id=self.conversation.id,
                     publish_to_events_manager=False,
                 )
@@ -339,7 +339,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     synthesis_result,
                     item.interruption_event,
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
-                    transcript_message=empty_transcript_message,
+                    transcript_message=transcript_message,
+                )
+                self.conversation.transcript.maybe_publish_transcript_event_from_message(
+                    message=transcript_message,
+                    conversation_id=self.conversation.id,
                 )
                 item.agent_response_tracker.set()
                 self.conversation.logger.debug("Message sent: {}".format(message_sent))
