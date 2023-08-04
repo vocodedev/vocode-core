@@ -16,7 +16,12 @@ from vocode.streaming.agent.bot_sentiment_analyser import (
 )
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.models.actions import ActionInput
-from vocode.streaming.models.transcript import Transcript, TranscriptCompleteEvent
+from vocode.streaming.models.events import Sender
+from vocode.streaming.models.transcript import (
+    Message,
+    Transcript,
+    TranscriptCompleteEvent,
+)
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
@@ -270,11 +275,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     item.agent_response_tracker.set()
                     await self.conversation.terminate()
                     return
-                if isinstance(agent_response, AgentResponseMessage):
-                    self.conversation.transcript.add_bot_message(
-                        text=agent_response.message.text,
-                        conversation_id=self.conversation.id,
-                    )
+                # if isinstance(agent_response, AgentResponseMessage):
+                #     self.conversation.transcript.add_bot_message(
+                #         text=agent_response.message.text,
+                #         conversation_id=self.conversation.id,
+                #     )
 
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
@@ -320,19 +325,26 @@ class StreamingConversation(Generic[OutputDeviceType]):
         ):
             try:
                 message, synthesis_result = item.payload
+                empty_transcript_message = Message(
+                    text="",
+                    sender=Sender.BOT,
+                )
+                self.conversation.transcript.add_message(
+                    message=empty_transcript_message,
+                    conversation_id=self.conversation.id,
+                    publish_to_events_manager=False,
+                )
                 message_sent, cut_off = await self.conversation.send_speech_to_output(
                     message.text,
                     synthesis_result,
                     item.interruption_event,
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
+                    transcript_message=empty_transcript_message,
                 )
                 item.agent_response_tracker.set()
                 self.conversation.logger.debug("Message sent: {}".format(message_sent))
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(
-                        message_sent
-                    )
-                    self.conversation.transcript.update_last_bot_message_on_cut_off(
                         message_sent
                     )
                 if self.conversation.agent.agent_config.end_conversation_on_goodbye:
@@ -583,6 +595,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         synthesis_result: SynthesisResult,
         stop_event: threading.Event,
         seconds_per_chunk: int,
+        transcript_message: Optional[Message] = None,
         started_event: Optional[threading.Event] = None,
     ):
         """
@@ -606,25 +619,30 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.synthesizer.get_synthesizer_config().sampling_rate,
         )
         chunk_idx = 0
+        seconds_spoken = 0
         async for chunk_result in synthesis_result.chunk_generator:
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
                 len(chunk_result.chunk) / chunk_size
             )
+            seconds_spoken = chunk_idx * seconds_per_chunk
             if stop_event.is_set():
-                seconds = chunk_idx * seconds_per_chunk
                 self.logger.debug(
                     "Interrupted, stopping text to speech after {} chunks".format(
                         chunk_idx
                     )
                 )
-                message_sent = f"{synthesis_result.get_message_up_to(seconds)}-"
+                message_sent = f"{synthesis_result.get_message_up_to(seconds_spoken)}-"
                 cut_off = True
                 break
             if chunk_idx == 0:
                 if started_event:
                     started_event.set()
             self.output_device.consume_nonblocking(chunk_result.chunk)
+            if transcript_message:
+                transcript_message.text = synthesis_result.get_message_up_to(
+                    seconds_spoken
+                )
             end_time = time.time()
             await asyncio.sleep(
                 max(
@@ -639,6 +657,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.mark_last_action_timestamp()
             chunk_idx += 1
+            seconds_spoken += seconds_per_chunk
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()
