@@ -499,7 +499,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         initial_message_tracker = asyncio.Event()
         agent_response_event = (
             self.interruptible_event_factory.create_interruptible_agent_response_event(
-                AgentResponseMessage(message=initial_message),
+                AgentResponseMessage(message=initial_message, message_id="initial_message"),
                 is_interruptible=False,
                 agent_response_tracker=initial_message_tracker,
             )
