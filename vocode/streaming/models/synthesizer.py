@@ -171,7 +171,7 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.va
     quality: Optional[str] = PLAYHT_DEFAULT_QUALITY
     output_format: Optional[str]  = PLAYHT_DEFAULT_OUTPUT_FORMAT
     speed: Optional[int]  = PLAYHT_DEFAULT_SPEED
-    sampling_rate: Optional[int] = PLAYHT_DEFAULT_RATE
+    sampling_rate: int = PLAYHT_DEFAULT_RATE
     seed: Optional[int] = None
     temperature: Optional[int] = None
 
