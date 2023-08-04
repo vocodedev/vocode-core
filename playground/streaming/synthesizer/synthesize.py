@@ -7,9 +7,9 @@ from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
     GoogleSynthesizerConfig,
+    PlayHtSynthesizerConfig,
     ElevenLabsSynthesizerConfig,
     RimeSynthesizerConfig,
-    PlayHtSynthesizerConfig,
 )
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.output_device.speaker_output import SpeakerOutput
@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
     speaker_output = SpeakerOutput.from_default_device()
 
-    # Replace the synthesizer you want to test
+    # replace with synthesizer you want to test
     # Note: --trace will not work with AzureSynthesizer
     synthesizer = PlayHtSynthesizer(
         PlayHtSynthesizerConfig.from_output_device(speaker_output)
