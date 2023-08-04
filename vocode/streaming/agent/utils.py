@@ -1,3 +1,4 @@
+from copy import deepcopy
 import re
 from typing import (
     Dict,
@@ -130,7 +131,7 @@ def format_openai_chat_messages_from_transcript(
             except IndexError:
                 break
         if event_log_queue:
-            last_message = event_log_queue[-1]
+            last_message = deepcopy(event_log_queue[-1])
             last_message.text = " ".join([x.text for x in event_log_queue])
             new_event_logs.append(last_message)
         else:
