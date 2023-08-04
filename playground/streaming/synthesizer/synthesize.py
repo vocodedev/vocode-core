@@ -1,13 +1,15 @@
 import time
 import argparse
 from typing import Optional
+import aiohttp
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
     GoogleSynthesizerConfig,
-    PlayHtSynthesizerConfig,
+    ElevenLabsSynthesizerConfig,
     RimeSynthesizerConfig,
+    PlayHtSynthesizerConfig,
 )
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.output_device.speaker_output import SpeakerOutput
@@ -38,6 +40,8 @@ if __name__ == "__main__":
             synthesizer.get_synthesizer_config().audio_encoding,
             synthesizer.get_synthesizer_config().sampling_rate,
         )
+        # ClientSession needs to be created within the async task
+        synthesizer.aiohttp_session = aiohttp.ClientSession()
         synthesis_result = await synthesizer.create_speech(
             message=message,
             chunk_size=chunk_size,
@@ -88,12 +92,13 @@ if __name__ == "__main__":
                 print("Message sent: ", message_sent)
         except KeyboardInterrupt:
             print("Interrupted, exiting")
+        await synthesizer.tear_down()
 
     speaker_output = SpeakerOutput.from_default_device()
 
-    # replace with the synthesizer you want to test
+    # Replace the synthesizer you want to test
     # Note: --trace will not work with AzureSynthesizer
-    synthesizer = AzureSynthesizer(
-        AzureSynthesizerConfig.from_output_device(speaker_output)
+    synthesizer = PlayHtSynthesizer(
+        PlayHtSynthesizerConfig.from_output_device(speaker_output)
     )
     asyncio.run(main())

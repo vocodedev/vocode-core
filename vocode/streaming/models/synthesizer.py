@@ -160,13 +160,20 @@ class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value
 
 
 PLAYHT_DEFAULT_VOICE_ID = "larry"
+PLAYHT_DEFAULT_QUALITY = "medium"
+PLAYHT_DEFAULT_OUTPUT_FORMAT = "mp3"
+PLAYHT_DEFAULT_SPEED = 1
+PLAYHT_DEFAULT_RATE = 24000
 
 
 class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.value):
     voice_id: str = PLAYHT_DEFAULT_VOICE_ID
-    speed: Optional[str] = None
-    preset: Optional[str] = None
-    quality: Optional[str] = None
+    quality: Optional[str] = PLAYHT_DEFAULT_QUALITY
+    output_format: Optional[str]  = PLAYHT_DEFAULT_OUTPUT_FORMAT
+    speed: Optional[int]  = PLAYHT_DEFAULT_SPEED
+    sampling_rate: Optional[int] = PLAYHT_DEFAULT_RATE
+    seed: Optional[int] = None
+    temperature: Optional[int] = None
 
 
 class CoquiTTSSynthesizerConfig(

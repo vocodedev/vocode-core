@@ -1,7 +1,8 @@
+import asyncio
 import io
 import logging
 from typing import Optional
-import aiohttp
+from aiohttp import ClientSession, ClientTimeout
 from pydub import AudioSegment
 
 import requests
@@ -27,8 +28,9 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
         api_key: Optional[str] = None,
         user_id: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
-        aiohttp_session: Optional[aiohttp.ClientSession] = None,
+        aiohttp_session: Optional[ClientSession] = None,
     ):
+        print(api_key, user_id)
         super().__init__(synthesizer_config, aiohttp_session)
         self.synthesizer_config = synthesizer_config
         self.api_key = api_key or getenv("PLAY_HT_API_KEY")
@@ -53,37 +55,40 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
         body = {
             "voice": self.synthesizer_config.voice_id,
             "text": message.text,
+            "quality": self.synthesizer_config.quality,
+            "output_format": self.synthesizer_config.output_format,
             "sample_rate": self.synthesizer_config.sampling_rate,
         }
         if self.synthesizer_config.speed:
             body["speed"] = self.synthesizer_config.speed
-        if self.synthesizer_config.preset:
-            body["preset"] = self.synthesizer_config.preset
-        if self.synthesizer_config.quality:
-            body["quality"] = self.synthesizer_config.quality            
+        if self.synthesizer_config.seed:
+            body["seed"] = self.synthesizer_config.seed
+        if self.synthesizer_config.temperature:
+            body["temperature"] = self.synthesizer_config.temperature
 
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.create_total",
         )
-        async with self.aiohttp_session.request(
-            url=TTS_ENDPOINT,
-            method="POST",
+
+        async with self.aiohttp_session.post(
+            TTS_ENDPOINT,
             headers=headers,
             json=body,
-            timeout=aiohttp.ClientTimeout(total=15),
+            timeout=ClientTimeout(total=15)
         ) as response:
             if not response.ok:
                 raise Exception(
-                    f"Play.ht API error: {response.status}, {response.text}"
+                    f"Play.ht API error status code {response.status}"
                 )
             read_response = await response.read()
             create_speech_span.end()
             convert_span = tracer.start_span(
                 f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.convert",
             )
-            # TODO: probably needs to be in a thread
-            audio_segment: AudioSegment = AudioSegment.from_mp3(
-                io.BytesIO(read_response)  # type: ignore
+            # Run the conversion from MP3 in a separate thread
+            loop = asyncio.get_event_loop()
+            audio_segment = await loop.run_in_executor(
+                None, lambda: AudioSegment.from_mp3(io.BytesIO(read_response))  # type: ignore
             )
 
             output_bytes_io = io.BytesIO()
