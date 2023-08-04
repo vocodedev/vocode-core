@@ -274,6 +274,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.transcript.add_bot_message(
                         text=agent_response.message.text,
                         conversation_id=self.conversation.id,
+                        message_id=agent_response.message_id,
                     )
 
                 agent_response_message = typing.cast(

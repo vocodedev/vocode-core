@@ -16,6 +16,7 @@ from typing import (
     TYPE_CHECKING,
 )
 import typing
+import uuid
 from opentelemetry import trace
 from opentelemetry.trace import Span
 from vocode.streaming.action.factory import ActionFactory
@@ -90,6 +91,7 @@ class AgentResponse(TypedModel, type=AgentResponseType.BASE.value):
 
 
 class AgentResponseMessage(AgentResponse, type=AgentResponseType.MESSAGE.value):
+    message_id: str
     message: BaseMessage
     is_interruptible: bool = True
 
@@ -180,7 +182,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
         super().start()
         if self.agent_config.initial_message is not None:
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=self.agent_config.initial_message),
+                AgentResponseMessage(message=self.agent_config.initial_message, message_id="initial_message"),
                 is_interruptible=False,
             )
 
@@ -214,6 +216,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         agent_span_first = tracer.start_span(
             f"{tracer_name_start}.generate_first"  # type: ignore
         )
+        response_id = str(uuid.uuid4())
         responses = self.generate_response(
             transcription.message,
             is_interrupt=transcription.is_interrupt,
@@ -229,7 +232,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 agent_span_first.end()
                 is_first_response = False
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=response)),
+                AgentResponseMessage(message_id=response_id, message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
         # TODO: implement should_stop for generate_responses
