@@ -1,7 +1,6 @@
 import time
 import argparse
 from typing import Optional
-import aiohttp
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
@@ -40,8 +39,6 @@ if __name__ == "__main__":
             synthesizer.get_synthesizer_config().audio_encoding,
             synthesizer.get_synthesizer_config().sampling_rate,
         )
-        # ClientSession needs to be created within the async task
-        synthesizer.aiohttp_session = aiohttp.ClientSession()
         synthesis_result = await synthesizer.create_speech(
             message=message,
             chunk_size=chunk_size,
@@ -95,9 +92,9 @@ if __name__ == "__main__":
 
     speaker_output = SpeakerOutput.from_default_device()
 
-    # replace with synthesizer you want to test
+    # replace with the synthesizer you want to test
     # Note: --trace will not work with AzureSynthesizer
-    synthesizer = PlayHtSynthesizer(
-        PlayHtSynthesizerConfig.from_output_device(speaker_output)
+    synthesizer = AzureSynthesizer(
+        AzureSynthesizerConfig.from_output_device(speaker_output)
     )
     asyncio.run(main())
