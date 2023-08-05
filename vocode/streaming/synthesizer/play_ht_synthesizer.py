@@ -2,10 +2,12 @@ import asyncio
 import io
 import logging
 from typing import Optional
+
 from aiohttp import ClientSession, ClientTimeout
 from pydub import AudioSegment
-
 import requests
+from opentelemetry.context.context import Context
+
 from vocode import getenv
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
@@ -15,8 +17,8 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     SynthesisResult,
     tracer,
 )
+from vocode.streaming.utils.mp3_helper import decode_mp3
 
-from opentelemetry.context.context import Context
 
 TTS_ENDPOINT = "https://play.ht/api/v2/tts/stream"
 
@@ -30,7 +32,6 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
         logger: Optional[logging.Logger] = None,
         aiohttp_session: Optional[ClientSession] = None,
     ):
-        print(api_key, user_id)
         super().__init__(synthesizer_config, aiohttp_session)
         self.synthesizer_config = synthesizer_config
         self.api_key = api_key or getenv("PLAY_HT_API_KEY")
@@ -56,7 +57,6 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
             "voice": self.synthesizer_config.voice_id,
             "text": message.text,
             "quality": self.synthesizer_config.quality,
-            "output_format": self.synthesizer_config.output_format,
             "sample_rate": self.synthesizer_config.sampling_rate,
         }
         if self.synthesizer_config.speed:
@@ -87,12 +87,9 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
             )
             # Run the conversion from MP3 in a separate thread
             loop = asyncio.get_event_loop()
-            audio_segment = await loop.run_in_executor(
-                None, lambda: AudioSegment.from_mp3(io.BytesIO(read_response))  # type: ignore
+            output_bytes_io = await loop.run_in_executor(
+                None, lambda: decode_mp3(read_response)  # type: ignore
             )
-
-            output_bytes_io = io.BytesIO()
-            audio_segment.export(output_bytes_io, format="wav")  # type: ignore
 
             result = self.create_synthesis_result_from_wav(
                 file=output_bytes_io,

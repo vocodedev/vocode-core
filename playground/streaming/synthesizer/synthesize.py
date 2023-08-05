@@ -92,7 +92,6 @@ if __name__ == "__main__":
                 print("Message sent: ", message_sent)
         except KeyboardInterrupt:
             print("Interrupted, exiting")
-        await synthesizer.tear_down()
 
     speaker_output = SpeakerOutput.from_default_device()
 
