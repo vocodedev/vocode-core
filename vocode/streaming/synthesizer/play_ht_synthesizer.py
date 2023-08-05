@@ -56,7 +56,6 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
         body = {
             "voice": self.synthesizer_config.voice_id,
             "text": message.text,
-            "quality": self.synthesizer_config.quality,
             "sample_rate": self.synthesizer_config.sampling_rate,
         }
         if self.synthesizer_config.speed:
