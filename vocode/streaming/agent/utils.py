@@ -119,10 +119,11 @@ def format_openai_chat_messages_from_transcript(
         [{"role": "system", "content": prompt_preamble}] if prompt_preamble else []
     )
 
+    # merge consecutive bot messages
     new_event_logs: List[EventLog] = []
     idx = 0
     while idx < len(transcript.event_logs):
-        event_log_queue = []
+        event_log_queue: List[Message] = []
         current_log = transcript.event_logs[idx]
         while isinstance(current_log, Message) and current_log.sender == Sender.BOT:
             event_log_queue.append(current_log)
@@ -133,7 +134,9 @@ def format_openai_chat_messages_from_transcript(
                 break
         if event_log_queue:
             last_message = deepcopy(event_log_queue[-1])
-            last_message.text = " ".join([x.text for x in event_log_queue])
+            last_message.text = " ".join(
+                event_log.text for event_log in event_log_queue
+            )
             new_event_logs.append(last_message)
         else:
             new_event_logs.append(current_log)
