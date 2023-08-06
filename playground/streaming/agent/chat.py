@@ -15,10 +15,11 @@ from vocode.streaming.models.actions import (
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.utils.state_manager import ConversationStateManager
+from vocode.streaming.utils.worker import InterruptibleAgentResponseEvent
 
 load_dotenv()
 
-from vocode.streaming.agent import *
+from vocode.streaming.agent import ChatGPTAgent
 from vocode.streaming.agent.base_agent import (
     BaseAgent,
     AgentResponseMessage,
@@ -30,7 +31,7 @@ from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import create_conversation_id
 
 
-class ShoutActionConfig(ActionConfig, type="shout"):
+class ShoutActionConfig(ActionConfig, type="shout"):  # type: ignore
     num_exclamation_marks: int
 
 
@@ -152,6 +153,15 @@ async def agent_main():
     )
     agent.attach_conversation_state_manager(DummyConversationManager(conversation=None))
     agent.attach_transcript(transcript)
+    if agent.agent_config.initial_message is not None:
+        agent.output_queue.put_nowait(
+            InterruptibleAgentResponseEvent(
+                payload=AgentResponseMessage(
+                    message=agent.agent_config.initial_message
+                ),
+                agent_response_tracker=asyncio.Event(),
+            )
+        )
     agent.start()
 
     try:
