@@ -159,6 +159,3 @@ class TwilioCall(Call[TwilioOutputDevice]):
             self.logger.debug("Stopping...")
             return PhoneCallWebsocketAction.CLOSE_WEBSOCKET
         return None
-
-    def mark_terminated(self):
-        super().mark_terminated()
