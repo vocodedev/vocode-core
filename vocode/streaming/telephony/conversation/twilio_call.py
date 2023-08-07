@@ -162,5 +162,3 @@ class TwilioCall(Call[TwilioOutputDevice]):
 
     def mark_terminated(self):
         super().mark_terminated()
-        if self.active is False:
-            asyncio.create_task(self.telephony_client.end_call(self.twilio_sid))
