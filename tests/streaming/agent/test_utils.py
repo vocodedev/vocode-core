@@ -3,7 +3,13 @@ from openai.openai_object import OpenAIObject
 from pydantic import BaseModel
 from vocode.streaming.models.actions import FunctionCall
 import pytest
-from vocode.streaming.agent.utils import collate_response_async, openai_get_tokens
+from vocode.streaming.agent.utils import (
+    collate_response_async,
+    format_openai_chat_messages_from_transcript,
+    openai_get_tokens,
+)
+from vocode.streaming.models.events import Sender
+from vocode.streaming.models.transcript import Message, Transcript
 
 
 async def _agen_from_list(l):
@@ -202,7 +208,7 @@ OPENAI_OBJECTS = [
             "finish_reason": None,
         },
         {"delta": {}, "finish_reason": "function_call"},
-    ]
+    ],
 ]
 
 EXPECTED_SENTENCES = [
@@ -230,7 +236,7 @@ EXPECTED_SENTENCES = [
     ],
     [
         FunctionCall(name="wave_hello", arguments='{\n  "name": "user"\n}'),
-    ]
+    ],
 ]
 
 FUNCTIONS_INPUT = [
@@ -267,7 +273,7 @@ FUNCTIONS_INPUT = [
             "finish_reason": None,
         },
         {"delta": {}, "finish_reason": "function_call"},
-    ]
+    ],
 ]
 
 FUNCTIONS_OUTPUT = [
@@ -278,9 +284,9 @@ FUNCTIONS_OUTPUT = [
     ],
     [
         FunctionCall(name="wave_hello", arguments='{\n  "name": "user"\n}'),
-    ]
-
+    ],
 ]
+
 
 @pytest.mark.asyncio
 async def test_stream_openai_response_async():
@@ -290,18 +296,45 @@ async def test_stream_openai_response_async():
                 create_chatgpt_openai_object(**obj) for obj in openai_objects
             ],
             expected_sentences=expected_sentences,
-            get_functions=any(isinstance(item, FunctionCall) for item in expected_sentences)
+            get_functions=any(
+                isinstance(item, FunctionCall) for item in expected_sentences
+            ),
         )
         for openai_objects, expected_sentences in zip(
             OPENAI_OBJECTS, EXPECTED_SENTENCES
         )
     ]
-    
+
     for test_case in test_cases:
         actual_sentences = []
         async for sentence in collate_response_async(
             openai_get_tokens(_agen_from_list(test_case.openai_objects)),
-            get_functions=test_case.get_functions
+            get_functions=test_case.get_functions,
         ):
             actual_sentences.append(sentence)
         assert actual_sentences == test_case.expected_sentences
+
+
+def test_format_openai_chat_messages_from_transcript():
+    test_cases = [
+        (
+            (
+                Transcript(
+                    event_logs=[
+                        Message(sender=Sender.BOT, text="Hello!"),
+                        Message(sender=Sender.BOT, text="How are you doing today?"),
+                        Message(sender=Sender.HUMAN, text="I'm doing well, thanks!"),
+                    ]
+                ),
+                "prompt preamble",
+            ),
+            [
+                {"role": "system", "content": "prompt preamble"},
+                {"role": "assistant", "content": "Hello! How are you doing today?"},
+                {"role": "user", "content": "I'm doing well, thanks!"},
+            ],
+        )
+    ]
+
+    for params, expected_output in test_cases:
+        assert format_openai_chat_messages_from_transcript(*params) == expected_output

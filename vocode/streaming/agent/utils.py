@@ -123,21 +123,21 @@ def format_openai_chat_messages_from_transcript(
     new_event_logs: List[EventLog] = []
     idx = 0
     while idx < len(transcript.event_logs):
-        event_log_queue: List[Message] = []
+        bot_messages_buffer: List[Message] = []
         current_log = transcript.event_logs[idx]
         while isinstance(current_log, Message) and current_log.sender == Sender.BOT:
-            event_log_queue.append(current_log)
+            bot_messages_buffer.append(current_log)
             idx += 1
             try:
                 current_log = transcript.event_logs[idx]
             except IndexError:
                 break
-        if event_log_queue:
-            last_message = deepcopy(event_log_queue[-1])
-            last_message.text = " ".join(
-                event_log.text for event_log in event_log_queue
+        if bot_messages_buffer:
+            merged_bot_message = deepcopy(bot_messages_buffer[-1])
+            merged_bot_message.text = " ".join(
+                event_log.text for event_log in bot_messages_buffer
             )
-            new_event_logs.append(last_message)
+            new_event_logs.append(merged_bot_message)
         else:
             new_event_logs.append(current_log)
             idx += 1
