@@ -90,10 +90,16 @@ class TwilioCall(Call[TwilioOutputDevice]):
         twilio_call = twilio_call_ref.fetch()
 
         if self.twilio_config.record:
-            recordings_create_params = self.twilio_config.extra_params.get("recordings_create_params") if self.twilio_config.extra_params else None
-            recording = twilio_call_ref.recordings.create(
-                **recordings_create_params
-            ) if recordings_create_params else twilio_call_ref.recordings.create()
+            recordings_create_params = (
+                self.twilio_config.extra_params.get("recordings_create_params")
+                if self.twilio_config.extra_params
+                else None
+            )
+            recording = (
+                twilio_call_ref.recordings.create(**recordings_create_params)
+                if recordings_create_params
+                else twilio_call_ref.recordings.create()
+            )
             self.logger.info(f"Recording: {recording.sid}")
 
         if twilio_call.answered_by in ("machine_start", "fax"):
@@ -156,5 +162,5 @@ class TwilioCall(Call[TwilioOutputDevice]):
 
     def mark_terminated(self):
         super().mark_terminated()
-        asyncio.create_task(self.telephony_client.end_call(self.twilio_sid))
-
+        if self.active is False:
+            asyncio.create_task(self.telephony_client.end_call(self.twilio_sid))
