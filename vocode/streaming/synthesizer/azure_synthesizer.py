@@ -220,6 +220,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         for event in events:
             if event["audio_offset"] > seconds:
                 ssml_fragment = ssml[: event["text_offset"]]
+                # TODO: this is a little hacky, but it works for now
                 return ssml_fragment.split(">")[-1]
         return message
 
