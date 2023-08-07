@@ -31,7 +31,7 @@ jobs:
         run: python -m poetry install -E all
 
       - name: Set poetry PyPI token
-        run: poetry config pypi-token.pypi "${{ secrets.PYPI_API_KEY }}"
+        run: python -m poetry config pypi-token.pypi "${{ secrets.PYPI_API_KEY }}"
       
       - name: Publish to PyPI
         run: |
