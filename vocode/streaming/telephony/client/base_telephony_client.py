@@ -10,7 +10,7 @@ class BaseTelephonyClient:
     def get_telephony_config(self):
         raise NotImplementedError
 
-    def create_call(
+    async def create_call(
         self,
         conversation_id: str,
         to_phone: str,
@@ -20,7 +20,7 @@ class BaseTelephonyClient:
     ) -> str:  # identifier of the call on the telephony provider
         raise NotImplementedError
 
-    def end_call(self, id) -> bool:
+    async def end_call(self, id) -> bool:
         raise NotImplementedError
 
     def validate_outbound_call(

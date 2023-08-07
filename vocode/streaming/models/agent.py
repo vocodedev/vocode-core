@@ -3,6 +3,7 @@ from enum import Enum
 from langchain.prompts import PromptTemplate
 
 from pydantic import validator
+from vocode.streaming.models.actions import ActionConfig
 
 from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
@@ -70,7 +71,8 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     send_filler_audio: Union[bool, FillerAudioConfig] = False
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
-    actions: Optional[List[str]] = None
+    actions: Optional[List[ActionConfig]] = None
+
 
 class CutOffResponse(BaseModel):
     messages: List[BaseMessage] = [BaseMessage(text="Sorry?")]
@@ -94,7 +96,6 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     cut_off_response: Optional[CutOffResponse] = None
     azure_params: Optional[AzureOpenAIConfig] = None
     vector_db_config: Optional[VectorDBConfig] = None
-
 
 
 class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):

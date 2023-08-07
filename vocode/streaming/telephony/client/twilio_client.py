@@ -24,7 +24,7 @@ class TwilioClient(BaseTelephonyClient):
     def get_telephony_config(self):
         return self.twilio_config
 
-    def create_call(
+    async def create_call(
         self,
         conversation_id: str,
         to_phone: str,
@@ -32,6 +32,7 @@ class TwilioClient(BaseTelephonyClient):
         record: bool = False,
         digits: Optional[str] = None,
     ) -> str:
+        # TODO: Make this async. This is blocking.
         twiml = self.get_connection_twiml(conversation_id=conversation_id)
         twilio_call = self.twilio_client.calls.create(
             twiml=twiml.body.decode("utf-8"),
@@ -39,6 +40,7 @@ class TwilioClient(BaseTelephonyClient):
             from_=from_phone,
             send_digits=digits,
             record=record,
+            **self.get_telephony_config().extra_params,
         )
         return twilio_call.sid
 
@@ -47,7 +49,8 @@ class TwilioClient(BaseTelephonyClient):
             base_url=self.base_url, call_id=conversation_id
         )
 
-    def end_call(self, twilio_sid):
+    async def end_call(self, twilio_sid):
+        # TODO: Make this async. This is blocking.
         response = self.twilio_client.calls(twilio_sid).update(status="completed")
         return response.status == "completed"
 

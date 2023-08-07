@@ -9,6 +9,8 @@ from vocode.streaming.synthesizer.eleven_labs_synthesizer import (
 )
 import re
 from tests.streaming.data.loader import get_audio_path
+import asyncio
+import pytest
 
 DEFAULT_PARAMS = {"sampling_rate": 16000,
                   "audio_encoding": AudioEncoding.LINEAR16}
@@ -38,23 +40,23 @@ def mock_eleven_labs_api():
 
 
 @pytest.fixture(scope="module")
-def eleven_labs_synthesizer_with_api_key():
+async def fixture_eleven_labs_synthesizer_with_api_key():
     params = DEFAULT_PARAMS.copy()
     params["api_key"] = MOCK_API_KEY
-    yield ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
+    return ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
 
 
 @pytest.fixture(scope="module")
-def eleven_labs_synthesizer_wrong_api_key():
+async def fixture_eleven_labs_synthesizer_wrong_api_key():
     params = DEFAULT_PARAMS.copy()
     params["api_key"] = "wrong_api_key"
-    yield ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
+    return ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
 
 
 @pytest.fixture(scope="module")
-def eleven_labs_synthesizer_env_api_key():
+async def fixture_eleven_labs_synthesizer_env_api_key():
     params = DEFAULT_PARAMS.copy()
     import os
 
     os.environ["ELEVEN_LABS_API_KEY"] = MOCK_API_KEY
-    yield ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
+    return ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))

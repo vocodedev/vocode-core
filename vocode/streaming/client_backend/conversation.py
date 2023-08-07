@@ -31,11 +31,13 @@ from vocode.streaming.models.events import Event, EventType
 from vocode.streaming.models.transcript import TranscriptEvent
 from vocode.streaming.utils import events_manager
 
+BASE_CONVERSATION_ENDPOINT = "/conversation"
+
 
 class ConversationRouter(BaseRouter):
     def __init__(
         self,
-        agent: BaseAgent,
+        agent_thunk: Callable[[], BaseAgent],
         transcriber_thunk: Callable[
             [InputAudioConfig], BaseTranscriber
         ] = lambda input_audio_config: DeepgramTranscriber(
@@ -52,14 +54,15 @@ class ConversationRouter(BaseRouter):
             )
         ),
         logger: Optional[logging.Logger] = None,
+        conversation_endpoint: str = BASE_CONVERSATION_ENDPOINT,
     ):
         super().__init__()
         self.transcriber_thunk = transcriber_thunk
-        self.agent = agent
+        self.agent_thunk = agent_thunk
         self.synthesizer_thunk = synthesizer_thunk
         self.logger = logger or logging.getLogger(__name__)
         self.router = APIRouter()
-        self.router.websocket("/conversation")(self.conversation)
+        self.router.websocket(conversation_endpoint)(self.conversation)
 
     def get_conversation(
         self,
@@ -72,10 +75,12 @@ class ConversationRouter(BaseRouter):
         return StreamingConversation(
             output_device=output_device,
             transcriber=transcriber,
-            agent=self.agent,
+            agent=self.agent_thunk(),
             synthesizer=synthesizer,
             conversation_id=start_message.conversation_id,
-            events_manager=TranscriptEventManager(output_device, self.logger) if start_message.subscribe_transcript else None,
+            events_manager=TranscriptEventManager(output_device, self.logger)
+            if start_message.subscribe_transcript
+            else None,
             logger=self.logger,
         )
 
@@ -101,13 +106,18 @@ class ConversationRouter(BaseRouter):
             audio_message = typing.cast(AudioMessage, message)
             conversation.receive_audio(audio_message.get_bytes())
         output_device.mark_closed()
-        conversation.terminate()
+        await conversation.terminate()
 
     def get_router(self) -> APIRouter:
         return self.router
 
+
 class TranscriptEventManager(events_manager.EventsManager):
-    def __init__(self, output_device: WebsocketOutputDevice, logger: Optional[logging.Logger] = None):
+    def __init__(
+        self,
+        output_device: WebsocketOutputDevice,
+        logger: Optional[logging.Logger] = None,
+    ):
         super().__init__(subscriptions=[EventType.TRANSCRIPT])
         self.output_device = output_device
         self.logger = logger or logging.getLogger(__name__)

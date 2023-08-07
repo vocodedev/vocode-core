@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Any, Dict, Optional
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.model import BaseModel, TypedModel
 from vocode.streaming.models.agent import AgentConfig
@@ -16,6 +16,7 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_SAMPLING_RATE,
+    VONAGE_CHUNK_SIZE,
     VONAGE_AUDIO_ENCODING,
     VONAGE_SAMPLING_RATE,
 )
@@ -25,6 +26,7 @@ class TwilioConfig(BaseModel):
     account_sid: str
     auth_token: str
     record: bool = False
+    extra_params: Optional[Dict[str, Any]] = {}
 
 
 class VonageConfig(BaseModel):
@@ -138,7 +140,7 @@ class VonageCallConfig(BaseCallConfig, type=CallConfigType.VONAGE.value):
         return DeepgramTranscriberConfig(
             sampling_rate=VONAGE_SAMPLING_RATE,
             audio_encoding=VONAGE_AUDIO_ENCODING,
-            chunk_size=DEFAULT_CHUNK_SIZE,
+            chunk_size=VONAGE_CHUNK_SIZE,
             model="phonecall",
             tier="nova",
             endpointing_config=PunctuationEndpointingConfig(),

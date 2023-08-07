@@ -38,12 +38,13 @@ class ActionsWorker(InterruptibleWorker):
 
     async def process(self, item: InterruptibleEvent[ActionInput]):
         action_input = item.payload
-        action = self.action_factory.create_action(action_input.action_type)
+        action = self.action_factory.create_action(action_input.action_config)
         action.attach_conversation_state_manager(self.conversation_state_manager)
         action_output = await action.run(action_input)
         self.produce_interruptible_event_nonblocking(
             ActionResultAgentInput(
                 conversation_id=action_input.conversation_id,
+                action_input=action_input,
                 action_output=action_output,
                 vonage_uuid=action_input.vonage_uuid
                 if isinstance(action_input, VonagePhoneCallActionInput)

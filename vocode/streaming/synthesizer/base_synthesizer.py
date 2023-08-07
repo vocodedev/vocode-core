@@ -12,6 +12,7 @@ from typing import (
 import math
 import io
 import wave
+import aiohttp
 from nltk.tokenize import word_tokenize
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 from opentelemetry import trace
@@ -115,13 +116,24 @@ SynthesizerConfigType = TypeVar("SynthesizerConfigType", bound=SynthesizerConfig
 
 
 class BaseSynthesizer(Generic[SynthesizerConfigType]):
-    def __init__(self, synthesizer_config: SynthesizerConfigType):
+    def __init__(
+        self,
+        synthesizer_config: SynthesizerConfigType,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
+    ):
         self.synthesizer_config = synthesizer_config
         if synthesizer_config.audio_encoding == AudioEncoding.MULAW:
             assert (
                 synthesizer_config.sampling_rate == 8000
             ), "MuLaw encoding only supports 8kHz sampling rate"
         self.filler_audios: List[FillerAudio] = []
+        if aiohttp_session:
+            # the caller is responsible for closing the session
+            self.aiohttp_session = aiohttp_session
+            self.should_close_session_on_tear_down = False
+        else:
+            self.aiohttp_session = aiohttp.ClientSession()
+            self.should_close_session_on_tear_down = True
 
     async def empty_generator(self):
         yield SynthesisResult.ChunkResult(b"", True)
@@ -219,3 +231,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
                 message, seconds, len(output_bytes)
             ),
         )
+
+    async def tear_down(self):
+        if self.should_close_session_on_tear_down:
+            await self.aiohttp_session.close()

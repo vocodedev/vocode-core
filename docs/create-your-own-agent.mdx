@@ -31,12 +31,14 @@ class BrokenRecordAgent(RespondAgent[BrokenRecordAgentConfig]):
 
 See [our other agent implementations](https://github.com/vocodedev/vocode-python/tree/main/vocode/streaming/agent) for more guidance!
 
-# Hosted
+# Hosted (deprecated)
+
+NOTE: The hosted `RESTfulAgent` is being deprecated.
 
 Our library lets you easily host your agent so that the Vocode backend can use it to generate responses.
 Users will be responsible for implementing a `RESTfulAgent`.
 
-## RESTful Implementation
+## RESTful Implementation (deprecated)
 
 Here is an example implementation of a `RESTfulAgent` that just echoes back whatever
 input it receives. Note that the `respond` method is expecting a `RESTfulAgentOutput` return value.

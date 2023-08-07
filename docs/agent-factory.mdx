@@ -1,0 +1,42 @@
+---
+title: 'Connecting Your Agent'
+description: 'How to link a custom agent to your app'
+---
+
+# Agent Factories
+
+Agent factories specify which agents are available to your app. In order to connect an agent to your app, you must first define an agent factory. To do so, subclass the [`AgentFactory`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/agent/factory.py) class to specify how agents are created. Here you can import and use your own custom agents.
+
+## Example
+
+First define your `AgentFactory`:
+
+```python
+from vocode.streaming.agent.factory import AgentFactory
+
+class MyAgentFactory(AgentFactory):
+    def __init__(self, agent_config: AgentConfig, action_factory: MyActionFactory):
+        self.agent_config = agent_config
+        self.action_factory = action_factory
+
+    def create_agent(
+        self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
+    ) -> BaseAgent:
+        if agent_config.type == "MY_ACTION":
+            return MyActionAgent(
+                agent_config=typing.cast(ActionAgentConfig, self.agent_config),
+                action_factory=self.action_factory
+            )
+        raise Exception("Invalid agent config")
+```
+
+Then, in your app, you can connect the agent to the app:
+
+```python
+
+telephony_server = TelephonyServer(
+    agent_factory=MyAgentFactory(
+        agent_config=agent_config, action_factory=action_factory),
+    ...
+)
+```

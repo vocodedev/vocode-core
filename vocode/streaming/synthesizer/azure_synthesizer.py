@@ -5,6 +5,7 @@ import os
 import re
 from typing import Any, List, Optional, Tuple
 from xml.etree import ElementTree
+import aiohttp
 from vocode import getenv
 from opentelemetry.context.context import Context
 
@@ -62,8 +63,9 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         logger: Optional[logging.Logger] = None,
         azure_speech_key: Optional[str] = None,
         azure_speech_region: Optional[str] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
         # Instantiates a client
         azure_speech_key = azure_speech_key or getenv("AZURE_SPEECH_KEY")
         azure_speech_region = azure_speech_region or getenv("AZURE_SPEECH_REGION")
@@ -182,6 +184,16 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 "styledegree", str(bot_sentiment.degree * 2)
             )  # Azure specific, it's a scale of 0-2
             voice_root = styled
+        # this ugly hack is necessary so we can limit the gap between sentences
+        # for normal sentences, it seems like the gap is > 500ms, so we're able to reduce it to 500ms
+        # for very tiny sentences, the API hangs - so we heuristically only update the silence gap
+        # if there is more than one word in the sentence
+        if " " in message:
+            silence = ElementTree.SubElement(
+                voice_root, "{%s}silence" % NAMESPACES.get("mstts")
+            )
+            silence.set("value", "500ms")
+            silence.set("type", "Tailing-exact")
         prosody = ElementTree.SubElement(voice_root, "prosody")
         prosody.set("pitch", f"{self.pitch}%")
         prosody.set("rate", f"{self.rate}%")
@@ -208,6 +220,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         for event in events:
             if event["audio_offset"] > seconds:
                 ssml_fragment = ssml[: event["text_offset"]]
+                # TODO: this is a little hacky, but it works for now
                 return ssml_fragment.split(">")[-1]
         return message
 

@@ -8,6 +8,11 @@ class BaseModel(pydantic.BaseModel):
             if isinstance(value, dict):
                 if "type" in value:
                     data[key] = TypedModel.parse_obj(value)
+            if isinstance(value, list):
+                for i, v in enumerate(value):
+                    if isinstance(v, dict):
+                        if "type" in v:
+                            value[i] = TypedModel.parse_obj(v)
         super().__init__(**data)
 
 
