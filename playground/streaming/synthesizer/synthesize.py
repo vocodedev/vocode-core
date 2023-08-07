@@ -8,6 +8,7 @@ from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
     GoogleSynthesizerConfig,
     PlayHtSynthesizerConfig,
+    ElevenLabsSynthesizerConfig,
     RimeSynthesizerConfig,
 )
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
