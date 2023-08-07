@@ -1,7 +1,12 @@
 from typing import Any, Dict, List, Optional, Union
 from openai.openai_object import OpenAIObject
 from pydantic import BaseModel
-from vocode.streaming.models.actions import FunctionCall
+from vocode.streaming.models.actions import (
+    ActionConfig,
+    ActionInput,
+    ActionOutput,
+    FunctionCall,
+)
 import pytest
 from vocode.streaming.agent.utils import (
     collate_response_async,
@@ -9,7 +14,12 @@ from vocode.streaming.agent.utils import (
     openai_get_tokens,
 )
 from vocode.streaming.models.events import Sender
-from vocode.streaming.models.transcript import Message, Transcript
+from vocode.streaming.models.transcript import (
+    ActionFinish,
+    ActionStart,
+    Message,
+    Transcript,
+)
 
 
 async def _agen_from_list(l):
@@ -333,7 +343,85 @@ def test_format_openai_chat_messages_from_transcript():
                 {"role": "assistant", "content": "Hello! How are you doing today?"},
                 {"role": "user", "content": "I'm doing well, thanks!"},
             ],
-        )
+        ),
+        (
+            (
+                Transcript(
+                    event_logs=[
+                        Message(sender=Sender.BOT, text="Hello!"),
+                        Message(sender=Sender.BOT, text="How are you doing today?"),
+                        Message(sender=Sender.HUMAN, text="I'm doing well, thanks!"),
+                    ]
+                ),
+                None,
+            ),
+            [
+                {"role": "assistant", "content": "Hello! How are you doing today?"},
+                {"role": "user", "content": "I'm doing well, thanks!"},
+            ],
+        ),
+        (
+            (
+                Transcript(
+                    event_logs=[
+                        Message(sender=Sender.BOT, text="Hello!"),
+                        Message(sender=Sender.BOT, text="How are you doing today?"),
+                    ]
+                ),
+                "prompt preamble",
+            ),
+            [
+                {"role": "system", "content": "prompt preamble"},
+                {"role": "assistant", "content": "Hello! How are you doing today?"},
+            ],
+        ),
+        (
+            (
+                Transcript(
+                    event_logs=[
+                        Message(sender=Sender.BOT, text="Hello!"),
+                        Message(
+                            sender=Sender.HUMAN, text="Hello, what's the weather like?"
+                        ),
+                        ActionStart(
+                            action_type="weather",
+                            action_input=ActionInput(
+                                action_config=ActionConfig(),
+                                conversation_id="asdf",
+                                params={},
+                            ),
+                        ),
+                        ActionFinish(
+                            action_type="weather",
+                            action_output=ActionOutput(
+                                action_type="weather", response={}
+                            ),
+                        ),
+                    ]
+                ),
+                None,
+            ),
+            [
+                {"role": "assistant", "content": "Hello!"},
+                {
+                    "role": "user",
+                    "content": "Hello, what's the weather like?",
+                },
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "function_call": {
+                        "name": "weather",
+                        "arguments": "{}",
+                    },
+                },
+                {
+                    "role": "function",
+                    "name": "weather",
+                    "content": "{}",
+                },
+            ],
+        ),
     ]
 
     for params, expected_output in test_cases:
