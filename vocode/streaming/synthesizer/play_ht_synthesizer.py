@@ -70,25 +70,16 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
         )
 
         async with self.aiohttp_session.post(
-            TTS_ENDPOINT,
-            headers=headers,
-            json=body,
-            timeout=ClientTimeout(total=15)
+            TTS_ENDPOINT, headers=headers, json=body, timeout=ClientTimeout(total=15)
         ) as response:
             if not response.ok:
-                raise Exception(
-                    f"Play.ht API error status code {response.status}"
-                )
+                raise Exception(f"Play.ht API error status code {response.status}")
             read_response = await response.read()
             create_speech_span.end()
             convert_span = tracer.start_span(
                 f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.convert",
             )
-            # Run the conversion from MP3 in a separate thread
-            loop = asyncio.get_event_loop()
-            output_bytes_io = await loop.run_in_executor(
-                None, lambda: decode_mp3(read_response)  # type: ignore
-            )
+            output_bytes_io = decode_mp3(read_response)
 
             result = self.create_synthesis_result_from_wav(
                 file=output_bytes_io,
