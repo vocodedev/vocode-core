@@ -672,6 +672,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     async def terminate(self):
         self.mark_terminated()
+        self.broadcast_interrupt()
         self.events_manager.publish_event(
             TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
         )
