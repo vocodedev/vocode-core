@@ -95,11 +95,10 @@ class TwilioClient(BaseTelephonyClient):
         return response.status == "completed"
 
     def validate_outbound_call(
-            self,
-            to_phone: str,
-            from_phone: str,
-            mobile_only: bool = False,
-            # originally to conform with California law; we leave as False for testing purposes
+        self,
+        to_phone: str,
+        from_phone: str,
+        mobile_only: bool = False, # originally to conform with California law; we leave as False for testing purposes
     ):
         if len(to_phone) < 8:
             raise ValueError("Invalid 'to' phone")
@@ -112,6 +111,6 @@ class TwilioClient(BaseTelephonyClient):
             .line_type_intelligence
         )
         if not line_type_intelligence or (
-                line_type_intelligence and line_type_intelligence["type"] != "mobile"
+            line_type_intelligence and line_type_intelligence["type"] != "mobile"
         ):
             raise ValueError("Can only call mobile phones")
