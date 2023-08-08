@@ -43,7 +43,8 @@ from vocode.streaming.utils import remove_non_letters_digits
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.utils.worker import (
-    InterruptibleAgentResponseEvent,
+    EventTracker,
+    InterruptibleTrackedEvent,
     InterruptibleEvent,
     InterruptibleEventFactory,
     InterruptibleWorker,
@@ -140,7 +141,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
             InterruptibleEvent[AgentInput]
         ] = asyncio.Queue()
         self.output_queue: asyncio.Queue[
-            InterruptibleAgentResponseEvent[AgentResponse]
+            InterruptibleTrackedEvent[AgentResponse]
         ] = asyncio.Queue()
         AbstractAgent.__init__(self, agent_config=agent_config)
         InterruptibleWorker.__init__(
@@ -186,7 +187,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
 
     def get_output_queue(
         self,
-    ) -> asyncio.Queue[InterruptibleAgentResponseEvent[AgentResponse]]:
+    ) -> asyncio.Queue[InterruptibleTrackedEvent[AgentResponse]]:
         return self.output_queue
 
     def create_goodbye_detection_task(self, message: str) -> asyncio.Task:
@@ -220,7 +221,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             if is_first_response:
                 agent_span_first.end()
                 is_first_response = False
-            self.produce_interruptible_agent_response_event_nonblocking(
+            self.produce_interruptible_tracked_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
@@ -246,7 +247,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             response = None
             return True
         if response:
-            self.produce_interruptible_agent_response_event_nonblocking(
+            self.produce_interruptible_tracked_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
@@ -294,7 +295,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     transcription.message
                 )
             if self.agent_config.send_filler_audio:
-                self.produce_interruptible_agent_response_event_nonblocking(
+                self.produce_interruptible_tracked_event_nonblocking(
                     AgentResponseFillerAudio()
                 )
             self.logger.debug("Responding to transcription")
@@ -310,7 +311,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
 
             if should_stop:
                 self.logger.debug("Agent requested to stop")
-                self.produce_interruptible_agent_response_event_nonblocking(
+                self.produce_interruptible_tracked_event_nonblocking(
                     AgentResponseStop()
                 )
                 return
@@ -321,7 +322,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     )
                     if goodbye_detected:
                         self.logger.debug("Goodbye detected, ending conversation")
-                        self.produce_interruptible_agent_response_event_nonblocking(
+                        self.produce_interruptible_tracked_event_nonblocking(
                             AgentResponseStop()
                         )
                         return
@@ -350,10 +351,10 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         user_message_tracker = None
         if "user_message" in params:
             user_message = params["user_message"]
-            user_message_tracker = asyncio.Event()
-            self.produce_interruptible_agent_response_event_nonblocking(
+            user_message_tracker = EventTracker("user_message")
+            self.produce_interruptible_tracked_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=user_message)),
-                agent_response_tracker=user_message_tracker,
+                event_tracker=user_message_tracker,
             )
         action_input: ActionInput
         if isinstance(action, VonagePhoneCallAction):

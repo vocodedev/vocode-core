@@ -43,7 +43,7 @@ class ConversationStateManager:
     def send_bot_message(self, message: BaseMessage) -> asyncio.Event:
         # returns an asyncio.Event that will be set when the agent has finished uttering the message
         agent_response_tracker = asyncio.Event()
-        self._conversation.agent.produce_interruptible_agent_response_event_nonblocking(
+        self._conversation.agent.produce_interruptible_tracked_event_nonblocking(
             item=AgentResponseMessage(
                 message=message,
                 is_interruptible=False,
