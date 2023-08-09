@@ -56,6 +56,12 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
             "text": message.text,
             "sample_rate": self.synthesizer_config.sampling_rate,
         }
+        if self.synthesizer_config.speed:
+            body["speed"] = self.synthesizer_config.speed
+        if self.synthesizer_config.seed:
+            body["seed"] = self.synthesizer_config.seed
+        if self.synthesizer_config.temperature:
+            body["temperature"] = self.synthesizer_config.temperature
 
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.create_total",
