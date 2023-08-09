@@ -4,7 +4,7 @@ import asyncio
 import queue
 import random
 import threading
-from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, cast
+from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 import logging
 import time
 import typing
@@ -15,7 +15,6 @@ from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import (
     Message,
@@ -23,13 +22,12 @@ from vocode.streaming.models.transcript import (
     TranscriptCompleteEvent,
 )
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
+from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager
-from vocode.streaming.utils.goodbye_model import GoodbyeModel
 
-from vocode.streaming.models.agent import ChatGPTAgentConfig, FillerAudioConfig
+from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.synthesizer import (
     SentimentConfig,
 )
@@ -44,7 +42,6 @@ from vocode.streaming.agent.base_agent import (
     AgentResponseFillerAudio,
     AgentResponseMessage,
     AgentResponseStop,
-    AgentResponseType,
     BaseAgent,
     TranscriptionAgentInput,
 )
@@ -66,7 +63,6 @@ from vocode.streaming.utils.worker import (
     InterruptibleEvent,
     InterruptibleEventFactory,
     InterruptibleTrackedEvent,
-    InterruptibleWorker,
 )
 
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
@@ -74,8 +70,13 @@ OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
 
 class StreamingConversation(Generic[OutputDeviceType]):
     class QueueingInterruptibleEventFactory(InterruptibleEventFactory):
-        def __init__(self, conversation: "StreamingConversation"):
+        def __init__(
+            self,
+            conversation: "StreamingConversation",
+            time_tracked_events: bool = False,
+        ):
             self.conversation = conversation
+            self.time_tracked_events = time_tracked_events
 
         def create_interruptible_event(
             self, payload: Any, is_interruptible: bool = True
@@ -109,7 +110,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         def __init__(
             self,
             input_queue: asyncio.Queue[Transcription],
-            output_queue: asyncio.Queue[InterruptibleEvent[AgentInput]],
+            output_queue: asyncio.Queue[InterruptibleTrackedEvent[AgentInput]],
             conversation: "StreamingConversation",
             interruptible_event_factory: InterruptibleEventFactory,
         ):
@@ -147,12 +148,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
                 # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
-                event = self.interruptible_event_factory.create_interruptible_event(
-                    TranscriptionAgentInput(
-                        transcription=transcription,
-                        conversation_id=self.conversation.id,
-                        vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
-                        twilio_sid=getattr(self.conversation, "twilio_sid", None),
+                event = (
+                    self.interruptible_event_factory.create_interruptible_tracked_event(
+                        TranscriptionAgentInput(
+                            transcription=transcription,
+                            conversation_id=self.conversation.id,
+                            vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
+                            twilio_sid=getattr(self.conversation, "twilio_sid", None),
+                        ),
+                        span_name="transcription_agent_input",
                     )
                 )
                 self.output_queue.put_nowait(event)
@@ -211,7 +215,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     filler_audio.seconds_per_chunk,
                     started_event=self.filler_audio_started_event,
                 )
-                item.event_tracker.done_event.set()
+                item.event_tracker.set()
             except asyncio.CancelledError:
                 pass
 
@@ -277,7 +281,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     return
                 if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")
-                    item.event_tracker.done_event.set()
+                    item.event_tracker.set()
                     await self.conversation.terminate()
                     return
 
@@ -347,7 +351,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     message=transcript_message,
                     conversation_id=self.conversation.id,
                 )
-                item.event_tracker.done_event.set()
+                item.event_tracker.set()
                 self.conversation.logger.debug("Message sent: {}".format(message_sent))
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(

@@ -138,7 +138,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
         logger: Optional[logging.Logger] = None,
     ):
         self.input_queue: asyncio.Queue[
-            InterruptibleEvent[AgentInput]
+            InterruptibleTrackedEvent[AgentInput]
         ] = asyncio.Queue()
         self.output_queue: asyncio.Queue[
             InterruptibleTrackedEvent[AgentResponse]
@@ -182,7 +182,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
 
     def get_input_queue(
         self,
-    ) -> asyncio.Queue[InterruptibleEvent[AgentInput]]:
+    ) -> asyncio.Queue[InterruptibleTrackedEvent[AgentInput]]:
         return self.input_queue
 
     def get_output_queue(
@@ -224,6 +224,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             self.produce_interruptible_tracked_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+                span_name="agent_response_message",
             )
         # TODO: implement should_stop for generate_responses
         agent_span.end()
@@ -250,13 +251,14 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             self.produce_interruptible_tracked_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+                span_name="agent_response_message",
             )
             return should_stop
         else:
             self.logger.debug("No response generated")
         return False
 
-    async def process(self, item: InterruptibleEvent[AgentInput]):
+    async def process(self, item: InterruptibleTrackedEvent[AgentInput]):
         if self.is_muted:
             self.logger.debug("Agent is muted, skipping processing")
             return
@@ -296,9 +298,10 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 )
             if self.agent_config.send_filler_audio:
                 self.produce_interruptible_tracked_event_nonblocking(
-                    AgentResponseFillerAudio()
+                    AgentResponseFillerAudio(), span_name="agent_response_filler_audio"
                 )
             self.logger.debug("Responding to transcription")
+            item.event_tracker.set()
             should_stop = False
             if self.agent_config.generate_responses:
                 should_stop = await self.handle_generate_response(
@@ -312,7 +315,8 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             if should_stop:
                 self.logger.debug("Agent requested to stop")
                 self.produce_interruptible_tracked_event_nonblocking(
-                    AgentResponseStop()
+                    AgentResponseStop(),
+                    span_name="agent_response_stop",
                 )
                 return
             if goodbye_detected_task:
@@ -323,7 +327,8 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     if goodbye_detected:
                         self.logger.debug("Goodbye detected, ending conversation")
                         self.produce_interruptible_tracked_event_nonblocking(
-                            AgentResponseStop()
+                            AgentResponseStop(),
+                            span_name="agent_response_stop",
                         )
                         return
                 except asyncio.TimeoutError:

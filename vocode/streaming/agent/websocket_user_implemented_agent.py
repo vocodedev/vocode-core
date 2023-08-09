@@ -35,7 +35,7 @@ NUM_RESTARTS = 5
 
 
 class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfig]):
-    input_queue: asyncio.Queue[InterruptibleEvent[AgentInput]]
+    input_queue: asyncio.Queue[InterruptibleTrackedEvent[AgentInput]]
     output_queue: asyncio.Queue[InterruptibleTrackedEvent[AgentResponse]]
 
     def __init__(
@@ -79,7 +79,9 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
 
         self.logger.info("Putting interruptible agent response event in output queue")
         self.produce_interruptible_tracked_event_nonblocking(
-            agent_response, self.get_agent_config().allow_agent_to_be_cut_off
+            agent_response,
+            self.get_agent_config().allow_agent_to_be_cut_off,
+            span_name="websocket_agent_response",
         )
 
     async def _process(self) -> None:
@@ -94,7 +96,8 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
                 while not self.has_ended:
                     self.logger.info("Waiting for data from agent request queue")
                     try:
-                        input = await self.input_queue.get()
+                        input: InterruptibleTrackedEvent = await self.input_queue.get()
+                        input.event_tracker.set()
                         payload = input.payload
                         if isinstance(payload, TranscriptionAgentInput):
                             transcription = payload.transcription
@@ -164,5 +167,7 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
             await asyncio.gather(sender(ws), receiver(ws))
 
     def terminate(self):
-        self.produce_interruptible_tracked_event_nonblocking(AgentResponseStop())
+        self.produce_interruptible_tracked_event_nonblocking(
+            AgentResponseStop(), span_name="websocket_agent_response_stop"
+        )
         super().terminate()
