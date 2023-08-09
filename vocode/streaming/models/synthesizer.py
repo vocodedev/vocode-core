@@ -163,10 +163,12 @@ PLAYHT_DEFAULT_VOICE_ID = "larry"
 
 
 class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.value):
-    voice_id: str = PLAYHT_DEFAULT_VOICE_ID
+    api_key: Optional[str] = None
+    user_id: Optional[str] = None
     speed: Optional[int] = None
     seed: Optional[int] = None
     temperature: Optional[int] = None
+    voice_id: str = PLAYHT_DEFAULT_VOICE_ID
 
 
 class CoquiTTSSynthesizerConfig(

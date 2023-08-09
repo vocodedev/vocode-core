@@ -27,15 +27,13 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: PlayHtSynthesizerConfig,
-        api_key: Optional[str] = None,
-        user_id: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
         aiohttp_session: Optional[ClientSession] = None,
     ):
         super().__init__(synthesizer_config, aiohttp_session)
         self.synthesizer_config = synthesizer_config
-        self.api_key = api_key or getenv("PLAY_HT_API_KEY")
-        self.user_id = user_id or getenv("PLAY_HT_USER_ID")
+        self.api_key = synthesizer_config.api_key or getenv("PLAY_HT_API_KEY")
+        self.user_id = synthesizer_config.user_id or getenv("PLAY_HT_USER_ID")
         if not self.api_key or not self.user_id:
             raise ValueError(
                 "You must set the PLAY_HT_API_KEY and PLAY_HT_USER_ID environment variables"
