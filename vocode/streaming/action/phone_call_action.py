@@ -26,7 +26,7 @@ class VonagePhoneCallAction(BaseAction[ActionConfigType, ParametersType, Respons
             conversation_id=conversation_id,
             params=self.parameters_type(**params),
             vonage_uuid=vonage_uuid,
-            user_message_tracker=user_message_tracker,
+            _user_message_tracker=user_message_tracker,
         )
 
     def get_vonage_uuid(self, action_input: ActionInput[ParametersType]) -> str:
@@ -49,7 +49,7 @@ class TwilioPhoneCallAction(BaseAction[ActionConfigType, ParametersType, Respons
             conversation_id=conversation_id,
             params=self.parameters_type(**params),
             twilio_sid=twilio_sid,
-            user_message_tracker=user_message_tracker,
+            _user_message_tracker=user_message_tracker,
         )
 
     def get_twilio_sid(self, action_input: ActionInput[ParametersType]) -> str:
