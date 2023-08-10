@@ -72,7 +72,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
         )
 
 
-AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME = "PlaygroundLiteNeural"
+AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME = "HaroldAINeural"
 AZURE_SYNTHESIZER_DEFAULT_PITCH = 0
 AZURE_SYNTHESIZER_DEFAULT_RATE = 15
 
