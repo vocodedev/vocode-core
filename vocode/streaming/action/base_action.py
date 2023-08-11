@@ -78,7 +78,7 @@ class BaseAction(Generic[ActionConfigType, ParametersType, ResponseType]):
             action_config=self.action_config,
             conversation_id=conversation_id,
             params=self.parameters_type(**params),
-            _user_message_tracker=user_message_tracker,
+            user_message_tracker=user_message_tracker,
         )
 
     def _user_message_param_info(self):

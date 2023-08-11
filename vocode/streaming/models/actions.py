@@ -22,7 +22,7 @@ class ActionInput(BaseModel, Generic[ParametersType]):
     action_config: ActionConfig
     conversation_id: str
     params: ParametersType
-    _user_message_tracker: Optional[asyncio.Event] = None
+    user_message_tracker: Optional[asyncio.Event] = None
 
     class Config:
         arbitrary_types_allowed = True
