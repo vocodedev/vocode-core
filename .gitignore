@@ -9,3 +9,4 @@ credentials.json
 **/call_transcripts/*.txt
 benchmark_results/
 private.key
+dump.rdb
