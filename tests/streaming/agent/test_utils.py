@@ -299,7 +299,7 @@ FUNCTIONS_OUTPUT = [
 
 
 @pytest.mark.asyncio
-async def test_stream_openai_response_async():
+async def test_collate_response_async():
     test_cases = [
         StreamOpenAIResponseTestCase(
             openai_objects=[
