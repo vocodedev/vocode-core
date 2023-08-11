@@ -32,10 +32,8 @@ class ActionStart(EventLog):
 
     def to_string(self, include_timestamp: bool = False):
         if include_timestamp:
-            return (
-                f"{Sender.ACTION_WORKER.name}: {self.action_input} ({self.timestamp})"
-            )
-        return f"{Sender.ACTION_WORKER.name}: {self.action_input}"
+            return f"{Sender.ACTION_WORKER.name}: params={self.action_input.params.dict()} ({self.timestamp})"
+        return f"{Sender.ACTION_WORKER.name}: params={self.action_input.params.dict()}"
 
 
 class ActionFinish(EventLog):
@@ -45,10 +43,8 @@ class ActionFinish(EventLog):
 
     def to_string(self, include_timestamp: bool = False):
         if include_timestamp:
-            return (
-                f"{Sender.ACTION_WORKER.name}: {self.action_output} ({self.timestamp})"
-            )
-        return f"{Sender.ACTION_WORKER.name}: {self.action_output}"
+            return f"{Sender.ACTION_WORKER.name}: action_type='{self.action_type}' response={self.action_output.response.dict()} ({self.timestamp})"
+        return f"{Sender.ACTION_WORKER.name}: action_type='{self.action_type}' response={self.action_output.response.dict()}"
 
 
 class Transcript(BaseModel):
