@@ -51,8 +51,8 @@ def test_transcript_to_string():
         transcript.to_string()
         == """BOT: What up
 HUMAN: Send me an email you bot. My email is du@de.com
-ACTION_WORKER: action_config=NylasSendEmailActionConfig() conversation_id='123' params=NylasSendEmailParameters(recipient_email='du@de.com', body='What up', subject='This is the bot') twilio_sid='123'
-ACTION_WORKER: action_type='action_nylas_send_email' response=NylasSendEmailResponse(success=True)"""
+ACTION_WORKER: params={'recipient_email': 'du@de.com', 'body': 'What up', 'subject': 'This is the bot'}
+ACTION_WORKER: action_type='action_nylas_send_email' response={'success': True}"""
     )
 
 
@@ -91,6 +91,6 @@ def test_transcript_to_string_no_phone_input():
         transcript.to_string()
         == """BOT: What up
 HUMAN: Send me an email you bot. My email is du@de.com
-ACTION_WORKER: action_config=NylasSendEmailActionConfig() conversation_id='123' params=NylasSendEmailParameters(recipient_email='du@de.com', body='What up', subject='This is the bot')
-ACTION_WORKER: action_type='action_nylas_send_email' response=NylasSendEmailResponse(success=True)"""
+ACTION_WORKER: params={'recipient_email': 'du@de.com', 'body': 'What up', 'subject': 'This is the bot'}
+ACTION_WORKER: action_type='action_nylas_send_email' response={'success': True}"""
     )
