@@ -8,7 +8,7 @@ from typing import Optional
 from vocode import getenv
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.events import PhoneCallConnectedEvent
+from vocode.streaming.models.events import PhoneCallConnectedEvent,VoicemailEvent
 
 from vocode.streaming.models.telephony import TwilioConfig
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
@@ -99,6 +99,19 @@ class TwilioCall(Call[TwilioOutputDevice]):
         if twilio_call.answered_by in ("machine_start", "fax"):
             self.logger.info(f"Call answered by {twilio_call.answered_by}")
             twilio_call.update(status="completed")
+
+         # if call is not answered by human then send voicemail message 
+        if twilio_call.answered_by not in ('unknown', 'human'):
+            self.events_manager.publish_event(
+                VoicemailEvent(
+                to_phone_number=self.to_phone,
+                from_phone_number=self.from_phone,
+                )
+            )
+           
+        
+
+
         else:
             await self.wait_for_twilio_start(ws)
             await super().start()
@@ -106,6 +119,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 PhoneCallConnectedEvent(
                     conversation_id=self.id,
                     to_phone_number=self.to_phone,
+                    
                     from_phone_number=self.from_phone,
                 )
             )

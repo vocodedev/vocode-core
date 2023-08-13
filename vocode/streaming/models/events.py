@@ -17,6 +17,7 @@ class EventType(str, Enum):
     PHONE_CALL_ENDED = "event_phone_call_ended"
     RECORDING = "event_recording"
     ACTION = "event_action"
+    VOICEMAIL = "event_voicemail"
 
 
 class Event(TypedModel):
@@ -39,3 +40,13 @@ class RecordingEvent(Event, type=EventType.RECORDING):
 class ActionEvent(Event, type=EventType.ACTION):
     action_input: Optional[dict] = None
     action_output: Optional[dict] = None
+
+#voicemail Event to send voicemail message if the person doesn't picks up  the call 
+class VoicemailEvent(Event, type=EventType.VOICEMAIL):
+    
+    to_phone_number: str
+    from_phone_number: str
+    
+
+
+
