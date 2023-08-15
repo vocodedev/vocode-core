@@ -51,7 +51,66 @@ const number = await vocode.numbers.updateNumber({
 
 ## Changing the Voice
 
-Our prompt has been updated. Now let's use a voice provided by ElevenLabs instead of Azure.
+Our prompt has been updated. Now let's use a voice provided by other API providers.
+
+### Rime
+
+<CodeGroup>
+
+```python Python
+from vocode import RimeVoiceParams, VoiceType
+
+rime_voice = RimeVoiceParams(
+    type=VoiceType.VOICE_RIME,
+    speaker="RIME_SPEAKER",
+)
+voice = vocode_client.voices.create_voice(request=rime_voice)
+```
+
+```javascript TypeScript
+import { VoiceType } from "@vocode/vocode-api/api";
+
+const rimeVoice = {
+  type: VoiceType.VoiceRime,
+  voiceId: "RIME_SPEAKER",
+};
+const number = await vocode.voices.createVoice(rimeVoice);
+```
+
+</CodeGroup>
+
+### Play.ht
+
+<CodeGroup>
+
+```python Python
+from vocode import PlayHtVoiceParams, VoiceType
+
+play_ht_voice = PlayHtVoiceParams(
+    type=VoiceType.VOICE_PLAY_HT,
+    voice_id="PLAY_HT_VOICE_ID",
+    api_user_id="PLAY_HT_USER_ID",
+    api_key="PLAY_HT_API_KEY",
+)
+voice = vocode_client.voices.create_voice(request=play_ht_voice)
+```
+
+```javascript TypeScript
+import { VoiceType } from "@vocode/vocode-api/api";
+
+const playHtVoice = {
+  type: VoiceType.VoicePlayHt,
+  voiceId: "PLAY_HT_VOICE_ID",
+  apiUserId: "PLAY_HT_USER_ID",
+  apiKey: "PLAY_HT_API_KEY,
+};
+const number = await vocode.voices.createVoice(playHtVoice);
+```
+
+</CodeGroup>
+
+### ElevenLabs
+
 We will use the `rachel` voice from ElevenLabs. Instead of updating our existing agent directly,
 we'll create a new voice config and set the agent to use it.
 

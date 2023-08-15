@@ -154,7 +154,8 @@
         "retrieve-call-data",
         "setting-up-webhook",
         "using-actions",
-        "vectordb"
+        "vectordb",
+        "multilingual"
       ]
     }
   ],
