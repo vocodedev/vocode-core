@@ -10,7 +10,7 @@ from vocode.streaming.utils.events_manager import EventsManager
 
 class EventLog(BaseModel):
     sender: Sender
-    timestamp: float
+    timestamp: float = Field(default_factory=time.time)
 
     def to_string(self, include_timestamp: bool = False) -> str:
         raise NotImplementedError
@@ -32,10 +32,8 @@ class ActionStart(EventLog):
 
     def to_string(self, include_timestamp: bool = False):
         if include_timestamp:
-            return (
-                f"{Sender.ACTION_WORKER.name}: {self.action_input} ({self.timestamp})"
-            )
-        return f"{Sender.ACTION_WORKER.name}: {self.action_input}"
+            return f"{Sender.ACTION_WORKER.name}: params={self.action_input.params.dict()} ({self.timestamp})"
+        return f"{Sender.ACTION_WORKER.name}: params={self.action_input.params.dict()}"
 
 
 class ActionFinish(EventLog):
@@ -45,10 +43,8 @@ class ActionFinish(EventLog):
 
     def to_string(self, include_timestamp: bool = False):
         if include_timestamp:
-            return (
-                f"{Sender.ACTION_WORKER.name}: {self.action_output} ({self.timestamp})"
-            )
-        return f"{Sender.ACTION_WORKER.name}: {self.action_output}"
+            return f"{Sender.ACTION_WORKER.name}: action_type='{self.action_type}' response={self.action_output.response.dict()} ({self.timestamp})"
+        return f"{Sender.ACTION_WORKER.name}: action_type='{self.action_type}' response={self.action_output.response.dict()}"
 
 
 class Transcript(BaseModel):
@@ -68,33 +64,55 @@ class Transcript(BaseModel):
             for event in self.event_logs
         )
 
-    def add_message(
-        self,
-        text: str,
-        sender: Sender,
-        conversation_id: str,
+    def maybe_publish_transcript_event_from_message(
+        self, message: Message, conversation_id: str
     ):
-        timestamp = time.time()
-        self.event_logs.append(Message(text=text, sender=sender, timestamp=timestamp))
         if self.events_manager is not None:
             self.events_manager.publish_event(
                 TranscriptEvent(
-                    text=text,
-                    sender=sender,
-                    timestamp=time.time(),
+                    text=message.text,
+                    sender=message.sender,
+                    timestamp=message.timestamp,
                     conversation_id=conversation_id,
                 )
             )
 
+    def add_message_from_props(
+        self,
+        text: str,
+        sender: Sender,
+        conversation_id: str,
+        publish_to_events_manager: bool = True,
+    ):
+        timestamp = time.time()
+        message = Message(text=text, sender=sender, timestamp=timestamp)
+        self.event_logs.append(message)
+        if publish_to_events_manager:
+            self.maybe_publish_transcript_event_from_message(
+                message=message, conversation_id=conversation_id
+            )
+
+    def add_message(
+        self,
+        message: Message,
+        conversation_id: str,
+        publish_to_events_manager: bool = True,
+    ):
+        self.event_logs.append(message)
+        if publish_to_events_manager:
+            self.maybe_publish_transcript_event_from_message(
+                message=message, conversation_id=conversation_id
+            )
+
     def add_human_message(self, text: str, conversation_id: str):
-        self.add_message(
+        self.add_message_from_props(
             text=text,
             sender=Sender.HUMAN,
             conversation_id=conversation_id,
         )
 
     def add_bot_message(self, text: str, conversation_id: str):
-        self.add_message(
+        self.add_message_from_props(
             text=text,
             sender=Sender.BOT,
             conversation_id=conversation_id,

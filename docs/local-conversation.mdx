@@ -105,6 +105,48 @@ StreamingConversation(
 )
 ```
 
+## Llama.cpp
+
+You can use any model supported by [llama.cpp](https://github.com/ggerganov/llama.cpp) with Vocode. This includes LLaMA, Alpaca, Vicuna, Koala, WizardLM, and more. We will use [NousResearch/Nous-Hermes-13b](https://huggingface.co/NousResearch/Nous-Hermes-13b) in this example because it currently ranks highly on HuggingFace's [Open LLM Leaderboard](https://huggingface.co/spaces/HuggingFaceH4/open_llm_leaderboard).
+
+Our implementation is built on top of [langchain](https://python.langchain.com/docs/modules/model_io/models/llms/integrations/llamacpp), which integrates with llama.cpp through [llama-cpp-python](https://github.com/abetlen/llama-cpp-python).
+
+Install `llama-cpp-python` by running the following:
+
+```
+pip install llama-cpp-python
+```
+
+or run the following to install it with support for offloading model layers to a GPU via CUDA:
+
+```
+CMAKE_ARGS="-DLLAMA_CUBLAS=on" FORCE_CMAKE=1 pip install llama-cpp-python
+```
+
+[llama-cpp-python](https://github.com/abetlen/llama-cpp-python#installation-with-openblas--cublas--clblast--metal) has more installation commands for different BLAS backends.
+
+Set up your agent in `StreamingConversation` as follows:
+
+```python
+from vocode.streaming.models.agent import LlamacppAgentConfig
+from vocode.streaming.agent.llamacpp_agent import LlamacppAgent
+
+StreamingConversation(
+    ...
+    agent=LlamacppAgent(
+        LlamacppAgentConfig(
+            prompt_preamble="The AI is having a pleasant conversation about life",
+            llamacpp_kwargs={"model_path": "path/to/nous-hermes-13b.ggmlv3.q4_0.bin", "verbose": True},
+            prompt_template="alpaca",
+            initial_message=BaseMessage(text="Hello!"),
+        )
+    )
+    ...
+)
+```
+
+You can add the key `n_gpu_layers` to the `llamacpp_kwargs` to offload some of the model's layers to a GPU.
+
 ## Coqui TTS
 
 Install the Coqui TTS package by running:
