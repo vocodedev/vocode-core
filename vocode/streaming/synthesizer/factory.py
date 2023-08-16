@@ -66,5 +66,9 @@ class SynthesizerFactory:
             return CoquiTTSSynthesizer(
                 synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
             )
+        elif isinstance(synthesizer_config, PollySynthesizerConfig):
+            return PollySynthesizer(
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
+            )
         else:
             raise Exception("Invalid synthesizer config")
