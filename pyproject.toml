@@ -41,6 +41,7 @@ aiohttp = "^3.8.4"
 langchain = "^0.0.198"
 google-cloud-aiplatform = {version = "^1.26.0", optional = true}
 miniaudio = "^1.59"
+boto3 = "^1.28.28"
 
 
 [tool.poetry.group.lint.dependencies]
