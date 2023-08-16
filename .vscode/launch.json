@@ -1,0 +1,42 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Client Backend",
+            "type": "python",
+            "request": "launch",
+            "program": "apps/client_backend/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Streaming Quickstart",
+            "type": "python",
+            "request": "launch",
+            "program": "quickstarts/streaming_conversation.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Test transcriber",
+            "type": "python",
+            "request": "launch",
+            "program": "playground/streaming/transcriber/transcribe.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
