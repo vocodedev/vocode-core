@@ -33,12 +33,13 @@ def get_voice_id(synthesizer_config: SynthesizerConfig) -> str:
 
 def cache_key(text, synthesizer_config: SynthesizerConfig) -> str:
     config_text = synthesizer_config.json()
-    cleaned_text = text.lower()
-    cleaned_text = re.sub(r'\s+', '-', cleaned_text)
-    cleaned_text = re.sub(r'[|<>"?*:\\.$[\]#/@]', '', cleaned_text)
+    cleaned_text = text.lower().strip() # lowercase, remove leading/trailing whitespace
+    cleaned_text = re.sub(r'\s+', '_', cleaned_text) # replace whitespace with underscore
+    # cleaned_text = re.sub(r'[|<>"?*:\\.$[\]#/@]', '', cleaned_text) # this method does not handle escape characters
+    cleaned_text = re.sub(r'\W+', '-', cleaned_text) # defined as alphanumeric only and underscore, convert to dash
     voice_id = get_voice_id(synthesizer_config)
     hash_value = hashlib.md5((cleaned_text + config_text).encode()).hexdigest()[:8]
-    return f"{voice_id}/synth_{cleaned_text[:32]}_{hash_value}.wav"
+    return f"{voice_id}/synth_{cleaned_text[:32]}_{hash_value}.wav
 
 class AsyncGeneratorWrapper(AsyncGenerator[ChunkResult, None]):
     def __init__(self, generator, when_finished: Callable, remove_wav_header: bool):
