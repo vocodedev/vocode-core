@@ -141,27 +141,32 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             return
         assert self.transcript is not None
 
+        chat_parameters = {}
         if self.agent_config.vector_db_config:
-            docs_with_scores = await self.vector_db.similarity_search_with_score(
-                self.transcript.get_last_user_message()[1]
-            )
-            docs_with_scores_str = "\n\n".join(
-                [
-                    "Document: "
-                    + doc[0].metadata["source"]
-                    + f" (Confidence: {doc[1]})\n"
-                    + doc[0].lc_kwargs["page_content"].replace(r"\n", "\n")
-                    for doc in docs_with_scores
-                ]
-            )
-            vector_db_result = f"Found {len(docs_with_scores)} similar documents:\n{docs_with_scores_str}"
-            messages = format_openai_chat_messages_from_transcript(
-                self.transcript, self.agent_config.prompt_preamble
-            )
-            messages.insert(
-                -1, vector_db_result_to_openai_chat_message(vector_db_result)
-            )
-            chat_parameters = self.get_chat_parameters(messages)
+            try:
+                docs_with_scores = await self.vector_db.similarity_search_with_score(
+                    self.transcript.get_last_user_message()[1]
+                )
+                docs_with_scores_str = "\n\n".join(
+                    [
+                        "Document: "
+                        + doc[0].metadata["source"]
+                        + f" (Confidence: {doc[1]})\n"
+                        + doc[0].lc_kwargs["page_content"].replace(r"\n", "\n")
+                        for doc in docs_with_scores
+                    ]
+                )
+                vector_db_result = f"Found {len(docs_with_scores)} similar documents:\n{docs_with_scores_str}"
+                messages = format_openai_chat_messages_from_transcript(
+                    self.transcript, self.agent_config.prompt_preamble
+                )
+                messages.insert(
+                    -1, vector_db_result_to_openai_chat_message(vector_db_result)
+                )
+                chat_parameters = self.get_chat_parameters(messages)
+            except Exception as e:
+                self.logger.error(f"Error while hitting vector db: {e}", exc_info=True)
+                chat_parameters = self.get_chat_parameters()
         else:
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
