@@ -7,6 +7,7 @@ import boto3
 DEFAULT_LANGUAGE_CODE = "en-US"
 DEFAULT_VOICE_ID = "Matthew"
 
+
 class PollySynthesizer(BaseSynthesizer):
     def __init__(
         self,
@@ -21,10 +22,10 @@ class PollySynthesizer(BaseSynthesizer):
 
     def synthesize(self, message: str) -> AudioSegment:
         response = self.client.synthesize_speech(
-            Text=message, 
+            Text=message,
             LanguageCode=self.language_code,
-            TextType="text", 
+            TextType="text",
             OutputFormat="mp3",
-            VoiceId=self.voice_id, 
+            VoiceId=self.voice_id,
         )
-        return AudioSegment.from_mp3(io.BytesIO(response.get("AudioStream").read()))
+        return AudioSegment.from_mp3(io.BytesIO(response.get("AudioStream").read()))  # type: ignore
