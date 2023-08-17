@@ -1,26 +1,38 @@
-from typing import Any, Dict, Generic, Optional, Type
+import asyncio
+from typing import Any, Dict, Generic, Optional, Type, TypeVar, TYPE_CHECKING
 from vocode.streaming.action.utils import exclude_keys_recursive
 from vocode.streaming.models.actions import (
+    ActionConfig,
     ActionInput,
     ActionOutput,
     ActionType,
     ParametersType,
     ResponseType,
 )
-from vocode.streaming.utils.state_manager import ConversationStateManager
+
+if TYPE_CHECKING:
+    from vocode.streaming.utils.state_manager import ConversationStateManager
+
+ActionConfigType = TypeVar("ActionConfigType", bound=ActionConfig)
 
 
-class BaseAction(Generic[ParametersType, ResponseType]):
+class BaseAction(Generic[ActionConfigType, ParametersType, ResponseType]):
     description: str = ""
-    action_type: str = ActionType.BASE.value
 
-    def __init__(self, should_respond: bool = False, quiet: bool = False, is_interruptible: bool = True):
+    def __init__(
+        self,
+        action_config: ActionConfigType,
+        should_respond: bool = False,
+        quiet: bool = False,
+        is_interruptible: bool = True,
+    ):
+        self.action_config = action_config
         self.should_respond = should_respond
         self.quiet = quiet
         self.is_interruptible = is_interruptible
 
     def attach_conversation_state_manager(
-        self, conversation_state_manager: ConversationStateManager
+        self, conversation_state_manager: "ConversationStateManager"
     ):
         self.conversation_state_manager = conversation_state_manager
 
@@ -44,10 +56,12 @@ class BaseAction(Generic[ParametersType, ResponseType]):
             parameters_schema["properties"][
                 "user_message"
             ] = self._user_message_param_info()
-            parameters_schema["required"].append("user_message")
+            required = parameters_schema.get("required", [])
+            required.append("user_message")
+            parameters_schema["required"] = required
 
         return {
-            "name": self.action_type,
+            "name": self.action_config.type,
             "description": self.description,
             "parameters": parameters_schema,
         }
@@ -56,13 +70,15 @@ class BaseAction(Generic[ParametersType, ResponseType]):
         self,
         conversation_id: str,
         params: Dict[str, Any],
+        user_message_tracker: Optional[asyncio.Event] = None,
     ) -> ActionInput[ParametersType]:
         if "user_message" in params:
             del params["user_message"]
         return ActionInput(
-            action_type=self.action_type,
+            action_config=self.action_config,
             conversation_id=conversation_id,
             params=self.parameters_type(**params),
+            user_message_tracker=user_message_tracker,
         )
 
     def _user_message_param_info(self):

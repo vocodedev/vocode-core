@@ -686,24 +686,22 @@ tests = ["asttokens", "littleutils", "pytest", "rich"]
 
 [[package]]
 name = "fastapi"
-version = "0.95.2"
+version = "0.100.1"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "fastapi-0.95.2-py3-none-any.whl", hash = "sha256:d374dbc4ef2ad9b803899bd3360d34c534adc574546e25314ab72c0c4411749f"},
-    {file = "fastapi-0.95.2.tar.gz", hash = "sha256:4d9d3e8c71c73f11874bcf5e33626258d143252e329a01002f767306c64fb982"},
+    {file = "fastapi-0.100.1-py3-none-any.whl", hash = "sha256:ec6dd52bfc4eff3063cfcd0713b43c87640fefb2687bbbe3d8a08d94049cdf32"},
+    {file = "fastapi-0.100.1.tar.gz", hash = "sha256:522700d7a469e4a973d92321ab93312448fbe20fca9c8da97effc7e7bc56df23"},
 ]
 
 [package.dependencies]
-pydantic = ">=1.6.2,<1.7 || >1.7,<1.7.1 || >1.7.1,<1.7.2 || >1.7.2,<1.7.3 || >1.7.3,<1.8 || >1.8,<1.8.1 || >1.8.1,<2.0.0"
+pydantic = ">=1.7.4,<1.8 || >1.8,<1.8.1 || >1.8.1,<2.0.0 || >2.0.0,<2.0.1 || >2.0.1,<3.0.0"
 starlette = ">=0.27.0,<0.28.0"
+typing-extensions = ">=4.5.0"
 
 [package.extras]
-all = ["email-validator (>=1.1.1)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)", "jinja2 (>=2.11.2)", "orjson (>=3.2.1)", "python-multipart (>=0.0.5)", "pyyaml (>=5.3.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0)", "uvicorn[standard] (>=0.12.0)"]
-dev = ["pre-commit (>=2.17.0,<3.0.0)", "ruff (==0.0.138)", "uvicorn[standard] (>=0.12.0,<0.21.0)"]
-doc = ["mdx-include (>=1.4.1,<2.0.0)", "mkdocs (>=1.1.2,<2.0.0)", "mkdocs-markdownextradata-plugin (>=0.1.7,<0.3.0)", "mkdocs-material (>=8.1.4,<9.0.0)", "pyyaml (>=5.3.1,<7.0.0)", "typer-cli (>=0.0.13,<0.0.14)", "typer[all] (>=0.6.1,<0.8.0)"]
-test = ["anyio[trio] (>=3.2.1,<4.0.0)", "black (==23.1.0)", "coverage[toml] (>=6.5.0,<8.0)", "databases[sqlite] (>=0.3.2,<0.7.0)", "email-validator (>=1.1.1,<2.0.0)", "flask (>=1.1.2,<3.0.0)", "httpx (>=0.23.0,<0.24.0)", "isort (>=5.0.6,<6.0.0)", "mypy (==0.982)", "orjson (>=3.2.1,<4.0.0)", "passlib[bcrypt] (>=1.7.2,<2.0.0)", "peewee (>=3.13.3,<4.0.0)", "pytest (>=7.1.3,<8.0.0)", "python-jose[cryptography] (>=3.3.0,<4.0.0)", "python-multipart (>=0.0.5,<0.0.7)", "pyyaml (>=5.3.1,<7.0.0)", "ruff (==0.0.138)", "sqlalchemy (>=1.3.18,<1.4.43)", "types-orjson (==3.6.2)", "types-ujson (==5.7.0.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0,<6.0.0)"]
+all = ["email-validator (>=2.0.0)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)", "jinja2 (>=2.11.2)", "orjson (>=3.2.1)", "pydantic-extra-types (>=2.0.0)", "pydantic-settings (>=2.0.0)", "python-multipart (>=0.0.5)", "pyyaml (>=5.3.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0)", "uvicorn[standard] (>=0.12.0)"]
 
 [[package]]
 name = "filelock"
@@ -1693,6 +1691,70 @@ files = [
 
 [package.dependencies]
 traitlets = "*"
+
+[[package]]
+name = "miniaudio"
+version = "1.59"
+description = "python bindings for the miniaudio library and its decoders (mp3, flac, ogg vorbis, wav)"
+optional = false
+python-versions = "*"
+files = [
+    {file = "miniaudio-1.59-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:028d7e8e6d99441340c0bfb60660db7bd5789cae7c95fa599d830344901d6d72"},
+    {file = "miniaudio-1.59-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:ba6f802376f49977e9698740411db46092ea005894ff86d805aeddde7e505c1e"},
+    {file = "miniaudio-1.59-cp310-cp310-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:9f24b44bd28ca631b830bc91bd910cb0209fba005401effa64cee9a8ba580992"},
+    {file = "miniaudio-1.59-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8980dda51e92ea750ca8bcfb1d2c198eca7e4c844ab857faac12e20245322aa6"},
+    {file = "miniaudio-1.59-cp310-cp310-musllinux_1_1_i686.whl", hash = "sha256:e21f56d51c627cef612d1a7bbc73fc7c5e03908f5ebc22c98494951ab8ccd3c8"},
+    {file = "miniaudio-1.59-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:1f6f1665ce8ed46caac48beec64c70e248a0b4e001590c698695cd22c1f634a0"},
+    {file = "miniaudio-1.59-cp310-cp310-win32.whl", hash = "sha256:799b393adce56c8df1df16e7dc692a83125888df9ecf8ec0242c4905df6275ef"},
+    {file = "miniaudio-1.59-cp310-cp310-win_amd64.whl", hash = "sha256:44c6b48f01d934784da282f7a17c40be9110ee6bc723f5f90916d2b2e729c9cc"},
+    {file = "miniaudio-1.59-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:2a9387e85e6a63d66a873f4208fbaba93179d11423da08dc83c78dd1b68ba504"},
+    {file = "miniaudio-1.59-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:12fbbe3934856ab54fa8889ab6ec6b62a97faa2f85a8830e286fe5a4e9584ca4"},
+    {file = "miniaudio-1.59-cp311-cp311-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:f4a9a1dc4352af4198f6ca0c20bac8b5b6a89d0d67e3535149ef08420a1ab3c9"},
+    {file = "miniaudio-1.59-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4eb9eac3f23fd4c94925830fa9c172e98aebfb12cec1dbfa6a7693b9e4c1e555"},
+    {file = "miniaudio-1.59-cp311-cp311-musllinux_1_1_i686.whl", hash = "sha256:52882c36126c3a97fcdd8d753e4b1b07934bba9d4d3c431aa7f4914849090cac"},
+    {file = "miniaudio-1.59-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:d6bb6deee6d5969292d22730d31ee85ed0edc2997ca79978db0cca269ab73761"},
+    {file = "miniaudio-1.59-cp311-cp311-win32.whl", hash = "sha256:6afe7449d7d593ba3f8bd91085a392d0c6ca3be4c03b62af37cb46f6c0c0d9f4"},
+    {file = "miniaudio-1.59-cp311-cp311-win_amd64.whl", hash = "sha256:a22832e449a31620317ae657f7fd20a42466e5768c48373f8f28c53f2b36f5cd"},
+    {file = "miniaudio-1.59-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:fbfb3c853641c8bd835e0654f49fe0c09b4018b1ecc7e4c2436e02fbaf748c4b"},
+    {file = "miniaudio-1.59-cp37-cp37m-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:45ce3596c693053a578db725848a90ba0dfcc03d1d94124b9fddaa9e50a7533e"},
+    {file = "miniaudio-1.59-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d07228047352b655a82711704a635eee41eb3977ceaaf672ee17d64a3ba261b7"},
+    {file = "miniaudio-1.59-cp37-cp37m-musllinux_1_1_i686.whl", hash = "sha256:586f95f1d10f5d4f58b272c15c601c3ba13128bd34a839bce5bd28a839d5cf3c"},
+    {file = "miniaudio-1.59-cp37-cp37m-musllinux_1_1_x86_64.whl", hash = "sha256:7644f19b1dc00bca3ec9e6066eb8879c0e638091955092a1d7085a38d7de6e0f"},
+    {file = "miniaudio-1.59-cp37-cp37m-win32.whl", hash = "sha256:055fb3a2e00ddcce2a2809cd2a3d5e68234588a00c70533fa4b68f0178829dce"},
+    {file = "miniaudio-1.59-cp37-cp37m-win_amd64.whl", hash = "sha256:e1acea13830a53c026e58d44856ba4951a26eb0d0a2fda2ce6dc7280b6f57f81"},
+    {file = "miniaudio-1.59-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:7a8b6f1d4a2551061721cc7b22fb0eb3839aad9137553e01b4dde1a31c91ca45"},
+    {file = "miniaudio-1.59-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:011b2b8d5c57a485a6b86476e24c1c6be4a61ec8c33c456e3052929269857d0d"},
+    {file = "miniaudio-1.59-cp38-cp38-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:9b270e9e1df5ec05d03659febffaa704709d7c9cb0b3597cb0a993875d73be84"},
+    {file = "miniaudio-1.59-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3ab9d0468790109bafc88ce9d1c93454b2d384af0c14a6657620315115390c8d"},
+    {file = "miniaudio-1.59-cp38-cp38-musllinux_1_1_i686.whl", hash = "sha256:b0f0ffa87bef0b3bf932eff60aec97ac90e2adf7373e9170969c6f98ba1c5635"},
+    {file = "miniaudio-1.59-cp38-cp38-musllinux_1_1_x86_64.whl", hash = "sha256:1a03e514b12ba5d93fe48470ddc6a7f4025cd8de5f604233fc899507e5a054c1"},
+    {file = "miniaudio-1.59-cp38-cp38-win32.whl", hash = "sha256:19c6406342989a6774305cd214314028553cbb9fcbc5ed43ab17a7f6b43aa46b"},
+    {file = "miniaudio-1.59-cp38-cp38-win_amd64.whl", hash = "sha256:239bd4ff17aa7eede52b30a2153a28fe0bf2891aa43617a10348dd90f20d727e"},
+    {file = "miniaudio-1.59-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:88930514e6a9a6258d3536638da5ceb3aaa1d6643122e0704db7fd08ff924368"},
+    {file = "miniaudio-1.59-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:6d195800a6162464731ba484580cdab3be5bcc47a366c8440be6015f16d059b1"},
+    {file = "miniaudio-1.59-cp39-cp39-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:6fcd4484eea26629eb9602ebcab0181f515881e736deccb235c2c0d99d7b4215"},
+    {file = "miniaudio-1.59-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:fa0ff716a9eb79799ed623f619ed6b0bc1669046cd1f2070de20d3dc6737a822"},
+    {file = "miniaudio-1.59-cp39-cp39-musllinux_1_1_i686.whl", hash = "sha256:878623ffa77c366c76c4202d3095835943bd8f8f604bbdc1872030d646817e4a"},
+    {file = "miniaudio-1.59-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:4aca5d9e9774ddbad5c4a5c65dfb1e7fba9e4570092ba6891f439f7c849d21ed"},
+    {file = "miniaudio-1.59-cp39-cp39-win32.whl", hash = "sha256:0e05f09d58ed32e7cdc1bad9342155b81e378ff2101242cf8a8f06cd56dae043"},
+    {file = "miniaudio-1.59-cp39-cp39-win_amd64.whl", hash = "sha256:0e51899a148b393e84ee3a201a72c8fa4d19413f5b1b705ff5ae9f8eee956a7a"},
+    {file = "miniaudio-1.59-pp37-pypy37_pp73-macosx_10_9_x86_64.whl", hash = "sha256:07de990f047e693681f15736be2e169e3f53064d1e6a7d0c37837297fa18929c"},
+    {file = "miniaudio-1.59-pp37-pypy37_pp73-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:e03beea7dabeb2be1a0a4718458e0b85e3c23692563b0f8841164d71ef2c2eef"},
+    {file = "miniaudio-1.59-pp37-pypy37_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0c2cb1fdc92ace828bceabb602b4d2f52040a361632d71b810144656b8334738"},
+    {file = "miniaudio-1.59-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:5597384fa7dda1691adca46568ffaabcf39c0a224bf5b9548665a255b86a4f35"},
+    {file = "miniaudio-1.59-pp38-pypy38_pp73-macosx_10_9_x86_64.whl", hash = "sha256:d253c994a27062788f60a8fb1f8571320b72ddc44fd4128fdd85634cf38717a4"},
+    {file = "miniaudio-1.59-pp38-pypy38_pp73-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:bb71fb5d5491335fc565c157a01a8c6907180e113c3c0d9a6c22e28458be5919"},
+    {file = "miniaudio-1.59-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:21569111381b877d5445c917b00dfe038b434cb9dacaa4c548ca8c6b5e6d5b55"},
+    {file = "miniaudio-1.59-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:8686712f90189eaa6f9fc3eb503eb3487b09ca52417690fd14ac53306d55a125"},
+    {file = "miniaudio-1.59-pp39-pypy39_pp73-macosx_10_9_x86_64.whl", hash = "sha256:4674c49ee2489595f65a8cdc1c48a3e8bc0f577b1eb957d918a942b88480e5a8"},
+    {file = "miniaudio-1.59-pp39-pypy39_pp73-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:0fa69c55197215dabf85bc8f9f9d7128af08db402f12aea962e16bad1ac4dca8"},
+    {file = "miniaudio-1.59-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ce2668b03594612dacea4521483e38da56b51ce8a92d06106643f520ce092a82"},
+    {file = "miniaudio-1.59-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:6117c09da1944a59b7af3009d37c8eb6e0219174f5e00501b797687ddbe9c5a3"},
+    {file = "miniaudio-1.59.tar.gz", hash = "sha256:2b68f496a8655497cde827c77aba3c3557f0f2bb7c38a6ecab34090ab4556277"},
+]
+
+[package.dependencies]
+cffi = ">=1.12.0"
 
 [[package]]
 name = "multidict"
@@ -3580,4 +3642,4 @@ transcribers = ["google-cloud-speech"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<3.12"
-content-hash = "6e92cb9298f033894b86ab6c1f70fcebcb132948d8b1d111acb2d9e24405f939"
+content-hash = "0443b0a62b1438e51309c8d1606460f20dc2e51c6702fecc03a7b171a919b185"

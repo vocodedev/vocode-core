@@ -2,10 +2,10 @@ import os
 import sys
 import typing
 from dotenv import load_dotenv
-from apps.langchain_agent.tools.word_of_the_day import word_of_the_day
 
 from tools.contacts import get_all_contacts
 from tools.vocode import call_phone_number
+from tools.word_of_the_day import word_of_the_day
 from vocode.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.turn_based.synthesizer.gtts_synthesizer import GTTSSynthesizer
 from langchain.memory import ConversationBufferMemory

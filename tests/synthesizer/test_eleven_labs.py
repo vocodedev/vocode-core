@@ -1,3 +1,4 @@
+import asyncio
 from pydantic import ValidationError
 import pytest
 from vocode.streaming.synthesizer.base_synthesizer import SynthesisResult
@@ -9,7 +10,7 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 from pydub import AudioSegment
 
 
-async def asset_synthesis_result_valid(synthesizer: ElevenLabsSynthesizer):
+async def assert_synthesis_result_valid(synthesizer: ElevenLabsSynthesizer):
     response = await synthesizer.create_speech(BaseMessage(text="Hello, world!"), 1024)
     assert isinstance(response, SynthesisResult)
     assert response.chunk_generator is not None
@@ -25,26 +26,26 @@ async def asset_synthesis_result_valid(synthesizer: ElevenLabsSynthesizer):
 
 @pytest.mark.asyncio
 async def test_with_api_key(
-    eleven_labs_synthesizer_with_api_key: ElevenLabsSynthesizer,
+    fixture_eleven_labs_synthesizer_with_api_key: ElevenLabsSynthesizer,
     mock_eleven_labs_api: aioresponses,
 ):
-    await asset_synthesis_result_valid(eleven_labs_synthesizer_with_api_key)
+    await assert_synthesis_result_valid(await fixture_eleven_labs_synthesizer_with_api_key)
 
 
 @pytest.mark.asyncio
 async def test_with_wrong_api_key(
-    eleven_labs_synthesizer_wrong_api_key: ElevenLabsSynthesizer,
+    fixture_eleven_labs_synthesizer_wrong_api_key: ElevenLabsSynthesizer,
     mock_eleven_labs_api: aioresponses,
 ):
     with pytest.raises(Exception, match="ElevenLabs API returned 401 status code"):
-        await eleven_labs_synthesizer_wrong_api_key.create_speech(
+        await (await fixture_eleven_labs_synthesizer_wrong_api_key).create_speech(
             BaseMessage(text="Hello, world!"), 1024
         )
 
 
 @pytest.mark.asyncio
 async def test_with_env_api_key(
-    eleven_labs_synthesizer_env_api_key: ElevenLabsSynthesizer,
+    fixture_eleven_labs_synthesizer_env_api_key: ElevenLabsSynthesizer,
     mock_eleven_labs_api: aioresponses,
 ):
-    await asset_synthesis_result_valid(eleven_labs_synthesizer_env_api_key)
+    await assert_synthesis_result_valid(await fixture_eleven_labs_synthesizer_env_api_key)

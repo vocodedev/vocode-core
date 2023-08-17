@@ -1,6 +1,7 @@
 import logging
 from typing import Optional
 import typing
+import aiohttp
 
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
@@ -31,22 +32,39 @@ class SynthesizerFactory:
         self,
         synthesizer_config: SynthesizerConfig,
         logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
         if isinstance(synthesizer_config, GoogleSynthesizerConfig):
-            return GoogleSynthesizer(synthesizer_config, logger=logger)
+            return GoogleSynthesizer(
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
+            )
         elif isinstance(synthesizer_config, AzureSynthesizerConfig):
-            return AzureSynthesizer(synthesizer_config, logger=logger)
+            return AzureSynthesizer(
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
+            )
         elif isinstance(synthesizer_config, ElevenLabsSynthesizerConfig):
-            return ElevenLabsSynthesizer(synthesizer_config, logger=logger)
+            return ElevenLabsSynthesizer(
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
+            )
         elif isinstance(synthesizer_config, PlayHtSynthesizerConfig):
-            return PlayHtSynthesizer(synthesizer_config, logger=logger)
+            return PlayHtSynthesizer(
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
+            )
         elif isinstance(synthesizer_config, RimeSynthesizerConfig):
-            return RimeSynthesizer(synthesizer_config, logger=logger)
+            return RimeSynthesizer(
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
+            )
         elif isinstance(synthesizer_config, GTTSSynthesizerConfig):
-            return GTTSSynthesizer(synthesizer_config, logger=logger)
+            return GTTSSynthesizer(
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
+            )
         elif isinstance(synthesizer_config, StreamElementsSynthesizerConfig):
-            return StreamElementsSynthesizer(synthesizer_config, logger=logger)
+            return StreamElementsSynthesizer(
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
+            )
         elif isinstance(synthesizer_config, CoquiTTSSynthesizerConfig):
-            return CoquiTTSSynthesizer(synthesizer_config, logger=logger)
+            return CoquiTTSSynthesizer(
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
+            )
         else:
             raise Exception("Invalid synthesizer config")
