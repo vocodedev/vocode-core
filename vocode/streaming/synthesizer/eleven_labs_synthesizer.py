@@ -39,7 +39,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         import elevenlabs
 
         self.elevenlabs = elevenlabs
-
+        self.logger = logger
         self.api_key = synthesizer_config.api_key or getenv("ELEVEN_LABS_API_KEY")
         self.voice_id = synthesizer_config.voice_id or ADAM_VOICE_ID
         self.stability = synthesizer_config.stability
@@ -55,6 +55,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         chunk_size: int,
         create_speech_span: Optional[Span],
     ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
+        start = time.time()
+        self.logger.debug("Using streaming")
         miniaudio_worker_input_queue: asyncio.Queue[
             Union[bytes, None]
         ] = asyncio.Queue()
@@ -76,13 +78,18 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 miniaudio_worker.consume_nonblocking(chunk)
             miniaudio_worker.consume_nonblocking(None)  # sentinel
 
+        chunks_time = 0
         try:
             asyncio.create_task(send_chunks())
 
             # Await the output queue of the MiniaudioWorker and yield the wav chunks in another loop
             while True:
                 # Get the wav chunk and the flag from the output queue of the MiniaudioWorker
+                start = time.time()
                 wav_chunk, is_last = await miniaudio_worker.output_queue.get()
+                end = time.time()
+                chunks_time += end - start
+                self.logger.debug("Getting wav chunk took %s, at %s ", end - start, time.time())
                 if self.synthesizer_config.should_encode_as_wav:
                     wav_chunk = encode_as_wav(wav_chunk, self.synthesizer_config)
 
@@ -95,6 +102,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             pass
         finally:
             miniaudio_worker.terminate()
+            self.logger.debug("Generating voice time took %s", chunks_time)
 
     async def create_speech(
         self,
@@ -102,6 +110,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        start = time.time()
+        self.logger.debug("Creating speech: %s @ Message text %s", start, message.text)
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
@@ -160,5 +170,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 chunk_size=chunk_size,
             )
             convert_span.end()
-
+            end = time.time()
+            self.logger.debug("Created speech: %s @ Message text %s; time took %s", time.time(), message.text, end-start)
             return result

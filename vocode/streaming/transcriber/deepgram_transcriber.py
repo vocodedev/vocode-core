@@ -170,7 +170,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
     async def process(self):
         self.audio_cursor = 0.
         extra_headers = {"Authorization": f"Token {self.api_key}"}
-
+        self.logger.debug("Connecting to Deepgram websocket")
         async with websockets.connect(
             self.get_deepgram_url(), extra_headers=extra_headers
         ) as ws:
@@ -247,5 +247,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     else:
                         time_silent += data["duration"]
                 self.logger.debug("Terminating Deepgram transcriber receiver")
-
+            # start = time.time()
             await asyncio.gather(sender(ws), receiver(ws))
+            # self.logger.debug("Transcirber took %s seconds", time.time() - start)

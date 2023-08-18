@@ -123,8 +123,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             if transcription.is_final:
                 self.conversation.logger.debug(
-                    "Got transcription: {}, confidence: {}".format(
-                        transcription.message, transcription.confidence
+                    "Got transcript: {} @ Got transcription: {}, confidence: {}".format(
+                        time.time(), transcription.message, transcription.confidence
                     )
                 )
             if (
@@ -136,7 +136,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 if self.conversation.current_transcription_is_interrupt:
                     self.conversation.logger.debug("sending interrupt")
-                self.conversation.logger.debug("Human started speaking")
+                self.conversation.logger.debug("Human speaking: {} @ Human started speaking".format(time.time()))
 
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
@@ -286,7 +286,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     ):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
 
-                self.conversation.logger.debug("Synthesizing speech for message")
+                self.conversation.logger.debug("Generatating speech: {} @ Synthesizing speech for message".format(time.time()))
                 synthesis_result = await self.conversation.synthesizer.create_speech(
                     agent_response_message.message,
                     self.chunk_size,
@@ -343,7 +343,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                 )
                 item.agent_response_tracker.set()
-                self.conversation.logger.debug("Message sent: {}".format(message_sent))
+                self.conversation.logger.debug("Message sent: {} @ Message sent: {}".format(time.time(),message_sent))
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(
                         message_sent
@@ -651,7 +651,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
             )
             self.logger.debug(
-                "Sent chunk {} with size {}".format(chunk_idx, len(chunk_result.chunk))
+                "Sent chunk {} @ Sent chunk {} with size {}".format(time.time(),chunk_idx, len(chunk_result.chunk))
             )
             self.mark_last_action_timestamp()
             chunk_idx += 1
