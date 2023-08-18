@@ -195,6 +195,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 buffer = ""
                 time_silent = 0
                 transcript_cursor = 0.0
+                time_took = 0.0
                 while not self._ended:
                     try:
                         msg = await ws.recv()
@@ -214,7 +215,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         (cur_min_latency + cur_max_latency) / 2 * data["duration"]
                     )
                     duration_hist.record(data["duration"])
-
+                    time_took += data["duration"]
                     # Log max and min latencies
                     max_latency_hist.record(cur_max_latency)
                     min_latency_hist.record(max(cur_min_latency, 0))
@@ -241,8 +242,10 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                                 message=buffer,
                                 confidence=confidence,
                                 is_final=False,
+                                time_took=time_took,
                             )
                         )
+                        time_took = 0.0
                         time_silent = self.calculate_time_silent(data)
                     else:
                         time_silent += data["duration"]

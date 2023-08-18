@@ -117,6 +117,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.interruptible_event_factory = interruptible_event_factory
 
         async def process(self, transcription: Transcription):
+            self.conversation.logger.debug("Transcription took {} seconds".format(transcription.time_took))
             self.conversation.mark_last_action_timestamp()
             if transcription.message.strip() == "":
                 self.conversation.logger.info("Ignoring empty transcription")
