@@ -48,6 +48,7 @@ from vocode.streaming.utils.worker import (
     InterruptibleEventFactory,
     InterruptibleWorker,
 )
+import time
 
 if TYPE_CHECKING:
     from vocode.streaming.utils.state_manager import ConversationStateManager
@@ -206,6 +207,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         agent_span_first = tracer.start_span(
             f"{tracer_name_start}.generate_first"  # type: ignore
         )
+        self.logger.debug("Got transcription from agent: %s, %s", transcription.message, time.time())
         responses = self.generate_response(
             transcription.message,
             is_interrupt=transcription.is_interrupt,
