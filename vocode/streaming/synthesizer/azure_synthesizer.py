@@ -176,7 +176,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         voice = ElementTree.SubElement(ssml_root, "voice")
         voice.set("name", self.voice_name)
         if self.synthesizer_config.language_code != "en-US":
-            lang = ElementTree.SubElement(voice, "{%s}lang" % NAMESPACES.get("mstts"))
+            lang = ElementTree.SubElement(voice, "{%s}lang" % NAMESPACES.get(""))
             lang.set("xml:lang", self.synthesizer_config.language_code)
             voice_root = lang
         else:
@@ -253,9 +253,10 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
         ):
             audio_buffer = bytes(chunk_size)
-            while not audio_data_stream.can_read_data(chunk_size):
-                await asyncio.sleep(0)
-            filled_size = audio_data_stream.read_data(audio_buffer)
+            filled_size = await asyncio.get_event_loop().run_in_executor(
+                self.thread_pool_executor,
+                lambda: audio_data_stream.read_data(audio_buffer),
+            )
             if filled_size != chunk_size:
                 yield SynthesisResult.ChunkResult(
                     chunk_transform(audio_buffer[offset:]), True
