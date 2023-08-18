@@ -16,7 +16,7 @@ RUN poetry install --no-dev --no-interaction --no-ansi
 COPY main.py /code/main.py
 
 # Charlie added
-COPY ../../vocode/requirements.txt /vocode/requirements.txt
-RUN pip install -r /vocode/requirements.txt
+# COPY ../../vocode/requirements.txt /vocode/requirements.txt
+# RUN pip install -r /vocode/requirements.txt
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

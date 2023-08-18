@@ -3,7 +3,7 @@ import sys
 import os
 from fastapi import FastAPI
 
-sys.path.insert(0, "/vocode")
+# sys.path.insert(0, "/vocode")
 
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
