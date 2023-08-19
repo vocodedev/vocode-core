@@ -136,6 +136,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 if self.conversation.current_transcription_is_interrupt:
                     self.conversation.logger.debug("sending interrupt")
+                    if getattr(self.conversation.synthesizer, 'dual_stream', False):
+                        await self.conversation.synthesizer.interrupt()
+                        self.conversation.logger.debug("Dual stream synthesizer interrupted from transcription")
                 self.conversation.logger.debug("Human started speaking")
 
             transcription.is_interrupt = (

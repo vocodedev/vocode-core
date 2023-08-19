@@ -41,6 +41,7 @@ class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
 
         self.dual_stream = True
         self.text_queue = None
+        self.text_generator = None
         self.audio_chunks = None
 
     async def create_text_generator(self):
@@ -62,6 +63,7 @@ class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
             except Exception as e:
                 raise e
         self.text_queue = None
+        self.text_generator = None
 
     async def create_response_generator(self, audio_chunks):
         try:
@@ -72,14 +74,18 @@ class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
         except asyncio.CancelledError:
             self.logger.warn('Canceled: create_response_generator')
             await self.interrupt()
+        except self.sdk.sdk.error.InvalidRequestError as e:
+            self.logger.warn(f'Nopause InvalidRequestError: {str(e)}')
+            await self.interrupt()
         self.audio_chunks = None
             
     async def create_speech_stream(self, text: str, is_end: bool = False):
         synthesis_result = None
         if self.text_queue is None:
             self.text_queue = asyncio.Queue()
+            self.text_generator = self.create_text_generator()
             audio_chunks = await self.sdk.Synthesis.astream(
-                self.create_text_generator(),
+                self.text_generator,
                 voice_id=self.synthesizer_config.voice_id,
                 model_name=self.synthesizer_config.model_name,
                 language=self.synthesizer_config.language,
@@ -103,8 +109,14 @@ class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
         await self.interrupt()
 
     async def interrupt(self):
+        if self.text_queue is not None:
+            await self.text_queue.put(None)
         if self.audio_chunks is not None:
             await self.audio_chunks.aterminate()
+        if self.text_generator is not None:
+            # make sure the text_generator exited
+            async for x in self.text_generator:
+                pass
 
     async def create_speech(
         self,
