@@ -167,6 +167,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters["stream"] = True
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
         async for message in collate_response_async(
-            openai_get_tokens(stream), get_functions=True
+            openai_get_tokens(stream), get_functions=True, stream_response=self.agent_config.dual_stream
         ):
             yield message

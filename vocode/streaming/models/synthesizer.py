@@ -25,6 +25,7 @@ class SynthesizerType(str, Enum):
     COQUI_TTS = "synthesizer_coqui_tts"
     COQUI = "synthesizer_coqui"
     BARK = "synthesizer_bark"
+    NOPAUSE = "synthesizer_nopause"
 
 
 class SentimentConfig(BaseModel):
@@ -109,6 +110,7 @@ class ElevenLabsSynthesizerConfig(
     stability: Optional[float]
     similarity_boost: Optional[float]
     model_id: Optional[str]
+    dual_stream: bool = False
 
     @validator("voice_id")
     def set_name(cls, voice_id):
@@ -193,3 +195,15 @@ class StreamElementsSynthesizerConfig(
 class BarkSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.BARK.value):
     preload_kwargs: Dict[str, Any] = {}
     generate_kwargs: Dict[str, Any] = {}
+
+DEFAULT_NOPAUSE_MODEL_NAME = 'nopause-en-beta'
+DEFAULT_NOPAUSE_LANGUAGE = "en"
+DEFAULT_NOPAUSE_VOICE_ID = "Zoe"
+
+class NoPauseSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.NOPAUSE.value):
+    api_key: Optional[str] = None
+    api_base: Optional[str] = None
+    api_version: Optional[str] = None
+    model_name: str = DEFAULT_NOPAUSE_MODEL_NAME
+    language: str = DEFAULT_NOPAUSE_LANGUAGE
+    voice_id: str = DEFAULT_NOPAUSE_VOICE_ID

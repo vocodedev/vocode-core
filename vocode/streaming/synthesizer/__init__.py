@@ -11,3 +11,4 @@ from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
 from vocode.streaming.synthesizer.stream_elements_synthesizer import (
     StreamElementsSynthesizer,
 )
+from vocode.streaming.synthesizer.nopause_synthesizer import NoPauseSynthesizer

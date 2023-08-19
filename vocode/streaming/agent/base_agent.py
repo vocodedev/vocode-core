@@ -221,9 +221,14 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 agent_span_first.end()
                 is_first_response = False
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=response)),
+                AgentResponseMessage(message=BaseMessage(text=response, is_end=False)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
+        if self.agent_config.dual_stream:
+            self.produce_interruptible_agent_response_event_nonblocking(
+                    AgentResponseMessage(message=BaseMessage(text='', is_end=True)),
+                    is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+                )
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:

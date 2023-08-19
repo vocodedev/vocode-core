@@ -110,7 +110,7 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
             stream=True,
         )
         async for sentence in collate_response_async(
-            openai_get_tokens(gen=stream),
+            openai_get_tokens(gen=stream), stream_response=self.agent_config.dual_stream
         ):
             yield sentence
 

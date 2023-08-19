@@ -10,6 +10,7 @@ class MessageType(str, Enum):
 
 class BaseMessage(TypedModel, type=MessageType.BASE):
     text: str
+    is_end: bool = True
 
 
 class SSMLMessage(BaseMessage, type=MessageType.SSML):

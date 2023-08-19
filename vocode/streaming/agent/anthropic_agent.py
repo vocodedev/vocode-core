@@ -108,6 +108,11 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
         async for message in streamed_response:
             completion = message["completion"]
             delta = completion[len(bot_memory_message.content + buffer) :]
+            if self.agent_config.dual_stream:
+                bot_memory_message.content += delta
+                yield delta
+                continue
+
             buffer += delta
 
             sentence, remainder = get_sentence_from_buffer(buffer)
