@@ -88,7 +88,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 wav_chunk, is_last = await miniaudio_worker.output_queue.get()
                 end = time.time()
                 chunks_time += end - start
-                self.logger.debug("Getting wav chunk took %s, at %s ", end - start, time.time())
+                self.logger.debug("11Labs: Getting wav chunk took %s, at %s", end - start, time.time())
                 if self.synthesizer_config.should_encode_as_wav:
                     wav_chunk = encode_as_wav(wav_chunk, self.synthesizer_config)
 
@@ -109,7 +109,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         start = time.time()
-        self.logger.debug("Creating speech: %s; Message %s", start, message.text)
+        self.logger.debug("11Labs: Creating speech: %s; Message %s", start, message.text)
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
@@ -141,7 +141,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             headers=headers,
             timeout=aiohttp.ClientTimeout(total=15),
         )
-        self.logger.debug("Recieved response %s", time.time())
+        self.logger.debug("11Labs: response %s", time.time())
         if not response.ok:
             raise Exception(f"ElevenLabs API returned {response.status} status code")
         if self.experimental_streaming:
@@ -169,6 +169,4 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 chunk_size=chunk_size,
             )
             convert_span.end()
-            end = time.time()
-            self.logger.debug("Created speech: %s @ Message text %s; time took %s", time.time(), message.text, end-start)
             return result

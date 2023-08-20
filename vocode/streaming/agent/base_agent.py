@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-from enum import Enum
 import json
 import logging
 import random
+import time
+import typing
+from enum import Enum
+from opentelemetry import trace
+from opentelemetry.trace import Span
 from typing import (
     AsyncGenerator,
     Generator,
@@ -15,9 +19,7 @@ from typing import (
     Union,
     TYPE_CHECKING,
 )
-import typing
-from opentelemetry import trace
-from opentelemetry.trace import Span
+
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.action.phone_call_action import (
     TwilioPhoneCallAction,
@@ -30,7 +32,6 @@ from vocode.streaming.models.actions import (
     FunctionCall,
     FunctionFragment,
 )
-
 from vocode.streaming.models.agent import (
     AgentConfig,
     ChatGPTAgentConfig,
@@ -38,17 +39,16 @@ from vocode.streaming.models.agent import (
 )
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.model import BaseModel, TypedModel
+from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import remove_non_letters_digits
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
-from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.utils.worker import (
     InterruptibleAgentResponseEvent,
     InterruptibleEvent,
     InterruptibleEventFactory,
     InterruptibleWorker,
 )
-import time
 
 if TYPE_CHECKING:
     from vocode.streaming.utils.state_manager import ConversationStateManager
@@ -131,11 +131,11 @@ class AbstractAgent(Generic[AgentConfigType]):
 
 class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
     def __init__(
-        self,
-        agent_config: AgentConfigType,
-        action_factory: ActionFactory = ActionFactory(),
-        interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
-        logger: Optional[logging.Logger] = None,
+            self,
+            agent_config: AgentConfigType,
+            action_factory: ActionFactory = ActionFactory(),
+            interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
+            logger: Optional[logging.Logger] = None,
     ):
         self.input_queue: asyncio.Queue[
             InterruptibleEvent[AgentInput]
@@ -173,7 +173,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
         self.transcript = transcript
 
     def attach_conversation_state_manager(
-        self, conversation_state_manager: ConversationStateManager
+            self, conversation_state_manager: ConversationStateManager
     ):
         self.conversation_state_manager = conversation_state_manager
 
@@ -181,12 +181,12 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
         self.interruptible_event_factory = factory
 
     def get_input_queue(
-        self,
+            self,
     ) -> asyncio.Queue[InterruptibleEvent[AgentInput]]:
         return self.input_queue
 
     def get_output_queue(
-        self,
+            self,
     ) -> asyncio.Queue[InterruptibleAgentResponseEvent[AgentResponse]]:
         return self.output_queue
 
@@ -197,7 +197,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
 
 class RespondAgent(BaseAgent[AgentConfigType]):
     async def handle_generate_response(
-        self, transcription: Transcription, agent_input: AgentInput
+            self, transcription: Transcription, agent_input: AgentInput
     ) -> bool:
         conversation_id = agent_input.conversation_id
         tracer_name_start = await self.get_tracer_name_start()
@@ -207,7 +207,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         agent_span_first = tracer.start_span(
             f"{tracer_name_start}.generate_first"  # type: ignore
         )
-        self.logger.debug("Got transcription from agent: %s, %s", transcription.message, time.time())
+        self.logger.debug("AGENT: Got transcription from agent: %s, %s", transcription.message, time.time())
         responses = self.generate_response(
             transcription.message,
             is_interrupt=transcription.is_interrupt,
@@ -215,7 +215,10 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         )
         is_first_response = True
         function_call = None
+        start = time.time()
         async for response in responses:
+            self.logger.debug("AGENT: Getting response %s from agent,took %s, at %s", response, time.time() - start,
+                              time.time())
             if isinstance(response, FunctionCall):
                 function_call = response
                 continue
@@ -233,7 +236,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         return False
 
     async def handle_respond(
-        self, transcription: Transcription, conversation_id: str
+            self, transcription: Transcription, conversation_id: str
     ) -> bool:
         try:
             tracer_name_start = await self.get_tracer_name_start()
@@ -360,7 +363,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         action_input: ActionInput
         if isinstance(action, VonagePhoneCallAction):
             assert (
-                agent_input.vonage_uuid is not None
+                    agent_input.vonage_uuid is not None
             ), "Cannot use VonagePhoneCallActionFactory unless the attached conversation is a VonageCall"
             action_input = action.create_phone_call_action_input(
                 agent_input.conversation_id,
@@ -370,7 +373,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             )
         elif isinstance(action, TwilioPhoneCallAction):
             assert (
-                agent_input.twilio_sid is not None
+                    agent_input.twilio_sid is not None
             ), "Cannot use TwilioPhoneCallActionFactory unless the attached conversation is a TwilioCall"
             action_input = action.create_phone_call_action_input(
                 agent_input.conversation_id,
@@ -398,8 +401,8 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         if hasattr(self, "tracer_name_start"):
             return self.tracer_name_start
         if (
-            hasattr(self.agent_config, "azure_params")
-            and self.agent_config.azure_params is not None
+                hasattr(self.agent_config, "azure_params")
+                and self.agent_config.azure_params is not None
         ):
             beginning_agent_name = self.agent_config.type.rsplit("_", 1)[0]
             engine = self.agent_config.azure_params.engine
@@ -419,17 +422,17 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         return tracer_name_start
 
     async def respond(
-        self,
-        human_input,
-        conversation_id: str,
-        is_interrupt: bool = False,
+            self,
+            human_input,
+            conversation_id: str,
+            is_interrupt: bool = False,
     ) -> Tuple[Optional[str], bool]:
         raise NotImplementedError
 
     def generate_response(
-        self,
-        human_input,
-        conversation_id: str,
-        is_interrupt: bool = False,
+            self,
+            human_input,
+            conversation_id: str,
+            is_interrupt: bool = False,
     ) -> AsyncGenerator[Union[str, FunctionCall], None]:
         raise NotImplementedError
