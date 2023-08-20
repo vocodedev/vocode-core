@@ -56,7 +56,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         create_speech_span: Optional[Span],
     ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
         start = time.time()
-        self.logger.debug("Using streaming")
         miniaudio_worker_input_queue: asyncio.Queue[
             Union[bytes, None]
         ] = asyncio.Queue()
@@ -102,7 +101,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             pass
         finally:
             miniaudio_worker.terminate()
-            self.logger.debug("Generating voice time took %s", chunks_time)
 
     async def create_speech(
         self,
@@ -135,9 +133,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_total",
         )
-        self.logger.debug("Before session %s", time.time())
         session = self.aiohttp_session
-        self.logger.debug("After session %s", time.time())
         response = await session.request(
             "POST",
             url,
@@ -145,11 +141,12 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             headers=headers,
             timeout=aiohttp.ClientTimeout(total=15),
         )
-        self.logger.debug("After response %s", time.time())
+        self.logger.debug("Recieved response %s", time.time())
         if not response.ok:
             raise Exception(f"ElevenLabs API returned {response.status} status code")
         if self.experimental_streaming:
             self.logger.debug("Using experimental streaming %s", time.time())
+
             return SynthesisResult(
                 self.experimental_streaming_output_generator(
                     response, chunk_size, create_speech_span

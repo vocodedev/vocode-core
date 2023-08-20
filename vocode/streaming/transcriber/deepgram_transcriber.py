@@ -19,7 +19,7 @@ from vocode.streaming.models.transcriber import (
     EndpointingType,
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
-
+import time
 
 PUNCTUATION_TERMINATORS = [".", "!", "?"]
 NUM_RESTARTS = 5
@@ -198,7 +198,10 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 time_took = 0.0
                 while not self._ended:
                     try:
+                        # start = time.time()
                         msg = await ws.recv()
+                        # end = time.time()
+                        # self.logger.debug(f"Received message from Deepgram in {end - start} at {end}")
                     except Exception as e:
                         self.logger.debug(f"Got error {e} in Deepgram receiver")
                         break

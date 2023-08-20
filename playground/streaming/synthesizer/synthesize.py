@@ -63,8 +63,8 @@ if __name__ == "__main__":
                     )
                 )
                 print(
-                    "Sent chunk {} with size {}".format(
-                        chunk_idx, len(chunk_result.chunk)
+                    "Sent chunk {} with size {}, ".format(
+                        chunk_idx, len(chunk_result.chunk), message.text
                     )
                 )
                 chunk_idx += 1

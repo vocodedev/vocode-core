@@ -115,15 +115,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.interruptible_event_factory = interruptible_event_factory
 
         async def process(self, transcription: Transcription):
-            self.conversation.logger.debug("Transcription took {} seconds".format(transcription.time_took))
             self.conversation.mark_last_action_timestamp()
+            # self.conversation.logger.debug("Human started speaking at {}".format(time.time()))
             if transcription.message.strip() == "":
                 self.conversation.logger.info("Ignoring empty transcription")
                 return
             if transcription.is_final:
                 self.conversation.logger.debug(
-                    "Got transcript: {} @ Got transcription: {}, confidence: {}".format(
-                        time.time(), transcription.message, transcription.confidence
+                    "Got transcription {} at {}, confidence: {}".format(
+                        transcription.message, time.time(), transcription.confidence
                     )
                 )
             if (
@@ -135,7 +135,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 if self.conversation.current_transcription_is_interrupt:
                     self.conversation.logger.debug("sending interrupt")
-                self.conversation.logger.debug("Human speaking: {} @ Human started speaking".format(time.time()))
 
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
@@ -344,7 +343,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                 )
                 item.agent_response_tracker.set()
-                self.conversation.logger.debug("Message sent: {} @ Message sent: {}".format(time.time(), message_sent))
+                self.conversation.logger.debug("Message sent: {} at {} ".format(message_sent, time.time()))
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(
                         message_sent
