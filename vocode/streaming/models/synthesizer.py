@@ -207,4 +207,4 @@ DEFAULT_POLLY_SAMPLING_RATE = 16000
 class PollySynthesizerConfig(SynthesizerConfig, type=SynthesizerType.POLLY.value):
     language_code: str = DEFAULT_POLLY_LANGUAGE_CODE
     voice_id: str = DEFAULT_POLLY_VOICE_ID
-    sampling_rate: str = DEFAULT_POLLY_SAMPLING_RATE
+    sampling_rate: int = DEFAULT_POLLY_SAMPLING_RATE
