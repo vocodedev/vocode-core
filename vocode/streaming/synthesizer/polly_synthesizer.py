@@ -67,9 +67,6 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
         )
         audio_stream = response.get("AudioStream")
         create_speech_span.end()
-        convert_span = tracer.start_span(
-            f"synthesizer.{SynthesizerType.POLLY.value.split('_', 1)[-1]}.convert",
-        )
 
         async def chunk_generator(audio_data_stream, chunk_transform=lambda x: x):
             audio_buffer = await asyncio.get_event_loop().run_in_executor(
@@ -98,7 +95,6 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
         else:
             output_generator = chunk_generator(audio_stream)
 
-        convert_span.end()
         return SynthesisResult(
             output_generator,
             lambda seconds: self.get_message_cutoff_from_total_response_length(
