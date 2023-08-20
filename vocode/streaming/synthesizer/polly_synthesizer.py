@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 import logging
 from typing import Any, Optional
 import aiohttp
+import json
 
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
@@ -54,6 +55,30 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
             SampleRate=str(self.sampling_rate),
         )
 
+    def get_speech_marks(self, message: str) -> Any:
+        return self.client.synthesize_speech(
+            Text=message,
+            LanguageCode=self.language_code,
+            TextType="text",
+            OutputFormat="json",
+            VoiceId=self.voice_id,
+            SampleRate=str(self.sampling_rate),
+            SpeechMarkTypes=["word"],
+        )
+
+    # given the number of seconds the message was allowed to go until, where did we get in the message?
+    def get_message_up_to(
+        self,
+        message: str,
+        seconds: int,
+        word_events,
+    ) -> str:
+        for event in word_events:
+            # time field is in ms
+            if event["time"] > seconds * 1000:
+                return message[: event["start"]]
+        return message
+
     async def create_speech(
         self,
         message: BaseMessage,
@@ -63,10 +88,20 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.POLLY.value.split('_', 1)[-1]}.create_total",
         )
-        response = await asyncio.get_event_loop().run_in_executor(
+        audio_response = await asyncio.get_event_loop().run_in_executor(
             self.thread_pool_executor, self.synthesize, message.text
         )
-        audio_stream = response.get("AudioStream")
+        audio_stream = audio_response.get("AudioStream")
+
+        speech_marks_response = await asyncio.get_event_loop().run_in_executor(
+            self.thread_pool_executor, self.get_speech_marks, message.text
+        )
+        word_events = [
+            json.loads(v)
+            for v in speech_marks_response.get("AudioStream").read().decode().split()
+            if v
+        ]
+
         create_speech_span.end()
 
         async def chunk_generator(audio_data_stream, chunk_transform=lambda x: x):
@@ -98,9 +133,9 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
 
         return SynthesisResult(
             output_generator,
-            lambda seconds: self.get_message_cutoff_from_voice_speed(
-                message,
+            lambda seconds: self.get_message_up_to(
+                message.text,
                 seconds,
-                60,  # value chosen completely arbitrarily
+                word_events,
             ),
         )
