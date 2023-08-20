@@ -16,6 +16,7 @@ from vocode.streaming.utils.mp3_helper import decode_mp3
 
 import boto3
 
+
 class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
     def __init__(
         self,
@@ -27,6 +28,14 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
 
         client = boto3.client("polly")
 
+        # AWS Polly supports sampling rate of 8k and 16k for pcm output
+        if synthesizer_config.sampling_rate not in [8000, 16000]:
+            raise Exception(
+                "Sampling rate not supported by AWS Polly",
+                synthesizer_config.sampling_rate,
+            )
+
+        self.sampling_rate = synthesizer_config.sampling_rate
         self.client = client
         self.language_code = synthesizer_config.language_code
         self.voice_id = synthesizer_config.voice_id
@@ -36,11 +45,12 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
         # Perform the text-to-speech request on the text input with the selected
         # voice parameters and audio file type
         return self.client.synthesize_speech(
-            Text=message, 
+            Text=message,
             LanguageCode=self.language_code,
-            TextType="text", 
-            OutputFormat="mp3",
-            VoiceId=self.voice_id, 
+            TextType="text",
+            OutputFormat="pcm",
+            VoiceId=self.voice_id,
+            SampleRate=str(self.sampling_rate),
         )
 
     async def create_speech(
@@ -52,22 +62,46 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.POLLY.value.split('_', 1)[-1]}.create_total",
         )
-        response = (
-            await asyncio.get_event_loop().run_in_executor(
-                self.thread_pool_executor, self.synthesize, message.text
-            )
+        response = await asyncio.get_event_loop().run_in_executor(
+            self.thread_pool_executor, self.synthesize, message.text
         )
-        audio_data = response.get("AudioStream").read()
+        audio_stream = response.get("AudioStream")
         create_speech_span.end()
         convert_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.POLLY.value.split('_', 1)[-1]}.convert",
         )
-        output_bytes_io = decode_mp3(audio_data)
 
-        result = self.create_synthesis_result_from_wav(
-            file=output_bytes_io,
-            message=message,
-            chunk_size=chunk_size,
-        )
+        async def chunk_generator(audio_data_stream, chunk_transform=lambda x: x):
+            audio_buffer = await asyncio.get_event_loop().run_in_executor(
+                self.thread_pool_executor,
+                lambda: audio_stream.read(chunk_size),
+            )
+            if len(audio_buffer) != chunk_size:
+                yield SynthesisResult.ChunkResult(chunk_transform(audio_buffer), True)
+                return
+            else:
+                yield SynthesisResult.ChunkResult(chunk_transform(audio_buffer), False)
+            while True:
+                audio_buffer = audio_stream.read(chunk_size)
+                if len(audio_buffer) != chunk_size:
+                    yield SynthesisResult.ChunkResult(
+                        chunk_transform(audio_buffer[: len(audio_buffer)]), True
+                    )
+                    break
+                yield SynthesisResult.ChunkResult(chunk_transform(audio_buffer), False)
+
+        if self.synthesizer_config.should_encode_as_wav:
+            output_generator = chunk_generator(
+                audio_stream,
+                lambda chunk: encode_as_wav(chunk, self.synthesizer_config),
+            )
+        else:
+            output_generator = chunk_generator(audio_stream)
+
         convert_span.end()
-        return result
+        return SynthesisResult(
+            output_generator,
+            lambda seconds: self.get_message_cutoff_from_total_response_length(
+                message, seconds, len(output_bytes)
+            ),
+        )
