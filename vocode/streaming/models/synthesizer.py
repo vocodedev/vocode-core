@@ -82,6 +82,7 @@ class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE.value
     voice_name: str = AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME
     pitch: int = AZURE_SYNTHESIZER_DEFAULT_PITCH
     rate: int = AZURE_SYNTHESIZER_DEFAULT_RATE
+    language_code: str = "en-US"
 
 
 DEFAULT_GOOGLE_LANGUAGE_CODE = "en-US"
@@ -200,6 +201,7 @@ class BarkSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.BARK.value):
 
 DEFAULT_POLLY_LANGUAGE_CODE = "en-US"
 DEFAULT_POLLY_VOICE_ID = "Matthew"
+
 
 class PollySynthesizerConfig(SynthesizerConfig, type=SynthesizerType.POLLY.value):
     language_code: str = DEFAULT_POLLY_LANGUAGE_CODE
