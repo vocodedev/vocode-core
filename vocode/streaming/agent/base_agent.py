@@ -217,7 +217,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         function_call = None
         start = time.time()
         async for response in responses:
-            self.logger.debug("AGENT: Getting response %s from agent,took %s, at %s", response, time.time() - start,
+            self.logger.debug("AGENT: Getting response from agent `%s` ,took %s, at %s", response, time.time() - start,
                               time.time())
             if isinstance(response, FunctionCall):
                 function_call = response

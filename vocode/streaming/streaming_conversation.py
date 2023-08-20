@@ -651,7 +651,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
             )
             self.logger.debug(
-                "Voice output Worker: Sent chunk number {} at {} with length {} seconds for message %s".format(chunk_idx, time.time(),
+                "Voice output Worker: Sent chunk number {} at {} with length {} seconds for message {}".format(chunk_idx, time.time(),
                                                                              speech_length_seconds, message)
             )
             self.mark_last_action_timestamp()
