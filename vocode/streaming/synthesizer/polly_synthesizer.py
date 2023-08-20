@@ -10,6 +10,7 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
     tracer,
+    encode_as_wav,
 )
 from vocode.streaming.models.synthesizer import PollySynthesizerConfig, SynthesizerType
 from vocode.streaming.utils.mp3_helper import decode_mp3
@@ -97,7 +98,9 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
 
         return SynthesisResult(
             output_generator,
-            lambda seconds: self.get_message_cutoff_from_total_response_length(
-                message, seconds, len(output_bytes)
+            lambda seconds: self.get_message_cutoff_from_voice_speed(
+                message,
+                seconds,
+                60,  # value chosen completely arbitrarily
             ),
         )
