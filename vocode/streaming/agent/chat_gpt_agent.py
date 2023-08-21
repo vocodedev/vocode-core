@@ -5,7 +5,7 @@ import time
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing import AsyncGenerator, Optional, Tuple
-
+import asyncio
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent
@@ -30,6 +30,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             logger: Optional[logging.Logger] = None,
             openai_api_key: Optional[str] = None,
             vector_db_factory=VectorDBFactory(),
+            goodbye_phrase: Optional[str] = "STOP CALL",
     ):
         super().__init__(
             agent_config=agent_config, action_factory=action_factory, logger=logger
@@ -52,11 +53,20 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             else None
         )
         self.is_first_response = True
+        self.goodbye_phrase = goodbye_phrase
+        if goodbye_phrase is not None:
+            self.agent_config.end_conversation_on_goodbye = True
 
         if self.agent_config.vector_db_config:
             self.vector_db = vector_db_factory.create_vector_db(
                 self.agent_config.vector_db_config
             )
+    async def is_goodbye(self, message:str):
+        return self.goodbye_phrase.lower() in message.lower()
+
+
+    def create_goodbye_detection_task(self, message: str):
+        return asyncio.create_task(self.is_goodbye(message))
 
     def get_functions(self):
         assert self.agent_config.actions
