@@ -64,6 +64,7 @@ You can set the prompt preamble with the `--agent_prompt_preamble` argument and 
 At the top of `quickstarts/streaming_conversation.py`, include the following code:
 
 ```python
+from collections import defaultdict
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter
