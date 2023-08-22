@@ -39,7 +39,7 @@ def cache_key(text, synthesizer_config: SynthesizerConfig) -> str:
     cleaned_text = re.sub(r'\W+', '-', cleaned_text) # defined as alphanumeric only and underscore, convert to dash
     voice_id = get_voice_id(synthesizer_config)
     hash_value = hashlib.md5((cleaned_text + config_text).encode()).hexdigest()[:8]
-    return f"{voice_id}/synth_{cleaned_text[:32]}_{hash_value}.wav
+    return f"{voice_id}/synth_{cleaned_text[:32]}_{hash_value}.wav"
 
 class AsyncGeneratorWrapper(AsyncGenerator[ChunkResult, None]):
     def __init__(self, generator, when_finished: Callable, remove_wav_header: bool):
@@ -51,19 +51,33 @@ class AsyncGeneratorWrapper(AsyncGenerator[ChunkResult, None]):
     def __aiter__(self):
         return self
 
+        # Reference: https://peps.python.org/pep-0492/
+    # must return instance of iterator
+    def __aiter__(self):
+        return self
+
+    # must return awaitable that steps iterator
     async def __anext__(self):
         try:
             chunk_result = await self.generator.__anext__()
-            # Hacky way to cut off each chunk's wav header if it has one
-            if chunk_result and chunk_result.chunk:
-                self.all_bytes += chunk_result.chunk[44:] if self.remove_wav_header else chunk_result.chunk
-            return chunk_result
+            # chunk_result == truthy
+            # chunk_result.chunk == truthy
+            has_valid_chunk = chunk_result and chunk_result.chunk
+            if has_valid_chunk:
+                # This flag removes header
+                # Truncates byte-string using magic-number position in '.wav' format
+                if self.remove_wav_header:
+                    self.all_bytes += chunk_result.chunk[44:]
+                else:
+                    chunk_result.chunk
         except StopAsyncIteration:
-            # Code to run when the async generator has finished
+            # When the generator is empty:
+            # __anext__ will raise StopAsyncIteration
             # if not cut_off:
             self.when_finished(self.all_bytes)
             self.all_bytes = None
-            raise
+            raise StopAsyncIteration
+        return chunk_result
     
     async def asend(self, value):
         return await self.generator.asend(value)
