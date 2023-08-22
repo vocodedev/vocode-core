@@ -10,7 +10,7 @@ class BaseTelephonyClient:
     def get_telephony_config(self):
         raise NotImplementedError
 
-    def create_call(
+    async def create_call(
         self,
         conversation_id: str,
         to_phone: str,

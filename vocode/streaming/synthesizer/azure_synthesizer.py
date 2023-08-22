@@ -5,6 +5,7 @@ import os
 import re
 from typing import Any, List, Optional, Tuple
 from xml.etree import ElementTree
+import aiohttp
 from vocode import getenv
 from opentelemetry.context.context import Context
 
@@ -62,8 +63,9 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         logger: Optional[logging.Logger] = None,
         azure_speech_key: Optional[str] = None,
         azure_speech_region: Optional[str] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
         # Instantiates a client
         azure_speech_key = azure_speech_key or getenv("AZURE_SPEECH_KEY")
         azure_speech_region = azure_speech_region or getenv("AZURE_SPEECH_REGION")
@@ -167,12 +169,18 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
     def create_ssml(
         self, message: str, bot_sentiment: Optional[BotSentiment] = None
     ) -> str:
+        voice_language_code = self.synthesizer_config.voice_name[:5]
         ssml_root = ElementTree.fromstring(
-            '<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="en-US"></speak>'
+            f'<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="{voice_language_code}"></speak>'
         )
         voice = ElementTree.SubElement(ssml_root, "voice")
         voice.set("name", self.voice_name)
-        voice_root = voice
+        if self.synthesizer_config.language_code != "en-US":
+            lang = ElementTree.SubElement(voice, "{%s}lang" % NAMESPACES.get(""))
+            lang.set("xml:lang", self.synthesizer_config.language_code)
+            voice_root = lang
+        else:
+            voice_root = voice
         if bot_sentiment and bot_sentiment.emotion:
             styled = ElementTree.SubElement(
                 voice, "{%s}express-as" % NAMESPACES.get("mstts")
@@ -182,6 +190,16 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 "styledegree", str(bot_sentiment.degree * 2)
             )  # Azure specific, it's a scale of 0-2
             voice_root = styled
+        # this ugly hack is necessary so we can limit the gap between sentences
+        # for normal sentences, it seems like the gap is > 500ms, so we're able to reduce it to 500ms
+        # for very tiny sentences, the API hangs - so we heuristically only update the silence gap
+        # if there is more than one word in the sentence
+        if " " in message:
+            silence = ElementTree.SubElement(
+                voice_root, "{%s}silence" % NAMESPACES.get("mstts")
+            )
+            silence.set("value", "500ms")
+            silence.set("type", "Tailing-exact")
         prosody = ElementTree.SubElement(voice_root, "prosody")
         prosody.set("pitch", f"{self.pitch}%")
         prosody.set("rate", f"{self.rate}%")
@@ -208,6 +226,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         for event in events:
             if event["audio_offset"] > seconds:
                 ssml_fragment = ssml[: event["text_offset"]]
+                # TODO: this is a little hacky, but it works for now
                 return ssml_fragment.split(">")[-1]
         return message
 
@@ -234,9 +253,10 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
         ):
             audio_buffer = bytes(chunk_size)
-            while not audio_data_stream.can_read_data(chunk_size):
-                await asyncio.sleep(0)
-            filled_size = audio_data_stream.read_data(audio_buffer)
+            filled_size = await asyncio.get_event_loop().run_in_executor(
+                self.thread_pool_executor,
+                lambda: audio_data_stream.read_data(audio_buffer),
+            )
             if filled_size != chunk_size:
                 yield SynthesisResult.ChunkResult(
                     chunk_transform(audio_buffer[offset:]), True

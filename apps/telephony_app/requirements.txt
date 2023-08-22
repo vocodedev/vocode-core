@@ -1,6 +1,0 @@
-vocode==0.1.111a1
-redis
-twilio
-vonage
-pyngrok
-python-dotenv

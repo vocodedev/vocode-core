@@ -1,11 +1,17 @@
 from vocode.streaming.action.base_action import BaseAction
-from vocode.streaming.action.nylas_send_email import NylasSendEmail
-from vocode.streaming.models.actions import ActionType
+from vocode.streaming.action.nylas_send_email import (
+    NylasSendEmail,
+    NylasSendEmailActionConfig,
+)
+from vocode.streaming.models.actions import ActionConfig
+from vocode.streaming.action.transfer_call import TransferCall, TransferCallActionConfig
 
 
 class ActionFactory:
-    def create_action(self, action_type: str) -> BaseAction:
-        if action_type == ActionType.NYLAS_SEND_EMAIL:
-            return NylasSendEmail(should_respond=True)
+    def create_action(self, action_config: ActionConfig) -> BaseAction:
+        if isinstance(action_config, NylasSendEmailActionConfig):
+            return NylasSendEmail(action_config, should_respond=True)
+        elif isinstance(action_config, TransferCallActionConfig):
+            return TransferCall(action_config)
         else:
             raise Exception("Invalid action type")

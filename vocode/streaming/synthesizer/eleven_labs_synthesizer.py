@@ -1,13 +1,16 @@
-import io
+import asyncio
 import logging
-from typing import Any, Optional
+import time
+from typing import Any, AsyncGenerator, Optional, Tuple, Union
+import wave
 import aiohttp
-from pydub import AudioSegment
+from opentelemetry.trace import Span
 
 from vocode import getenv
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
+    encode_as_wav,
     tracer,
 )
 from vocode.streaming.models.synthesizer import (
@@ -16,8 +19,8 @@ from vocode.streaming.models.synthesizer import (
 )
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
-
-from opentelemetry.context.context import Context
+from vocode.streaming.utils.mp3_helper import decode_mp3
+from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 
 
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
@@ -29,8 +32,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self,
         synthesizer_config: ElevenLabsSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
 
         import elevenlabs
 
@@ -43,6 +47,54 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.model_id = synthesizer_config.model_id
         self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
+        self.experimental_streaming = synthesizer_config.experimental_streaming
+
+    async def experimental_streaming_output_generator(
+        self,
+        response: aiohttp.ClientResponse,
+        chunk_size: int,
+        create_speech_span: Optional[Span],
+    ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
+        miniaudio_worker_input_queue: asyncio.Queue[
+            Union[bytes, None]
+        ] = asyncio.Queue()
+        miniaudio_worker_output_queue: asyncio.Queue[
+            Tuple[bytes, bool]
+        ] = asyncio.Queue()
+        miniaudio_worker = MiniaudioWorker(
+            self.synthesizer_config,
+            chunk_size,
+            miniaudio_worker_input_queue,
+            miniaudio_worker_output_queue,
+        )
+        miniaudio_worker.start()
+        stream_reader = response.content
+
+        # Create a task to send the mp3 chunks to the MiniaudioWorker's input queue in a separate loop
+        async def send_chunks():
+            async for chunk in stream_reader.iter_any():
+                miniaudio_worker.consume_nonblocking(chunk)
+            miniaudio_worker.consume_nonblocking(None)  # sentinel
+
+        try:
+            asyncio.create_task(send_chunks())
+
+            # Await the output queue of the MiniaudioWorker and yield the wav chunks in another loop
+            while True:
+                # Get the wav chunk and the flag from the output queue of the MiniaudioWorker
+                wav_chunk, is_last = await miniaudio_worker.output_queue.get()
+                if self.synthesizer_config.should_encode_as_wav:
+                    wav_chunk = encode_as_wav(wav_chunk, self.synthesizer_config)
+
+                yield SynthesisResult.ChunkResult(wav_chunk, is_last)
+                # If this is the last chunk, break the loop
+                if is_last and create_speech_span is not None:
+                    create_speech_span.end()
+                    break
+        except asyncio.CancelledError:
+            pass
+        finally:
+            miniaudio_worker.terminate()
 
     async def create_speech(
         self,
@@ -56,6 +108,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 stability=self.stability, similarity_boost=self.similarity_boost
             )
         url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
+
+        if self.experimental_streaming:
+            url += "/stream"
+
         if self.optimize_streaming_latency:
             url += f"?optimize_streaming_latency={self.optimize_streaming_latency}"
         headers = {"xi-api-key": self.api_key}
@@ -69,36 +125,40 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_total",
         )
-        async with aiohttp.ClientSession() as session:
-            async with session.request(
-                "POST",
-                url,
-                json=body,
-                headers=headers,
-                timeout=aiohttp.ClientTimeout(total=15),
-            ) as response:
-                if not response.ok:
-                    raise Exception(
-                        f"ElevenLabs API returned {response.status} status code"
-                    )
-                audio_data = await response.read()
-                create_speech_span.end()
-                convert_span = tracer.start_span(
-                    f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.convert",
-                )
-                audio_segment: AudioSegment = AudioSegment.from_mp3(
-                    io.BytesIO(audio_data)  # type: ignore
-                )
 
-                output_bytes_io = io.BytesIO()
+        session = self.aiohttp_session
 
-                audio_segment.export(output_bytes_io, format="wav")  # type: ignore
+        response = await session.request(
+            "POST",
+            url,
+            json=body,
+            headers=headers,
+            timeout=aiohttp.ClientTimeout(total=15),
+        )
+        if not response.ok:
+            raise Exception(f"ElevenLabs API returned {response.status} status code")
+        if self.experimental_streaming:
+            return SynthesisResult(
+                self.experimental_streaming_output_generator(
+                    response, chunk_size, create_speech_span
+                ),  # should be wav
+                lambda seconds: self.get_message_cutoff_from_voice_speed(
+                    message, seconds, self.words_per_minute
+                ),
+            )
+        else:
+            audio_data = await response.read()
+            create_speech_span.end()
+            convert_span = tracer.start_span(
+                f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.convert",
+            )
+            output_bytes_io = decode_mp3(audio_data)
 
-                result = self.create_synthesis_result_from_wav(
-                    file=output_bytes_io,
-                    message=message,
-                    chunk_size=chunk_size,
-                )
-                convert_span.end()
+            result = self.create_synthesis_result_from_wav(
+                file=output_bytes_io,
+                message=message,
+                chunk_size=chunk_size,
+            )
+            convert_span.end()
 
-                return result
+            return result

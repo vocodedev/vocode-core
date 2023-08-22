@@ -2,7 +2,16 @@ from typing import Optional, Type
 from pydantic import BaseModel, Field
 import os
 from vocode.streaming.action.base_action import BaseAction
-from vocode.streaming.models.actions import ActionInput, ActionOutput, ActionType
+from vocode.streaming.models.actions import (
+    ActionConfig,
+    ActionInput,
+    ActionOutput,
+    ActionType,
+)
+
+
+class NylasSendEmailActionConfig(ActionConfig, type=ActionType.NYLAS_SEND_EMAIL):
+    pass
 
 
 class NylasSendEmailParameters(BaseModel):
@@ -15,9 +24,12 @@ class NylasSendEmailResponse(BaseModel):
     success: bool
 
 
-class NylasSendEmail(BaseAction[NylasSendEmailParameters, NylasSendEmailResponse]):
+class NylasSendEmail(
+    BaseAction[
+        NylasSendEmailActionConfig, NylasSendEmailParameters, NylasSendEmailResponse
+    ]
+):
     description: str = "Sends an email using Nylas API."
-    action_type: str = ActionType.NYLAS_SEND_EMAIL.value
     parameters_type: Type[NylasSendEmailParameters] = NylasSendEmailParameters
     response_type: Type[NylasSendEmailResponse] = NylasSendEmailResponse
 
@@ -45,6 +57,6 @@ class NylasSendEmail(BaseAction[NylasSendEmailParameters, NylasSendEmailResponse
         draft.send()
 
         return ActionOutput(
-            action_type=action_input.action_type,
+            action_type=self.action_config.type,
             response=NylasSendEmailResponse(success=True),
         )
