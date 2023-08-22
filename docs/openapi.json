@@ -1,0 +1,1671 @@
+{
+  "openapi": "3.0.2",
+  "info": {
+    "title": "Vocode Hosted API",
+    "description": "\n        Vocode's Hosted API helps you automate phone calls in minutes. 🚀\n\n        ## Numbers\n\n        You can buy phone lines and place agents on them.\n\n        ## Calls\n\n        You can start, end, and get information about calls.\n        ",
+    "termsOfService": "http://example.com/terms/",
+    "contact": { "name": "Support", "email": "support@vocode.dev" },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.vocode.dev",
+      "description": "Production environment"
+    },
+    {
+      "url": "https://staging.vocode.dev",
+      "description": "Staging environment"
+    }
+  ],
+  "paths": {
+    "/v1/numbers/list": {
+      "get": {
+        "tags": ["numbers"],
+        "summary": "List Numbers",
+        "operationId": "list_numbers",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response List Numbers V1 Numbers List Get",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NormalizedPhoneNumber"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/numbers/": {
+      "get": {
+        "tags": ["numbers"],
+        "summary": "Get Number",
+        "operationId": "get_number",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Phone Number", "type": "string" },
+            "name": "phone_number",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PhoneNumber" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/numbers/buy": {
+      "post": {
+        "tags": ["numbers"],
+        "summary": "Buy Number",
+        "operationId": "buy_number",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PhoneNumber" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/numbers/update": {
+      "post": {
+        "tags": ["numbers"],
+        "summary": "Update Number",
+        "operationId": "update_number",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Phone Number", "type": "string" },
+            "name": "phone_number",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateNumberRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PhoneNumber" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/numbers/cancel": {
+      "post": {
+        "tags": ["numbers"],
+        "summary": "Cancel Number",
+        "operationId": "cancel_number",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Phone Number", "type": "string" },
+            "name": "phone_number",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PhoneNumber" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/calls/list": {
+      "get": {
+        "tags": ["calls"],
+        "summary": "List Calls",
+        "operationId": "list_calls",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response List Calls V1 Calls List Get",
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/NormalizedCall" }
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/calls/": {
+      "get": {
+        "tags": ["calls"],
+        "summary": "Get Call",
+        "operationId": "get_call",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Call" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/calls/end": {
+      "post": {
+        "tags": ["calls"],
+        "summary": "End Call",
+        "operationId": "end_call",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Call" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/calls/create": {
+      "post": {
+        "tags": ["calls"],
+        "summary": "Create Call",
+        "operationId": "create_call",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateCallRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Call" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/calls/recording": {
+      "get": {
+        "tags": ["calls"],
+        "summary": "Recording",
+        "operationId": "recording",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Id", "type": "string" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/usage/": {
+      "get": {
+        "tags": ["usage"],
+        "summary": "Get Usage",
+        "operationId": "get_usage",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Usage" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/actions/": {
+      "get": {
+        "tags": ["actions"],
+        "summary": "Get Action",
+        "operationId": "get_action",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Action V1 Actions  Get",
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/TransferCallAction" },
+                    { "$ref": "#/components/schemas/EndConversationAction" },
+                    { "$ref": "#/components/schemas/DTMFAction" }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/actions/list": {
+      "get": {
+        "tags": ["actions"],
+        "summary": "List Actions",
+        "operationId": "list_actions",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response List Actions V1 Actions List Get",
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      { "$ref": "#/components/schemas/TransferCallAction" },
+                      { "$ref": "#/components/schemas/EndConversationAction" },
+                      { "$ref": "#/components/schemas/DTMFAction" }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/actions/create": {
+      "post": {
+        "tags": ["actions"],
+        "summary": "Create Action",
+        "operationId": "create_action",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Params",
+                "anyOf": [
+                  { "$ref": "#/components/schemas/TransferCallActionParams" },
+                  {
+                    "$ref": "#/components/schemas/EndConversationActionParams"
+                  },
+                  { "$ref": "#/components/schemas/DTMFActionParams" }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Create Action V1 Actions Create Post",
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/TransferCallAction" },
+                    { "$ref": "#/components/schemas/EndConversationAction" },
+                    { "$ref": "#/components/schemas/DTMFAction" }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/actions/update": {
+      "post": {
+        "tags": ["actions"],
+        "summary": "Update Action",
+        "operationId": "update_action",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Update Params",
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/TransferCallActionUpdateParams"
+                  },
+                  {
+                    "$ref": "#/components/schemas/EndConversationActionUpdateParams"
+                  },
+                  { "$ref": "#/components/schemas/DTMFActionUpdateParams" }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Update Action V1 Actions Update Post",
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/TransferCallAction" },
+                    { "$ref": "#/components/schemas/EndConversationAction" },
+                    { "$ref": "#/components/schemas/DTMFAction" }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/agents/": {
+      "get": {
+        "tags": ["agents"],
+        "summary": "Get Agent",
+        "operationId": "get_agent",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Agent" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/agents/list": {
+      "get": {
+        "tags": ["agents"],
+        "summary": "List Agents",
+        "operationId": "list_agents",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response List Agents V1 Agents List Get",
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/NormalizedAgent" }
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/agents/create": {
+      "post": {
+        "tags": ["agents"],
+        "summary": "Create Agent",
+        "operationId": "create_agent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AgentParams" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Agent" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/agents/update": {
+      "post": {
+        "tags": ["agents"],
+        "summary": "Update Agent",
+        "operationId": "update_agent",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AgentUpdateParams" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Agent" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/voices/": {
+      "get": {
+        "tags": ["voices"],
+        "summary": "Get Voice",
+        "operationId": "get_voice",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Voice V1 Voices  Get",
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/AzureVoice" },
+                    { "$ref": "#/components/schemas/RimeVoice" },
+                    { "$ref": "#/components/schemas/ElevenLabsVoice" }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/voices/list": {
+      "get": {
+        "tags": ["voices"],
+        "summary": "List Voices",
+        "operationId": "list_voices",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response List Voices V1 Voices List Get",
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      { "$ref": "#/components/schemas/AzureVoice" },
+                      { "$ref": "#/components/schemas/RimeVoice" },
+                      { "$ref": "#/components/schemas/ElevenLabsVoice" }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/voices/create": {
+      "post": {
+        "tags": ["voices"],
+        "summary": "Create Voice",
+        "operationId": "create_voice",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Params",
+                "anyOf": [
+                  { "$ref": "#/components/schemas/AzureVoiceParams" },
+                  { "$ref": "#/components/schemas/RimeVoiceParams" },
+                  { "$ref": "#/components/schemas/ElevenLabsVoiceParams" }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Create Voice V1 Voices Create Post",
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/AzureVoice" },
+                    { "$ref": "#/components/schemas/RimeVoice" },
+                    { "$ref": "#/components/schemas/ElevenLabsVoice" }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/voices/update": {
+      "post": {
+        "tags": ["voices"],
+        "summary": "Update Voice",
+        "operationId": "update_voice",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Update Params",
+                "anyOf": [
+                  { "$ref": "#/components/schemas/AzureVoiceUpdateParams" },
+                  { "$ref": "#/components/schemas/RimeVoiceUpdateParams" },
+                  { "$ref": "#/components/schemas/ElevenLabsVoiceUpdateParams" }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Update Voice V1 Voices Update Post",
+                  "anyOf": [
+                    { "$ref": "#/components/schemas/AzureVoice" },
+                    { "$ref": "#/components/schemas/RimeVoice" },
+                    { "$ref": "#/components/schemas/ElevenLabsVoice" }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/webhooks/": {
+      "get": {
+        "tags": ["webhooks"],
+        "summary": "Get Webhook",
+        "operationId": "get_webhook",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Webhook" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/webhooks/list": {
+      "get": {
+        "tags": ["webhooks"],
+        "summary": "List Webhooks",
+        "operationId": "list_webhooks",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response List Webhooks V1 Webhooks List Get",
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Webhook" }
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/webhooks/create": {
+      "post": {
+        "tags": ["webhooks"],
+        "summary": "Create Webhook",
+        "operationId": "create_webhook",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookParams" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Webhook" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/webhooks/update": {
+      "post": {
+        "tags": ["webhooks"],
+        "summary": "Update Webhook",
+        "operationId": "update_webhook",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "title": "Id", "type": "string", "format": "uuid" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookUpdateParams" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Webhook" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActionType": {
+        "title": "ActionType",
+        "enum": [
+          "action_end_conversation",
+          "action_dtmf",
+          "action_transfer_call"
+        ],
+        "type": "string",
+        "description": "An enumeration."
+      },
+      "Agent": {
+        "title": "Agent",
+        "required": ["id", "user_id", "prompt", "actions", "voice"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "prompt": { "title": "Prompt", "type": "string" },
+          "actions": {
+            "title": "Actions",
+            "type": "array",
+            "items": {
+              "anyOf": [
+                { "$ref": "#/components/schemas/TransferCallAction" },
+                { "$ref": "#/components/schemas/EndConversationAction" },
+                { "$ref": "#/components/schemas/DTMFAction" }
+              ]
+            }
+          },
+          "voice": {
+            "title": "Voice",
+            "anyOf": [
+              { "$ref": "#/components/schemas/AzureVoice" },
+              { "$ref": "#/components/schemas/RimeVoice" },
+              { "$ref": "#/components/schemas/ElevenLabsVoice" }
+            ]
+          },
+          "initial_message": { "title": "Initial Message", "type": "string" },
+          "webhook": { "$ref": "#/components/schemas/Webhook" }
+        }
+      },
+      "AgentParams": {
+        "title": "AgentParams",
+        "required": ["prompt", "voice"],
+        "type": "object",
+        "properties": {
+          "prompt": { "title": "Prompt", "type": "string" },
+          "actions": {
+            "title": "Actions",
+            "type": "array",
+            "items": {
+              "anyOf": [
+                { "type": "string", "format": "uuid" },
+                { "$ref": "#/components/schemas/TransferCallActionParams" },
+                { "$ref": "#/components/schemas/EndConversationActionParams" },
+                { "$ref": "#/components/schemas/DTMFActionParams" }
+              ]
+            },
+            "default": []
+          },
+          "voice": {
+            "title": "Voice",
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/AzureVoiceParams" },
+              { "$ref": "#/components/schemas/RimeVoiceParams" },
+              { "$ref": "#/components/schemas/ElevenLabsVoiceParams" }
+            ]
+          },
+          "initial_message": { "title": "Initial Message", "type": "string" },
+          "webhook": {
+            "title": "Webhook",
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/WebhookParams" }
+            ]
+          }
+        }
+      },
+      "AgentUpdateParams": {
+        "title": "AgentUpdateParams",
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "title": "Prompt",
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          },
+          "actions": {
+            "title": "Actions",
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    { "type": "string", "format": "uuid" },
+                    {
+                      "$ref": "#/components/schemas/TransferCallActionUpdateParams"
+                    },
+                    {
+                      "$ref": "#/components/schemas/EndConversationActionUpdateParams"
+                    },
+                    { "$ref": "#/components/schemas/DTMFActionUpdateParams" }
+                  ]
+                }
+              },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          },
+          "voice": {
+            "title": "Voice",
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/AzureVoiceUpdateParams" },
+              { "$ref": "#/components/schemas/RimeVoiceUpdateParams" },
+              { "$ref": "#/components/schemas/ElevenLabsVoiceUpdateParams" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          },
+          "initial_message": {
+            "title": "Initial Message",
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          },
+          "webhook": {
+            "title": "Webhook",
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/WebhookUpdateParams" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          }
+        }
+      },
+      "AzureVoice": {
+        "title": "AzureVoice",
+        "required": ["id", "user_id", "voice_name"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "type": {
+            "allOf": [{ "$ref": "#/components/schemas/VoiceType" }],
+            "default": "voice_azure"
+          },
+          "voice_name": { "title": "Voice Name", "type": "string" },
+          "pitch": { "title": "Pitch", "type": "integer", "default": 0 },
+          "rate": { "title": "Rate", "type": "integer", "default": 15 }
+        }
+      },
+      "AzureVoiceParams": {
+        "title": "AzureVoiceParams",
+        "required": ["type", "voice_name"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/VoiceType" },
+          "voice_name": { "title": "Voice Name", "type": "string" },
+          "pitch": { "title": "Pitch", "type": "integer", "default": 0 },
+          "rate": { "title": "Rate", "type": "integer", "default": 15 }
+        }
+      },
+      "AzureVoiceUpdateParams": {
+        "title": "AzureVoiceUpdateParams",
+        "required": ["type"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/VoiceType" },
+          "voice_name": {
+            "title": "Voice Name",
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          },
+          "pitch": {
+            "title": "Pitch",
+            "anyOf": [
+              { "type": "integer" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          },
+          "rate": {
+            "title": "Rate",
+            "anyOf": [
+              { "type": "integer" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          }
+        }
+      },
+      "Call": {
+        "title": "Call",
+        "required": ["id", "user_id", "to_number", "from_number", "agent"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "status": {
+            "allOf": [{ "$ref": "#/components/schemas/CallStatus" }],
+            "default": "not_started"
+          },
+          "error_message": { "title": "Error Message", "type": "string" },
+          "recording_available": {
+            "title": "Recording Available",
+            "type": "boolean",
+            "default": false
+          },
+          "transcript": { "title": "Transcript", "type": "string" },
+          "to_number": { "title": "To Number", "type": "string" },
+          "from_number": { "title": "From Number", "type": "string" },
+          "agent": { "$ref": "#/components/schemas/Agent" }
+        }
+      },
+      "CallStatus": {
+        "title": "CallStatus",
+        "enum": ["not_started", "in_progress", "error", "ended"],
+        "type": "string",
+        "description": "An enumeration."
+      },
+      "CreateCallRequest": {
+        "title": "CreateCallRequest",
+        "required": ["from_number", "to_number", "agent"],
+        "type": "object",
+        "properties": {
+          "from_number": { "title": "From Number", "type": "string" },
+          "to_number": { "title": "To Number", "type": "string" },
+          "agent": {
+            "title": "Agent",
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/AgentParams" }
+            ]
+          }
+        }
+      },
+      "DTMFAction": {
+        "title": "DTMFAction",
+        "required": ["id", "user_id"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "type": {
+            "allOf": [{ "$ref": "#/components/schemas/ActionType" }],
+            "default": "action_dtmf"
+          },
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" }
+        }
+      },
+      "DTMFActionParams": {
+        "title": "DTMFActionParams",
+        "required": ["type"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/ActionType" },
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" }
+        }
+      },
+      "DTMFActionUpdateParams": {
+        "title": "DTMFActionUpdateParams",
+        "required": ["type"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/ActionType" },
+          "config": {
+            "title": "Config",
+            "anyOf": [
+              { "$ref": "#/components/schemas/EmptyActionConfig" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          }
+        }
+      },
+      "ElevenLabsVoice": {
+        "title": "ElevenLabsVoice",
+        "required": ["id", "user_id", "voice_id", "api_key"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "type": {
+            "allOf": [{ "$ref": "#/components/schemas/VoiceType" }],
+            "default": "voice_eleven_labs"
+          },
+          "voice_id": { "title": "Voice Id", "type": "string" },
+          "stability": { "title": "Stability", "type": "number" },
+          "similarity_boost": { "title": "Similarity Boost", "type": "number" },
+          "api_key": { "title": "Api Key", "type": "string" }
+        }
+      },
+      "ElevenLabsVoiceParams": {
+        "title": "ElevenLabsVoiceParams",
+        "required": ["type", "voice_id", "api_key"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/VoiceType" },
+          "voice_id": { "title": "Voice Id", "type": "string" },
+          "stability": { "title": "Stability", "type": "number" },
+          "similarity_boost": { "title": "Similarity Boost", "type": "number" },
+          "api_key": { "title": "Api Key", "type": "string" }
+        }
+      },
+      "ElevenLabsVoiceUpdateParams": {
+        "title": "ElevenLabsVoiceUpdateParams",
+        "required": ["type"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/VoiceType" },
+          "voice_id": {
+            "title": "Voice Id",
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          },
+          "stability": {
+            "title": "Stability",
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          },
+          "similarity_boost": {
+            "title": "Similarity Boost",
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          },
+          "api_key": {
+            "title": "Api Key",
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          }
+        }
+      },
+      "EmptyActionConfig": {
+        "title": "EmptyActionConfig",
+        "type": "object",
+        "properties": {}
+      },
+      "EndConversationAction": {
+        "title": "EndConversationAction",
+        "required": ["id", "user_id"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "type": {
+            "allOf": [{ "$ref": "#/components/schemas/ActionType" }],
+            "default": "action_end_conversation"
+          },
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" }
+        }
+      },
+      "EndConversationActionParams": {
+        "title": "EndConversationActionParams",
+        "required": ["type"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/ActionType" },
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" }
+        }
+      },
+      "EndConversationActionUpdateParams": {
+        "title": "EndConversationActionUpdateParams",
+        "required": ["type"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/ActionType" },
+          "config": {
+            "title": "Config",
+            "anyOf": [
+              { "$ref": "#/components/schemas/EmptyActionConfig" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          }
+        }
+      },
+      "EventType": {
+        "title": "EventType",
+        "enum": [
+          "event_message",
+          "event_action",
+          "event_phone_call_connected",
+          "event_phone_call_ended",
+          "event_transcript",
+          "event_recording"
+        ],
+        "type": "string",
+        "description": "An enumeration."
+      },
+      "HTTPMethod": {
+        "title": "HTTPMethod",
+        "enum": ["GET", "POST"],
+        "type": "string",
+        "description": "An enumeration."
+      },
+      "HTTPValidationError": {
+        "title": "HTTPValidationError",
+        "type": "object",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ValidationError" }
+          }
+        }
+      },
+      "NormalizedAgent": {
+        "title": "NormalizedAgent",
+        "required": ["id", "user_id", "prompt", "actions", "voice"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "prompt": { "title": "Prompt", "type": "string" },
+          "actions": {
+            "title": "Actions",
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          },
+          "voice": { "title": "Voice", "type": "string", "format": "uuid" },
+          "initial_message": { "title": "Initial Message", "type": "string" },
+          "webhook": { "title": "Webhook", "type": "string", "format": "uuid" }
+        }
+      },
+      "NormalizedCall": {
+        "title": "NormalizedCall",
+        "required": ["id", "user_id", "to_number", "from_number", "agent"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "status": {
+            "allOf": [{ "$ref": "#/components/schemas/CallStatus" }],
+            "default": "not_started"
+          },
+          "error_message": { "title": "Error Message", "type": "string" },
+          "recording_available": {
+            "title": "Recording Available",
+            "type": "boolean",
+            "default": false
+          },
+          "transcript": { "title": "Transcript", "type": "string" },
+          "to_number": { "title": "To Number", "type": "string" },
+          "from_number": { "title": "From Number", "type": "string" },
+          "agent": { "title": "Agent", "type": "string", "format": "uuid" }
+        }
+      },
+      "NormalizedPhoneNumber": {
+        "title": "NormalizedPhoneNumber",
+        "required": ["id", "user_id", "inbound_agent", "number"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "active": { "title": "Active", "type": "boolean", "default": true },
+          "inbound_agent": {
+            "title": "Inbound Agent",
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": { "title": "Number", "type": "string" }
+        }
+      },
+      "PhoneNumber": {
+        "title": "PhoneNumber",
+        "required": ["id", "user_id", "inbound_agent", "number"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "active": { "title": "Active", "type": "boolean", "default": true },
+          "inbound_agent": { "$ref": "#/components/schemas/Agent" },
+          "number": { "title": "Number", "type": "string" }
+        }
+      },
+      "PlanType": {
+        "title": "PlanType",
+        "enum": ["free", "developer", "enterprise"],
+        "type": "string",
+        "description": "An enumeration."
+      },
+      "RimeVoice": {
+        "title": "RimeVoice",
+        "required": ["id", "user_id", "speaker"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "type": {
+            "allOf": [{ "$ref": "#/components/schemas/VoiceType" }],
+            "default": "voice_rime"
+          },
+          "speaker": { "title": "Speaker", "type": "string" }
+        }
+      },
+      "RimeVoiceParams": {
+        "title": "RimeVoiceParams",
+        "required": ["type", "speaker"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/VoiceType" },
+          "speaker": { "title": "Speaker", "type": "string" }
+        }
+      },
+      "RimeVoiceUpdateParams": {
+        "title": "RimeVoiceUpdateParams",
+        "required": ["type"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/VoiceType" },
+          "speaker": {
+            "title": "Speaker",
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          }
+        }
+      },
+      "TransferCallAction": {
+        "title": "TransferCallAction",
+        "required": ["id", "user_id", "config"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "type": {
+            "allOf": [{ "$ref": "#/components/schemas/ActionType" }],
+            "default": "action_transfer_call"
+          },
+          "config": { "$ref": "#/components/schemas/TransferCallConfig" }
+        }
+      },
+      "TransferCallActionParams": {
+        "title": "TransferCallActionParams",
+        "required": ["type", "config"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/ActionType" },
+          "config": { "$ref": "#/components/schemas/TransferCallConfig" }
+        }
+      },
+      "TransferCallActionUpdateParams": {
+        "title": "TransferCallActionUpdateParams",
+        "required": ["type"],
+        "type": "object",
+        "properties": {
+          "type": { "$ref": "#/components/schemas/ActionType" },
+          "config": {
+            "title": "Config",
+            "anyOf": [
+              { "$ref": "#/components/schemas/TransferCallConfig" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          }
+        }
+      },
+      "TransferCallConfig": {
+        "title": "TransferCallConfig",
+        "required": ["phone_number"],
+        "type": "object",
+        "properties": {
+          "phone_number": { "title": "Phone Number", "type": "string" }
+        }
+      },
+      "Undefined": { "title": "Undefined", "type": "object", "properties": {} },
+      "UpdateNumberRequest": {
+        "title": "UpdateNumberRequest",
+        "required": ["inbound_agent"],
+        "type": "object",
+        "properties": {
+          "inbound_agent": {
+            "title": "Inbound Agent",
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/AgentUpdateParams" }
+            ]
+          }
+        }
+      },
+      "Usage": {
+        "title": "Usage",
+        "required": [
+          "user_id",
+          "plan_type",
+          "monthly_usage_minutes",
+          "monthly_usage_limit_minutes"
+        ],
+        "type": "object",
+        "properties": {
+          "user_id": { "title": "User Id", "type": "string" },
+          "plan_type": { "$ref": "#/components/schemas/PlanType" },
+          "monthly_usage_minutes": {
+            "title": "Monthly Usage Minutes",
+            "type": "integer"
+          },
+          "monthly_usage_limit_minutes": {
+            "title": "Monthly Usage Limit Minutes",
+            "type": "integer"
+          }
+        }
+      },
+      "ValidationError": {
+        "title": "ValidationError",
+        "required": ["loc", "msg", "type"],
+        "type": "object",
+        "properties": {
+          "loc": {
+            "title": "Location",
+            "type": "array",
+            "items": { "anyOf": [{ "type": "string" }, { "type": "integer" }] }
+          },
+          "msg": { "title": "Message", "type": "string" },
+          "type": { "title": "Error Type", "type": "string" }
+        }
+      },
+      "VoiceType": {
+        "title": "VoiceType",
+        "enum": [
+          "voice_base",
+          "voice_azure",
+          "voice_rime",
+          "voice_eleven_labs"
+        ],
+        "type": "string",
+        "description": "An enumeration."
+      },
+      "Webhook": {
+        "title": "Webhook",
+        "required": ["id", "user_id", "subscriptions", "url"],
+        "type": "object",
+        "properties": {
+          "id": { "title": "Id", "type": "string", "format": "uuid" },
+          "user_id": { "title": "User Id", "type": "string", "format": "uuid" },
+          "subscriptions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/EventType" }
+          },
+          "url": { "title": "Url", "type": "string" },
+          "method": {
+            "allOf": [{ "$ref": "#/components/schemas/HTTPMethod" }],
+            "default": "POST"
+          }
+        }
+      },
+      "WebhookParams": {
+        "title": "WebhookParams",
+        "required": ["subscriptions", "url"],
+        "type": "object",
+        "properties": {
+          "subscriptions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/EventType" }
+          },
+          "url": { "title": "Url", "type": "string" },
+          "method": {
+            "allOf": [{ "$ref": "#/components/schemas/HTTPMethod" }],
+            "default": "POST"
+          }
+        }
+      },
+      "WebhookUpdateParams": {
+        "title": "WebhookUpdateParams",
+        "type": "object",
+        "properties": {
+          "subscriptions": {
+            "title": "Subscriptions",
+            "anyOf": [
+              {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/EventType" }
+              },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          },
+          "method": {
+            "title": "Method",
+            "anyOf": [
+              { "$ref": "#/components/schemas/HTTPMethod" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ]
+          }
+        }
+      }
+    },
+    "securitySchemes": { "HTTPBearer": { "type": "http", "scheme": "bearer" } }
+  },
+  "tags": [
+    { "name": "numbers", "description": "Operations with phone numbers." },
+    { "name": "calls", "description": "Manage calls." }
+  ]
+}
