@@ -155,7 +155,8 @@
         "setting-up-webhook",
         "using-actions",
         "vectordb",
-        "multilingual"
+        "multilingual",
+        "injecting-context"
       ]
     }
   ],
