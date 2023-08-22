@@ -120,7 +120,12 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             == EndpointingType.PUNCTUATION_BASED
         ):
             extra_params["punctuate"] = "true"
+
+        if self.transcriber_config.endpointing_config.type == EndpointingType.TIME_BASED_DEEPGRAM:
+            extra_params["endpointing"] = int(self.transcriber_config.endpointing_config.time_cutoff_seconds * 1000)
+
         url_params.update(extra_params)
+
         return f"wss://api.deepgram.com/v1/listen?{urlencode(url_params)}"
 
     def is_speech_final(
@@ -130,6 +135,10 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
         # if it is not time based, then return true if speech is final and there is a transcript
         if not self.transcriber_config.endpointing_config:
+            return transcript and deepgram_response["speech_final"]
+        elif (
+            self.transcriber_config.endpointing_config.type == EndpointingType.TIME_BASED_DEEPGRAM
+        ):
             return transcript and deepgram_response["speech_final"]
         elif (
             self.transcriber_config.endpointing_config.type

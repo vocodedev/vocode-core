@@ -28,6 +28,7 @@ class TranscriberType(str, Enum):
 class EndpointingType(str, Enum):
     BASE = "endpointing_base"
     TIME_BASED = "endpointing_time_based"
+    TIME_BASED_DEEPGRAM = "endpointing_time_based_deepgram"
     PUNCTUATION_BASED = "endpointing_punctuation_based"
 
 
@@ -38,6 +39,8 @@ class EndpointingConfig(TypedModel, type=EndpointingType.BASE):
 class TimeEndpointingConfig(EndpointingConfig, type=EndpointingType.TIME_BASED):
     time_cutoff_seconds: float = 0.4
 
+class DeepgramTimeEndpointingConfig(EndpointingConfig, type=EndpointingType.TIME_BASED_DEEPGRAM):
+    time_cutoff_seconds: float = 0.4
 
 class PunctuationEndpointingConfig(
     EndpointingConfig, type=EndpointingType.PUNCTUATION_BASED
