@@ -1,0 +1,59 @@
+---
+title: "Setting up webhooks"
+description: "Listen to events on your phone calls"
+---
+
+You can set up webhooks on agents so that you can
+listen to events in realtime or for post-call automation.
+
+## Adding Webhooks
+
+To get data from the agent during a call, you can add a webhook and assign it to listen for specific events.
+Let's send a POST request to "https://example.com" every time a call ends.
+
+<CodeGroup>
+
+```python Python
+from vocode import AgentUpdateParams, EventType, HttpMethod, WebhookUpdateParams
+
+new_webhook = WebhookUpdateParams(
+    subscriptions=[EventType.EVENT_PHONE_CALL_ENDED],
+    url="https://example.com",
+    method=HttpMethod.POST,
+)
+
+number = vocode_client.numbers.update_number(
+    phone_number="YOUR_NUMBER",
+    inbound_agent=AgentUpdateParams(
+        webhook=new_webhook,
+    ),
+)
+```
+
+```javascript TypeScript
+import { EventType, HttpMethod } from "@vocode/vocode-api/api";
+
+const number = await vocode.numbers.updateNumber({
+  phoneNumber: "YOUR_NUMBER",
+  inboundAgent: {
+    webhook: {
+      subscriptions: [EventType.EventPhoneCallConnected],
+      url: "https://example.com",
+      method: HttpMethod.Post,
+    },
+  },
+});
+```
+
+</CodeGroup>
+
+## EventTypes
+
+The full list of `EventType` is listed here:
+
+- `EVENT_MESSAGE`: A message in the conversation.
+- `EVENT_ACTION`: An action taken during the conversation.
+- `EVENT_PHONE_CALL_CONNECTED`: Indicating the phone call has connected.
+- `EVENT_PHONE_CALL_ENDED`: Indicating the phone call has ended.
+- `EVENT_TRANSCRIPT`: The transcription of the entire conversation.
+- `EVENT_RECORDING`: The recording of the conversation has become available.
