@@ -25,6 +25,7 @@ class SynthesizerType(str, Enum):
     COQUI_TTS = "synthesizer_coqui_tts"
     COQUI = "synthesizer_coqui"
     BARK = "synthesizer_bark"
+    POLLY = "synthesizer_polly"
 
 
 class SentimentConfig(BaseModel):
@@ -196,3 +197,14 @@ class StreamElementsSynthesizerConfig(
 class BarkSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.BARK.value):
     preload_kwargs: Dict[str, Any] = {}
     generate_kwargs: Dict[str, Any] = {}
+
+
+DEFAULT_POLLY_LANGUAGE_CODE = "en-US"
+DEFAULT_POLLY_VOICE_ID = "Matthew"
+DEFAULT_POLLY_SAMPLING_RATE = 16000
+
+
+class PollySynthesizerConfig(SynthesizerConfig, type=SynthesizerType.POLLY.value):
+    language_code: str = DEFAULT_POLLY_LANGUAGE_CODE
+    voice_id: str = DEFAULT_POLLY_VOICE_ID
+    sampling_rate: int = DEFAULT_POLLY_SAMPLING_RATE

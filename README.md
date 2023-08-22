@@ -49,6 +49,7 @@ We're actively looking for community maintainers, so please reach out if interes
     - [gTTS](https://gtts.readthedocs.io/)
     - [StreamElements](https://streamelements.com/)
     - [Bark](https://github.com/suno-ai/bark)
+    - [AWS Polly](https://aws.amazon.com/polly/)
 
 Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)!
 
