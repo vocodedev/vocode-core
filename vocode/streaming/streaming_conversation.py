@@ -116,10 +116,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
-            # self.conversation.logger.debug("Human started speaking at {}".format(time.time()))
-            if transcription.message.strip() == "":
-                self.conversation.logger.info("Ignoring empty transcription")
-                return
             if transcription.is_final:
                 self.conversation.logger.debug(
                     "Got transcription {} at {}, confidence: {}".format(
@@ -140,6 +136,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.current_transcription_is_interrupt
             )
             self.conversation.is_human_speaking = not transcription.is_final
+            if transcription.message.strip() == "":
+                self.conversation.logger.info("Ignoring empty transcription")
+                return
             if transcription.is_final:
                 # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
                 event = self.interruptible_event_factory.create_interruptible_event(
