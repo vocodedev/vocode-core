@@ -29,11 +29,18 @@ class GoodbyeModel:
         ),
         openai_api_key: Optional[str] = None,
     ):
-        openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
+        openai.api_type = "azure"
+        openai.api_base = os.environ["AZURE_OPENAI_API_BASE"]
+        openai.api_version = "2023-05-15"
+        openai.api_key = os.environ['AZURE_OPENAI_API_KEY']
+
+        # openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
         if not openai.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
         self.embeddings_cache_path = embeddings_cache_path
-        self.goodbye_embeddings: Optional[np.ndarray] = None
+        self.goodbye_embeddings: Optional[np.ndarray] = self.load_or_create_embeddings(
+            f"{self.embeddings_cache_path}/goodbye_embeddings.npy"
+        )
 
     async def initialize_embeddings(self):
         self.goodbye_embeddings = await self.load_or_create_embeddings(

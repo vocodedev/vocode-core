@@ -117,7 +117,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
             if transcription.is_final:
-                self.conversation.logger.debug(
+                self.conversation.logger.info(
                     "Got transcription {} at {}, confidence: {}".format(
                         transcription.message, time.time(), transcription.confidence
                     )
@@ -342,7 +342,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                 )
                 item.agent_response_tracker.set()
-                self.conversation.logger.debug("Message sent: {} at {} ".format(message_sent, time.time()))
+                self.conversation.logger.info("Message sent: {} at {} ".format(message_sent, time.time()))
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(
                         message_sent
@@ -520,16 +520,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriber.unmute()
 
     async def check_for_idle(self):
-        """Terminates the conversation after 15 seconds if no activity is detected"""
+        """Asks if user still here."""
         while self.is_active():
             if time.time() - self.last_action_timestamp > (
                     self.agent.get_agent_config().allowed_idle_time_seconds
                     or ALLOWED_IDLE_TIME
             ):
-                self.logger.debug("Conversation idle for too long, terminating")
-                await self.terminate()
+                self.logger.debug("Conversation idle for too long")
+                transcription = Transcription(message="THIS IS SYSTEM MESSAGE: Conversation idle for too long. ASK USER IF THEY ARE STILL THERE.",
+                                              confidence=1.0,
+                                              is_final=True,
+                                              is_interrupt=True)
+                self.transcriptions_worker.consume_nonblocking(transcription)
                 return
-            await asyncio.sleep(15)
+            await asyncio.sleep(5)
 
     async def track_bot_sentiment(self):
         """Updates self.bot_sentiment every second based on the current transcript"""
