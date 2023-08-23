@@ -533,7 +533,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                                               is_interrupt=True)
                 self.transcriptions_worker.consume_nonblocking(transcription)
                 return
-            await asyncio.sleep(5)
+            await asyncio.sleep(self.agent.get_agent_config().allowed_idle_time_seconds) # checks every 5 seconds
+
 
     async def track_bot_sentiment(self):
         """Updates self.bot_sentiment every second based on the current transcript"""
