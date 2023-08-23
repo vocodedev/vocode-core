@@ -104,6 +104,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
         if twilio_call.answered_by not in ('unknown', 'human'):
             self.events_manager.publish_event(
                 VoicemailEvent(
+                conversation_id=self.id,
                 to_phone_number=self.to_phone,
                 from_phone_number=self.from_phone,
                 )

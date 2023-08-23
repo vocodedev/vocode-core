@@ -9,7 +9,16 @@ from vocode.streaming.models.events import Event, EventType
 class EventsManager:
     def __init__(self, subscriptions: List[EventType] = []):
         self.queue: asyncio.Queue[Event] = asyncio.Queue()
-        self.subscriptions = set(subscriptions)
+        self.subscriptions = subscriptions
+        self.active = False
+
+    def get_subscriptions(self):
+        """Returns the subscriptions."""
+        return self.subscriptions
+
+    def add_subscriptions(self, subscriptions):
+        """Adds subscriptions."""
+        self.subscriptions = self.subscriptions.union(subscriptions)
         self.active = False
 
     def publish_event(self, event: Event):
