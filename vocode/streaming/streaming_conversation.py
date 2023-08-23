@@ -521,16 +521,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriber.unmute()
 
     async def check_for_idle(self):
-        """Terminates the conversation after 15 seconds if no activity is detected"""
+        """Asks if user still here."""
         while self.is_active():
             if time.time() - self.last_action_timestamp > (
                     self.agent.get_agent_config().allowed_idle_time_seconds
                     or ALLOWED_IDLE_TIME
             ):
-                self.logger.debug("Conversation idle for too long, terminating")
-                await self.terminate()
+                self.logger.debug("Conversation idle for too long")
+                transcription = Transcription(message="THIS IS SYSTEM MESSAGE: Conversation idle for too long. ASK USER IF THEY ARE STILL THERE.",
+                                              confidence=1.0,
+                                              is_final=True,
+                                              is_interrupt=True)
+                self.transcriptions_worker.consume_nonblocking(transcription)
                 return
-            await asyncio.sleep(15)
+            await asyncio.sleep(5)
 
     async def track_bot_sentiment(self):
         """Updates self.bot_sentiment every second based on the current transcript"""
