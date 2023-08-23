@@ -74,9 +74,12 @@ class AsyncGeneratorWrapper(AsyncGenerator[ChunkResult, None]):
             # When the generator is empty:
             # __anext__ will raise StopAsyncIteration
             # if not cut_off:
-            self.when_finished(self.all_bytes)
+            # will not reach value
+            # self.when_finished(self.all_bytes)
             self.all_bytes = None
             raise StopAsyncIteration
+        # captures value outside exception    
+        self.when_finished(self.all_bytes)
         return chunk_result
     
     async def asend(self, value):
