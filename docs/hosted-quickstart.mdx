@@ -1,0 +1,85 @@
+---
+title: "Hosted Quickstart"
+description: "Deploy AI to phone calls via API"
+---
+
+# Introduction
+
+The Vocode hosted service allows you to automate inbound and outbound phone calls
+via our API and SDKs. You can configure agents to answer phone calls (inbound) or make
+phone calls on your behalf (outbound).
+
+The hosted API is built to be scalable and production ready. Vocode provides guardrails
+to make sure agents perform the intended goals reliably and metrics to analyze performance.
+
+# Getting started
+
+To get started with Vocode, you can start by installing either of our Python or Node SDKs, or
+hitting the API directly.
+
+### Python
+
+Install the `vocode-api` package using a package manager.
+
+<CodeGroup>
+```bash poetry
+poetry add vocode-api
+```
+
+```bash pip
+pip install vocode-api
+```
+
+</CodeGroup>
+
+Initialize the Vocode client like so:
+
+```python
+from vocode.client import Vocode
+
+vocode_client = Vocode(
+  token="YOUR_API_KEY"
+)
+
+list_numbers_response = vocode_client.numbers.list_numbers()
+
+print(list_numbers_response)
+```
+
+### Node
+
+Install the `vocode-api` package using a package manager.
+
+<CodeGroup>
+```bash npm
+npm install --save @vocode/vocode-api
+```
+
+```bash yarn
+yarn add @vocode/vocode-api
+```
+
+</CodeGroup>
+
+Initialize the Vocode client like so:
+
+```typescript
+import { VocodeClient } from "@vocode/vocode-api";
+
+const vocode = new VocodeClient({
+  token: "YOUR_API_KEY",
+});
+
+vocode.numbers.listNumbers().then((numbers) => {
+  console.log("My numbers:", numbers);
+});
+```
+
+### API Reference
+
+If you'd prefer to hit our API directly, take a look at our [API Reference](/api-reference).
+
+# Hosted Walkthrough
+
+Once you have Vocode installed, we suggest going through the [Hosted Walkthrough](/getting-number) which will
+show you how to start interacting with the API.

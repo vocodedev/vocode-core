@@ -1,0 +1,109 @@
+---
+title: "Retrieve Call Data"
+description: "Get information on in-progress and completed calls"
+---
+
+<Card
+  title="Call Objects"
+  icon="phone-missed"
+  iconType="duotone"
+  color="#ca8b04"
+>
+  With the Vocode API in-progress and completed calls are accessible as Call
+  objects.
+</Card>
+
+To list your call history:
+
+<CodeGroup>
+
+```python Python
+calls = vocode_client.calls.list_calls()
+```
+
+```javascript TypeScript
+const calls = await vocode.calls.listCalls();
+```
+
+```curl cURL
+curl --request GET \
+  --url https://api.vocode.dev/v1/calls/list \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
+```
+
+</CodeGroup>
+
+The resulting list of Call objects is structured like this:
+
+```json
+[
+  {
+    id: 'call_id',
+    userId: 'user_id',
+    toNumber: '123456789',
+    fromNumber: '123456789',
+    agent: {
+      id: 'agent_id',
+      userId: 'user_id',
+      prompt: 'The assistant is having a pleasant conversation about life.',
+      actions: [],
+      voice: [Object],
+      initialMessage: undefined,
+      webhook: undefined
+    },
+    goal: undefined,
+    transcript: undefined,
+    recordingUrl: undefined,
+    status: 'ended',
+    errorMessage: undefined,
+    recordingAvailable: false
+  }
+]
+```
+
+## Get a specific call
+
+If you have a call ID, you can get the call object for that call.
+
+<CodeGroup>
+
+```python Python
+vocode_client.calls.get_call(id="CALL_ID")
+```
+
+```javascript TypeScript
+const calls = await vocode.calls.getCall({ id: "CALL_ID" });
+```
+
+```curl cURL
+curl --request GET \
+  --url https://api.vocode.dev/v1/calls/recording/<CALL_ID> \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
+```
+
+</CodeGroup>
+
+## Download a call recording
+
+If you enabled call recording, you can download the call recording file.
+
+<CodeGroup>
+```python Python
+vocode_client.calls.recording(id="CALL_ID")
+```
+
+```javascript TypeScript
+const calls = await vocode.calls.listCalls();
+const recording = await vocode.calls.recording({ id: calls[0].id });
+```
+
+```curl cURL
+curl --request GET \
+  --url https://api.vocode.dev/v1/calls/recording/<CALL_ID> \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
+```
+
+</CodeGroup>
