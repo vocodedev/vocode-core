@@ -121,7 +121,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.info("Ignoring empty transcription")
                 return
             if transcription.is_final:
-                self.conversation.logger.debug(
+                self.conversation.logger.info(
                     "Got transcription {} at {}, confidence: {}".format(
                         transcription.message, time.time(), transcription.confidence
                     )
@@ -343,7 +343,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                 )
                 item.agent_response_tracker.set()
-                self.conversation.logger.debug("Message sent: {} at {} ".format(message_sent, time.time()))
+                self.conversation.logger.info("Message sent: {} at {} ".format(message_sent, time.time()))
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(
                         message_sent
