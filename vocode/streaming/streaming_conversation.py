@@ -118,8 +118,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.mark_last_action_timestamp()
             if transcription.is_final:
                 self.conversation.logger.info(
-                    "Got transcription {} at {}, confidence: {}".format(
-                        transcription.message, time.time(), transcription.confidence
+                    "Got transcription {}, confidence: {}".format(
+                        transcription.message, transcription.confidence
                     )
                 )
             if (
@@ -284,7 +284,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
 
                 self.conversation.logger.debug(
-                    "Generatating speech: {}; message: {}".format(time.time(), agent_response_message.message))
+                    "Generatating speech for message message: {}".format(agent_response_message.message))
                 synthesis_result = await self.conversation.synthesizer.create_speech(
                     agent_response_message.message,
                     self.chunk_size,
@@ -342,7 +342,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                 )
                 item.agent_response_tracker.set()
-                self.conversation.logger.info("Message sent: {} at {} ".format(message_sent, time.time()))
+                self.conversation.logger.info("Message sent: {}".format(message_sent))
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(
                         message_sent
@@ -654,7 +654,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
             )
             self.logger.debug(
-                "Voice output Worker: Sent chunk number {} at {} with length {} seconds for message {}".format(chunk_idx, time.time(),
+                "Voice output Worker: Sent chunk number {} with length {} seconds for message {}".format(chunk_idx,
                                                                              speech_length_seconds, message)
             )
             self.mark_last_action_timestamp()
