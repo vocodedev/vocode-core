@@ -563,7 +563,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                 )
                 await synthesis_result.chunk_generator.__aclose__()
-                value = synthesis_result.chunk_generator.when_finished
                 message_sent = f"{synthesis_result.get_message_up_to(chunk_idx * seconds_per_chunk)}-"
                 cut_off = True
                 break
