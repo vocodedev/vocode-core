@@ -587,12 +587,29 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 break
         self.agent.cancel_current_task()
         self.agent_responses_worker.cancel_current_task()
+
+        # Clearing these queues cuts time from finishing interruption talking to bot talking cut by 1 second from ~4.5 to ~3.5 seconds.
+        self.clear_queue(self.agent.output_queue, 'agent.output_queue')
+        self.clear_queue(self.agent_responses_worker.output_queue, 'agent_responses_worker.output_queue')
+        self.clear_queue(self.agent_responses_worker.input_queue, 'agent_responses_worker.input_queue')
+        self.clear_queue(self.output_device.queue, 'output_device.queue')
+
         return num_interrupts > 0
 
     def is_interrupt(self, transcription: Transcription):
         return transcription.confidence >= (
                 self.transcriber.get_transcriber_config().min_interrupt_confidence or 0
         )
+
+    @staticmethod
+    def clear_queue(q: asyncio.Queue, queue_name: str):
+        while not q.empty():
+            logging.debug(f'Emptying queue {queue_name}')
+            try:
+                q.get_nowait()
+            except asyncio.QueueEmpty:
+                continue
+
 
     async def send_speech_to_output(
             self,
