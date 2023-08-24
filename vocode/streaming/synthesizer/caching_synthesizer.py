@@ -62,9 +62,10 @@ class AsyncGeneratorWrapper(AsyncGenerator[ChunkResult, None]):
             self.all_bytes = None
             raise
     
-    async def __aclose__(self):
+    async def aclose(self):
         self.when_finished(self.all_bytes)
         self.all_bytes = None
+        await self.generator.aclose()
 
     async def asend(self, value):
         return await self.generator.asend(value)

@@ -319,12 +319,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         message_sent
                     )
                     metadata["cut_off"] = True
-                    if synthesis_result.cached_path:
-                        # "Uncache" the file that was cut off and isn't suitable to cache
-                        try:
-                            os.remove(synthesis_result.cached_path)
-                        except OSError:
-                            pass
 
                 if self.conversation.bot_sentiment:
                     metadata["sentiment"] = self.conversation.bot_sentiment
@@ -562,7 +556,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         chunk_idx
                     )
                 )
-                await synthesis_result.chunk_generator.__aclose__()
+                await synthesis_result.chunk_generator.aclose()
                 message_sent = f"{synthesis_result.get_message_up_to(chunk_idx * seconds_per_chunk)}-"
                 cut_off = True
                 break
