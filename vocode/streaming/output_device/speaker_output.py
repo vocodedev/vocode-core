@@ -31,8 +31,9 @@ class SpeakerOutput(BaseOutputDevice):
             device=int(self.device_info["index"]),
             callback=self.callback,
         )
-        self.stream.start()
+        # queue has to be initialized before stream, otherwise callback method maybe called too early
         self.queue: queue.Queue[np.ndarray] = queue.Queue()
+        self.stream.start()
 
     def callback(self, outdata: np.ndarray, frames, time, status):
         if self.queue.empty():
