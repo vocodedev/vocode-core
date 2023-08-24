@@ -50,38 +50,33 @@ class AsyncGeneratorWrapper(AsyncGenerator[ChunkResult, None]):
 
     def __aiter__(self):
         return self
-
-        # Reference: https://peps.python.org/pep-0492/
-    # must return instance of iterator
-    def __aiter__(self):
-        return self
-
-    # must return awaitable that steps iterator
+    
     async def __anext__(self):
+        chunk_result = await self.generator.__anext__()
         try:
-            chunk_result = await self.generator.__anext__()
-            # chunk_result == truthy
-            # chunk_result.chunk == truthy
             has_valid_chunk = chunk_result and chunk_result.chunk
             if has_valid_chunk:
-                # This flag removes header
-                # Truncates byte-string using magic-number position in '.wav' format
                 if self.remove_wav_header:
                     self.all_bytes += chunk_result.chunk[44:]
+                    print("self.all_bytes: "+str(len(self.all_bytes)))
                 else:
                     chunk_result.chunk
         except StopAsyncIteration:
             # When the generator is empty:
             # __anext__ will raise StopAsyncIteration
             # if not cut_off:
-            # will not reach value
-            # self.when_finished(self.all_bytes)
+            self.when_finished(self.all_bytes)
             self.all_bytes = None
-            raise StopAsyncIteration
-        # captures value outside exception    
-        self.when_finished(self.all_bytes)
+            raise
         return chunk_result
     
+    async def __aclose__(self):
+        aclose = getattr(self.generator, '__aclose__', None)
+        if aclose:
+            await aclose()
+            self.when_finished(self.all_bytes)
+        self.all_bytes = None
+
     async def asend(self, value):
         return await self.generator.asend(value)
 
