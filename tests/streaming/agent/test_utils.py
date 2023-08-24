@@ -28,11 +28,17 @@ async def _agen_from_list(l):
 
 
 def create_chatgpt_openai_object(
-    delta: Dict[str, str], finish_reason: Optional[Any] = None
+    delta: Optional[Dict[str, str]] = None,
+    finish_reason: Optional[Any] = None,
+    prompt_annotations=None,
 ):
-    return OpenAIObject.construct_from(
-        {"choices": [{"delta": delta, "finish_reason": finish_reason}]}
-    )
+    inner_obj = {}
+    if prompt_annotations:
+        inner_obj["prompt_annotations"] = prompt_annotations
+        inner_obj["choices"] = []
+    elif delta:
+        inner_obj["choices"] = [{"delta": delta, "finish_reason": finish_reason}]
+    return OpenAIObject.construct_from(inner_obj)
 
 
 class StreamOpenAIResponseTestCase(BaseModel):
@@ -43,6 +49,14 @@ class StreamOpenAIResponseTestCase(BaseModel):
 
 OPENAI_OBJECTS = [
     [
+        {
+            "prompt_annotations": [
+                {
+                    "prompt_index": 0,
+                    "content_filter_results": {},
+                }
+            ]
+        },
         {"delta": {"role": "assistant"}, "finish_reason": None},
         {"delta": {"content": "Hello"}, "finish_reason": None},
         {"delta": {"content": "!"}, "finish_reason": None},
