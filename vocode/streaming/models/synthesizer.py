@@ -110,6 +110,8 @@ class ElevenLabsSynthesizerConfig(
     experimental_streaming: Optional[bool] = False
     stability: Optional[float]
     similarity_boost: Optional[float]
+    style: Optional[float]
+    use_speaker_boost: Optional[bool] = False
     model_id: Optional[str]
 
     @validator("voice_id")

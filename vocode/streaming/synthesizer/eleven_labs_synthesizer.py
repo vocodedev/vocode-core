@@ -44,6 +44,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.voice_id = synthesizer_config.voice_id or ADAM_VOICE_ID
         self.stability = synthesizer_config.stability
         self.similarity_boost = synthesizer_config.similarity_boost
+        self.style = synthesizer_config.style
+        self.use_speaker_boost = synthesizer_config.use_speaker_boost
         self.model_id = synthesizer_config.model_id
         self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
@@ -115,9 +117,16 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         if self.optimize_streaming_latency:
             url += f"?optimize_streaming_latency={self.optimize_streaming_latency}"
         headers = {"xi-api-key": self.api_key}
+
+        voice_settings = voice.settings.dict() if voice.settings else {}
+        if self.style:
+            voice_settings["style"] = self.style
+        if self.use_speaker_boost is not None:  
+            voice_settings["use_speaker_boost"] = self.use_speaker_boost
+            
         body = {
             "text": message.text,
-            "voice_settings": voice.settings.dict() if voice.settings else None,
+            "voice_settings": voice_settings
         }
         if self.model_id:
             body["model_id"] = self.model_id
