@@ -75,7 +75,7 @@ async def openai_get_tokens(gen) -> AsyncGenerator[Union[str, FunctionFragment],
     async for event in gen:
         choices = event.get("choices", [])
         if len(choices) == 0:
-            break
+            continue
         choice = choices[0]
         if choice.finish_reason:
             break
