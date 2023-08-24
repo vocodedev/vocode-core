@@ -604,7 +604,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
     @staticmethod
     def clear_queue(q: asyncio.Queue, queue_name: str):
         while not q.empty():
-            logging.debug(f'Emptying queue {queue_name}')
+            logging.info(f'Emptying queue {queue_name} with size {q.qsize()}')
             try:
                 q.get_nowait()
             except asyncio.QueueEmpty:
