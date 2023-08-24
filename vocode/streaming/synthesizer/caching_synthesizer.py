@@ -50,21 +50,23 @@ class AsyncGeneratorWrapper(AsyncGenerator[ChunkResult, None]):
 
     def __aiter__(self):
         return self
-
+    
     async def __anext__(self):
         try:
             chunk_result = await self.generator.__anext__()
-            # Hacky way to cut off each chunk's wav header if it has one
             if chunk_result and chunk_result.chunk:
                 self.all_bytes += chunk_result.chunk[44:] if self.remove_wav_header else chunk_result.chunk
             return chunk_result
         except StopAsyncIteration:
-            # Code to run when the async generator has finished
-            # if not cut_off:
             self.when_finished(self.all_bytes)
             self.all_bytes = None
             raise
     
+    async def aclose(self):
+        self.when_finished(self.all_bytes)
+        self.all_bytes = None
+        await self.generator.aclose()
+
     async def asend(self, value):
         return await self.generator.asend(value)
 
