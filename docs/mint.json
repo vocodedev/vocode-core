@@ -143,10 +143,6 @@
       ]
     },
     {
-      "group": "Schemas",
-      "pages": ["api-reference/schemas/action-type"]
-    },
-    {
       "group": "Hosted Walkthrough",
       "pages": [
         "getting-number",
