@@ -20,6 +20,7 @@ CHAT_VERTEX_AI_DEFAULT_MODEL_NAME = "chat-bison@001"
 AZURE_OPENAI_DEFAULT_API_TYPE = "azure"
 AZURE_OPENAI_DEFAULT_API_VERSION = "2023-03-15-preview"
 AZURE_OPENAI_DEFAULT_ENGINE = "gpt-35-turbo"
+CHAT_OLLAMA_DEFAULT_MODEL_NAME = "llama2"
 
 
 class AgentType(str, Enum):
@@ -36,6 +37,7 @@ class AgentType(str, Enum):
     RESTFUL_USER_IMPLEMENTED = "agent_restful_user_implemented"
     WEBSOCKET_USER_IMPLEMENTED = "agent_websocket_user_implemented"
     ACTION = "agent_action"
+    OLLAMA = "agent_ollama"
 
 
 class FillerAudioConfig(BaseModel):
@@ -134,6 +136,12 @@ class GPT4AllAgentConfig(AgentConfig, type=AgentType.GPT4ALL.value):
     prompt_preamble: str
     model_path: str
     generate_responses: bool = False
+
+
+class OllamaAgentConfig(AgentConfig, type=AgentType.OLLAMA.value):
+    model_name: str = CHAT_OLLAMA_DEFAULT_MODEL_NAME
+    ollama_server: str = "http://localhost:11434"
+    prompt_preamble: str
 
 
 class RESTfulUserImplementedAgentConfig(
