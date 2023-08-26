@@ -43,6 +43,7 @@ from vocode.streaming.models.transcript import (
     TranscriptCompleteEvent,
 )
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.synthesizer import ElevenLabsSynthesizer
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
@@ -593,6 +594,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.clear_queue(self.agent_responses_worker.output_queue, 'agent_responses_worker.output_queue')
         self.clear_queue(self.agent_responses_worker.input_queue, 'agent_responses_worker.input_queue')
         self.clear_queue(self.output_device.queue, 'output_device.queue')
+        if isinstance(self.synthesizer, ElevenLabsSynthesizer) and self.synthesizer.miniaudio_worker is not None:
+            self.clear_queue(self.synthesizer.miniaudio_worker.input_queue, 'synthesizer.miniaudio_worker.input_queue')
+            self.clear_queue(self.synthesizer.miniaudio_worker.output_queue, 'synthesizer.miniaudio_worker.output_queue')
+            # stop the worker with sentinel
+            self.synthesizer.miniaudio_worker.consume_nonblocking(None)
 
         return num_interrupts > 0
 
@@ -604,7 +610,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
     @staticmethod
     def clear_queue(q: asyncio.Queue, queue_name: str):
         while not q.empty():
-            logging.info(f'Emptying queue {queue_name} with size {q.qsize()}')
+            logging.info(f'Clearing queue {queue_name} with size {q.qsize()}')
             try:
                 q.get_nowait()
             except asyncio.QueueEmpty:

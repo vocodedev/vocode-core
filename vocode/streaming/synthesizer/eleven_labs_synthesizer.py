@@ -48,6 +48,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
         self.experimental_streaming = synthesizer_config.experimental_streaming
+        self.miniaudio_worker = None
 
     async def experimental_streaming_output_generator(
         self,
@@ -68,6 +69,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             miniaudio_worker_input_queue,
             miniaudio_worker_output_queue,
         )
+        self.miniaudio_worker = miniaudio_worker
         miniaudio_worker.start()
         stream_reader = response.content
 
@@ -101,6 +103,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             pass
         finally:
             miniaudio_worker.terminate()
+            self.miniaudio_worker = None
 
     async def create_speech(
         self,
