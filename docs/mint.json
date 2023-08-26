@@ -135,6 +135,15 @@
       ]
     },
     {
+      "group": "Vector Databases",
+      "pages": [
+        "api-reference/vector_database/get-prompt",
+        "api-reference/vector_database/list-prompts",
+        "api-reference/vector_database/create-prompt",
+        "api-reference/vector_database/update-prompt"
+      ]
+    },
+    {
       "group": "Voices",
       "pages": [
         "api-reference/voices/get-voice",
