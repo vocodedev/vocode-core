@@ -137,10 +137,10 @@
     {
       "group": "Vector Databases",
       "pages": [
-        "api-reference/vector_database/get-prompt",
-        "api-reference/vector_database/list-prompts",
-        "api-reference/vector_database/create-prompt",
-        "api-reference/vector_database/update-prompt"
+        "api-reference/vector_databases/get-vector-database",
+        "api-reference/vector_databases/list-vector-databases",
+        "api-reference/vector_databases/create-vector-database",
+        "api-reference/vector_databases/update-vector-database"
       ]
     },
     {
