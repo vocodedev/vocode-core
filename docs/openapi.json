@@ -1061,7 +1061,7 @@
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
-          "prompt": { "type": "string", "title": "Prompt" },
+          "prompt": { "$ref": "#/components/schemas/Prompt" },
           "language": {
             "allOf": [{ "$ref": "#/components/schemas/Language" }],
             "default": "en"
@@ -1135,7 +1135,13 @@
       },
       "AgentParams": {
         "properties": {
-          "prompt": { "type": "string", "title": "Prompt" },
+          "prompt": {
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/PromptParams" }
+            ],
+            "title": "Prompt"
+          },
           "language": {
             "allOf": [{ "$ref": "#/components/schemas/Language" }],
             "default": "en"
@@ -1202,7 +1208,8 @@
         "properties": {
           "prompt": {
             "anyOf": [
-              { "type": "string" },
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/PromptUpdateParams" },
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Prompt"
@@ -1431,9 +1438,30 @@
         "title": "CallStatus",
         "description": "An enumeration."
       },
+      "CollectField": {
+        "properties": {
+          "field_type": {
+            "type": "string",
+            "enum": ["field_type_email", "field_type_address"],
+            "title": "Field Type"
+          },
+          "label": { "type": "string", "title": "Label" },
+          "name": { "type": "string", "title": "Name" },
+          "description": { "type": "string", "title": "Description" }
+        },
+        "type": "object",
+        "required": ["field_type", "label", "name"],
+        "title": "CollectField"
+      },
       "CreateCallAgentParams": {
         "properties": {
-          "prompt": { "type": "string", "title": "Prompt" },
+          "prompt": {
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/PromptParams" }
+            ],
+            "title": "Prompt"
+          },
           "language": {
             "allOf": [{ "$ref": "#/components/schemas/Language" }],
             "default": "en"
@@ -1731,7 +1759,13 @@
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
-          "prompt": { "type": "string", "title": "Prompt" },
+          "prompt": {
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/PromptParams" }
+            ],
+            "title": "Prompt"
+          },
           "language": {
             "allOf": [{ "$ref": "#/components/schemas/Language" }],
             "default": "en"
@@ -1999,6 +2033,66 @@
         "type": "object",
         "required": ["type"],
         "title": "PlayHtVoiceUpdateParams"
+      },
+      "Prompt": {
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "title": "Id" },
+          "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
+          "content": { "type": "string", "title": "Content" },
+          "collect_fields": {
+            "items": { "$ref": "#/components/schemas/CollectField" },
+            "type": "array",
+            "title": "Collect Fields"
+          },
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+        },
+        "type": "object",
+        "required": ["id", "user_id", "content"],
+        "title": "Prompt"
+      },
+      "PromptParams": {
+        "properties": {
+          "content": { "type": "string", "title": "Content" },
+          "collect_fields": {
+            "items": { "$ref": "#/components/schemas/CollectField" },
+            "type": "array",
+            "title": "Collect Fields"
+          },
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+        },
+        "type": "object",
+        "required": ["content"],
+        "title": "PromptParams"
+      },
+      "PromptUpdateParams": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Content"
+          },
+          "collect_fields": {
+            "anyOf": [
+              {
+                "items": { "$ref": "#/components/schemas/CollectField" },
+                "type": "array"
+              },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Collect Fields"
+          },
+          "context_endpoint": {
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Context Endpoint"
+          }
+        },
+        "type": "object",
+        "title": "PromptUpdateParams"
       },
       "RimeVoice": {
         "properties": {
