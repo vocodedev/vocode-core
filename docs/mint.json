@@ -99,7 +99,8 @@
         "api-reference/calls/list-calls",
         "api-reference/calls/get-call",
         "api-reference/calls/end-call",
-        "api-reference/calls/create-call"
+        "api-reference/calls/create-call",
+        "api-reference/calls/get-recording"
       ]
     },
     {
@@ -122,6 +123,24 @@
         "api-reference/agents/list-agents",
         "api-reference/agents/create-agent",
         "api-reference/agents/update-agent"
+      ]
+    },
+    {
+      "group": "Prompts",
+      "pages": [
+        "api-reference/prompts/get-prompt",
+        "api-reference/prompts/list-prompts",
+        "api-reference/prompts/create-prompt",
+        "api-reference/prompts/update-prompt"
+      ]
+    },
+    {
+      "group": "Vector Databases",
+      "pages": [
+        "api-reference/vector_database/get-prompt",
+        "api-reference/vector_database/list-prompts",
+        "api-reference/vector_database/create-prompt",
+        "api-reference/vector_database/update-prompt"
       ]
     },
     {

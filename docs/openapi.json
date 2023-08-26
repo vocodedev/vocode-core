@@ -976,6 +976,316 @@
         },
         "security": [{ "HTTPBearer": [] }]
       }
+    },
+    "/v1/prompts": {
+      "get": {
+        "tags": ["prompts"],
+        "summary": "Get Prompt",
+        "operationId": "get_prompt",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Prompt" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/prompts/list": {
+      "get": {
+        "tags": ["prompts"],
+        "summary": "List Prompts",
+        "operationId": "list_prompts",
+        "parameters": [
+          {
+            "required": false,
+            "schema": { "type": "integer", "title": "Page", "default": 1 },
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": { "type": "integer", "title": "Size", "default": 10 },
+            "name": "size",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PromptPage" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/prompts/create": {
+      "post": {
+        "tags": ["prompts"],
+        "summary": "Create Prompt",
+        "operationId": "create_prompt",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PromptParams" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Prompt" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/prompts/update": {
+      "post": {
+        "tags": ["prompts"],
+        "summary": "Update Prompt",
+        "operationId": "update_prompt",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PromptUpdateParams" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Prompt" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/vector_databases": {
+      "get": {
+        "tags": ["vector_databases"],
+        "summary": "Get Vector Database",
+        "operationId": "get_vector_database",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PineconeVectorDatabase"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/vector_databases/list": {
+      "get": {
+        "tags": ["vector_databases"],
+        "summary": "List Vector Databases",
+        "operationId": "list_vector_databases",
+        "parameters": [
+          {
+            "required": false,
+            "schema": { "type": "integer", "title": "Page", "default": 1 },
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": { "type": "integer", "title": "Size", "default": 10 },
+            "name": "size",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/VectorDatabasePage" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/vector_databases/create": {
+      "post": {
+        "tags": ["vector_databases"],
+        "summary": "Create Vector Database",
+        "operationId": "create_vector_database",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PineconeVectorDatabaseParams"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PineconeVectorDatabase"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/vector_databases/update": {
+      "post": {
+        "tags": ["vector_databases"],
+        "summary": "Update Vector Database",
+        "operationId": "update_vector_database",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PineconeVectorDatabaseUpdateParams"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PineconeVectorDatabase"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
     }
   },
   "components": {
@@ -1061,7 +1371,7 @@
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
-          "prompt": { "type": "string", "title": "Prompt" },
+          "prompt": { "$ref": "#/components/schemas/Prompt" },
           "language": {
             "allOf": [{ "$ref": "#/components/schemas/Language" }],
             "default": "en"
@@ -1135,7 +1445,13 @@
       },
       "AgentParams": {
         "properties": {
-          "prompt": { "type": "string", "title": "Prompt" },
+          "prompt": {
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/PromptParams" }
+            ],
+            "title": "Prompt"
+          },
           "language": {
             "allOf": [{ "$ref": "#/components/schemas/Language" }],
             "default": "en"
@@ -1202,7 +1518,8 @@
         "properties": {
           "prompt": {
             "anyOf": [
-              { "type": "string" },
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/PromptUpdateParams" },
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Prompt"
@@ -1431,9 +1748,30 @@
         "title": "CallStatus",
         "description": "An enumeration."
       },
+      "CollectField": {
+        "properties": {
+          "field_type": {
+            "type": "string",
+            "enum": ["field_type_email", "field_type_address"],
+            "title": "Field Type"
+          },
+          "label": { "type": "string", "title": "Label" },
+          "name": { "type": "string", "title": "Name" },
+          "description": { "type": "string", "title": "Description" }
+        },
+        "type": "object",
+        "required": ["field_type", "label", "name"],
+        "title": "CollectField"
+      },
       "CreateCallAgentParams": {
         "properties": {
-          "prompt": { "type": "string", "title": "Prompt" },
+          "prompt": {
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/PromptParams" }
+            ],
+            "title": "Prompt"
+          },
           "language": {
             "allOf": [{ "$ref": "#/components/schemas/Language" }],
             "default": "en"
@@ -1731,7 +2069,13 @@
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
-          "prompt": { "type": "string", "title": "Prompt" },
+          "prompt": {
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/PromptParams" }
+            ],
+            "title": "Prompt"
+          },
           "language": {
             "allOf": [{ "$ref": "#/components/schemas/Language" }],
             "default": "en"
@@ -2000,6 +2344,81 @@
         "required": ["type"],
         "title": "PlayHtVoiceUpdateParams"
       },
+      "Prompt": {
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "title": "Id" },
+          "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
+          "content": { "type": "string", "title": "Content" },
+          "collect_fields": {
+            "items": { "$ref": "#/components/schemas/CollectField" },
+            "type": "array",
+            "title": "Collect Fields"
+          },
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+        },
+        "type": "object",
+        "required": ["id", "user_id", "content"],
+        "title": "Prompt"
+      },
+      "PromptPage": {
+        "properties": {
+          "items": {
+            "items": { "$ref": "#/components/schemas/Prompt" },
+            "type": "array",
+            "title": "Items"
+          },
+          "page": { "type": "integer", "title": "Page" },
+          "size": { "type": "integer", "title": "Size" },
+          "has_more": { "type": "boolean", "title": "Has More" }
+        },
+        "type": "object",
+        "required": ["items", "page", "size", "has_more"],
+        "title": "PromptPage"
+      },
+      "PromptParams": {
+        "properties": {
+          "content": { "type": "string", "title": "Content" },
+          "collect_fields": {
+            "items": { "$ref": "#/components/schemas/CollectField" },
+            "type": "array",
+            "title": "Collect Fields"
+          },
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+        },
+        "type": "object",
+        "required": ["content"],
+        "title": "PromptParams"
+      },
+      "PromptUpdateParams": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Content"
+          },
+          "collect_fields": {
+            "anyOf": [
+              {
+                "items": { "$ref": "#/components/schemas/CollectField" },
+                "type": "array"
+              },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Collect Fields"
+          },
+          "context_endpoint": {
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Context Endpoint"
+          }
+        },
+        "type": "object",
+        "title": "PromptUpdateParams"
+      },
       "RimeVoice": {
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
@@ -2147,6 +2566,21 @@
         "type": "object",
         "required": ["loc", "msg", "type"],
         "title": "ValidationError"
+      },
+      "VectorDatabasePage": {
+        "properties": {
+          "items": {
+            "items": { "$ref": "#/components/schemas/PineconeVectorDatabase" },
+            "type": "array",
+            "title": "Items"
+          },
+          "page": { "type": "integer", "title": "Page" },
+          "size": { "type": "integer", "title": "Size" },
+          "has_more": { "type": "boolean", "title": "Has More" }
+        },
+        "type": "object",
+        "required": ["items", "page", "size", "has_more"],
+        "title": "VectorDatabasePage"
       },
       "VoicePage": {
         "properties": {
