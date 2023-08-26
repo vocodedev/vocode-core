@@ -31,9 +31,9 @@ prompt so the AI responds like Yoda.
 <CodeGroup>
 
 ```python Python
-from vocode import AgentUpdateParams
+from vocode import AgentUpdateParams, PromptUpdateParams
 
-yoda_prompt = "I want you to act as Yoda. Respond as Yoda would."
+yoda_prompt = PromptUpdateParams(content="I want you to act as Yoda. Respond as Yoda would.")
 number = vocode_client.numbers.update_number(
     phone_number="YOUR_NUMBER", inbound_agent=AgentUpdateParams(prompt=yoda_prompt)
 )
@@ -43,7 +43,7 @@ number = vocode_client.numbers.update_number(
 const yoda_prompt = "I want you to act as Yoda. Respond as Yoda would.";
 const number = await vocode.numbers.updateNumber({
   phoneNumber: "YOUR_NUMBER",
-  inboundAgent: { prompt: yoda_prompt },
+  inboundAgent: { prompt: { content: yoda_prompt } },
 });
 ```
 
