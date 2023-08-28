@@ -48,15 +48,27 @@ class AbstractTranscriber(Generic[TranscriberConfigType]):
             return linear_audio
         elif self.get_transcriber_config().audio_encoding == AudioEncoding.MULAW:
             return audioop.lin2ulaw(linear_audio, sample_width)
-    
-    def trim_audio(self, audio_buffer: bytearray, total_bytes: int, offset_s: float, duration_s: float):
+
+    def trim_audio(
+        self,
+        audio_buffer: bytearray,
+        total_bytes: int,
+        offset_s: float,
+        duration_s: float,
+    ):
         offset_bytes = int(offset_s * 2 * self.transcriber_config.sampling_rate)
         duration_bytes = int(duration_s * 2 * self.transcriber_config.sampling_rate)
         if offset_bytes + duration_bytes > total_bytes:
             duration_bytes = total_bytes - offset_bytes
         # We may have discarded earlier audio so we need to adjust the offset
-        offset_bytes -= (total_bytes - len(audio_buffer))
-        return audio_buffer[offset_bytes:offset_bytes + duration_bytes]
+        offset_bytes -= total_bytes - len(audio_buffer)
+        if (offset_bytes == offset_bytes + duration_bytes) is True or (
+            len(audio_buffer) <= self.transcriber_config.sampling_rate
+        ):
+            trimmed_audio = audio_buffer
+        else:
+            trimmed_audio = audio_buffer[offset_bytes : offset_bytes + duration_bytes]
+        return trimmed_audio
 
 
 class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWorker):
