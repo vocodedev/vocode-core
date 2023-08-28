@@ -9,6 +9,8 @@ import time
 import typing
 from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, cast
 
+import rapidfuzz
+
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
     AgentInput,
@@ -117,6 +119,33 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
+            if transcription.message.strip() == "":
+                # This is often received when the person starts talking. We don't know if they will use filler word.
+                # TODO set a timer here, if transcription does not arrive on time, assume the person keeps talking and need to interrupt the bot.
+                self.conversation.logger.info("Ignoring empty transcription")
+                return
+
+            stripped = transcription.message.strip()
+            for filler in ["Hm.",
+                           "Huh.",
+                           "Mm.",
+                           "So.",
+                           "Oh.",
+                           "Aha.",
+                           "Uh-huh.",
+                           "Mm-hmm.",
+                           "Uh-uh.",
+                           "Mhmm.", ]:
+                # TODO add Okey here but only if the agent is responding. Otherwise, it could mean "Yes' answer to a question. In general, many fillers are like this.
+                min_filler_similarity = 0.45
+                filler_similarity = rapidfuzz.distance.Levenshtein.normalized_similarity(stripped, filler.strip())
+                if filler_similarity > min_filler_similarity:
+                    self.conversation.logger.info(f"{transcription.message} is similar {filler_similarity} to filler {filler}")
+                    return
+
+                else:
+                    self.conversation.logger.info(f"{transcription.message} is not similar {filler_similarity} to filler {filler}")
+
             if transcription.is_final:
                 self.conversation.logger.info(
                     "Got transcription {}, confidence: {}, is_final: {}, time_took: {}".format(
@@ -137,9 +166,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.current_transcription_is_interrupt
             )
             self.conversation.is_human_speaking = not transcription.is_final
-            if transcription.message.strip() == "":
-                self.conversation.logger.info("Ignoring empty transcription")
-                return
             if transcription.is_final:
                 # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
                 event = self.interruptible_event_factory.create_interruptible_event(
