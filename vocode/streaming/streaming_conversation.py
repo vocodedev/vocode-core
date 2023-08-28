@@ -119,8 +119,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.mark_last_action_timestamp()
             if transcription.is_final:
                 self.conversation.logger.info(
-                    "Got transcription {}, confidence: {}".format(
-                        transcription.message, transcription.confidence
+                    "Got transcription {}, confidence: {}, is_final: {}, time_took: {}".format(
+                        transcription.message, transcription.confidence, transcription.is_final, transcription.time_took
                     )
                 )
             if (
