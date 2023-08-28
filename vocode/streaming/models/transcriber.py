@@ -158,7 +158,13 @@ class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.val
 
 
 class AzureTranscriberConfig(TranscriberConfig, type=TranscriberType.AZURE.value):
-    
+
+    # https://learn.microsoft.com/en-gb/azure/cognitive-services/speech-service/how-to-recognize-speech?pivots=programming-language-csharp#change-how-silence-is-handled
+    # Defines how long silence between utterances to separate them into different transcriptions, default is 500ms
+    initial_silence_timeout_ms: Optional[int] = None
+    # Defines how long silence initially to return a NoMatch result, default is 15000 ms
+    segmentation_silence_timeout_ms: Optional[int] = None
+
     @classmethod
     def supports_language(cls, lang: str):
         # https://learn.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support?tabs=stt

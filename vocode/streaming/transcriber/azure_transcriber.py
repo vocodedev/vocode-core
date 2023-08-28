@@ -57,6 +57,12 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
             region=getenv("AZURE_SPEECH_REGION"),
         )
 
+        if self.transcriber_config.segmentation_silence_timeout_ms is not None:
+            speech_config.set_property(speechsdk.PropertyId.Speech_SegmentationSilenceTimeoutMs, str(self.transcriber_config.segmentation_silence_timeout_ms))
+
+        if self.transcriber_config.initial_silence_timeout_ms is not None:
+            speech_config.set_property(speechsdk.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs, str(self.transcriber_config.initial_silence_timeout_ms))
+
         lang_config = speechsdk.languageconfig.SourceLanguageConfig(self.transcriber_config.language_code)
 
         self.speech = speechsdk.SpeechRecognizer(
