@@ -2,6 +2,7 @@ import asyncio
 import logging
 import signal
 from dotenv import load_dotenv
+from vocode.streaming.transcriber.base_transcriber import Transcription
 
 
 load_dotenv()
@@ -27,6 +28,10 @@ async def main():
         microphone_input,
         speaker_output,
     ) = create_streaming_microphone_input_and_speaker_output(
+        # input_device_name="krisp microphone",
+        # output_device_name="krisp speaker",
+        # input_device_name="Ajay's AirPod Pros",
+        # output_device_name="Ajay's AirPod Pros",
         use_default_devices=False,
         logger=logger,
         use_blocking_speaker_output=True,  # this moves the playback to a separate thread, set to False to use the main thread
@@ -45,6 +50,7 @@ async def main():
                 # initial_message=BaseMessage(text="What up"),
                 prompt_preamble="""The AI is having a pleasant conversation about life""",
                 send_text_chunks_to_synthesizer=True,
+                # max_tokens=10,
             )
         ),
         # synthesizer=AzureSynthesizer(
@@ -61,6 +67,13 @@ async def main():
     print("Conversation started, press Ctrl+C to end")
     signal.signal(
         signal.SIGINT, lambda _0, _1: asyncio.create_task(conversation.terminate())
+    )
+    conversation.transcriptions_worker.input_queue.put_nowait(
+        Transcription(
+            message="hi",
+            confidence=1,
+            is_final=True,
+        )
     )
     while conversation.is_active():
         chunk = await microphone_input.get_audio()

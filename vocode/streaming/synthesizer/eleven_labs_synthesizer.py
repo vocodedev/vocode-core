@@ -40,6 +40,7 @@ from vocode.streaming.utils.worker import (
     InterruptibleAgentResponseEvent,
 )
 
+logger = logging.getLogger(__name__)
 
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
@@ -60,20 +61,24 @@ class ElevenLabsInputStreamWorker(AsyncWorker[AgentResponse]):
         self.api_key = api_key
         self.voice_id = voice_id
         self.model_id = model_id
-        self.bos = json.dumps(
-            dict(
-                text=" ",
-                try_trigger_generation=True,
-                voice_settings=voice_settings,
-                generation_config=dict(
-                    chunk_length_schedule=[50],
-                ),
-            )
+        self.bos = dict(
+            text=" ",
+            voice_settings={
+                "stability": 0.5,
+                "similarity_boost": True,
+            },
+            # generation_config=dict(
+            #     chunk_length_schedule=[50],
+            # ),
+            xi_api_key=self.api_key,
         )
-        self.eos = json.dumps(dict(text=""))
+        if voice_settings:
+            self.bos["voice_settings"] = voice_settings
+        self.eos = dict(text="")
         self.buffered_message = ""
 
     def get_message_so_far(self):
+        # print("[SYNTHESIZER] returning buffered message", self.buffered_message)
         return self.buffered_message
 
     async def _run_loop(self) -> None:
@@ -84,54 +89,56 @@ class ElevenLabsInputStreamWorker(AsyncWorker[AgentResponse]):
 
         async with websockets.connect(
             url,
-            extra_headers={"xi-api-key": self.api_key},
+            # extra_headers={"xi-api-key": self.api_key},
         ) as websocket:
+            try:
+                await websocket.send(json.dumps(self.bos))
+            except Exception as e:
+                logger.error(e)
+                return
+            while True:
+                item: InterruptibleAgentResponseEvent[
+                    AgentResponse
+                ] = await self.input_queue.get()
+                payload = item.payload
+                # print("[SYNTHESIZER]", payload)
+                input_stream_message: InputStreamMessage
+                if not isinstance(payload, AgentResponseMessageChunk):
+                    break
+                else:
+                    input_stream_message = payload.chunk
 
-            async def sender(websocket: WebSocketClientProtocol):
+                if isinstance(input_stream_message, InputStreamChunk):
+                    msg = dict(
+                        text=input_stream_message.text, try_trigger_generation=True
+                    )
+                    await websocket.send(json.dumps(msg))
+                    item.is_interruptible = False
+                elif isinstance(input_stream_message, EndInputStream):
+                    await websocket.send(json.dumps(self.eos))
+                    item.is_interruptible = False
+                    break
+
+            while True:
                 try:
-                    await websocket.send(self.bos)
-                except Exception as e:
-                    self.logger.error(e)
-                    return
-                while True:
-                    item: InterruptibleAgentResponseEvent[
-                        AgentResponse
-                    ] = await self.input_queue.get()
-                    payload = item.payload
-                    input_stream_message: InputStreamMessage
-                    if not isinstance(payload, AgentResponseMessageChunk):
-                        break
-                    else:
-                        input_stream_message = payload.chunk
+                    response = await websocket.recv()
+                except websockets.exceptions.ConnectionClosed:
+                    break
+                try:
+                    data = json.loads(response)
+                    if data["audio"]:
+                        self.output_queue.put_nowait(base64.b64decode(data["audio"]))
+                        normalized_alignment = data.get("normalizedAlignment")
+                        if normalized_alignment:
+                            text = "".join(data["normalizedAlignment"]["chars"])
+                            self.buffered_message += text
+                except json.JSONDecodeError:
+                    continue
 
-                    if isinstance(input_stream_message, InputStreamChunk):
-                        self.buffered_message += input_stream_message.text
-                        msg = dict(
-                            text=input_stream_message.text, try_trigger_generation=True
-                        )
-                        await websocket.send(json.dumps(msg))
-                    elif isinstance(input_stream_message, EndInputStream):
-                        await websocket.send(self.eos)
-                        break
+            self.output_queue.put_nowait(None)  # sentinel
 
-            async def receiver(websocket: WebSocketClientProtocol):
-                while True:
-                    try:
-                        response = await websocket.recv()
-                    except websockets.exceptions.ConnectionClosed:
-                        break
-                    print(response)
-                    try:
-                        data = json.loads(response)
-                        if data["audio"]:
-                            self.output_queue.put_nowait(
-                                base64.b64decode(data["audio"])
-                            )
-                    except json.JSONDecodeError:
-                        continue
-                    yield response
-
-            await asyncio.gather(sender(websocket), receiver(websocket))
+            # await asyncio.gather(sender(websocket), receiver(websocket))
+            # await sender(websocket)
 
 
 class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
@@ -185,11 +192,15 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 # Await the output queue of the MiniaudioWorker and yield the wav chunks in another loop
                 while True:
                     # Get the wav chunk and the flag from the output queue of the MiniaudioWorker
+                    # print("[MINIAUDIO WORKER] getting chunk")
                     wav_chunk, is_last = await miniaudio_worker.output_queue.get()
                     if self.synthesizer_config.should_encode_as_wav:
                         wav_chunk = encode_as_wav(wav_chunk, self.synthesizer_config)
 
                     yield SynthesisResult.ChunkResult(wav_chunk, is_last)
+
+                    if is_last:
+                        break
             except asyncio.CancelledError:
                 pass
             finally:

@@ -663,6 +663,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         chunk_idx = 0
         seconds_spoken = 0
         async for chunk_result in synthesis_result.chunk_generator:
+            print("start chunk")
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
                 len(chunk_result.chunk) / chunk_size
@@ -700,11 +701,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 transcript_message.text = synthesis_result.get_message_up_to(
                     seconds_spoken
                 )
+            print("end chunk")
+        print("done w chunks")
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()
+        # todo: make this work with non-input streaming
         if transcript_message:
-            transcript_message.text = message_sent
+            message_sent = transcript_message.text
+            # transcript_message.text = message_sent
         return message_sent, cut_off
 
     def mark_terminated(self):

@@ -197,6 +197,7 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
         is_interruptible: bool = True,
         agent_response_tracker: Optional[asyncio.Event] = None,
     ):
+        # print(item)
         interruptible_utterance_event = (
             self.interruptible_event_factory.create_interruptible_agent_response_event(
                 item,

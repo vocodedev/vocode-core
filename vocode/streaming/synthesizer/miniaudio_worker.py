@@ -36,9 +36,11 @@ class MiniaudioWorker(ThreadAsyncWorker[Union[bytes, None]]):
             # Get a tuple of (mp3_chunk, is_last) from the input queue
             try:
                 mp3_chunk = self.input_janus_queue.sync_q.get(timeout=1)
+                # print("[MINIAUDIO WORKER] got chunk")
             except queue.Empty:
                 continue
             if mp3_chunk is None:
+                # print("[MINIAUDIO WORKER] got None")
                 current_mp3_buffer.clear()
                 current_wav_buffer.clear()
                 self.output_janus_queue.sync_q.put(
@@ -72,6 +74,7 @@ class MiniaudioWorker(ThreadAsyncWorker[Union[bytes, None]]):
                 chunk = current_wav_output_buffer[
                     output_buffer_idx : output_buffer_idx + self.chunk_size
                 ]
+                # print("[MINIAUDIO WORKER] putting chunk")
                 self.output_janus_queue.sync_q.put(
                     (chunk, False)
                 )  # don't need to use bytes() since we already sliced it (which is a copy)

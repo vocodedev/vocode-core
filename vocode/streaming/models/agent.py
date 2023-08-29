@@ -80,18 +80,24 @@ class CutOffResponse(BaseModel):
 
 
 class StartInputStream(BaseModel):
+    type: Literal["start_input_stream"] = "start_input_stream"
     pass
 
 
 class InputStreamChunk(BaseModel):
+    type: Literal["input_stream_chunk"] = "input_stream_chunk"
     text: str
 
 
 class EndInputStream(BaseModel):
+    type: Literal["end_input_stream"] = "end_input_stream"
     pass
 
 
-InputStreamMessage = Union[StartInputStream, InputStreamChunk, EndInputStream]
+InputStreamMessage = Annotated[
+    Union[StartInputStream, InputStreamChunk, EndInputStream],
+    Field(discriminator="type"),
+]
 
 
 class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):

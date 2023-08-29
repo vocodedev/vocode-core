@@ -27,11 +27,29 @@ from vocode.streaming.models.transcript import (
 SENTENCE_ENDINGS = [".", "!", "?", "\n"]
 
 
+# directly from the 11labs SDK but async
+async def text_chunker(chunks: AsyncIterable[str]) -> AsyncGenerator[str, None]:
+    """Used during input streaming to chunk text blocks and set last char to space"""
+    splitters = (".", ",", "?", "!", ";", ":", "—", "-", "(", ")", "[", "]", "}", " ")
+    buffer = ""
+    async for text in chunks:
+        if buffer.endswith(splitters):
+            yield buffer if buffer.endswith(" ") else buffer + " "
+            buffer = text
+        elif text.startswith(splitters):
+            output = buffer + text[0]
+            yield output if output.endswith(" ") else output + " "
+            buffer = text[1:]
+        else:
+            buffer += text
+    if buffer != "":
+        yield buffer + " "
+
+
 async def collate_response_async(
     gen: AsyncIterable[Union[str, FunctionFragment]],
     sentence_endings: List[str] = SENTENCE_ENDINGS,
     get_functions: Literal[True, False] = False,
-    send_text_chunks_to_synthesizer: bool = False,
 ) -> AsyncGenerator[Union[str, FunctionCall], None]:
     sentence_endings_pattern = "|".join(map(re.escape, sentence_endings))
     list_item_ending_pattern = r"\n"
@@ -43,8 +61,6 @@ async def collate_response_async(
         if not token:
             continue
         if isinstance(token, str):
-            if send_text_chunks_to_synthesizer:
-                yield token
             if prev_ends_with_money and token.startswith(" "):
                 yield buffer.strip()
                 buffer = ""
