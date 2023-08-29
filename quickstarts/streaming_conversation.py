@@ -42,12 +42,18 @@ async def main():
         ),
         agent=ChatGPTAgent(
             ChatGPTAgentConfig(
-                initial_message=BaseMessage(text="What up"),
+                # initial_message=BaseMessage(text="What up"),
                 prompt_preamble="""The AI is having a pleasant conversation about life""",
+                send_text_chunks_to_synthesizer=True,
             )
         ),
-        synthesizer=AzureSynthesizer(
-            AzureSynthesizerConfig.from_output_device(speaker_output)
+        # synthesizer=AzureSynthesizer(
+        #     AzureSynthesizerConfig.from_output_device(speaker_output)
+        # ),
+        synthesizer=ElevenLabsSynthesizer(
+            ElevenLabsSynthesizerConfig.from_output_device(
+                speaker_output, accept_input_chunks=True
+            )
         ),
         logger=logger,
     )

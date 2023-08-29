@@ -111,6 +111,7 @@ class ElevenLabsSynthesizerConfig(
     stability: Optional[float]
     similarity_boost: Optional[float]
     model_id: Optional[str]
+    accept_input_chunks: bool = False
 
     @validator("voice_id")
     def set_name(cls, voice_id):

@@ -31,6 +31,7 @@ async def collate_response_async(
     gen: AsyncIterable[Union[str, FunctionFragment]],
     sentence_endings: List[str] = SENTENCE_ENDINGS,
     get_functions: Literal[True, False] = False,
+    send_text_chunks_to_synthesizer: bool = False,
 ) -> AsyncGenerator[Union[str, FunctionCall], None]:
     sentence_endings_pattern = "|".join(map(re.escape, sentence_endings))
     list_item_ending_pattern = r"\n"
@@ -42,6 +43,8 @@ async def collate_response_async(
         if not token:
             continue
         if isinstance(token, str):
+            if send_text_chunks_to_synthesizer:
+                yield token
             if prev_ends_with_money and token.startswith(" "):
                 yield buffer.strip()
                 buffer = ""

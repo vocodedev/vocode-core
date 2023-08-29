@@ -25,6 +25,7 @@ from vocode.streaming.models.transcript import (
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
@@ -259,6 +260,47 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     "No filler audio available for synthesizer"
                 )
 
+        async def _run_loop(self):
+            if isinstance(self.conversation.synthesizer, ElevenLabsSynthesizer) and (
+                self.conversation.synthesizer.synthesizer_config.accept_input_chunks
+            ):
+                while True:
+                    item = await self.input_queue.get()
+                    if item.is_interrupted():
+                        continue
+                    self.interruptible_event = item
+                    if isinstance(item.payload, AgentResponseStop):
+                        await self.handle_stop(item)
+                        return
+                    # todo: handle filler audio
+                    # todo: make interruptible
+                    synthesis_result = await self.conversation.synthesizer.create_input_streamed_speech(
+                        self.chunk_size, self.input_queue
+                    )
+                    self.produce_interruptible_agent_response_event_nonblocking(
+                        (BaseMessage(text=""), synthesis_result),
+                        is_interruptible=item.is_interruptible,
+                        agent_response_tracker=item.agent_response_tracker,
+                    )
+                    await item.agent_response_tracker.wait()
+                    # try:
+                    #     await self.current_task
+                    # except asyncio.CancelledError:
+                    #     return
+                    # except Exception as e:
+                    #     logger.exception("InterruptibleWorker", exc_info=True)
+                    # self.interruptible_event.is_interruptible = False
+                    # self.current_task = None
+            else:
+                await super()._run_loop()
+
+        async def handle_stop(
+            self, item: InterruptibleAgentResponseEvent[AgentResponse]
+        ):
+            self.conversation.logger.debug("Agent requested to stop")
+            item.agent_response_tracker.set()
+            await self.conversation.terminate()
+
         async def process(self, item: InterruptibleAgentResponseEvent[AgentResponse]):
             if not self.conversation.synthesis_enabled:
                 self.conversation.logger.debug(
@@ -271,9 +313,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.send_filler_audio(item.agent_response_tracker)
                     return
                 if isinstance(agent_response, AgentResponseStop):
-                    self.conversation.logger.debug("Agent requested to stop")
-                    item.agent_response_tracker.set()
-                    await self.conversation.terminate()
+                    await self.handle_stop(item)
                     return
 
                 agent_response_message = typing.cast(
