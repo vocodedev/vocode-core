@@ -1,8 +1,12 @@
 import asyncio
 import logging
 import signal
+import typing
 from dotenv import load_dotenv
+from vocode.streaming.action.base_action import BaseAction
+from vocode.streaming.models.actions import ActionInput, ActionOutput
 from vocode.streaming.transcriber.base_transcriber import Transcription
+from vocode.streaming.action.factory import ActionFactory
 
 
 load_dotenv()
@@ -21,6 +25,45 @@ from vocode.streaming.models.message import BaseMessage
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+
+class ShoutActionConfig(ActionConfig, type="shout"):  # type: ignore
+    num_exclamation_marks: int
+
+
+class ShoutActionParameters(BaseModel):
+    name: str
+
+
+class ShoutActionResponse(BaseModel):
+    success: bool
+
+
+class ShoutAction(
+    BaseAction[ShoutActionConfig, ShoutActionParameters, ShoutActionResponse]
+):
+    description: str = "Shouts someone's name"
+    parameters_type: typing.Type[ShoutActionParameters] = ShoutActionParameters
+    response_type: typing.Type[ShoutActionResponse] = ShoutActionResponse
+
+    async def run(
+        self, action_input: ActionInput[ShoutActionParameters]
+    ) -> ActionOutput[ShoutActionResponse]:
+        print(
+            f"HI THERE {action_input.params.name}{self.action_config.num_exclamation_marks * '!'}"
+        )
+        return ActionOutput(
+            action_type=self.action_config.type,
+            response=ShoutActionResponse(success=True),
+        )
+
+
+class ShoutActionFactory(ActionFactory):
+    def create_action(self, action_config: ActionConfig) -> BaseAction:
+        if isinstance(action_config, ShoutActionConfig):
+            return ShoutAction(action_config, should_respond=False, quiet=True)
+        else:
+            raise Exception("Invalid action type")
 
 
 async def main():
@@ -51,7 +94,11 @@ async def main():
                 prompt_preamble="""The AI is having a pleasant conversation about life""",
                 send_text_chunks_to_synthesizer=True,
                 # max_tokens=10,
-            )
+                actions=[
+                    # ShoutActionConfig(num_exclamation_marks=3),
+                ],
+            ),
+            action_factory=ShoutActionFactory(),
         ),
         # synthesizer=AzureSynthesizer(
         #     AzureSynthesizerConfig.from_output_device(speaker_output)

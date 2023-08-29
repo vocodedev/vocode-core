@@ -230,6 +230,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 AgentResponseMessageChunk(chunk=StartInputStream()),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
+        sent_chunks = 0
         async for response in responses:
             if isinstance(response, FunctionCall):
                 function_call = response
@@ -242,12 +243,13 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     AgentResponseMessageChunk(chunk=InputStreamChunk(text=response)),
                     is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
                 )
+                sent_chunks += 1
             else:
                 self.produce_interruptible_agent_response_event_nonblocking(
                     AgentResponseMessage(message=BaseMessage(text=response)),
                     is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
                 )
-        if self.agent_config.send_text_chunks_to_synthesizer:
+        if self.agent_config.send_text_chunks_to_synthesizer and sent_chunks > 0:
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessageChunk(chunk=EndInputStream()),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
