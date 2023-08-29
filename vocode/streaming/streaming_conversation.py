@@ -9,7 +9,6 @@ import time
 import typing
 from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, cast
 
-import rapidfuzz
 
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
@@ -125,26 +124,52 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.info("Ignoring empty transcription")
                 return
 
-            stripped = transcription.message.strip()
-            for filler in ["Hm.",
-                           "Huh.",
-                           "Mm.",
-                           "So.",
-                           "Oh.",
-                           "Aha.",
-                           "Uh-huh.",
-                           "Mm-hmm.",
-                           "Uh-uh.",
-                           "Mhmm.", ]:
-                # TODO add Okey here but only if the agent is responding. Otherwise, it could mean "Yes' answer to a question. In general, many fillers are like this.
-                min_filler_similarity = 0.45
-                filler_similarity = rapidfuzz.distance.Levenshtein.normalized_similarity(stripped, filler.strip())
-                if filler_similarity > min_filler_similarity:
-                    self.conversation.logger.info(f"{transcription.message} is similar {filler_similarity} to filler {filler}")
-                    return
+            if len(transcription.message) < 10:
+                def normalize_string(input_str: str):
+                    input_str = input_str.strip().strip('.').lower().replace('-', '')
+                    unique_chars = []
+                    for char in input_str:
+                        if unique_chars and unique_chars[-1] == char:
+                            continue
+                        unique_chars.append(char)
+                    return ''.join(unique_chars)
 
-                else:
-                    self.conversation.logger.info(f"{transcription.message} is not similar {filler_similarity} to filler {filler}")
+                normalized_transcription = normalize_string(transcription.message)
+                for filler in [
+                    "uh",
+                    "um",
+                    "mmhm",
+                    "Mhmm",
+                    "mm-mm",
+                    "uh-uh",
+                    "uh-huh",
+                    "nuh-uh",
+                    "Hey",
+                    "Hm.",
+                    "Huh.",
+                    "Mm.",
+                    "Oh.",
+                    "Aha.",
+                    "Uh-huh.",
+                    "Mm-hmm.",
+                    "Uh-uh.",
+                    "Mhmm.",
+                    "Oof",
+                    "Whoa",
+                    "Woah",
+                    "Wow",
+                    "Eek",
+                    "Ahem",
+                    "Uh-hum",
+                    "Eh-heh",
+                    "Erm",
+                    "Er",
+                    "Eh",
+                    "Ah"
+                ]:
+                    if normalize_string(filler) == normalized_transcription:
+                        self.conversation.logger.info(f"{transcription.message} is similar to filler {filler}")
+                        return
 
             if transcription.is_final:
                 self.conversation.logger.info(
