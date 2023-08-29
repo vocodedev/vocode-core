@@ -30,7 +30,13 @@ from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 
-from vocode.streaming.models.agent import ChatGPTAgentConfig, FillerAudioConfig
+from vocode.streaming.models.agent import (
+    ChatGPTAgentConfig,
+    EndInputStream,
+    FillerAudioConfig,
+    InputStreamChunk,
+    StartInputStream,
+)
 from vocode.streaming.models.synthesizer import (
     SentimentConfig,
 )
@@ -44,6 +50,7 @@ from vocode.streaming.agent.base_agent import (
     AgentResponse,
     AgentResponseFillerAudio,
     AgentResponseMessage,
+    AgentResponseMessageChunk,
     AgentResponseStop,
     AgentResponseType,
     BaseAgent,
@@ -549,14 +556,35 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # TODO: configure if initial message is interruptible
         self.transcriber.mute()
         initial_message_tracker = asyncio.Event()
-        agent_response_event = (
-            self.interruptible_event_factory.create_interruptible_agent_response_event(
+        if self.agent.get_agent_config().send_text_chunks_to_synthesizer:
+            self.logger.debug("Sending initial message as chunks")
+            agent_response_chunk_start = self.interruptible_event_factory.create_interruptible_agent_response_event(
+                AgentResponseMessageChunk(chunk=StartInputStream()),
+                is_interruptible=False,
+                agent_response_tracker=initial_message_tracker,
+            )
+            agent_response_chunk_event = self.interruptible_event_factory.create_interruptible_agent_response_event(
+                AgentResponseMessageChunk(
+                    chunk=InputStreamChunk(text=initial_message.text + " "),
+                ),
+                is_interruptible=False,
+            )
+            agent_response_chunk_event_end = self.interruptible_event_factory.create_interruptible_agent_response_event(
+                AgentResponseMessageChunk(chunk=EndInputStream()),
+                is_interruptible=False,
+            )
+            self.agent_responses_worker.consume_nonblocking(agent_response_chunk_start)
+            self.agent_responses_worker.consume_nonblocking(agent_response_chunk_event)
+            self.agent_responses_worker.consume_nonblocking(
+                agent_response_chunk_event_end
+            )
+        else:
+            agent_response_event = self.interruptible_event_factory.create_interruptible_agent_response_event(
                 AgentResponseMessage(message=initial_message),
                 is_interruptible=False,
                 agent_response_tracker=initial_message_tracker,
             )
-        )
-        self.agent_responses_worker.consume_nonblocking(agent_response_event)
+            self.agent_responses_worker.consume_nonblocking(agent_response_event)
         await initial_message_tracker.wait()
         self.transcriber.unmute()
 
@@ -663,7 +691,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         chunk_idx = 0
         seconds_spoken = 0
         async for chunk_result in synthesis_result.chunk_generator:
-            print("start chunk")
+            # print("start chunk")
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
                 len(chunk_result.chunk) / chunk_size
@@ -701,8 +729,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 transcript_message.text = synthesis_result.get_message_up_to(
                     seconds_spoken
                 )
-            print("end chunk")
-        print("done w chunks")
+            # print("end chunk")
+        # print("done w chunks")
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()
