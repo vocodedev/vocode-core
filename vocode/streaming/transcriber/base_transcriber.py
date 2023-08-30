@@ -61,9 +61,11 @@ class AbstractTranscriber(Generic[TranscriberConfigType]):
         if offset_bytes + duration_bytes > total_bytes:
             duration_bytes = total_bytes - offset_bytes
         # We may have discarded earlier audio so we need to adjust the offset
-        offset_bytes -= total_bytes - len(audio_buffer)
-        if (offset_bytes == offset_bytes + duration_bytes) is True or (
-            len(audio_buffer) <= self.transcriber_config.sampling_rate
+        offset_bytes -= total_bytes
+        offset_bytes += len(audio_buffer)
+        offset_bytes = max(0, offset_bytes)
+        if (duration_bytes == 0) or (
+            len(audio_buffer) <= (2 * self.transcriber_config.sampling_rate)
         ):
             trimmed_audio = audio_buffer
         else:
