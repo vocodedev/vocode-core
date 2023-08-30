@@ -171,6 +171,7 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.va
     seed: Optional[int] = None
     temperature: Optional[int] = None
     voice_id: str = PLAYHT_DEFAULT_VOICE_ID
+    experimental_streaming: bool = False
 
 
 class CoquiTTSSynthesizerConfig(

@@ -31,9 +31,9 @@ prompt so the AI responds like Yoda.
 <CodeGroup>
 
 ```python Python
-from vocode import AgentUpdateParams
+from vocode import AgentUpdateParams, PromptUpdateParams
 
-yoda_prompt = "I want you to act as Yoda. Respond as Yoda would."
+yoda_prompt = PromptUpdateParams(content="I want you to act as Yoda. Respond as Yoda would.")
 number = vocode_client.numbers.update_number(
     phone_number="YOUR_NUMBER", inbound_agent=AgentUpdateParams(prompt=yoda_prompt)
 )
@@ -43,7 +43,7 @@ number = vocode_client.numbers.update_number(
 const yoda_prompt = "I want you to act as Yoda. Respond as Yoda would.";
 const number = await vocode.numbers.updateNumber({
   phoneNumber: "YOUR_NUMBER",
-  inboundAgent: { prompt: yoda_prompt },
+  inboundAgent: { prompt: { content: yoda_prompt } },
 });
 ```
 
@@ -58,20 +58,18 @@ Our prompt has been updated. Now let's use a voice provided by other API provide
 <CodeGroup>
 
 ```python Python
-from vocode import RimeVoiceParams, VoiceType
+from vocode import RimeVoiceParams
 
 rime_voice = RimeVoiceParams(
-    type=VoiceType.VOICE_RIME,
+    type="voice_rime",
     speaker="RIME_SPEAKER",
 )
 voice = vocode_client.voices.create_voice(request=rime_voice)
 ```
 
 ```javascript TypeScript
-import { VoiceType } from "@vocode/vocode-api/api";
-
 const rimeVoice = {
-  type: VoiceType.VoiceRime,
+  type: "voice_rime",
   voiceId: "RIME_SPEAKER",
 };
 const number = await vocode.voices.createVoice(rimeVoice);
@@ -84,10 +82,10 @@ const number = await vocode.voices.createVoice(rimeVoice);
 <CodeGroup>
 
 ```python Python
-from vocode import PlayHtVoiceParams, VoiceType
+from vocode import PlayHtVoiceParams
 
 play_ht_voice = PlayHtVoiceParams(
-    type=VoiceType.VOICE_PLAY_HT,
+    type="voice_play_ht",
     voice_id="PLAY_HT_VOICE_ID",
     api_user_id="PLAY_HT_USER_ID",
     api_key="PLAY_HT_API_KEY",
@@ -96,10 +94,8 @@ voice = vocode_client.voices.create_voice(request=play_ht_voice)
 ```
 
 ```javascript TypeScript
-import { VoiceType } from "@vocode/vocode-api/api";
-
 const playHtVoice = {
-  type: VoiceType.VoicePlayHt,
+  type: "voice_play_ht",
   voiceId: "PLAY_HT_VOICE_ID",
   apiUserId: "PLAY_HT_USER_ID",
   apiKey: "PLAY_HT_API_KEY,
@@ -117,10 +113,10 @@ we'll create a new voice config and set the agent to use it.
 <CodeGroup>
 
 ```python Python
-from vocode import ElevenLabsVoiceParams, VoiceType
+from vocode import ElevenLabsVoiceParams
 
 elevenlabs_voice = ElevenLabsVoiceParams(
-    type=VoiceType.VOICE_ELEVEN_LABS,
+    type="voice_eleven_labs",
     voice_id="ELEVEN_LABS_VOICE_ID",
     api_key="ELEVEN_LABS_API_KEY",
 )
@@ -128,10 +124,8 @@ voice = vocode_client.voices.create_voice(request=elevenlabs_voice)
 ```
 
 ```javascript TypeScript
-import { VoiceType } from "@vocode/vocode-api/api";
-
 const elevenlabsVoice = {
-  type: VoiceType.VoiceElevenLabs,
+  type: "voice_eleven_labs",
   voiceId: "ELEVEN_LABS_VOICE_ID",
   apiKey: "ELEVEN_LABS_API_KEY",
 };
