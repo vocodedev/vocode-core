@@ -152,7 +152,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 transcript
                 and deepgram_response["speech_final"]
                 and transcript.strip()[-1] in PUNCTUATION_TERMINATORS
-            ) or (  # potentially should be and
+            ) or (
                 not transcript
                 and current_buffer
                 and (time_silent + deepgram_response["duration"])
@@ -228,9 +228,13 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
                     if top_choice["transcript"] and confidence > 0.0 and is_final:
                         buffer = f"{buffer} {top_choice['transcript']}"
-                        buffer_avg_confidence = (
-                            buffer_avg_confidence + confidence / (num_buffer_utterances)
-                        ) * (num_buffer_utterances / (num_buffer_utterances + 1))
+                        if buffer_avg_confidence == 0:
+                            buffer_avg_confidence = confidence
+                        else:
+                            buffer_avg_confidence = (
+                                buffer_avg_confidence
+                                + confidence / (num_buffer_utterances)
+                            ) * (num_buffer_utterances / (num_buffer_utterances + 1))
                         num_buffer_utterances += 1
 
                     if speech_final:
