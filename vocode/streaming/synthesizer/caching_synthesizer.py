@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 import re
 from typing import Any, AsyncGenerator, Callable, Optional, List, Union
@@ -11,6 +12,7 @@ from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, FillerAudio, SynthesisResult, ChunkResult
 
+logger = logging.getLogger(__name__)
 
 def save_as_wav(path, audio_data: bytes, config: Union[SynthesizerConfig, TranscriberConfig]):
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -22,6 +24,7 @@ def save_as_wav(path, audio_data: bytes, config: Union[SynthesizerConfig, Transc
         wav_file.setframerate(config.sampling_rate)
         wav_file.writeframes(audio_data)
         wav_file.close()
+    logger.debug(f"Saved {len(audio_data)} audio bytes to {path}")
 
 def get_voice_id(synthesizer_config: SynthesizerConfig) -> str:
     voice = None
