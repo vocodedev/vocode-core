@@ -17,6 +17,8 @@ from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     EndpointingConfig,
     EndpointingType,
+    PunctuationEndpointingConfig,
+    TimeEndpointingConfig,
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
 
@@ -131,9 +133,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         # if it is not time based, then return true if speech is final and there is a transcript
         if not self.transcriber_config.endpointing_config:
             return transcript and deepgram_response["speech_final"]
-        elif (
-            self.transcriber_config.endpointing_config.type
-            == EndpointingType.TIME_BASED
+        elif isinstance(
+            self.transcriber_config.endpointing_config, TimeEndpointingConfig
         ):
             # if it is time based, then return true if there is no transcript
             # and there is some speech to send
@@ -144,9 +145,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 and (time_silent + deepgram_response["duration"])
                 > self.transcriber_config.endpointing_config.time_cutoff_seconds
             )
-        elif (
-            self.transcriber_config.endpointing_config.type
-            == EndpointingType.PUNCTUATION_BASED
+        elif isinstance(
+            self.transcriber_config.endpointing_config, PunctuationEndpointingConfig
         ):
             return (
                 transcript
