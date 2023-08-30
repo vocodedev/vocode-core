@@ -24,7 +24,6 @@ class Transcription(BaseModel):
 
 TranscriberConfigType = TypeVar("TranscriberConfigType", bound=TranscriberConfig)
 
-
 class AbstractTranscriber(Generic[TranscriberConfigType]):
     def __init__(self, transcriber_config: TranscriberConfigType):
         self.transcriber_config = transcriber_config
@@ -48,43 +47,6 @@ class AbstractTranscriber(Generic[TranscriberConfigType]):
             return linear_audio
         elif self.get_transcriber_config().audio_encoding == AudioEncoding.MULAW:
             return audioop.lin2ulaw(linear_audio, sample_width)
-
-    def trim_audio(
-        self,
-        audio_buffer: bytearray,
-        total_bytes: int,
-        offset_s: float,
-        duration_s: float,
-    ):
-        """
-        Extracts / trims an audio buffer to match the given offset and duration.
-
-        Args:
-            audio_buffer: The audio buffer. May have been truncated, e.g. length may be < total_bytes
-            total_bytes: The total number of bytes recorded since starting the stream
-            offset_s: The offset in seconds since start of stream, to start trimming from
-            duration_s: The duration in seconds to trim
-        """
-
-        offset_bytes = int(offset_s * 2 * self.transcriber_config.sampling_rate)
-        duration_bytes = int(duration_s * 2 * self.transcriber_config.sampling_rate)
-        
-        if offset_bytes + duration_bytes > total_bytes:
-            duration_bytes = total_bytes - offset_bytes
-        # We may have truncated the audio buffer since start of streaming so we need to 
-        # adjust the offset in bytes to match up with the truncated buffer
-        offset_bytes -= total_bytes
-        offset_bytes += len(audio_buffer)
-        offset_bytes = max(0, offset_bytes)
-        # Ensure we have a minimum duration
-        if (duration_bytes == 0) or (
-            len(audio_buffer) <= (2 * self.transcriber_config.sampling_rate)
-        ):
-            trimmed_audio = audio_buffer
-        else:
-            trimmed_audio = audio_buffer[offset_bytes : offset_bytes + duration_bytes]
-        return trimmed_audio
-
 
 class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWorker):
     def __init__(

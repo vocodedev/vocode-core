@@ -1,30 +1,13 @@
 import hashlib
-import logging
 import os
 import re
-from typing import Any, AsyncGenerator, Callable, Optional, List, Union
-import wave
+from typing import Any, AsyncGenerator, Callable, Optional, List
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.agent import FillerAudioConfig
-from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, FillerAudio, SynthesisResult, ChunkResult
-
-logger = logging.getLogger(__name__)
-
-def save_as_wav(path, audio_data: bytes, config: Union[SynthesizerConfig, TranscriberConfig]):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "wb") as f:
-        wav_file = wave.open(f, "wb")
-        wav_file.setnchannels(1)
-        assert config.audio_encoding == AudioEncoding.LINEAR16
-        wav_file.setsampwidth(2)
-        wav_file.setframerate(config.sampling_rate)
-        wav_file.writeframes(audio_data)
-        wav_file.close()
-    logger.debug(f"Saved {len(audio_data)} audio bytes to {path}")
+from vocode.streaming.utils import save_as_wav
 
 def get_voice_id(synthesizer_config: SynthesizerConfig) -> str:
     voice = None
@@ -126,7 +109,7 @@ class CachingSynthesizer(BaseSynthesizer):
             result = await self.inner_synthesizer.create_speech(message, chunk_size, bot_sentiment)
             result.chunk_generator = AsyncGeneratorWrapper(
                 result.chunk_generator, 
-                lambda all_bytes: save_as_wav(cached_path, all_bytes, self.inner_synthesizer.get_synthesizer_config()),
+                lambda all_bytes: save_as_wav(cached_path, all_bytes, self.inner_synthesizer.get_synthesizer_config().sampling_rate),
                 self.inner_synthesizer.synthesizer_config.should_encode_as_wav
             )
 
