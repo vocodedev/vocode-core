@@ -22,7 +22,7 @@ class Transcription(BaseModel):
     time_took: float = 0.0
 
     def __str__(self):
-        return f"Transcription({self.message}, {self.confidence}, {self.is_final})"
+        return f"Transcription({self.message}, {self.confidence}, {self.is_final}, {self.is_interrupt}, {self.time_took})"
 
 
 TranscriberConfigType = TypeVar("TranscriberConfigType", bound=TranscriberConfig)
