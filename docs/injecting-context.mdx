@@ -42,14 +42,17 @@ from fastapi import FastAPI
 app = FastAPI()
 
 @app.get("/my-context-endpoint")
-def endpoint(request: Request):
-    if req.body.phone_number == "123":
+def endpoint(phone_number: str):
+    if phone_number == "123":
         return {"name": "Kian"}
-    elif req.body.phone_number == "456":
+    elif phone_number == "456":
         return {"name": "Ajay"}
     else:
         return {}
 ```
+
+This sets up a route at `http://localhost:8000/my-context-endpoint` that accepts `phone_number` as a URL param, i.e.
+`http://localhost:8000/my-context-endpoint?phone_number=15555555555`.
 
 Now, when either Kian or Ajay call the bot – the prompt will reflect the name of the person
 the bot is talking to!
