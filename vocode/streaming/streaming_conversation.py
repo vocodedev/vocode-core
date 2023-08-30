@@ -20,7 +20,7 @@ from vocode.streaming.models.transcript import Transcript, TranscriptCompleteEve
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.synthesizer.caching_synthesizer import save_as_wav
+from vocode.streaming.utils import save_as_wav, trim_audio
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 
@@ -122,18 +122,21 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
+                t_config = self.conversation.transcriber.get_transcriber_config()
                 file_path = f"cache/transcript_{len(self.conversation.transcript.messages)}.wav"
                 save_as_wav(
                     file_path, 
-                    self.conversation.transcriber.trim_audio(
+                    trim_audio(
+                        t_config.sampling_rate,
                         self.conversation.input_audio_buffer, 
                         self.conversation.total_audio_bytes, 
                         transcription.offset,
                         transcription.duration), 
-                    self.conversation.transcriber.transcriber_config
+                    t_config.sampling_rate
                 )
                 # Empty buffer to save space
-                self.conversation.input_audio_buffer = bytearray()
+                # TODO reactivate when we know why trim bugs happen?
+                # self.conversation.input_audio_buffer = bytearray()
                 self.conversation.transcript.add_human_message(
                     text=transcription.message,
                     events_manager=self.conversation.events_manager,
