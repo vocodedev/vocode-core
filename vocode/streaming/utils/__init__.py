@@ -66,6 +66,9 @@ def create_conversation_id() -> str:
     return secrets.token_urlsafe(16)
 
 def save_as_wav(path, audio_data: bytes, sampling_rate: int):
+    if len(audio_data) == 0:
+        logger.error(f"Cannot save an empty WAV file to {path}")
+        return
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as f:
         wav_file = wave.open(f, "wb")
