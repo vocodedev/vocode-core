@@ -21,6 +21,7 @@ class AgentType(str, Enum):
     CHAT_GPT = "agent_chat_gpt"
     CHAT_ANTHROPIC = "agent_chat_anthropic"
     ECHO = "agent_echo"
+    STATIC = "agent_static"
     GPT4ALL = "agent_gpt4all"
     INFORMATION_RETRIEVAL = "agent_information_retrieval"
     RESTFUL_USER_IMPLEMENTED = "agent_restful_user_implemented"
@@ -96,6 +97,11 @@ class InformationRetrievalAgentConfig(
 class EchoAgentConfig(AgentConfig, type=AgentType.ECHO.value):
     pass
 
+class StaticAgentConfig(
+    AgentConfig, type=AgentType.STATIC.value
+):
+    script: List[str]
+    generate_responses: bool = False
 
 class GPT4AllAgentConfig(AgentConfig, type=AgentType.GPT4ALL.value):
     prompt_preamble: str

@@ -10,6 +10,7 @@ from vocode.streaming.agent.llm_agent import LLMAgent
 from vocode.streaming.agent.restful_user_implemented_agent import (
     RESTfulUserImplementedAgent,
 )
+from vocode.streaming.agent.static_agent import StaticAgent
 from vocode.streaming.models.agent import (
     AgentConfig,
     AgentType,
@@ -19,6 +20,7 @@ from vocode.streaming.models.agent import (
     InformationRetrievalAgentConfig,
     LLMAgentConfig,
     RESTfulUserImplementedAgentConfig,
+    StaticAgentConfig,
 )
 
 
@@ -38,6 +40,10 @@ class AgentFactory:
         elif agent_config.type == AgentType.ECHO:
             return EchoAgent(
                 agent_config=typing.cast(EchoAgentConfig, agent_config), logger=logger
+            )
+        elif agent_config.type == AgentType.STATIC:
+            return StaticAgent(
+                agent_config=typing.cast(StaticAgentConfig, agent_config), logger=logger
             )
         elif agent_config.type == AgentType.INFORMATION_RETRIEVAL:
             return InformationRetrievalAgent(
