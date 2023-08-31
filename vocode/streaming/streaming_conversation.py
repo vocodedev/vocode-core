@@ -125,7 +125,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 file_path = None
                 # If no duration, it's a text message and we don't need to handle the audio
                 if transcription.duration:
-                    file_path = f"cache/transcript_{len(self.conversation.transcript.messages)}.wav"
+                    file_path = f"cache/{self.conversation.id}/transcript_{len(self.conversation.transcript.messages)}.wav"
                     t_config = self.conversation.transcriber.get_transcriber_config()
                     save_as_wav(
                         file_path, 
