@@ -182,6 +182,8 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         else:
             voice_root = voice
         if bot_sentiment and bot_sentiment.emotion:
+            # bluberry debug
+            self.logger.debug(f"Bluberry log - Bot sentiment: {bot_sentiment.emotion}")
             styled = ElementTree.SubElement(
                 voice, "{%s}express-as" % NAMESPACES.get("mstts")
             )

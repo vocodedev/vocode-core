@@ -9,6 +9,7 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_SAMPLING_RATE,
 )
+
 from .model import BaseModel, TypedModel
 from .audio_encoding import AudioEncoding
 
@@ -37,12 +38,18 @@ class SentimentConfig(BaseModel):
             raise ValueError("must have at least one emotion")
         return v
 
+# bluberry: copied from bot_sentiment_analyser.py 
+class BotSentiment(BaseModel):
+    emotion: Optional[str] = None
+    degree: float = 0.0
 
 class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
     sampling_rate: int
     audio_encoding: AudioEncoding
     should_encode_as_wav: bool = False
-    sentiment_config: Optional[SentimentConfig] = None
+    sentiment_config: Optional[SentimentConfig] = None,
+    # added by bluberry
+    initial_bot_sentiment: Optional[BotSentiment] = None
 
     class Config:
         arbitrary_types_allowed = True
