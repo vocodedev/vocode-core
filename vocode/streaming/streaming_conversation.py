@@ -436,7 +436,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
         self.transcript = Transcript()
         self.transcript.attach_events_manager(self.events_manager)
-        self.bot_sentiment = None
+        # self.bot_sentiment = None
+        self.bot_sentiment = self.synthesizer.get_synthesizer_config().initial_bot_sentiment
         if self.agent.get_agent_config().track_bot_sentiment:
             self.sentiment_config = (
                 self.synthesizer.get_synthesizer_config().sentiment_config
@@ -494,10 +495,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent.attach_transcript(self.transcript)
         if mark_ready:
             await mark_ready()
-        if self.synthesizer.get_synthesizer_config().sentiment_config:
+        # bluberry modification: added self.agent.get_agent_config().track_bot_sentiment 
+        # to the following two if statements
+        if (self.synthesizer.get_synthesizer_config().sentiment_config 
+                and self.agent.get_agent_config().track_bot_sentiment):
             await self.update_bot_sentiment()
         self.active = True
-        if self.synthesizer.get_synthesizer_config().sentiment_config:
+        if (self.synthesizer.get_synthesizer_config().sentiment_config 
+                and self.agent.get_agent_config().track_bot_sentiment):
             self.track_bot_sentiment_task = asyncio.create_task(
                 self.track_bot_sentiment()
             )
