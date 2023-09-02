@@ -29,7 +29,13 @@ class VonageClient(BaseTelephonyClient):
         return self.vonage_config
 
     async def create_vonage_call(
-        self, to_phone: str, from_phone: str, ncco: str, digits: Optional[str] = None
+        self,
+        to_phone: str,
+        from_phone: str,
+        ncco: str,
+        digits: Optional[str] = None,
+        event_urls: List[str] = [],
+        **kwargs,
     ) -> str:  # returns the Vonage UUID
         aiohttp_session = self.maybe_aiohttp_session or aiohttp.ClientSession()
         vonage_call_uuid: str
@@ -39,6 +45,8 @@ class VonageClient(BaseTelephonyClient):
                 "to": [{"type": "phone", "number": to_phone, "dtmfAnswer": digits}],
                 "from": {"type": "phone", "number": from_phone},
                 "ncco": ncco,
+                "event_url": event_urls,
+                **kwargs,
             },
             headers={
                 "Authorization": f"Bearer {self.client._generate_application_jwt().decode()}"
