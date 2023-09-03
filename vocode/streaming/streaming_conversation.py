@@ -30,6 +30,7 @@ from vocode.streaming.constants import (
     PER_CHUNK_ALLOWANCE_SECONDS,
     ALLOWED_IDLE_TIME,
 )
+from vocode.streaming.ignored_while_talking_fillers_fork import IGNORED_WHILE_TALKING_FILLERS
 from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.agent import ChatGPTAgentConfig, FillerAudioConfig
 from vocode.streaming.models.events import Sender
@@ -121,55 +122,29 @@ class StreamingConversation(Generic[OutputDeviceType]):
             if transcription.message.strip() == "":
                 # This is often received when the person starts talking. We don't know if they will use filler word.
                 # TODO set a timer here, if transcription does not arrive on time, assume the person keeps talking and need to interrupt the bot.
-                self.conversation.logger.info("Ignoring empty transcription")
+                # TODO human_speaking should be set here as this is the only place with is_final=false.
+                self.conversation.logger.info(f"Ignoring empty transcription {transcription}")
                 return
 
-            if len(transcription.message) < 10:
-                def normalize_string(input_str: str):
-                    input_str = input_str.strip().strip('.').lower().replace('-', '')
-                    unique_chars = []
-                    for char in input_str:
-                        if unique_chars and unique_chars[-1] == char:
-                            continue
-                        unique_chars.append(char)
-                    return ''.join(unique_chars)
+            # Detect if the bot is talking. This may fail if the current task is done and another not started yet. But playing the audio takes most of the time.
+            if self.conversation.synthesis_results_worker.current_task is not None and not self.conversation.synthesis_results_worker.current_task.done():
+                self.conversation.logger.info('The user said something during the bot was talking. Testing to ignore filler words and confirmation words.')
+                if len(transcription.message) < 10:
+                    def normalize_string(input_str: str):
+                        input_str = input_str.strip().strip('.').lower().replace('-', '')
+                        unique_chars = []
+                        for char in input_str:
+                            if unique_chars and unique_chars[-1] == char:
+                                continue
+                            unique_chars.append(char)
+                        return ''.join(unique_chars)
 
-                normalized_transcription = normalize_string(transcription.message)
-                for filler in [
-                    "uh",
-                    "um",
-                    "mmhm",
-                    "Mhmm",
-                    "mm-mm",
-                    "uh-uh",
-                    "uh-huh",
-                    "nuh-uh",
-                    "Hey",
-                    "Hm.",
-                    "Huh.",
-                    "Mm.",
-                    "Oh.",
-                    "Aha.",
-                    "Uh-huh.",
-                    "Mm-hmm.",
-                    "Uh-uh.",
-                    "Mhmm.",
-                    "Oof",
-                    "Whoa",
-                    "Woah",
-                    "Wow",
-                    "Eek",
-                    "Ahem",
-                    "Uh-hum",
-                    "Eh-heh",
-                    "Erm",
-                    "Er",
-                    "Eh",
-                    "Ah"
-                ]:
-                    if normalize_string(filler) == normalized_transcription:
-                        self.conversation.logger.info(f"{transcription.message} is similar to filler {filler}")
-                        return
+                    normalized_transcription = normalize_string(transcription.message)
+                    # TODO The user may create combinations which won't be present.
+                    for filler in IGNORED_WHILE_TALKING_FILLERS:
+                        if normalize_string(filler) == normalized_transcription:
+                            self.conversation.logger.info(f"Ignoring filler {transcription.message} similar to filler {filler}.")
+                            return
 
             if transcription.is_final:
                 self.conversation.logger.info(
@@ -645,6 +620,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.clear_queue(self.agent_responses_worker.output_queue, 'agent_responses_worker.output_queue')
         self.clear_queue(self.agent_responses_worker.input_queue, 'agent_responses_worker.input_queue')
         self.clear_queue(self.output_device.queue, 'output_device.queue')
+        # TODO clearing of the miniaudio queue may not be needed if the task is cancelled agent_responses_worker.cancel_current_task.
         if isinstance(self.synthesizer, ElevenLabsSynthesizer) and self.synthesizer.miniaudio_worker is not None:
             self.clear_queue(self.synthesizer.miniaudio_worker.input_queue, 'synthesizer.miniaudio_worker.input_queue')
             self.clear_queue(self.synthesizer.miniaudio_worker.output_queue, 'synthesizer.miniaudio_worker.output_queue')
