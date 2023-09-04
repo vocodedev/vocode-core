@@ -480,6 +480,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.check_for_idle_task: Optional[asyncio.Task] = None
         self.track_bot_sentiment_task: Optional[asyncio.Task] = None
 
+        self.summarize_conversation_task: Optional[asyncio.Task] = None
+
         self.current_transcription_is_interrupt: bool = False
 
         # tracing
@@ -527,6 +529,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.track_bot_sentiment_task = asyncio.create_task(
                 self.track_bot_sentiment()
             )
+        self.summarize_conversation_task = asyncio.create_task(
+            self.summarize_conversation()
+        )
+
         self.check_for_idle_task = asyncio.create_task(self.check_for_idle())
         if len(self.events_manager.subscriptions) > 0:
             self.events_task = asyncio.create_task(self.events_manager.start())
@@ -571,6 +577,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
             if self.transcript.to_string() != prev_transcript:
                 await self.update_bot_sentiment()
                 prev_transcript = self.transcript.to_string()
+
+    async def summarize_conversation(self):
+        prev_transcript = None
+        while self.is_active():
+            await asyncio.sleep(10)
+            if self.transcript.to_string() != prev_transcript:
+                self.logger.info("Summarizing conversation...")
 
     async def update_bot_sentiment(self):
         new_bot_sentiment = await self.bot_sentiment_analyser.analyse(
@@ -737,6 +750,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.track_bot_sentiment_task:
             self.logger.debug("Terminating track_bot_sentiment Task")
             self.track_bot_sentiment_task.cancel()
+
+        if self.summarize_conversation_task:
+            self.logger.debug("Terminating summarize_conversation Task")
+            self.summarize_conversation_task.cancel()
+
         if self.events_manager and self.events_task:
             self.logger.debug("Terminating events Task")
             await self.events_manager.flush()
@@ -773,3 +791,4 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     def is_active(self):
         return self.active
+
