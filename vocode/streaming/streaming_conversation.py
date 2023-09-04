@@ -7,8 +7,7 @@ import random
 import threading
 import time
 import typing
-from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, cast
-
+from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
@@ -17,7 +16,6 @@ from vocode.streaming.agent.base_agent import (
     AgentResponseFillerAudio,
     AgentResponseMessage,
     AgentResponseStop,
-    AgentResponseType,
     BaseAgent,
     TranscriptionAgentInput,
 )
@@ -25,27 +23,26 @@ from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode.streaming.agent.gpt_summary_agent import ChatGPTSummaryAgent
 from vocode.streaming.constants import (
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
     PER_CHUNK_ALLOWANCE_SECONDS,
     ALLOWED_IDLE_TIME,
 )
 from vocode.streaming.ignored_while_talking_fillers_fork import IGNORED_WHILE_TALKING_FILLERS
-from vocode.streaming.models.actions import ActionInput
-from vocode.streaming.models.agent import ChatGPTAgentConfig, FillerAudioConfig
+from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
     SentimentConfig,
 )
-from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
+from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.models.transcript import (
     Message,
     Transcript,
     TranscriptCompleteEvent,
 )
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.synthesizer import ElevenLabsSynthesizer
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
@@ -58,7 +55,6 @@ from vocode.streaming.transcriber.base_transcriber import (
 from vocode.streaming.utils import create_conversation_id, get_chunk_size_per_second
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager
-from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
@@ -66,7 +62,6 @@ from vocode.streaming.utils.worker import (
     InterruptibleEvent,
     InterruptibleEventFactory,
     InterruptibleAgentResponseEvent,
-    InterruptibleWorker,
 )
 
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
@@ -128,7 +123,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
             # Detect if the bot is talking. This may fail if the current task is done and another not started yet. But playing the audio takes most of the time.
             if self.conversation.synthesis_results_worker.current_task is not None and not self.conversation.synthesis_results_worker.current_task.done():
-                self.conversation.logger.info('The user said something during the bot was talking. Testing to ignore filler words and confirmation words.')
+                self.conversation.logger.info(
+                    'The user said something during the bot was talking. Testing to ignore filler words and confirmation words.')
                 if len(transcription.message) < 10:
                     def normalize_string(input_str: str):
                         input_str = input_str.strip().strip('.').lower().replace('-', '')
@@ -143,7 +139,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     # TODO The user may create combinations which won't be present.
                     for filler in IGNORED_WHILE_TALKING_FILLERS:
                         if normalize_string(filler) == normalized_transcription:
-                            self.conversation.logger.info(f"Ignoring filler {transcription.message} similar to filler {filler}.")
+                            self.conversation.logger.info(
+                                f"Ignoring filler {transcription.message} similar to filler {filler}.")
                             return
 
             if transcription.is_final:
@@ -401,6 +398,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             per_chunk_allowance_seconds: float = PER_CHUNK_ALLOWANCE_SECONDS,
             events_manager: Optional[EventsManager] = None,
             logger: Optional[logging.Logger] = None,
+            summarizer: Optional[ChatGPTSummaryAgent] = None
     ):
         self.id = conversation_id or create_conversation_id()
         self.logger = wrap_logger(
@@ -412,6 +410,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent = agent
         self.synthesizer = synthesizer
         self.synthesis_enabled = True
+
+        self.summarizer = summarizer
 
         self.interruptible_events: queue.Queue[InterruptibleEvent] = queue.Queue()
         self.interruptible_event_factory = self.QueueingInterruptibleEventFactory(
@@ -560,14 +560,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     or ALLOWED_IDLE_TIME
             ):
                 self.logger.debug("Conversation idle for too long")
-                transcription = Transcription(message="THIS IS SYSTEM MESSAGE: Conversation idle for too long. ASK USER IF THEY ARE STILL THERE.",
-                                              confidence=1.0,
-                                              is_final=True,
-                                              is_interrupt=True)
+                transcription = Transcription(
+                    message="THIS IS SYSTEM MESSAGE: Conversation idle for too long. ASK USER IF THEY ARE STILL THERE.",
+                    confidence=1.0,
+                    is_final=True,
+                    is_interrupt=True)
                 self.transcriptions_worker.consume_nonblocking(transcription)
                 return
-            await asyncio.sleep(self.agent.get_agent_config().allowed_idle_time_seconds) # checks every 5 seconds
-
+            await asyncio.sleep(self.agent.get_agent_config().allowed_idle_time_seconds)  # checks every 5 seconds
 
     async def track_bot_sentiment(self):
         """Updates self.bot_sentiment every second based on the current transcript"""
@@ -581,9 +581,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
     async def summarize_conversation(self):
         prev_transcript = None
         while self.is_active():
-            await asyncio.sleep(10)
+            await asyncio.sleep(5)
             if self.transcript.to_string() != prev_transcript:
                 self.logger.info("Summarizing conversation...")
+
+                summary = await self.summarizer.get_summary(self.transcript.to_string())
+
+                self.logger.info("Summary %s", summary)
+                prev_transcript = self.transcript.to_string()
 
     async def update_bot_sentiment(self):
         new_bot_sentiment = await self.bot_sentiment_analyser.analyse(
@@ -656,7 +661,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             except asyncio.QueueEmpty:
                 continue
 
-
     async def send_speech_to_output(
             self,
             message: str,
@@ -719,7 +723,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.logger.debug(
                 "Voice output Worker: Sent chunk number {} with length {} seconds for message {}".format(chunk_idx,
-                                                                             speech_length_seconds, message)
+                                                                                                         speech_length_seconds,
+                                                                                                         message)
             )
             self.mark_last_action_timestamp()
             chunk_idx += 1
@@ -791,4 +796,3 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     def is_active(self):
         return self.active
-
