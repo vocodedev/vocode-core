@@ -34,7 +34,7 @@ class EndpointingType(str, Enum):
 
 
 class EndpointingConfig(TypedModel, type=EndpointingType.BASE):
-    time_cutoff_seconds: float
+    pass
 
 
 class TimeEndpointingConfig(EndpointingConfig, type=EndpointingType.TIME_BASED):

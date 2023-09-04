@@ -99,7 +99,8 @@
         "api-reference/calls/list-calls",
         "api-reference/calls/get-call",
         "api-reference/calls/end-call",
-        "api-reference/calls/create-call"
+        "api-reference/calls/create-call",
+        "api-reference/calls/get-recording"
       ]
     },
     {
@@ -125,6 +126,24 @@
       ]
     },
     {
+      "group": "Prompts",
+      "pages": [
+        "api-reference/prompts/get-prompt",
+        "api-reference/prompts/list-prompts",
+        "api-reference/prompts/create-prompt",
+        "api-reference/prompts/update-prompt"
+      ]
+    },
+    {
+      "group": "Vector Databases",
+      "pages": [
+        "api-reference/vector_databases/get-vector-database",
+        "api-reference/vector_databases/list-vector-databases",
+        "api-reference/vector_databases/create-vector-database",
+        "api-reference/vector_databases/update-vector-database"
+      ]
+    },
+    {
       "group": "Voices",
       "pages": [
         "api-reference/voices/get-voice",
@@ -141,10 +160,6 @@
         "api-reference/webhooks/create-webhook",
         "api-reference/webhooks/update-webhook"
       ]
-    },
-    {
-      "group": "Schemas",
-      "pages": ["api-reference/schemas/action-type"]
     },
     {
       "group": "Hosted Walkthrough",

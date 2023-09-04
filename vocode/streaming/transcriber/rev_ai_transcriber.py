@@ -14,6 +14,7 @@ from vocode.streaming.transcriber.base_transcriber import (
 from vocode.streaming.models.transcriber import (
     RevAITranscriberConfig,
     EndpointingType,
+    TimeEndpointingConfig,
 )
 
 
@@ -103,9 +104,9 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
                     if (
                         (len(buffer) > 0)
                         and (self.transcriber_config.endpointing_config)
-                        and (
-                            self.transcriber_config.endpointing_config.type
-                            == EndpointingType.TIME_BASED
+                        and isinstance(
+                            self.transcriber_config.endpointing_config,
+                            TimeEndpointingConfig,
                         )
                         and (
                             getSeconds()

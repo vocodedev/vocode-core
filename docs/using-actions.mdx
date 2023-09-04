@@ -12,7 +12,7 @@ Agents on phone calls can take three actions:
 ```python Python
 vocode_client.actions.create_action(
   request=CreateActionRequest(
-      type=ActionType.ACTION_END_CONVERSATION
+      type="action_end_conversation",
   )
 )
 ```
@@ -42,7 +42,7 @@ curl --request POST \
 ```python Python
 vocode_client.actions.create_action(
   request=CreateActionRequest(
-      type=ActionType.ACTION_DTMF
+      type="action_dtmf",
   )
 )
 ```
@@ -72,7 +72,7 @@ curl --request POST \
 ```python Python
 vocode_client.actions.create_action(
   request=CreateActionRequest(
-      type=ActionType.ACTION_TRANSFER_CALL,
+      type="action_transfer_call",
       config=TransferCallActionUpdateParamsConfig(
           phone_number="11234567890"
       )
@@ -149,7 +149,7 @@ vocode_client.numbers.update_number(
   phone_number="11234567890",
   inbound_agent=UpdateNumberRequestInboundAgent(
       actions=[TransferCallActionUpdateParams(
-          type=ActionType.ACTION_TRANSFER_CALL,
+          type="action_transfer_call",
           config=TransferCallActionUpdateParamsConfig(
               phone_number="11234567890"
           )
