@@ -10,12 +10,7 @@ can [create their own agents](/create-your-own-agent) and use them
 to fulfill a variety of use cases like information collection, appointment scheduling,
 sales, customer support, and more.
 
-In this guide, we'll go over how to do inbound and outbound phone calls both self-hosted
-and hosted.
-
-# Self-hosted
-
-## Requirements
+# Requirements
 
 1. [Ngrok](https://ngrok.com/) (used to host the `TelephonyServer` locally)
 2. [ffmpeg](https://ffmpeg.org/)
@@ -24,7 +19,7 @@ and hosted.
    a. If you have Homebrew installed, run `brew install redis`
 4. (optional) [Docker](https://www.docker.com/)
 
-## Environments
+# Environments
 
 1. Copy the `.env.template` file and fill in the values of your API keys. You'll need to get API keys for:
 
@@ -49,7 +44,7 @@ Copy the URL that is tunneling localhost:3000 to your `.env` without `https://`,
 BASE_URL=asdf1234.ngrok.app
 ```
 
-## Telephony Server
+# Telephony Server
 
 The `TelephonyServer` is–as implied by the name–a server that is responsible for
 receiving and making phone calls.
@@ -57,11 +52,11 @@ The server is built using FastAPI and utilizes Twilio for telephony services.
 
 Clone the Vocode repo or copy the [Telephony app](https://github.com/vocodedev/vocode-python/tree/main/apps/telephony_app) directory.
 
-### Running the server
+## Running the server
 
 Pick one of these two ways to run the server: 1. Run everything with Docker, 2. Run Python directly
 
-#### Option 1: Run everything With Docker
+### Option 1: Run everything With Docker
 
 1. Build the telephony app Docker image. From the `telephony_app` directory, run:
 
@@ -75,7 +70,7 @@ docker build -t vocode-telephony-app .
 docker-compose up
 ```
 
-#### Option 2: Run Python directly
+### Option 2: Run Python directly
 
 Run the following steps from the `telephony_app` directory.
 
@@ -105,7 +100,7 @@ docker run -dp 6379:6379 -it redis/redis-stack:latest
 poetry run uvicorn main:app --port 3000
 ```
 
-### Setting up an inbound number
+## Setting up an inbound number
 
 1. Create a [Twilio](https://www.twilio.com/) account
 2. Once inside your dashboard, go to Phone Numbers -> Manage -> Buy a number to get a phone number.
@@ -116,7 +111,7 @@ poetry run uvicorn main:app --port 3000
 
 5. Hit **Save** and call the number!
 
-### Executing outbound calls
+## Executing outbound calls
 
 Make sure the server we just set up is already running. Then, in `outbound_call.py`
 
@@ -126,7 +121,7 @@ Replace the `to_phone` with the number you want to call and the `from_phone` wit
 
 Run the script with `poetry run python outbound_call.py`.
 
-### Configuration
+## Configuration
 
 Both the `OutboundCall` (in `outbound_call.py`) and `InboundCallConfig` (in `telephony_app.py`) classes can accept a `TranscriberConfig`, `AgentConfig`
 or `SynthesizerConfig` - the default transcriber is Deepgram and the default synthesizer is Azure.
@@ -160,7 +155,7 @@ An `AgentFactory` instance is passed into the `TelephonyServer` in `telephony_ap
 
 We provide a small set of agents with already created `AgentConfig`s, including, importantly, one that sets up ChatGPT with a configured prompt: see our `Python Quickstart` for more info.
 
-#### Accessing call information in your agent
+### Accessing call information in your agent
 
 We store the `to` and `from` numbers in the [`ConfigManager`](https://github.com/vocodedev/vocode-python-sdk/blob/b37bf7a1172a917b641d0e70ba14756415e09b0b/apps/telephony_app/main.py#L20) - so
 if you'd like to access them in your agent, you can instantiate the manager to hook into the same Redis instance:
@@ -183,159 +178,3 @@ class SpellerAgent(BaseAgent):
             to_phone = call_config.twilio_to
         return "".join(c + " " for c in human_input), False
 ```
-
-# Hosted
-
-## Authentication
-
-Head to our [dashboard](https://app.vocode.dev) to get an API key.
-
-To use your API key, set the API key on the module as follows:
-
-```python
-import vocode
-vocode.api_key = '{YOUR_API_KEY}'
-```
-
-## Outbound Calls
-
-The `OutboundCall` class provides a simple abstraction for creating outbound calls.
-
-### OutboundCall Class
-
-<ParamField path="recipient" type="CallEntity" required={true}>
-  The recipient entity for the phone call.
-</ParamField>
-
-<ParamField path="caller" type="CallEntity" required={true}>
-  The caller entity for the phone call.
-</ParamField>
-
-<ParamField path="agent_config" type="AgentConfig" required={true}>
-  The configuration for the AI agent.
-</ParamField>
-
-### Example: Making an outbound call
-
-Prior to running this script to initiate an outbound call, you still need the `TelephonyServer` from above to be running.
-
-```python
-import os
-from vocode.streaming.telephony.hosted.outbound_call import OutboundCall
-from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.models.telephony import CallEntity, TwilioConfig
-from vocode.streaming.models.message import BaseMessage
-
-import vocode
-vocode.api_key = '{YOUR_API_KEY}'
-
-
-if __name__ == '__main__':
-    call = OutboundCall(
-        recipient=CallEntity(
-            phone_number="+12345678900",
-        ),
-        caller=CallEntity(
-            phone_number="+12345678900",
-        ),
-        agent_config=ChatGPTAgentConfig(
-            initial_message=BaseMessage(text="Hello!"),
-            prompt_preamble="Have a pleasant conversation about life",
-        ),
-        twilio_config=TwilioConfig(
-            account_sid=os.getenv("TWILIO_ACCOUNT_SID"),
-            auth_token=os.getenv("TWILIO_AUTH_TOKEN"),
-        )
-    )
-    call.start()
-    input("Press enter to end the call...")
-    call.end()
-```
-
-### How outbound calls work
-
-Here's what happens under the hood for an outbound call.
-
-The `OutboundCall` calls Twilio to initiate the call, giving it a URL to call after the call is initiated:
-
-```
-        twilio_call = self.twilio_client.calls.create(
-            url=f"https://{self.base_url}/twiml/initiate_call/{self.conversation_id}",
-```
-
-In your main.py you create and start a `TelephonyServer`. The TelephonyServer itself includes a couple of routers:
-
-- `TwiMLRouter`
-- `CallsRouter`
-
-`TwiMLRouter` includes the matching route:
-
-```
-        self.router.add_api_route(
-            "/twiml/initiate_call/{id}", self.call_twiml, methods=["POST"]
-        )
-```
-
-This route returns the template `connect_call.xml` which uses TwiML to tell Twilio to establish a websocket with a given URL:
-
-```
-<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Connect>
-    <Stream url="wss://{{ base_url }}/connect_call/{{ id }}" />
-  </Connect>
-</Response>
-```
-
-CallsRouter includes that second route:
-
-```
- self.router.websocket("/connect_call/{id}")(self.connect_call)
-```
-
-This is where we get the websocket connection. We then create the `Call` object and start it:
-
-```
-await call.attach_ws_and_start(websocket)
-```
-
-The `Call` is a kind of `StreamingConversation` that manages the various pieces: transcriber, synthesizer, agent, etc.
-
-## Inbound Calls
-
-The `InboundCallServer` class provides a simple abstraction to create an endpoint that can host your agent
-to respond to inbound calls. In order to implement an inbound call agent, start by defining an `InboundCallServer`
-like so:
-
-```python
-from vocode.streaming.telephony.hosted.inbound_call_server import InboundCallServer
-from vocode.streaming.models.agent import EchoAgentConfig
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.telephony import TwilioConfig
-
-if __name__ == '__main__':
-    server = InboundCallServer(
-        agent_config=EchoAgentConfig(initial_message=BaseMessage(text="hello!")),
-        twilio_config=TwilioConfig(
-            account_sid=os.getenv("TWILIO_ACCOUNT_SID"),
-            auth_token=os.getenv("TWILIO_AUTH_TOKEN"),
-        )
-    )
-    server.run(port=3000)
-```
-
-This spins up a FastAPI web server with a `/vocode` route that returns a TwiML object that we will need in the next
-step. If you're using our [Replit template](https://replit.com/@vocode/Inbound-Call-Server), this is already set up for you!
-
-Next, we'll set up a programmable phone number on Twilio that can accept the TwiML object from
-above. To do this,
-
-1. Create a [Twilio](https://www.twilio.com/) account
-2. Find your Twilio credentials: this is found on under _Account Info_ in the dashboard.
-   > Tip: if you already have existing Twilio integrations, set up the number in a [subaccount](https://support.twilio.com/hc/en-us/articles/360011132374-Getting-Started-with-Twilio-Accounts-and-Subaccounts)
-3. Set up `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` in your environment. If you're using Replit, use [Replit secrets](https://docs.replit.com/programming-ide/workspace-features/storing-sensitive-information-environment-variables). Otherwise, packages like [python-dotenv](https://pypi.org/project/python-dotenv/) are useful for this.
-4. Once inside your dashboard, go to Phone Numbers -> Manage -> Buy a number to get a phone number.
-5. Then, go to Phone Numbers -> Manage -> Active Numbers and select the number you want to set up.
-6. Update the config to point the Webhook URL to the `/vocode` route we just set up. [ngrok](https://ngrok.com/) one option to quickly to host the server.
-   > If you're using the Replit template, use the provided hosted URL that looks something like `https://<repl>.<username>.repl.co/vocode`
-7. Hit **Save** and call the number!
