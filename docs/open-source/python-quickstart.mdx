@@ -28,9 +28,7 @@ microphone_input, speaker_output = create_microphone_input_and_speaker_output(
 
 If the default I/O devices are not being set properly, set `use_default_devices` to `False` to select them before kicking off the conversation.
 
-## Self-hosted
-
-### Environments
+## Environments
 
 Vocode provides a unified interface across various speech transcription, speech synthesis, and AI/NLU providers.
 To use these providers with Vocode, you'll need to grab credentials from these providers and set them in the Vocode environment.
@@ -47,9 +45,7 @@ vocode.setenv(
 
 For AZURE_SPEECH_REGION you should use the URL format. For example, if you're using the "East US" region, the value should be "eastus". See [Azure Region list](https://learn.microsoft.com/en-us/azure/cognitive-services/speech-service/rest-text-to-speech?tabs=streaming#prebuilt-neural-voices).
 
-We also offer a hosted solution where you don't need to worry about getting these credentials — see [below](#hosted).
-
-### `StreamingConversation` example
+## `StreamingConversation` example
 
 ```python
 import asyncio
