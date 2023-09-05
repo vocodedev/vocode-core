@@ -14,6 +14,10 @@ from vocode.streaming.transcriber.azure_transcriber import AzureTranscriber
 
 load_dotenv()
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 app = FastAPI(docs_url=None)
 
 logging.basicConfig()
