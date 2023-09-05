@@ -1,6 +1,4 @@
-import logging
 from typing import Optional
-from redis import Redis
 
 from vocode.streaming.models.telephony import CallConfig
 
