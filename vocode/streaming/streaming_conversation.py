@@ -587,7 +587,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                 summary = await self.summarizer.get_summary(self.transcript.to_string())
 
-                self.logger.info("Summary %s", summary)
+                self.logger.info("Summary %s", summary["choices"][0].message.content)
                 prev_transcript = self.transcript.to_string()
 
     async def update_bot_sentiment(self):
