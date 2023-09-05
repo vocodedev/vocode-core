@@ -22,9 +22,5 @@ class GPT4AllAgent(RespondAgent[GPT4AllAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> Tuple[Optional[BaseMessage], bool]:
-        text = await self.turn_based_agent.respond_async(human_input)
-        if text is None:
-            return None, False
-        else:
-            return BaseMessage(text=text), False
+    ) -> Tuple[Optional[str], bool]:
+        return (await self.turn_based_agent.respond_async(human_input)), False

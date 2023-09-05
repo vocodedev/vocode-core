@@ -75,6 +75,7 @@ class Transcript(BaseModel):
                     sender=message.sender,
                     timestamp=message.timestamp,
                     conversation_id=conversation_id,
+                    metadata=message.metadata,
                 )
             )
 
@@ -86,6 +87,7 @@ class Transcript(BaseModel):
         metadata: Optional[dict] = None,
         publish_to_events_manager: bool = True,
     ):
+        metadata = metadata or {}
         duration = metadata.get("duration", 0) if metadata else 0
         # Current time is when a message has been finished transcribing/synthesizing, so
         # timestamp of the start must be calculated by subtracting the duration
@@ -105,7 +107,6 @@ class Transcript(BaseModel):
         message: Message,
         conversation_id: str,
         publish_to_events_manager: bool = True,
-        metadata: Optional[dict] = None,
     ):
         self.event_logs.append(message)
         if publish_to_events_manager:
@@ -113,18 +114,24 @@ class Transcript(BaseModel):
                 message=message, conversation_id=conversation_id
             )
 
-    def add_human_message(self, text: str, conversation_id: str):
+    def add_human_message(
+        self, text: str, conversation_id: str, metadata: Optional[dict] = None
+    ):
         self.add_message_from_props(
             text=text,
             sender=Sender.HUMAN,
             conversation_id=conversation_id,
+            metadata=metadata,
         )
 
-    def add_bot_message(self, text: str, conversation_id: str):
+    def add_bot_message(
+        self, text: str, conversation_id: str, metadata: Optional[dict] = None
+    ):
         self.add_message_from_props(
             text=text,
             sender=Sender.BOT,
             conversation_id=conversation_id,
+            metadata=metadata,
         )
 
     def get_last_user_message(self):

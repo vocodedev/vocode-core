@@ -11,7 +11,6 @@ from vocode import getenv
 from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 from vocode.streaming.agent.utils import collate_response_async, openai_get_tokens
 from vocode.streaming.models.agent import LLMAgentConfig
-from vocode.streaming.models.message import BaseMessage
 
 
 class LLMAgent(RespondAgent[LLMAgentConfig]):
@@ -76,11 +75,11 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> Tuple[BaseMessage, bool]:
+    ) -> Tuple[str, bool]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
             self.memory.append(self.get_memory_entry(human_input, cut_off_response))
-            return BaseMessage(text=cut_off_response), False
+            return cut_off_response, False
         self.logger.debug("LLM responding to human input")
         if self.is_first_response and self.first_response:
             self.logger.debug("First response is cached")
@@ -99,7 +98,7 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
             response = response.replace(f"{self.sender}:", "")
         self.memory.append(self.get_memory_entry(human_input, response))
         self.logger.debug(f"LLM response: {response}")
-        return BaseMessage(text=response), False
+        return response, False
 
     async def _stream_sentences(self, prompt):
         stream = await openai.Completion.acreate(
@@ -124,12 +123,12 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[BaseMessage, None]:
+    ) -> AsyncGenerator[str, None]:
         self.logger.debug("LLM generating response to human input")
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
             self.memory.append(self.get_memory_entry(human_input, cut_off_response))
-            yield BaseMessage(text=cut_off_response)
+            yield cut_off_response
             return
         self.memory.append(self.get_memory_entry(human_input, ""))
         if self.is_first_response and self.first_response:
@@ -147,7 +146,7 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
             sentence = re.sub(r"^\s+(.*)", r" \1", sentence)
             response_buffer += sentence
             self.memory[-1] = self.get_memory_entry(human_input, response_buffer)
-            yield BaseMessage(text=sentence)
+            yield sentence
 
     def update_last_bot_message_on_cut_off(self, message: str):
         last_message = self.memory[-1]

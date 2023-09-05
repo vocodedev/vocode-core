@@ -1,7 +1,5 @@
 from enum import Enum
 from .model import TypedModel
-from enum import Enum
-
 
 class MessageType(str, Enum):
     BASE = "message_base"

@@ -5,7 +5,6 @@ from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.models.agent import AgentConfig, AgentType, ChatGPTAgentConfig
 from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 from vocode.streaming.agent.factory import AgentFactory
-from vocode.streaming.models.message import BaseMessage
 
 
 class SpellerAgentConfig(AgentConfig, type="agent_speller"):
@@ -21,8 +20,8 @@ class SpellerAgent(RespondAgent[SpellerAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> Tuple[Optional[BaseMessage], bool]:
-        return BaseMessage(text="".join(c + " " for c in human_input)), False
+    ) -> Tuple[Optional[str], bool]:
+        return "".join(c + " " for c in human_input), False
 
 
 class SpellerAgentFactory(AgentFactory):

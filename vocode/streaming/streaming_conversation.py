@@ -379,9 +379,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                 )
                 item.agent_response_tracker.set()
-                self.conversation.logger.debug(
-                    "Bot reponse sent: {}".format(message_sent)
-                )
+                self.conversation.logger.debug("Message sent: {}".format(message_sent))
                 # Only approximate duration since we don't know the exact duration of the last chunk
                 metadata["duration"] = duration
                 if synthesis_result.cached_path:
@@ -391,8 +389,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         message_sent
                     )
                     metadata["cut_off"] = True
+
                 if self.conversation.bot_sentiment:
                     metadata["sentiment"] = self.conversation.bot_sentiment
+                self.conversation.transcript.add_bot_message(
+                    text=message_sent,
+                    conversation_id=self.conversation.id,
+                    metadata=metadata,
+                )    
                 if self.conversation.agent.agent_config.end_conversation_on_goodbye:
                     goodbye_detected_task = (
                         self.conversation.agent.create_goodbye_detection_task(
@@ -568,7 +572,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriber.unmute()
 
     async def check_for_idle(self):
-        """Terminates the conversation after allowed_idle_time_seconds if no activity is detected"""
+        """Terminates the conversation after 15 if no activity is detected"""
         while self.is_active():
             if time.time() - self.last_action_timestamp > (
                 self.agent.get_agent_config().allowed_idle_time_seconds
@@ -596,13 +600,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.debug("Bot sentiment: %s", new_bot_sentiment)
             self.bot_sentiment = new_bot_sentiment
 
-    async def receive_message(self, message: str):
+    def receive_message(self, message: str):
         transcription = Transcription(
             message=message,
             confidence=1.0,
             is_final=True,
         )
-        await self.transcriptions_worker.consume_nonblocking(transcription)
+        self.transcriptions_worker.consume_nonblocking(transcription)
 
     def receive_audio(self, chunk: bytes):
         self.input_audio_buffer += chunk

@@ -28,6 +28,7 @@ class Transcription(BaseModel):
 
 TranscriberConfigType = TypeVar("TranscriberConfigType", bound=TranscriberConfig)
 
+
 class AbstractTranscriber(Generic[TranscriberConfigType]):
     def __init__(self, transcriber_config: TranscriberConfigType):
         self.transcriber_config = transcriber_config
@@ -51,6 +52,7 @@ class AbstractTranscriber(Generic[TranscriberConfigType]):
             return linear_audio
         elif self.get_transcriber_config().audio_encoding == AudioEncoding.MULAW:
             return audioop.lin2ulaw(linear_audio, sample_width)
+
 
 class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWorker):
     def __init__(
