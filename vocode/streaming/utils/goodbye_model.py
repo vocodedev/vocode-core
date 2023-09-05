@@ -77,7 +77,6 @@ class GoodbyeModel:
 
         return np.array(
             (await openai.Embedding.acreate(**params))["data"][0]["embedding"]
-            (await openai.Embedding.acreate(**params))["data"][0]["embedding"]
         )
 
 

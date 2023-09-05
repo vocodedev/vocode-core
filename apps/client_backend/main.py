@@ -12,14 +12,7 @@ from vocode.streaming.client_backend.conversation import ConversationRouter
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.transcriber.azure_transcriber import AzureTranscriber
 
-load_dotenv()
-
 from dotenv import load_dotenv
-
-load_dotenv()
-
-from dotenv import load_dotenv
-
 load_dotenv()
 
 app = FastAPI(docs_url=None)

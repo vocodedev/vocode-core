@@ -16,7 +16,6 @@ class WebSocketMessageType(str, Enum):
     BASE = "websocket_base"
     START = "websocket_start"
     AUDIO = "websocket_audio"
-    TEXT = "websocket_text"
     TRANSCRIPT = "websocket_transcript"
     READY = "websocket_ready"
     STOP = "websocket_stop"
@@ -63,10 +62,6 @@ class AudioConfigStartMessage(
     conversation_id: Optional[str] = None
     subscribe_transcript: Optional[bool] = None
 
-class TextMessage(WebSocketMessage, type=WebSocketMessageType.TEXT):
-    text: str
-    sender: str
-    is_final: bool
 
 class ReadyMessage(WebSocketMessage, type=WebSocketMessageType.READY):
     pass

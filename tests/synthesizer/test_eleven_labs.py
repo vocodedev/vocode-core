@@ -1,7 +1,7 @@
 import asyncio
 from pydantic import ValidationError
 import pytest
-from vocode.streaming.synthesizer.base_synthesizer import SynthesisResult, ChunkResult
+from vocode.streaming.synthesizer.base_synthesizer import SynthesisResult
 from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
 from aioresponses import aioresponses

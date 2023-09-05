@@ -22,12 +22,6 @@ from vocode.streaming.telephony.client.vonage_client import VonageClient
 from vocode.streaming.telephony.config_manager.base_config_manager import (
     BaseConfigManager,
 )
-from vocode.streaming.telephony.constants import (
-    DEFAULT_AUDIO_ENCODING,
-    DEFAULT_CHUNK_SIZE,
-    DEFAULT_SAMPLING_RATE,
-)
-from vocode.streaming.telephony.utils import create_twilio_client
 from vocode.streaming.utils import create_conversation_id
 
 
@@ -49,6 +43,7 @@ class OutboundCall:
         digits: Optional[
             str
         ] = None,  # Keys to press when the call connects, see send_digits https://www.twilio.com/docs/voice/api/call-resource#create-a-call-resource
+        output_to_speaker: bool = False,
     ):
         self.base_url = base_url
         self.to_phone = to_phone
@@ -125,7 +120,7 @@ class OutboundCall:
             conversation_id=self.conversation_id,
             to_phone=self.to_phone,
             from_phone=self.from_phone,
-            record=self.twilio_config.record,
+            record=self.telephony_client.get_telephony_config().record,
             digits=self.digits,
         )
         if isinstance(self.telephony_client, TwilioClient):

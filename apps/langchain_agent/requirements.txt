@@ -1,5 +1,0 @@
-vocode==0.1.110
-google-cloud-texttospeech
-redis
-twilio
-python-dotenv

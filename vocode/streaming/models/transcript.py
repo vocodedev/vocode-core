@@ -11,6 +11,7 @@ from vocode.streaming.utils.events_manager import EventsManager
 class EventLog(BaseModel):
     sender: Sender
     timestamp: float = Field(default_factory=time.time)
+
     def to_string(self, include_timestamp: bool = False) -> str:
         raise NotImplementedError
 
@@ -47,7 +48,7 @@ class ActionFinish(EventLog):
         return f"{Sender.ACTION_WORKER.name}: action_type='{self.action_type}' response={self.action_output.response.dict()}"
 
 
-class Transcript(Message):
+class Transcript(BaseModel):
     event_logs: List[EventLog] = []
     start_time: float = Field(default_factory=time.time)
     events_manager: Optional[EventsManager] = None
@@ -90,19 +91,21 @@ class Transcript(Message):
         # timestamp of the start must be calculated by subtracting the duration
         timestamp = time.time()
         timestamp = timestamp - duration
-        message = Message(text=text, sender=sender, timestamp=timestamp, metadata=metadata or {})
+        message = Message(
+            text=text, sender=sender, timestamp=timestamp, metadata=metadata or {}
+        )
         self.event_logs.append(message)
         if publish_to_events_manager:
             self.maybe_publish_transcript_event_from_message(
                 message=message, conversation_id=conversation_id
             )
 
-
     def add_message(
         self,
         message: Message,
         conversation_id: str,
-        publish_to_events_manager: bool = True, metadata: Optional[dict] = None
+        publish_to_events_manager: bool = True,
+        metadata: Optional[dict] = None,
     ):
         self.event_logs.append(message)
         if publish_to_events_manager:
@@ -115,7 +118,6 @@ class Transcript(Message):
             text=text,
             sender=Sender.HUMAN,
             conversation_id=conversation_id,
-            metadata=metadata,
         )
 
     def add_bot_message(self, text: str, conversation_id: str):
@@ -123,7 +125,6 @@ class Transcript(Message):
             text=text,
             sender=Sender.BOT,
             conversation_id=conversation_id,
-            metadata=metadata,
         )
 
     def get_last_user_message(self):

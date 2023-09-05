@@ -145,38 +145,42 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
+                # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
                 file_path = None
                 # If no duration, it's a text message and we don't need to handle the audio
                 if transcription.duration:
                     file_path = f"cache/{self.conversation.id}/transcript_{len(self.conversation.transcript.event_logs)}.wav"
                     t_config = self.conversation.transcriber.get_transcriber_config()
                     save_as_wav(
-                        file_path, 
+                        file_path,
                         trim_audio(
                             t_config.sampling_rate,
-                            self.conversation.input_audio_buffer, 
-                            self.conversation.total_audio_bytes, 
+                            self.conversation.input_audio_buffer,
+                            self.conversation.total_audio_bytes,
                             transcription.offset,
-                            transcription.duration), 
-                        t_config.sampling_rate
+                            transcription.duration,
+                        ),
+                        t_config.sampling_rate,
                     )
                     # Empty buffer to save space
                     # TODO reactivate when we know why trim bugs happen?
                     # self.conversation.input_audio_buffer = bytearray()
                 self.conversation.transcript.add_human_message(
                     text=transcription.message,
-                    events_manager=self.conversation.events_manager,
                     conversation_id=self.conversation.id,
                     metadata={
-                        "confidence": transcription.confidence, 
-                        "is_interrupt": transcription.is_interrupt, 
+                        "confidence": transcription.confidence,
+                        "is_interrupt": transcription.is_interrupt,
                         "path": file_path,
-                        "duration": transcription.duration},
+                        "duration": transcription.duration,
+                    },
                 )
                 event = self.interruptible_event_factory.create_interruptible_event(
                     TranscriptionAgentInput(
                         transcription=transcription,
                         conversation_id=self.conversation.id,
+                        vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
+                        twilio_sid=getattr(self.conversation, "twilio_sid", None),
                     )
                 )
                 self.output_queue.put_nowait(event)
@@ -358,7 +362,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                     publish_to_events_manager=False,
                 )
-                message_sent, cut_off, duration = await self.conversation.send_speech_to_output(
+                (
+                    message_sent,
+                    cut_off,
+                    duration,
+                ) = await self.conversation.send_speech_to_output(
                     message.text,
                     synthesis_result,
                     item.interruption_event,
@@ -371,7 +379,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                 )
                 item.agent_response_tracker.set()
-                self.conversation.logger.debug("Bot reponse sent: {}".format(message_sent))
+                self.conversation.logger.debug(
+                    "Bot reponse sent: {}".format(message_sent)
+                )
                 # Only approximate duration since we don't know the exact duration of the last chunk
                 metadata["duration"] = duration
                 if synthesis_result.cached_path:
@@ -381,9 +391,22 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         message_sent
                     )
                     metadata["cut_off"] = True
-
                 if self.conversation.bot_sentiment:
                     metadata["sentiment"] = self.conversation.bot_sentiment
+                if self.conversation.agent.agent_config.end_conversation_on_goodbye:
+                    goodbye_detected_task = (
+                        self.conversation.agent.create_goodbye_detection_task(
+                            message_sent
+                        )
+                    )
+                    try:
+                        if await asyncio.wait_for(goodbye_detected_task, 0.1):
+                            self.conversation.logger.debug(
+                                "Agent said goodbye, ending call"
+                            )
+                            await self.conversation.terminate()
+                    except asyncio.TimeoutError:
+                        pass
             except asyncio.CancelledError:
                 pass
 
@@ -642,11 +665,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.transcriber.mute()
         message_sent = message
         cut_off = False
-        chunk_size_per_second = get_chunk_size_per_second(
+        chunk_size = seconds_per_chunk * get_chunk_size_per_second(
             self.synthesizer.get_synthesizer_config().audio_encoding,
             self.synthesizer.get_synthesizer_config().sampling_rate,
         )
-        chunk_size = seconds_per_chunk * chunk_size_per_second
         chunk_idx = 0
         duration = 0
         async for chunk_result in synthesis_result.chunk_generator:
@@ -654,7 +676,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             speech_length_seconds = seconds_per_chunk * (
                 len(chunk_result.chunk) / chunk_size
             )
-            duration += speech_length_seconds
+            duration = chunk_idx * seconds_per_chunk
             if stop_event.is_set():
                 self.logger.debug(
                     "Interrupted, stopping text to speech after {} chunks".format(
@@ -662,7 +684,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                 )
                 await synthesis_result.chunk_generator.aclose()
-                message_sent = f"{synthesis_result.get_message_up_to(chunk_idx * seconds_per_chunk)}-"
+                message_sent = f"{synthesis_result.get_message_up_to(duration)}-"
                 cut_off = True
                 break
             if chunk_idx == 0:
@@ -683,6 +705,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.mark_last_action_timestamp()
             chunk_idx += 1
+            duration += seconds_per_chunk
+            if transcript_message:
+                transcript_message.text = synthesis_result.get_message_up_to(
+                    duration
+                )
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()
@@ -701,7 +728,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         transcript_name = f"cache/{self.id}.json"
         os.makedirs("cache", exist_ok=True)
-        with open(transcript_name, "w", encoding='utf-8') as f:
+        with open(transcript_name, "w", encoding="utf-8") as f:
             f.write(self.transcript.json(ensure_ascii=False))
 
         if self.check_for_idle_task:

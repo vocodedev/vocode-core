@@ -224,8 +224,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
-            if response.metadata.get("stop") == True:
-                return True
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
@@ -423,7 +421,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> Tuple[Optional[BaseMessage], bool]:
+    ) -> Tuple[Optional[str], bool]:
         raise NotImplementedError
 
     def generate_response(
@@ -431,5 +429,5 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[BaseMessage, None]:
+    ) -> AsyncGenerator[Union[str, FunctionCall], None]:
         raise NotImplementedError
