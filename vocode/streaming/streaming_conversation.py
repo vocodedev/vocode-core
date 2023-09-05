@@ -581,7 +581,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
     async def summarize_conversation(self):
         prev_transcript = None
         while self.is_active():
-            await asyncio.sleep(5)
+            await asyncio.sleep(20)
             if self.transcript.to_string() != prev_transcript:
                 self.logger.info("Summarizing conversation...")
 
