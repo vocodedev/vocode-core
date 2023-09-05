@@ -18,6 +18,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 app = FastAPI(docs_url=None)
 
 logging.basicConfig()
@@ -25,7 +29,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 conversation_router = ConversationRouter(
-    agent=ChatGPTAgent(
+    agent_thunk=lambda: ChatGPTAgent(
         ChatGPTAgentConfig(
             initial_message=BaseMessage(text="Hello!"),
             prompt_preamble="Have a pleasant conversation about life",

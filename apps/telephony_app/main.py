@@ -1,13 +1,17 @@
 import logging
 import os
 from fastapi import FastAPI
+from vocode.streaming.models.telephony import TwilioConfig
 from pyngrok import ngrok
 from vocode.streaming.telephony.config_manager.redis_config_manager import (
     RedisConfigManager,
 )
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.telephony.server.base import InboundCallConfig, TelephonyServer
+from vocode.streaming.telephony.server.base import (
+    TwilioInboundCallConfig,
+    TelephonyServer,
+)
 
 from speller_agent import SpellerAgentFactory
 import sys
@@ -45,12 +49,16 @@ telephony_server = TelephonyServer(
     base_url=BASE_URL,
     config_manager=config_manager,
     inbound_call_configs=[
-        InboundCallConfig(
+        TwilioInboundCallConfig(
             url="/inbound_call",
             agent_config=ChatGPTAgentConfig(
                 initial_message=BaseMessage(text="What up"),
                 prompt_preamble="Have a pleasant conversation about life",
                 generate_responses=True,
+            ),
+            twilio_config=TwilioConfig(
+                account_sid=os.environ["TWILIO_ACCOUNT_SID"],
+                auth_token=os.environ["TWILIO_AUTH_TOKEN"],
             ),
         )
     ],

@@ -79,10 +79,10 @@ docker-compose up
 
 Run the following steps from the `telephony_app` directory.
 
-1. Create a Python environment (we recommend using `virtualenv` by running `python3 -m venv venv`) and install dependencies via `pip`
+1. Install [Poetry](https://python-poetry.org/) and install dependencies.
 
 ```
-pip install -r requirements.txt
+poetry install
 ```
 
 2. Run Redis with the default port of 6379.
@@ -102,7 +102,7 @@ docker run -dp 6379:6379 -it redis/redis-stack:latest
 3. Run the server with `uvicorn` (should be already installed in step 1).
 
 ```
-uvicorn main:app --port 3000
+poetry run uvicorn main:app --port 3000
 ```
 
 ### Setting up an inbound number
@@ -120,18 +120,11 @@ uvicorn main:app --port 3000
 
 Make sure the server we just set up is already running. Then, in `outbound_call.py`
 
-1. Replace the `to_phone` with the number you want to call and the `from_phone` with the number you want to call from.
-   In order to make a call from the `to_phone`, you must have access to it via Twilio (either a number purchased via Twilio or verify the caller ID).
+Replace the `to_phone` with the number you want to call and the `from_phone` with the number you want to call from. In order to make a call from the `from_phone`, you must have access to it via Twilio (either a number purchased via Twilio or verify the caller ID).
 
 > Note: To ensure legal compliance with robocall regulations in California, the following code snippet from the [Vocode library](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/telephony/conversation/outbound_call.py#L83-L96) utilizes Twilio Line Intelligence to check if calls are made to mobile phones: For Canadian phone numbers, the Twilio Lookup API may not return carrier data due to the Canadian Local Number Portability Consortium (CLNPC) requirements. More information on this issue can be found in the [Twilio Support Article](https://support.twilio.com/hc/en-us/articles/360004563433-Twilio-Lookup-API-is-Not-Returning-Carrier-Data-for-Canadian-Phone-Numbers).
 
-2. Install `python-dotenv` to use the environment variables we set up earlier.
-
-```
-pip3 install python-dotenv
-```
-
-Run the script with `python3 outbound_call.py`.
+Run the script with `poetry run python outbound_call.py`.
 
 ### Configuration
 

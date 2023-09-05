@@ -14,6 +14,8 @@ from vocode.streaming.telephony.constants import (
 from .audio_encoding import AudioEncoding
 from .model import TypedModel
 
+AZURE_DEFAULT_LANGUAGE = "en-US"
+
 
 class TranscriberType(str, Enum):
     BASE = "transcriber_base"
@@ -23,6 +25,7 @@ class TranscriberType(str, Enum):
     WHISPER_CPP = "transcriber_whisper_cpp"
     REV_AI = "transcriber_rev_ai"
     AZURE = "transcriber_azure"
+    GLADIA = "transcriber_gladia"
 
 
 class EndpointingType(str, Enum):
@@ -92,6 +95,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
             **kwargs,
         )
 
+    # TODO(EPD-186): switch to from_twilio_input_device and from_vonage_input_device
     @classmethod
     def from_telephone_input_device(
         cls,
@@ -132,6 +136,10 @@ class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM
             "no", "pl", "pt", "pt-BR", "pt-PT", "ru", "es", "es-419", "sv", "ta", "tr", "uk"
         })
 
+class GladiaTranscriberConfig(TranscriberConfig, type=TranscriberType.GLADIA.value):
+    buffer_size_seconds: float = 0.1
+
+
 class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.value):
     model: Optional[str] = None
 
@@ -158,6 +166,8 @@ class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.val
 
 
 class AzureTranscriberConfig(TranscriberConfig, type=TranscriberType.AZURE.value):
+    language: str = AZURE_DEFAULT_LANGUAGE
+    candidate_languages: Optional[List[str]] = None
 
     # https://learn.microsoft.com/en-gb/azure/cognitive-services/speech-service/how-to-recognize-speech?pivots=programming-language-csharp#change-how-silence-is-handled
     # Defines how long silence between utterances to separate them into different transcriptions, default is 500ms

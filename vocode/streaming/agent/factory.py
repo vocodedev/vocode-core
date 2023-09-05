@@ -11,6 +11,7 @@ from vocode.streaming.agent.restful_user_implemented_agent import (
     RESTfulUserImplementedAgent,
 )
 from vocode.streaming.agent.static_agent import StaticAgent
+from vocode.streaming.agent.llamacpp_agent import LlamacppAgent
 from vocode.streaming.models.agent import (
     AgentConfig,
     AgentType,
@@ -21,6 +22,7 @@ from vocode.streaming.models.agent import (
     LLMAgentConfig,
     RESTfulUserImplementedAgentConfig,
     StaticAgentConfig,
+    LlamacppAgentConfig
 )
 
 
@@ -28,38 +30,18 @@ class AgentFactory:
     def create_agent(
         self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
     ) -> BaseAgent:
-        if agent_config.type == AgentType.LLM:
-            return LLMAgent(
-                agent_config=typing.cast(LLMAgentConfig, agent_config), logger=logger
-            )
-        elif agent_config.type == AgentType.CHAT_GPT:
-            return ChatGPTAgent(
-                agent_config=typing.cast(ChatGPTAgentConfig, agent_config),
-                logger=logger,
-            )
-        elif agent_config.type == AgentType.ECHO:
-            return EchoAgent(
-                agent_config=typing.cast(EchoAgentConfig, agent_config), logger=logger
-            )
-        elif agent_config.type == AgentType.STATIC:
-            return StaticAgent(
-                agent_config=typing.cast(StaticAgentConfig, agent_config), logger=logger
-            )
-        elif agent_config.type == AgentType.INFORMATION_RETRIEVAL:
-            return InformationRetrievalAgent(
-                agent_config=typing.cast(InformationRetrievalAgentConfig, agent_config),
-                logger=logger,
-            )
-        elif agent_config.type == AgentType.RESTFUL_USER_IMPLEMENTED:
-            return RESTfulUserImplementedAgent(
-                agent_config=typing.cast(
-                    RESTfulUserImplementedAgentConfig, agent_config
-                ),
-                logger=logger,
-            )
-        elif agent_config.type == AgentType.CHAT_ANTHROPIC:
-            return ChatAnthropicAgent(
-                agent_config=typing.cast(ChatAnthropicAgentConfig, agent_config),
-                logger=logger,
-            )
+        if isinstance(agent_config, LLMAgentConfig):
+            return LLMAgent(agent_config=agent_config, logger=logger)
+        elif isinstance(agent_config, ChatGPTAgentConfig):
+            return ChatGPTAgent(agent_config=agent_config, logger=logger)
+        elif isinstance(agent_config, EchoAgentConfig):
+            return EchoAgent(agent_config=agent_config, logger=logger)
+        elif isinstance(agent_config, InformationRetrievalAgentConfig):
+            return InformationRetrievalAgent(agent_config=agent_config, logger=logger)
+        elif isinstance(agent_config, RESTfulUserImplementedAgentConfig):
+            return RESTfulUserImplementedAgent(agent_config=agent_config, logger=logger)
+        elif isinstance(agent_config, ChatAnthropicAgentConfig):
+            return ChatAnthropicAgent(agent_config=agent_config, logger=logger)
+        elif isinstance(agent_config, LlamacppAgentConfig):
+            return LlamacppAgent(agent_config=agent_config, logger=logger)
         raise Exception("Invalid agent config", agent_config.type)

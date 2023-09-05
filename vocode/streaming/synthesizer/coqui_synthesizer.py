@@ -1,5 +1,5 @@
 import io
-from typing import Optional
+from typing import Optional, Tuple, Dict
 import aiohttp
 from pydub import AudioSegment
 
@@ -16,7 +16,7 @@ from vocode.streaming.models.message import BaseMessage
 from opentelemetry.context.context import Context
 
 
-COQUI_BASE_URL = "https://app.coqui.ai/api/v2/"
+COQUI_BASE_URL = "https://app.coqui.ai/api/v2"
 
 
 class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
@@ -25,58 +25,70 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
         self.api_key = synthesizer_config.api_key or getenv("COQUI_API_KEY")
         self.voice_id = synthesizer_config.voice_id
         self.voice_prompt = synthesizer_config.voice_prompt
+        self.use_xtts = synthesizer_config.use_xtts
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.COQUI.value)
-    )
+    def get_request(self, text: str) -> Tuple[str, Dict[str, str], Dict[str, object]]:
+        url = COQUI_BASE_URL
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        body = {
+            "text": text,
+            "speed": 1,
+        }
+
+        if self.use_xtts:
+            # If we have a voice prompt, use that instead of the voice ID
+            if self.voice_prompt is not None:
+                url = f"{COQUI_BASE_URL}/samples/xtts/render-from-prompt/"
+                body["prompt"] = self.voice_prompt
+            else:
+                url = f"{COQUI_BASE_URL}/samples/xtts/render/"
+                body["voice_id"] = self.voice_id
+        else:
+            if self.voice_prompt is not None:
+                url = f"{COQUI_BASE_URL}/samples/from-prompt/"
+                body["prompt"] = self.voice_prompt
+            else:
+                url = f"{COQUI_BASE_URL}/samples"
+                body["voice_id"] = self.voice_id
+        return url, headers, body
+
     async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        url = COQUI_BASE_URL + "samples"
-        if self.voice_prompt:
-            url = f"{url}/from-prompt/"
+        url, headers, body = self.get_request(message.text)
 
-        headers = {"Authorization": f"Bearer {self.api_key}"}
-
-        emotion = "Neutral"
-        if bot_sentiment is not None and bot_sentiment.emotion:
-            emotion = bot_sentiment.emotion.capitalize()
-
-        body = {
-            "text": message.text,
-            "name": "unnamed",
-            "emotion": emotion,
-        }
-
-        if self.voice_prompt:
-            body["prompt"] = self.voice_prompt
-        if self.voice_id:
-            body["voice_id"] = self.voice_id
-
-        async with aiohttp.ClientSession() as session:
-            async with session.request(
-                "POST",
-                url,
-                json=body,
-                headers=headers,
-                timeout=aiohttp.ClientTimeout(total=15),
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.create_total"
+        )
+        async with self.aiohttp_session.request(
+            "POST",
+            url,
+            json=body,
+            headers=headers,
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as response:
+            sample = await response.json()
+            async with self.aiohttp_session.request(
+                "GET",
+                sample["audio_url"],
             ) as response:
-                sample = await response.json()
-                async with session.request(
-                    "GET",
-                    sample["audio_url"],
-                ) as response:
-                    audio_segment: AudioSegment = AudioSegment.from_wav(
-                        io.BytesIO(await response.read())  # type: ignore
-                    )
+                read_response = await response.read()
+                create_speech_span.end()
+                convert_span = tracer.start_span(
+                    f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.convert",
+                )
 
-                    output_bytes: bytes = audio_segment.raw_data
-
-                    return self.create_synthesis_result_from_wav(
-                        file=output_bytes,
-                        message=message,
-                        chunk_size=chunk_size,
-                    )
+                result = self.create_synthesis_result_from_wav(
+                    file=io.BytesIO(read_response),
+                    message=message,
+                    chunk_size=chunk_size,
+                )
+                convert_span.end()
+                return result

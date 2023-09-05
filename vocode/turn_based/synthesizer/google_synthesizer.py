@@ -28,12 +28,9 @@ class GoogleSynthesizer(BaseSynthesizer):
         effects_profile_id: Optional[str] = None,
         enable_time_pointing: Optional[list] = DEFAULT_TIME_POINTING,
     ):
-        credentials_path = getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        if not credentials_path:
-            raise Exception(
-                "Please set GOOGLE_APPLICATION_CREDENTIALS environment variable"
-            )
+        import google.auth
 
+        google.auth.default()
         self.client = tts.TextToSpeechClient()
 
         self.voice = tts.VoiceSelectionParams(

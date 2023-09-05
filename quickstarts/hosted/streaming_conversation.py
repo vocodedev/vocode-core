@@ -18,11 +18,14 @@ vocode.api_key = "<YOUR API KEY>"
 logging.basicConfig()
 logging.root.setLevel(logging.INFO)
 
-if __name__ == "__main__":
+
+async def main():
     (
         microphone_input,
         speaker_output,
-    ) = create_streaming_microphone_input_and_speaker_output(use_default_devices=False)
+    ) = create_streaming_microphone_input_and_speaker_output(
+        use_default_devices=False,
+    )
 
     conversation = HostedStreamingConversation(
         input_device=microphone_input,
@@ -38,4 +41,8 @@ if __name__ == "__main__":
         synthesizer_config=AzureSynthesizerConfig.from_output_device(speaker_output),
     )
     signal.signal(signal.SIGINT, lambda _0, _1: conversation.deactivate())
-    asyncio.run(conversation.start())
+    await conversation.start()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

@@ -39,11 +39,17 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": ["welcome"]
+      "pages": [
+        "welcome"
+      ]
     },
     {
       "group": "Vocode 101",
-      "pages": ["what-is-vocode", "how-it-works", "how-to-use-it"]
+      "pages": [
+        "what-is-vocode",
+        "how-it-works",
+        "how-to-use-it"
+      ]
     },
     {
       "group": "Guides",
@@ -52,6 +58,7 @@
         "telephony",
         "create-your-own-agent",
         "langchain-agent",
+        "action-agents",
         "local-conversation",
         "events-manager",
         "using-synthesizers",
@@ -60,7 +67,8 @@
         "playground",
         "turn-based-conversation",
         "language-support",
-        "tracing"
+        "tracing",
+        "agent-factory"
       ]
     },
     {

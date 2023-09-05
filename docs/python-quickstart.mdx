@@ -80,7 +80,7 @@ vocode.setenv(
 
 async def main():
     microphone_input, speaker_output = create_streaming_microphone_input_and_speaker_output(
-        use_default_devices=True
+        use_default_devices=True,
     )
 
     conversation = StreamingConversation(
@@ -102,7 +102,9 @@ async def main():
     )
     await conversation.start()
     print("Conversation started, press Ctrl+C to end")
-    signal.signal(signal.SIGINT, lambda _0, _1: conversation.terminate())
+    signal.signal(
+        signal.SIGINT, lambda _0, _1: asyncio.create_task(conversation.terminate())
+    )
     while conversation.is_active():
         chunk = await microphone_input.get_audio()
         conversation.receive_audio(chunk)
@@ -116,5 +118,7 @@ if __name__ == "__main__":
 
 As of now, there is no default echo cancellation enabled for system audio conversation, so this works best with headphones, otherwise the bot audio feeds back into the input audio stream. On some speakers
 (eg phone calls) this is handled by the device itself.
+
+Another fix for this is to pipe your microphone / speaker to [Krisp.AI](https://krisp.ai/). Download their application and select the Krisp virtual audio devices when running the script!
 
 Stay tuned for updates here, tracking in [this GitHub issue](https://github.com/vocodedev/vocode-python/issues/16).

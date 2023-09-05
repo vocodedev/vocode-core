@@ -24,8 +24,6 @@ from vocode.streaming.models.synthesizer import RimeSynthesizerConfig, Synthesiz
 from opentelemetry.context.context import Context
 
 # https://rime.ai/docs/quickstart
-RIME_SAMPLING_RATE = 22050
-RIME_BASE_URL = "https://rjmopratfrdjgmfmaios.functions.supabase.co/rime-tts"
 
 
 class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
@@ -33,14 +31,14 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         self,
         synthesizer_config: RimeSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
         self.api_key = getenv("RIME_API_KEY")
         self.speaker = synthesizer_config.speaker
+        self.sampling_rate = synthesizer_config.sampling_rate
+        self.base_url = synthesizer_config.base_url
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.RIME.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
@@ -55,21 +53,31 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
         body = {
             "text": message.text,
             "speaker": self.speaker,
+            "samplingRate": self.sampling_rate,
         }
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                RIME_BASE_URL,
-                headers=headers,
-                json=body,
-                timeout=aiohttp.ClientTimeout(total=15),
-            ) as response:
-                if not response.ok:
-                    raise Exception(
-                        f"Rime API error: {response.status}, {await response.text()}"
-                    )
-                data = await response.json()
-                audio_file = io.BytesIO(base64.b64decode(data.get("audioContent")))
-
-                return self.create_synthesis_result_from_wav(
-                    file=audio_file, message=message, chunk_size=chunk_size
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.RIME.value.split('_', 1)[-1]}.create_total",
+        )
+        async with self.aiohttp_session.post(
+            self.base_url,
+            headers=headers,
+            json=body,
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as response:
+            if not response.ok:
+                raise Exception(
+                    f"Rime API error: {response.status}, {await response.text()}"
                 )
+            data = await response.json()
+            create_speech_span.end()
+            convert_span = tracer.start_span(
+                f"synthesizer.{SynthesizerType.RIME.value.split('_', 1)[-1]}.convert",
+            )
+
+            audio_file = io.BytesIO(base64.b64decode(data.get("audioContent")))
+
+            result = self.create_synthesis_result_from_wav(
+                file=audio_file, message=message, chunk_size=chunk_size
+            )
+            convert_span.end()
+            return result
