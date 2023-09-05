@@ -444,7 +444,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if mark_ready:
             await mark_ready()
         if hasattr(self, "sentiment_config"):
-            self.update_bot_sentiment()
+            await self.update_bot_sentiment()
         self.active = True
         if self.synthesizer.get_synthesizer_config().sentiment_config:
             self.track_bot_sentiment_task = asyncio.create_task(
