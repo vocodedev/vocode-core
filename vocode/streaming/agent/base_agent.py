@@ -66,6 +66,10 @@ class AgentInput(TypedModel, type=AgentInputType.BASE.value):
     conversation_id: str
     vonage_uuid: Optional[str]
     twilio_sid: Optional[str]
+    agent_response_tracker: Optional[asyncio.Event] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class TranscriptionAgentInput(AgentInput, type=AgentInputType.TRANSCRIPTION.value):
@@ -213,7 +217,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         )
         is_first_response = True
         function_call = None
-        async for response in responses:
+        async for response, is_interruptible in responses:
             if isinstance(response, FunctionCall):
                 function_call = response
                 continue
@@ -222,7 +226,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 is_first_response = False
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
-                is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+                is_interruptible=self.agent_config.allow_agent_to_be_cut_off
+                and is_interruptible,
+                agent_response_tracker=agent_input.agent_response_tracker,
             )
         # TODO: implement should_stop for generate_responses
         agent_span.end()
@@ -429,5 +435,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[Union[str, FunctionCall], None]:
+    ) -> AsyncGenerator[
+        Tuple[Union[str, FunctionCall], bool], None
+    ]:  # tuple of the content and whether it is interruptible
         raise NotImplementedError
