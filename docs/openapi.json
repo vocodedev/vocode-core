@@ -1422,7 +1422,18 @@
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
             "default": "high"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "noise_suppression": {
+            "type": "boolean",
+            "title": "Noise Suppression",
+            "default": false
+          },
+          "endpointing_sensitivity": {
+            "type": "string",
+            "enum": ["auto", "relaxed"],
+            "title": "Endpointing Sensitivity",
+            "default": "auto"
+          }
         },
         "type": "object",
         "required": ["id", "user_id", "prompt", "actions", "voice"],
@@ -1508,7 +1519,18 @@
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
             "default": "high"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "noise_suppression": {
+            "type": "boolean",
+            "title": "Noise Suppression",
+            "default": false
+          },
+          "endpointing_sensitivity": {
+            "type": "string",
+            "enum": ["auto", "relaxed"],
+            "title": "Endpointing Sensitivity",
+            "default": "auto"
+          }
         },
         "type": "object",
         "required": ["prompt", "voice"],
@@ -1613,6 +1635,20 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Context Endpoint"
+          },
+          "noise_suppression": {
+            "anyOf": [
+              { "type": "boolean" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Noise Suppression"
+          },
+          "endpointing_sensitivity": {
+            "anyOf": [
+              { "type": "string", "enum": ["auto", "relaxed"] },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Endpointing Sensitivity"
           }
         },
         "type": "object",
@@ -1698,6 +1734,11 @@
             "default": false
           },
           "transcript": { "type": "string", "title": "Transcript" },
+          "machine_detection_result": {
+            "type": "string",
+            "enum": ["human", "machine"],
+            "title": "Machine Detection Result"
+          },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "$ref": "#/components/schemas/Agent" },
@@ -1752,7 +1793,7 @@
         "properties": {
           "field_type": {
             "type": "string",
-            "enum": ["field_type_email", "field_type_address"],
+            "enum": ["field_type_email"],
             "title": "Field Type"
           },
           "label": { "type": "string", "title": "Label" },
@@ -1828,7 +1869,18 @@
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
             "default": "high"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "noise_suppression": {
+            "type": "boolean",
+            "title": "Noise Suppression",
+            "default": false
+          },
+          "endpointing_sensitivity": {
+            "type": "string",
+            "enum": ["auto", "relaxed"],
+            "title": "Endpointing Sensitivity",
+            "default": "auto"
+          }
         },
         "type": "object",
         "required": ["prompt"],
@@ -1844,6 +1896,12 @@
               { "$ref": "#/components/schemas/CreateCallAgentParams" }
             ],
             "title": "Agent"
+          },
+          "on_machine_answer": {
+            "type": "string",
+            "enum": ["continue", "hangup"],
+            "title": "On Machine Answer",
+            "default": "continue"
           }
         },
         "type": "object",
@@ -1912,7 +1970,7 @@
           "api_key": { "type": "string", "title": "Api Key" }
         },
         "type": "object",
-        "required": ["id", "user_id", "type", "voice_id", "api_key"],
+        "required": ["id", "user_id", "type", "voice_id"],
         "title": "ElevenLabsVoice"
       },
       "ElevenLabsVoiceParams": {
@@ -1928,7 +1986,7 @@
           "api_key": { "type": "string", "title": "Api Key" }
         },
         "type": "object",
-        "required": ["type", "voice_id", "api_key"],
+        "required": ["type", "voice_id"],
         "title": "ElevenLabsVoiceParams"
       },
       "ElevenLabsVoiceUpdateParams": {
@@ -2031,7 +2089,8 @@
           "event_phone_call_connected",
           "event_phone_call_ended",
           "event_transcript",
-          "event_recording"
+          "event_recording",
+          "event_machine_detection"
         ],
         "title": "EventType",
         "description": "An enumeration."
@@ -2099,7 +2158,18 @@
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
             "default": "high"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "noise_suppression": {
+            "type": "boolean",
+            "title": "Noise Suppression",
+            "default": false
+          },
+          "endpointing_sensitivity": {
+            "type": "string",
+            "enum": ["auto", "relaxed"],
+            "title": "Endpointing Sensitivity",
+            "default": "auto"
+          }
         },
         "type": "object",
         "required": ["id", "user_id", "prompt", "actions", "voice"],
@@ -2120,6 +2190,11 @@
             "default": false
           },
           "transcript": { "type": "string", "title": "Transcript" },
+          "machine_detection_result": {
+            "type": "string",
+            "enum": ["human", "machine"],
+            "title": "Machine Detection Result"
+          },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "type": "string", "format": "uuid", "title": "Agent" },
