@@ -412,6 +412,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.synthesis_enabled = True
 
         self.summarizer = summarizer
+        self.summary = None
 
         self.interruptible_events: queue.Queue[InterruptibleEvent] = queue.Queue()
         self.interruptible_event_factory = self.QueueingInterruptibleEventFactory(
@@ -585,9 +586,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             if self.transcript.to_string() != prev_transcript:
                 self.logger.info("Summarizing conversation...")
 
-                summary = await self.summarizer.get_summary(self.transcript.to_string())
-
-                self.logger.info("Summary %s", summary["choices"][0].message.content)
+                summarizer_response = await self.summarizer.get_summary(self.transcript.to_string())
+                # TODO: saving all sumamries, rn it reassigns using latest.
+                self.summary = summarizer_response["choices"][0].message.content
+                self.logger.info("Summary %s", self.summary)
                 prev_transcript = self.transcript.to_string()
 
     async def update_bot_sentiment(self):
