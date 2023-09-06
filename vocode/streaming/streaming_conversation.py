@@ -164,6 +164,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     # Empty buffer to save space
                     # TODO reactivate when we know why trim bugs happen?
                     # self.conversation.input_audio_buffer = bytearray()
+                # Note, in upstream add_human_message is called in BaseAgent, but there we don't
+                # have access to the audio file path. So we moved it back, but it would break if we use
+                # ActionAgents
                 self.conversation.transcript.add_human_message(
                     text=transcription.message,
                     conversation_id=self.conversation.id,
@@ -734,10 +737,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.events_manager.publish_event(
             TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
         )
-        transcript_name = f"cache/{self.id}.json"
-        os.makedirs("cache", exist_ok=True)
-        with open(transcript_name, "w", encoding="utf-8") as f:
-            f.write(self.transcript.json(ensure_ascii=False))
 
         if self.check_for_idle_task:
             self.logger.debug("Terminating check_for_idle Task")

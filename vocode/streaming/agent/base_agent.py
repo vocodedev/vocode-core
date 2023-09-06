@@ -221,7 +221,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 agent_span_first.end()
                 is_first_response = False
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=response)),
+                AgentResponseMessage(message=response),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
         # TODO: implement should_stop for generate_responses
@@ -247,7 +247,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             return True
         if response:
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=response)),
+                AgentResponseMessage(message=response),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
             return should_stop
@@ -266,10 +266,12 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 transcription = typing.cast(
                     TranscriptionAgentInput, agent_input
                 ).transcription
-                self.transcript.add_human_message(
-                    text=transcription.message,
-                    conversation_id=agent_input.conversation_id,
-                )
+                # Note, in upstream add_human_message is called here, but we need to call it in streaming_conversation.py
+                # to be able to use the audio data.
+                # self.transcript.add_human_message(
+                #     text=transcription.message,
+                #     conversation_id=agent_input.conversation_id,
+                # )
             elif isinstance(agent_input, ActionResultAgentInput):
                 self.transcript.add_action_finish_log(
                     action_input=agent_input.action_input,
@@ -421,7 +423,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> Tuple[Optional[str], bool]:
+    ) -> Tuple[Optional[BaseMessage], bool]:
         raise NotImplementedError
 
     def generate_response(
@@ -429,5 +431,5 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[Union[str, FunctionCall], None]:
+    ) -> AsyncGenerator[Union[BaseMessage, FunctionCall], None]:
         raise NotImplementedError

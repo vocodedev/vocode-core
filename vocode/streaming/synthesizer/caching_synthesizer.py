@@ -62,6 +62,7 @@ class AsyncGeneratorWrapper(AsyncGenerator[SynthesisResult.ChunkResult, None]):
 class CachingSynthesizer(BaseSynthesizer):
 
     def __init__(self, inner_synthesizer: BaseSynthesizer, cache_path: str = "cache"):
+        self.should_close_session_on_tear_down = False
         self.inner_synthesizer = inner_synthesizer
         self.cache_path = cache_path
         os.makedirs(self.cache_path, exist_ok=True)
