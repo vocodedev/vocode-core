@@ -10,7 +10,6 @@ from vocode import getenv
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
-    ChunkResult,
     encode_as_wav,
     tracer,
 )
@@ -55,7 +54,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         response: aiohttp.ClientResponse,
         chunk_size: int,
         create_speech_span: Optional[Span],
-    ) -> AsyncGenerator[ChunkResult, None]:
+    ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
         miniaudio_worker_input_queue: asyncio.Queue[
             Union[bytes, None]
         ] = asyncio.Queue()
@@ -102,7 +101,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
-    ) -> AsyncGenerator[ChunkResult, None]:
+    ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
