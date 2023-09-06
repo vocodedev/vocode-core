@@ -17,8 +17,8 @@ class EchoAgent(RespondAgent[EchoAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[str, None]:
-        yield human_input
+    ) -> AsyncGenerator[Tuple[str, bool], None]:
+        yield human_input, True
 
     def update_last_bot_message_on_cut_off(self, message: str):
         pass

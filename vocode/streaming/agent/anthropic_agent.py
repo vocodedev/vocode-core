@@ -91,7 +91,7 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[Tuple[str, bool], None]:
         self.memory.chat_memory.messages.append(HumanMessage(content=human_input))
 
         bot_memory_message = AIMessage(content="")
@@ -115,7 +115,7 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
             if sentence:
                 bot_memory_message.content = bot_memory_message.content + sentence
                 buffer = remainder
-                yield sentence
+                yield sentence, True
             continue
 
     def update_last_bot_message_on_cut_off(self, message: str):
