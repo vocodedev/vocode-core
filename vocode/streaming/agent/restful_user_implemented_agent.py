@@ -31,8 +31,9 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> Tuple[Optional[str], bool]:
+    ) -> Tuple[Optional[BaseMessage], bool]:
         config = self.agent_config.respond
+        body = None
         try:
             # TODO: cache session
             async with aiohttp.ClientSession() as session:
@@ -45,17 +46,17 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
                     json=payload,
                     timeout=aiohttp.ClientTimeout(total=15),
                 ) as response:
-                    assert response.status == 200
-                    output: RESTfulAgentOutput = RESTfulAgentOutput.parse_obj(
-                        await response.json()
-                    )
+                    body = await response.json()
+                    response.raise_for_status()
+                    output: RESTfulAgentOutput = RESTfulAgentOutput.parse_obj(body)
                     output_response = None
                     should_stop = False
                     if output.type == RESTfulAgentOutputType.TEXT:
-                        output_response = cast(RESTfulAgentText, output).response
+                        output_response = BaseMessage(text=cast(RESTfulAgentText, output).response, metadata=output.metadata)
                     elif output.type == RESTfulAgentOutputType.END:
+                        output_response = BaseMessage(text="", metadata=output.metadata)
                         should_stop = True
                     return output_response, should_stop
         except Exception as e:
-            self.logger.error(f"Error in response from RESTful agent: {e}")
+            self.logger.exception(f"Error in response from RESTful agent: {body}")
             return None, True

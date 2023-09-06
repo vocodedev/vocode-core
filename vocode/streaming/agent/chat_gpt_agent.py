@@ -19,7 +19,7 @@ from vocode.streaming.agent.utils import (
     openai_get_tokens,
     vector_db_result_to_openai_chat_message,
 )
-from vocode.streaming.models.events import Sender
+from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.vector_db.factory import VectorDBFactory
 
@@ -112,11 +112,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> Tuple[str, bool]:
+    ) -> Tuple[BaseMessage, bool]:
         assert self.transcript is not None
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
-            return cut_off_response, False
+            return BaseMessage(text=cut_off_response), False
         self.logger.debug("LLM responding to human input")
         if self.is_first_response and self.first_response:
             self.logger.debug("First response is cached")
@@ -127,17 +127,17 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
             text = chat_completion.choices[0].message.content
         self.logger.debug(f"LLM response: {text}")
-        return text, False
+        return BaseMessage(text=text), False
 
     async def generate_response(
         self,
         human_input: str,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[Union[str, FunctionCall], None]:
+    ) -> AsyncGenerator[Union[BaseMessage, FunctionCall], None]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
-            yield cut_off_response
+            yield BaseMessage(text=cut_off_response)
             return
         assert self.transcript is not None
 
@@ -169,4 +169,4 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         async for message in collate_response_async(
             openai_get_tokens(stream), get_functions=True
         ):
-            yield message
+            yield BaseMessage(text=message)

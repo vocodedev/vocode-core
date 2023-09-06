@@ -107,6 +107,7 @@ class Transcript(BaseModel):
         message: Message,
         conversation_id: str,
         publish_to_events_manager: bool = True,
+        metadata: Optional[dict] = None,
     ):
         self.event_logs.append(message)
         if publish_to_events_manager:

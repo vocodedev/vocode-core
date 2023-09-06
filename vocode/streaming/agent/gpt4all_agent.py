@@ -1,4 +1,3 @@
-from math import e
 from typing import Optional, Tuple
 from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 from vocode.streaming.models.agent import GPT4AllAgentConfig
@@ -22,5 +21,9 @@ class GPT4AllAgent(RespondAgent[GPT4AllAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> Tuple[Optional[str], bool]:
-        return (await self.turn_based_agent.respond_async(human_input)), False
+    ) -> Tuple[Optional[BaseMessage], bool]:
+        text = await self.turn_based_agent.respond_async(human_input)
+        if text is None:
+            return None, False
+        else:
+            return BaseMessage(text=text), False
