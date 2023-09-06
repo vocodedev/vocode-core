@@ -86,7 +86,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 if self.synthesizer_config.should_encode_as_wav:
                     wav_chunk = encode_as_wav(wav_chunk, self.synthesizer_config)
 
-                yield AsyncGenerator[wav_chunk, is_last]
+                yield SynthesisResult.ChunkResult(wav_chunk, is_last)
                 # If this is the last chunk, break the loop
                 if is_last and create_speech_span is not None:
                     create_speech_span.end()
@@ -101,7 +101,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
-    ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
+    ) -> SynthesisResult:
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(

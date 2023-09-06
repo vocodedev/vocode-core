@@ -145,7 +145,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
-                # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
                 file_path = None
                 # If no duration, it's a text message and we don't need to handle the audio
                 if transcription.duration:
@@ -175,6 +174,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         "duration": transcription.duration,
                     },
                 )
+                # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
                 event = self.interruptible_event_factory.create_interruptible_event(
                     TranscriptionAgentInput(
                         transcription=transcription,
@@ -400,7 +400,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                     metadata=metadata,
                 )
-                
+
                 if self.conversation.agent.agent_config.end_conversation_on_goodbye:
                     goodbye_detected_task = (
                         self.conversation.agent.create_goodbye_detection_task(
@@ -604,13 +604,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.debug("Bot sentiment: %s", new_bot_sentiment)
             self.bot_sentiment = new_bot_sentiment
 
-    async def receive_message(self, message: str):
+    def receive_message(self, message: str):
         transcription = Transcription(
             message=message,
             confidence=1.0,
             is_final=True,
         )
-        await self.transcriptions_worker.consume_nonblocking(transcription)
+        self.transcriptions_worker.consume_nonblocking(transcription)
 
     def receive_audio(self, chunk: bytes):
         self.input_audio_buffer += chunk
