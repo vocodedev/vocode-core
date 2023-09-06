@@ -1,0 +1,69 @@
+---
+title: "[Beta] Answering machine detection"
+description: "Define the behavior of the bot when no one answers the phone"
+---
+
+The Vocode API allows you to configure your outbound call agent's behavior when the other end of a
+phone call is an answerphone as well as subscribe to events relating to machine detection.
+
+# Example 1: Hang up the call if it goes to voicemail
+
+The `on_machine_answer` parameter defines what should happen if a machine answers the phone.
+
+```python
+from vocode import CreateCallAgentParams
+
+vocode_client.calls.create_call(
+    from_number="<YOUR VOCODE NUMBER>",
+    to_number="15555555555",
+    agent=CreateCallAgentParams(
+        prompt=Prompt(
+            content="Ask Ajay if his refrigerator is running"
+        ),
+    ),
+    on_machine_answer="hangup"
+)
+```
+
+# Example 2: Hook into when a call goes to voicemail
+
+If you'd like the bot to stay on the call and leave a voicemail, set `on_machine_answer` to `"continue"`. You can
+also configure a webhook to be fired when the answering machine detection status
+
+```python
+from vocode import CreateCallAgentParams, PromptParams
+
+vocode_client.calls.create_call(
+    from_number="<YOUR VOCODE NUMBER>",
+    to_number="15555555555",
+    agent=CreateCallAgentParams(
+        prompt=PromptParams(
+            content="Ask Ajay if his refrigerator is running"
+        ),
+        webhook=WebhookParams(
+            url="<YOUR WEBHOOK URL>",
+            subscriptions=["event_machine_detection"]
+        )
+    ),
+    on_machine_answer="continue"
+)
+```
+
+Once the call is picked up, the webhook URL configured above will get the following POST request:
+
+```
+{
+  "type": "event_machine_detection",
+  "call_id": "<some UUID>",
+  "payload": {
+    "result": "machine" # or "human"
+  }
+}
+```
+
+# On the horizon
+
+Stay tuned for more features here, for example:
+
+- Instructing your agent to leave a particular voicemail
+- Routing the call to a human when a human picks up, otherwise leave a voicemail
