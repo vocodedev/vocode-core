@@ -172,7 +172,8 @@
         "vectordb",
         "multilingual",
         "injecting-context",
-        "machine-detection"
+        "machine-detection",
+        "ivr-navigation"
       ]
     }
   ],
