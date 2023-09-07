@@ -84,6 +84,7 @@ IGNORED_WHILE_TALKING_FILLERS = [
     "Rozhodně",
     "Přesně",
     "Super",
+    "Supr",
     "oukej",
 
 
