@@ -13,6 +13,10 @@ from vocode.streaming.telephony.server.base import TelephonyServer
 
 from call_transcript_utils import add_transcript
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 app = FastAPI(docs_url=None)
 
 logging.basicConfig()
@@ -24,7 +28,7 @@ class EventsManager(events_manager.EventsManager):
     def __init__(self):
         super().__init__(subscriptions=[EventType.TRANSCRIPT_COMPLETE])
 
-    def handle_event(self, event: Event):
+    async def handle_event(self, event: Event):
         if event.type == EventType.TRANSCRIPT_COMPLETE:
             transcript_complete_event = typing.cast(TranscriptCompleteEvent, event)
             add_transcript(

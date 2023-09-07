@@ -1,4 +1,4 @@
-FROM python:3.9
+FROM python:3.9-bullseye
 
 # get portaudio and ffmpeg
 RUN apt-get update \
@@ -8,8 +8,11 @@ RUN apt-get -y upgrade
 RUN apt-get install -y ffmpeg
 
 WORKDIR /code
-COPY ./requirements.txt /code/requirements.txt
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
+COPY ./pyproject.toml /code/pyproject.toml
+COPY ./poetry.lock /code/poetry.lock
+RUN pip install --no-cache-dir --upgrade poetry
+RUN poetry config virtualenvs.create false
+RUN poetry install --no-dev --no-interaction --no-ansi
 COPY main.py /code/main.py
 COPY speller_agent.py /code/speller_agent.py
 

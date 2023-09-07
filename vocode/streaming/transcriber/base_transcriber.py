@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import audioop
+from opentelemetry import trace, metrics
 from typing import Generic, TypeVar, Union
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.model import BaseModel
@@ -9,6 +10,9 @@ from vocode.streaming.models.model import BaseModel
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
 
+
+tracer = trace.get_tracer(__name__)
+meter = metrics.get_meter(__name__)
 
 class Transcription(BaseModel):
     message: str
@@ -23,6 +27,7 @@ class Transcription(BaseModel):
 
 
 TranscriberConfigType = TypeVar("TranscriberConfigType", bound=TranscriberConfig)
+
 
 class AbstractTranscriber(Generic[TranscriberConfigType]):
     def __init__(self, transcriber_config: TranscriberConfigType):
@@ -47,6 +52,7 @@ class AbstractTranscriber(Generic[TranscriberConfigType]):
             return linear_audio
         elif self.get_transcriber_config().audio_encoding == AudioEncoding.MULAW:
             return audioop.lin2ulaw(linear_audio, sample_width)
+
 
 class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWorker):
     def __init__(

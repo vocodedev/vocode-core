@@ -12,6 +12,7 @@ from vocode.streaming.client_backend.conversation import ConversationRouter
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.transcriber.azure_transcriber import AzureTranscriber
 
+from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI(docs_url=None)
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 conversation_router = ConversationRouter(
-    agent=ChatGPTAgent(
+    agent_thunk=lambda: ChatGPTAgent(
         ChatGPTAgentConfig(
             initial_message=BaseMessage(text="Hello!"),
             prompt_preamble="Have a pleasant conversation about life",

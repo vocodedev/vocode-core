@@ -1,17 +1,21 @@
 import time
+import argparse
 from typing import Optional
+import aiohttp
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
     GoogleSynthesizerConfig,
     PlayHtSynthesizerConfig,
+    ElevenLabsSynthesizerConfig,
     RimeSynthesizerConfig,
 )
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.output_device.speaker_output import SpeakerOutput
 from vocode.streaming.synthesizer import *
 from vocode.streaming.utils import get_chunk_size_per_second
+from playground.streaming.tracing_utils import make_parser_and_maybe_trace
 
 
 if __name__ == "__main__":
@@ -19,6 +23,8 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
 
     load_dotenv()
+
+    make_parser_and_maybe_trace()
 
     seconds_per_chunk = 1
 
@@ -34,6 +40,8 @@ if __name__ == "__main__":
             synthesizer.get_synthesizer_config().audio_encoding,
             synthesizer.get_synthesizer_config().sampling_rate,
         )
+        # ClientSession needs to be created within the async task
+        synthesizer.aiohttp_session = aiohttp.ClientSession()
         synthesis_result = await synthesizer.create_speech(
             message=message,
             chunk_size=chunk_size,
@@ -74,17 +82,22 @@ if __name__ == "__main__":
         return message_sent, cut_off
 
     async def main():
-        while True:
-            message_sent, _ = await speak(
-                synthesizer=synthesizer,
-                output_device=speaker_output,
-                message=BaseMessage(text=input("Enter speech to synthesize: ")),
-            )
-            print("Message sent: ", message_sent)
+        try:
+            while True:
+                message_sent, _ = await speak(
+                    synthesizer=synthesizer,
+                    output_device=speaker_output,
+                    message=BaseMessage(text=input("Enter speech to synthesize: ")),
+                )
+                print("Message sent: ", message_sent)
+        except KeyboardInterrupt:
+            print("Interrupted, exiting")
+        await synthesizer.tear_down()
 
     speaker_output = SpeakerOutput.from_default_device()
 
     # replace with the synthesizer you want to test
+    # Note: --trace will not work with AzureSynthesizer
     synthesizer = AzureSynthesizer(
         AzureSynthesizerConfig.from_output_device(speaker_output)
     )

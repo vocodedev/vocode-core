@@ -6,7 +6,7 @@ from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, FillerAudio, SynthesisResult, ChunkResult
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, FillerAudio, SynthesisResult
 from vocode.streaming.utils import save_as_wav
 
 def get_voice_id(synthesizer_config: SynthesizerConfig) -> str:
@@ -27,7 +27,7 @@ def cache_key(text, synthesizer_config: SynthesizerConfig) -> str:
     hash_value = hashlib.md5((cleaned_text + config_text).encode()).hexdigest()[:8]
     return f"{voice_id}/synth_{cleaned_text[:32]}_{hash_value}.wav"
 
-class AsyncGeneratorWrapper(AsyncGenerator[ChunkResult, None]):
+class AsyncGeneratorWrapper(AsyncGenerator[SynthesisResult.ChunkResult, None]):
     def __init__(self, generator, when_finished: Callable, remove_wav_header: bool):
         self.generator = generator
         self.all_bytes = bytearray()
@@ -62,6 +62,7 @@ class AsyncGeneratorWrapper(AsyncGenerator[ChunkResult, None]):
 class CachingSynthesizer(BaseSynthesizer):
 
     def __init__(self, inner_synthesizer: BaseSynthesizer, cache_path: str = "cache"):
+        self.should_close_session_on_tear_down = False
         self.inner_synthesizer = inner_synthesizer
         self.cache_path = cache_path
         os.makedirs(self.cache_path, exist_ok=True)

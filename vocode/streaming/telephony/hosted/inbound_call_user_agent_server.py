@@ -1,5 +1,5 @@
 from typing import Optional, Union
-from vocode.streaming.models.telephony import TwilioConfig
+from vocode.streaming.models.telephony import VonageConfig
 from vocode.streaming.telephony.hosted.inbound_call_server import InboundCallServer
 from vocode.streaming.models.agent import (
     RESTfulAgentEnd,
@@ -20,14 +20,14 @@ class InboundCallUserAgentServer(InboundCallServer):
         transcriber_config: Optional[TranscriberConfig] = None,
         synthesizer_config: Optional[SynthesizerConfig] = None,
         response_on_rate_limit: Optional[str] = None,
-        twilio_config: Optional[TwilioConfig] = None,
+        vonage_config: Optional[VonageConfig] = None,
     ):
         super().__init__(
             agent_config=agent_config,
             transcriber_config=transcriber_config,
             synthesizer_config=synthesizer_config,
             response_on_rate_limit=response_on_rate_limit,
-            twilio_config=twilio_config,
+            vonage_config=vonage_config,
         )
         assert isinstance(
             agent_config, RESTfulUserImplementedAgentConfig

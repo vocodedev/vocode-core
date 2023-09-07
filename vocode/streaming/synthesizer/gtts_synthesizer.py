@@ -1,6 +1,7 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import logging
+import aiohttp
 from pydub import AudioSegment
 from typing import Optional
 from io import BytesIO
@@ -21,17 +22,15 @@ class GTTSSynthesizer(BaseSynthesizer):
         self,
         synthesizer_config: GTTSSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
 
         from gtts import gTTS
 
         self.gTTS = gTTS
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.GTTS.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
@@ -44,15 +43,26 @@ class GTTSSynthesizer(BaseSynthesizer):
             tts = self.gTTS(message.text)
             tts.write_to_fp(audio_file)
 
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.GTTS.value.split('_', 1)[-1]}.create_total"
+        )
         await asyncio.get_event_loop().run_in_executor(
             self.thread_pool_executor, thread
         )
+        create_speech_span.end()
+        convert_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.GTTS.value.split('_', 1)[-1]}.convert",
+        )
         audio_file.seek(0)
+        # TODO: probably needs to be in a thread
         audio_segment: AudioSegment = AudioSegment.from_mp3(audio_file)  # type: ignore
         output_bytes_io = BytesIO()
         audio_segment.export(output_bytes_io, format="wav")  # type: ignore
-        return self.create_synthesis_result_from_wav(
+
+        result = self.create_synthesis_result_from_wav(
             file=output_bytes_io,
             message=message,
             chunk_size=chunk_size,
         )
+        convert_span.end()
+        return result

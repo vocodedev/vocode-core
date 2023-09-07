@@ -12,6 +12,7 @@ from typing import (
 import math
 import io
 import wave
+import aiohttp
 from nltk.tokenize import word_tokenize
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 from opentelemetry import trace
@@ -48,15 +49,15 @@ def encode_as_wav(chunk: bytes, synthesizer_config: SynthesizerConfig) -> bytes:
     output_bytes_io.seek(0)
     return output_bytes_io.read()
 
-class ChunkResult:
-    def __init__(self, chunk: bytes, is_last_chunk: bool):
-        self.chunk = chunk
-        self.is_last_chunk = is_last_chunk
 
 tracer = trace.get_tracer(__name__)
 
 
 class SynthesisResult:
+    class ChunkResult:
+        def __init__(self, chunk: bytes, is_last_chunk: bool):
+            self.chunk = chunk
+            self.is_last_chunk = is_last_chunk
 
     def __init__(
         self,
@@ -95,11 +96,11 @@ class FillerAudio:
         async def chunk_generator(chunk_transform=lambda x: x):
             for i in range(0, len(self.audio_data), chunk_size):
                 if i + chunk_size > len(self.audio_data):
-                    yield ChunkResult(
+                    yield SynthesisResult.ChunkResult(
                         chunk_transform(self.audio_data[i:]), True
                     )
                 else:
-                    yield ChunkResult(
+                    yield SynthesisResult.ChunkResult(
                         chunk_transform(self.audio_data[i : i + chunk_size]), False
                     )
 
@@ -116,13 +117,27 @@ SynthesizerConfigType = TypeVar("SynthesizerConfigType", bound=SynthesizerConfig
 
 
 class BaseSynthesizer(Generic[SynthesizerConfigType]):
-    def __init__(self, synthesizer_config: SynthesizerConfigType):
+    def __init__(
+        self,
+        synthesizer_config: SynthesizerConfigType,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
+    ):
         self.synthesizer_config = synthesizer_config
         if synthesizer_config.audio_encoding == AudioEncoding.MULAW:
             assert (
                 synthesizer_config.sampling_rate == 8000
             ), "MuLaw encoding only supports 8kHz sampling rate"
         self.filler_audios: List[FillerAudio] = []
+        if aiohttp_session:
+            # the caller is responsible for closing the session
+            self.aiohttp_session = aiohttp_session
+            self.should_close_session_on_tear_down = False
+        else:
+            self.aiohttp_session = aiohttp.ClientSession()
+            self.should_close_session_on_tear_down = True
+
+    async def empty_generator(self):
+        yield SynthesisResult.ChunkResult(b"", True)
 
     def get_synthesizer_config(self) -> SynthesizerConfig:
         return self.synthesizer_config
@@ -159,6 +174,9 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         estimated_output_seconds = (
             size_of_output / self.synthesizer_config.sampling_rate
         )
+        if not message.text:
+            return message.text
+
         estimated_output_seconds_per_char = estimated_output_seconds / len(message.text)
         return message.text[: int(seconds / estimated_output_seconds_per_char)]
 
@@ -200,11 +218,11 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         async def chunk_generator(output_bytes):
             for i in range(0, len(output_bytes), chunk_size):
                 if i + chunk_size > len(output_bytes):
-                    yield ChunkResult(
+                    yield SynthesisResult.ChunkResult(
                         chunk_transform(output_bytes[i:]), True
                     )
                 else:
-                    yield ChunkResult(
+                    yield SynthesisResult.ChunkResult(
                         chunk_transform(output_bytes[i : i + chunk_size]), False
                     )
 
@@ -214,3 +232,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
                 message, seconds, len(output_bytes)
             ),
         )
+
+    async def tear_down(self):
+        if self.should_close_session_on_tear_down:
+            await self.aiohttp_session.close()

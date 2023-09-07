@@ -1,12 +1,9 @@
-import asyncio
 import logging
 import queue
 from typing import Optional
-import threading
 
 from azure.cognitiveservices.speech import SpeechRecognitionEventArgs
 from azure.cognitiveservices.speech.audio import (
-    AudioInputStream,
     PushAudioInputStream,
     AudioStreamFormat,
     AudioStreamWaveFormat,
@@ -65,9 +62,29 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
 
         lang_config = speechsdk.languageconfig.SourceLanguageConfig(self.transcriber_config.language_code)
 
-        self.speech = speechsdk.SpeechRecognizer(
-            speech_config=speech_config, audio_config=audio_config, source_language_config=lang_config
-        )
+        speech_params = {
+            "speech_config": speech_config,
+            "audio_config": audio_config,
+        }
+
+        if self.transcriber_config.candidate_languages:
+            speech_config.set_property(
+                property_id=speechsdk.PropertyId.SpeechServiceConnection_LanguageIdMode,
+                value="Continuous",
+            )
+            auto_detect_source_language_config = (
+                speechsdk.languageconfig.AutoDetectSourceLanguageConfig(
+                    languages=self.transcriber_config.candidate_languages
+                )
+            )
+
+            speech_params[
+                "auto_detect_source_language_config"
+            ] = auto_detect_source_language_config
+        else:
+            speech_params["language"] = self.transcriber_config.language
+
+        self.speech = speechsdk.SpeechRecognizer(**speech_params)
 
         self._ended = False
         self.is_ready = False

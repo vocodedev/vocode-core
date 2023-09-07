@@ -1,4 +1,5 @@
 import logging
+import asyncio
 import os
 from langchain.agents import tool
 from dotenv import load_dotenv
@@ -15,6 +16,8 @@ from vocode.streaming.telephony.config_manager.redis_config_manager import (
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 import time
 
+LOOP = asyncio.new_event_loop()
+asyncio.set_event_loop(LOOP)
 
 @tool("call phone number")
 def call_phone_number(input: str) -> str:
@@ -22,6 +25,8 @@ def call_phone_number(input: str) -> str:
     the input to this tool is a pipe separated list of a phone number, a prompt, and the first thing the bot should say.
     The prompt should instruct the bot with what to do on the call and be in the 3rd person,
     like 'the assistant is performing this task' instead of 'perform this task'.
+
+    should only use this tool once it has found an adequate phone number to call.
 
     for example, `+15555555555|the assistant is explaining the meaning of life|i'm going to tell you the meaning of life` will call +15555555555, say 'i'm going to tell you the meaning of life', and instruct the assistant to tell the human what the meaning of life is.
     """
@@ -37,7 +42,7 @@ def call_phone_number(input: str) -> str:
         ),
         logger=logging.Logger("call_phone_number"),
     )
-    call.start()
+    LOOP.run_until_complete(call.start())
     while True:
         maybe_transcript = get_transcript(call.conversation_id)
         if maybe_transcript:

@@ -5,6 +5,7 @@ import os
 import re
 from typing import Any, List, Optional, Tuple
 from xml.etree import ElementTree
+import aiohttp
 from vocode import getenv
 from opentelemetry.context.context import Context
 
@@ -13,7 +14,6 @@ from vocode.streaming.models.message import BaseMessage, SSMLMessage
 
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
-    ChunkResult,
     SynthesisResult,
     FILLER_PHRASES,
     FILLER_AUDIO_PATH,
@@ -63,8 +63,9 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         logger: Optional[logging.Logger] = None,
         azure_speech_key: Optional[str] = None,
         azure_speech_region: Optional[str] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
         # Instantiates a client
         azure_speech_key = azure_speech_key or getenv("AZURE_SPEECH_KEY")
         azure_speech_region = azure_speech_region or getenv("AZURE_SPEECH_REGION")
@@ -183,6 +184,16 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 "styledegree", str(bot_sentiment.degree * 2)
             )  # Azure specific, it's a scale of 0-2
             voice_root = styled
+        # this ugly hack is necessary so we can limit the gap between sentences
+        # for normal sentences, it seems like the gap is > 500ms, so we're able to reduce it to 500ms
+        # for very tiny sentences, the API hangs - so we heuristically only update the silence gap
+        # if there is more than one word in the sentence
+        if " " in message:
+            silence = ElementTree.SubElement(
+                voice_root, "{%s}silence" % NAMESPACES.get("mstts")
+            )
+            silence.set("value", "500ms")
+            silence.set("type", "Tailing-exact")
         prosody = ElementTree.SubElement(voice_root, "prosody")
         prosody.set("pitch", f"{self.pitch}%")
         prosody.set("rate", f"{self.rate}%")
@@ -209,12 +220,10 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         for event in events:
             if event["audio_offset"] > seconds:
                 ssml_fragment = ssml[: event["text_offset"]]
+                # TODO: this is a little hacky, but it works for now
                 return ssml_fragment.split(">")[-1]
         return message
 
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.AZURE.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
@@ -225,6 +234,15 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         offset = 0
         self.logger.debug(f"Synthesizing message: {message}")
 
+        # Azure will return no audio for certain strings like "-", "[-", and "!"
+        # which causes the `chunk_generator` below to hang. Return an empty
+        # generator for these cases.
+        if not re.search(r"\w", message.text):
+            return SynthesisResult(
+                self.empty_generator(),
+                lambda _: message.text,
+            )
+
         async def chunk_generator(
             audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
         ):
@@ -233,22 +251,22 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 await asyncio.sleep(0)
             filled_size = audio_data_stream.read_data(audio_buffer)
             if filled_size != chunk_size:
-                yield ChunkResult(
+                yield SynthesisResult.ChunkResult(
                     chunk_transform(audio_buffer[offset:]), True
                 )
                 return
             else:
-                yield ChunkResult(
+                yield SynthesisResult.ChunkResult(
                     chunk_transform(audio_buffer[offset:]), False
                 )
             while True:
                 filled_size = audio_data_stream.read_data(audio_buffer)
                 if filled_size != chunk_size:
-                    yield ChunkResult(
+                    yield SynthesisResult.ChunkResult(
                         chunk_transform(audio_buffer[: filled_size - offset]), True
                     )
                     break
-                yield ChunkResult(chunk_transform(audio_buffer), False)
+                yield SynthesisResult.ChunkResult(chunk_transform(audio_buffer), False)
 
         word_boundary_event_pool = WordBoundaryEventPool()
         self.synthesizer.synthesis_word_boundary.connect(
@@ -269,6 +287,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             )
         else:
             output_generator = chunk_generator(audio_data_stream)
+
         return SynthesisResult(
             output_generator,
             lambda seconds: self.get_message_up_to(

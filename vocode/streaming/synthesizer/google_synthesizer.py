@@ -5,6 +5,7 @@ import logging
 import os
 import wave
 from typing import Any, Optional
+import aiohttp
 
 from vocode import getenv
 
@@ -24,26 +25,22 @@ from opentelemetry.context.context import Context
 
 
 class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
-    OFFSET_SECONDS = 0.5
-
     def __init__(
         self,
         synthesizer_config: GoogleSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
 
         from google.cloud import texttospeech_v1beta1 as tts
+        import google.auth
+
+        google.auth.default()
 
         self.tts = tts
 
         # Instantiates a client
-        credentials_path = getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        if not credentials_path:
-            raise Exception(
-                "Please set GOOGLE_APPLICATION_CREDENTIALS environment variable"
-            )
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
         self.client = tts.TextToSpeechClient()
 
         # Build the voice request, select the language code ("en-US") and the ssml
@@ -80,23 +77,25 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
         )
 
     # TODO: make this nonblocking, see speech.TextToSpeechAsyncClient
-    @tracer.start_as_current_span(
-        "synthesis", Context(synthesizer=SynthesizerType.GOOGLE.value)
-    )
     async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.GOOGLE.value.split('_', 1)[-1]}.create_total",
+        )
         response: self.tts.SynthesizeSpeechResponse = (  # type: ignore
             await asyncio.get_event_loop().run_in_executor(
                 self.thread_pool_executor, self.synthesize, message.text
             )
         )
+        create_speech_span.end()
+        convert_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.GOOGLE.value.split('_', 1)[-1]}.convert",
+        )
         output_sample_rate = response.audio_config.sample_rate_hertz
-
-        real_offset = int(GoogleSynthesizer.OFFSET_SECONDS * output_sample_rate)
 
         output_bytes_io = io.BytesIO()
         in_memory_wav = wave.open(output_bytes_io, "wb")
@@ -106,8 +105,10 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
         in_memory_wav.writeframes(response.audio_content[44:])
         output_bytes_io.seek(0)
 
-        return self.create_synthesis_result_from_wav(
+        result = self.create_synthesis_result_from_wav(
             file=output_bytes_io,
             message=message,
             chunk_size=chunk_size,
         )
+        convert_span.end()
+        return result

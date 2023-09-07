@@ -1,4 +1,3 @@
-from math import e
 from typing import Optional, Tuple
 from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 from vocode.streaming.models.agent import GPT4AllAgentConfig

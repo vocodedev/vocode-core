@@ -28,7 +28,7 @@ class EventsManager:
     async def handle_event(self, event: Event):
         pass
 
-    async def end(self):
+    async def flush(self):
         self.active = False
         while True:
             try:

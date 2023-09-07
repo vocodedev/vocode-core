@@ -1,6 +1,7 @@
 import logging
 from typing import Optional
 import typing
+import aiohttp
 
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
@@ -31,41 +32,39 @@ class SynthesizerFactory:
         self,
         synthesizer_config: SynthesizerConfig,
         logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        if synthesizer_config.type == SynthesizerType.GOOGLE:
+        if isinstance(synthesizer_config, GoogleSynthesizerConfig):
             return GoogleSynthesizer(
-                typing.cast(GoogleSynthesizerConfig, synthesizer_config), logger=logger
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
             )
-        elif synthesizer_config.type == SynthesizerType.AZURE:
+        elif isinstance(synthesizer_config, AzureSynthesizerConfig):
             return AzureSynthesizer(
-                typing.cast(AzureSynthesizerConfig, synthesizer_config), logger=logger
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
             )
-        elif synthesizer_config.type == SynthesizerType.ELEVEN_LABS:
+        elif isinstance(synthesizer_config, ElevenLabsSynthesizerConfig):
             return ElevenLabsSynthesizer(
-                typing.cast(ElevenLabsSynthesizerConfig, synthesizer_config),
-                logger=logger,
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
             )
-        elif synthesizer_config.type == SynthesizerType.PLAY_HT:
+        elif isinstance(synthesizer_config, PlayHtSynthesizerConfig):
             return PlayHtSynthesizer(
-                typing.cast(PlayHtSynthesizerConfig, synthesizer_config), logger=logger
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
             )
-        elif synthesizer_config.type == SynthesizerType.RIME:
+        elif isinstance(synthesizer_config, RimeSynthesizerConfig):
             return RimeSynthesizer(
-                typing.cast(RimeSynthesizerConfig, synthesizer_config), logger=logger
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
             )
-        elif synthesizer_config.type == SynthesizerType.GTTS:
+        elif isinstance(synthesizer_config, GTTSSynthesizerConfig):
             return GTTSSynthesizer(
-                typing.cast(GTTSSynthesizerConfig, synthesizer_config), logger=logger
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
             )
-        elif synthesizer_config.type == SynthesizerType.STREAM_ELEMENTS:
+        elif isinstance(synthesizer_config, StreamElementsSynthesizerConfig):
             return StreamElementsSynthesizer(
-                typing.cast(StreamElementsSynthesizerConfig, synthesizer_config),
-                logger=logger,
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
             )
-        elif synthesizer_config.type == SynthesizerType.COQUI_TTS:
+        elif isinstance(synthesizer_config, CoquiTTSSynthesizerConfig):
             return CoquiTTSSynthesizer(
-                typing.cast(CoquiTTSSynthesizerConfig, synthesizer_config),
-                logger=logger,
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
             )
         else:
             raise Exception("Invalid synthesizer config")

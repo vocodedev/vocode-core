@@ -31,6 +31,7 @@ appropriate call.
 
 1. Install [Ngrok](https://ngrok.com/)
 2. Install [Redis](https://redis.com/)
+3. Install [Poetry](https://python-poetry.org/)
 
 ## Run the example
 
@@ -100,7 +101,7 @@ source venv/bin/activate
 2. Install requirements
 
 ```bash
-pip install -r requirements.txt
+poetry install
 ```
 
 3. Run an instance of Redis at http://localhost:6379. With Docker, this can be done with:
@@ -125,17 +126,11 @@ With the self-hosted telephony server running:
 CONTACTS = [{"name": "Kian", "phone": "+123456789"}]
 ```
 
-2. Install `python-dotenv` to use the environment variables we set up earlier.
-
-```
-pip3 install python-dotenv
-```
-
-3. Run `main.py`
+2. Run `main.py`
 
 ```bash
-pip3 install -r requirements.txt
-python3 main.py
+poetry install
+poetry run python main.py
 ```
 
 # Code explanation
