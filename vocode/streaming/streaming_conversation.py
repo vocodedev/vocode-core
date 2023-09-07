@@ -397,12 +397,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 
                 if self.conversation.bot_sentiment:
                     metadata["sentiment"] = self.conversation.bot_sentiment
-                
-                self.conversation.transcript.add_bot_message(
-                    text=message_sent,
-                    conversation_id=self.conversation.id,
-                    metadata=metadata,
-                )
 
                 if self.conversation.agent.agent_config.end_conversation_on_goodbye:
                     goodbye_detected_task = (
