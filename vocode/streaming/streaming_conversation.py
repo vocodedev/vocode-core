@@ -359,31 +359,19 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 transcript_message = Message(
                     text="",
                     sender=Sender.BOT,
+                    metadata=metadata
                 )
                 self.conversation.transcript.add_message(
                     message=transcript_message,
                     conversation_id=self.conversation.id,
                     publish_to_events_manager=False,
                 )
-                (
-                    message_sent,
-                    cut_off,
-                    duration,
-                ) = await self.conversation.send_speech_to_output(
+                message_sent, cut_off, duration = await self.conversation.send_speech_to_output(
                     message.text,
                     synthesis_result,
                     item.interruption_event,
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
                     transcript_message=transcript_message,
-                )
-                # publish the transcript message now that it includes what was said during send_speech_to_output
-                self.conversation.transcript.maybe_publish_transcript_event_from_message(
-                    message=transcript_message,
-                    conversation_id=self.conversation.id,
-                )
-                item.agent_response_tracker.set()
-                self.conversation.logger.debug(
-                    "Bot reponse sent: {}".format(message_sent)
                 )
                 # Only approximate duration since we don't know the exact duration of the last chunk
                 metadata["duration"] = duration
@@ -397,6 +385,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 
                 if self.conversation.bot_sentiment:
                     metadata["sentiment"] = self.conversation.bot_sentiment
+
+                # publish the transcript message now that it includes what was said during send_speech_to_output
+                self.conversation.transcript.maybe_publish_transcript_event_from_message(
+                    message=transcript_message,
+                    conversation_id=self.conversation.id,
+                )
+                item.agent_response_tracker.set()
+                self.conversation.logger.debug(
+                    "Bot reponse sent: {}".format(message_sent)
+                )
 
                 if self.conversation.agent.agent_config.end_conversation_on_goodbye:
                     goodbye_detected_task = (
