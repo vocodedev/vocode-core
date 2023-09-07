@@ -1433,6 +1433,12 @@
             "enum": ["auto", "relaxed"],
             "title": "Endpointing Sensitivity",
             "default": "auto"
+          },
+          "ivr_navigation_mode": {
+            "type": "string",
+            "enum": ["default", "off"],
+            "title": "Ivr Navigation Mode",
+            "default": "off"
           }
         },
         "type": "object",
@@ -1530,6 +1536,12 @@
             "enum": ["auto", "relaxed"],
             "title": "Endpointing Sensitivity",
             "default": "auto"
+          },
+          "ivr_navigation_mode": {
+            "type": "string",
+            "enum": ["default", "off"],
+            "title": "Ivr Navigation Mode",
+            "default": "off"
           }
         },
         "type": "object",
@@ -1649,6 +1661,13 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Endpointing Sensitivity"
+          },
+          "ivr_navigation_mode": {
+            "anyOf": [
+              { "type": "string", "enum": ["default", "off"] },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Ivr Navigation Mode"
           }
         },
         "type": "object",
@@ -1880,6 +1899,12 @@
             "enum": ["auto", "relaxed"],
             "title": "Endpointing Sensitivity",
             "default": "auto"
+          },
+          "ivr_navigation_mode": {
+            "type": "string",
+            "enum": ["default", "off"],
+            "title": "Ivr Navigation Mode",
+            "default": "off"
           }
         },
         "type": "object",
@@ -2169,6 +2194,12 @@
             "enum": ["auto", "relaxed"],
             "title": "Endpointing Sensitivity",
             "default": "auto"
+          },
+          "ivr_navigation_mode": {
+            "type": "string",
+            "enum": ["default", "off"],
+            "title": "Ivr Navigation Mode",
+            "default": "off"
           }
         },
         "type": "object",
@@ -2499,7 +2530,8 @@
           "id": { "type": "string", "format": "uuid", "title": "Id" },
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
           "type": { "type": "string", "enum": ["voice_rime"], "title": "Type" },
-          "speaker": { "type": "string", "title": "Speaker" }
+          "speaker": { "type": "string", "title": "Speaker" },
+          "speed_alpha": { "type": "number", "title": "Speed Alpha" }
         },
         "type": "object",
         "required": ["id", "user_id", "type", "speaker"],
@@ -2508,7 +2540,8 @@
       "RimeVoiceParams": {
         "properties": {
           "type": { "type": "string", "enum": ["voice_rime"], "title": "Type" },
-          "speaker": { "type": "string", "title": "Speaker" }
+          "speaker": { "type": "string", "title": "Speaker" },
+          "speed_alpha": { "type": "number", "title": "Speed Alpha" }
         },
         "type": "object",
         "required": ["type", "speaker"],
@@ -2523,6 +2556,13 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Speaker"
+          },
+          "speed_alpha": {
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Speed Alpha"
           }
         },
         "type": "object",
