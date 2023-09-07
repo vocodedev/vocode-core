@@ -29,7 +29,8 @@ from vocode.streaming.constants import (
     PER_CHUNK_ALLOWANCE_SECONDS,
     ALLOWED_IDLE_TIME,
 )
-from vocode.streaming.ignored_while_talking_fillers_fork import IGNORED_WHILE_TALKING_FILLERS
+from vocode.streaming.ignored_while_talking_fillers_fork import IGNORED_WHILE_TALKING_FILLERS, \
+    OpenAIEmbeddingOverTalkingFillerDetector
 from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage
@@ -122,26 +123,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
 
             # Detect if the bot is talking. This may fail if the current task is done and another not started yet. But playing the audio takes most of the time.
-            if self.conversation.synthesis_results_worker.current_task is not None and not self.conversation.synthesis_results_worker.current_task.done():
+            if self.conversation.synthesis_results_worker.current_task is not None and not self.conversation.synthesis_results_worker.current_task.done() and self.conversation.over_talking_filler_detector:
                 self.conversation.logger.info(
-                    'The user said something during the bot was talking. Testing to ignore filler words and confirmation words.')
-                if len(transcription.message) < 10:
-                    def normalize_string(input_str: str):
-                        input_str = input_str.strip().strip('.').lower().replace('-', '')
-                        unique_chars = []
-                        for char in input_str:
-                            if unique_chars and unique_chars[-1] == char:
-                                continue
-                            unique_chars.append(char)
-                        return ''.join(unique_chars)
-
-                    normalized_transcription = normalize_string(transcription.message)
-                    # TODO The user may create combinations which won't be present.
-                    for filler in IGNORED_WHILE_TALKING_FILLERS:
-                        if normalize_string(filler) == normalized_transcription:
-                            self.conversation.logger.info(
-                                f"Ignoring filler {transcription.message} similar to filler {filler}.")
-                            return
+                    f'The user said "{transcription.message}" during the bot was talking. Testing to ignore filler words and confirmation words.')
+                if self.conversation.over_talking_filler_detector.detect_filler(transcription.message):
+                    return
 
             if transcription.is_final:
                 self.conversation.logger.info(
@@ -398,7 +384,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             per_chunk_allowance_seconds: float = PER_CHUNK_ALLOWANCE_SECONDS,
             events_manager: Optional[EventsManager] = None,
             logger: Optional[logging.Logger] = None,
-            summarizer: Optional[ChatGPTSummaryAgent] = None
+            summarizer: Optional[ChatGPTSummaryAgent] = None,
+            over_talking_filler_detector: Optional[OpenAIEmbeddingOverTalkingFillerDetector] = None,
     ):
         self.id = conversation_id or create_conversation_id()
         self.logger = wrap_logger(
@@ -413,6 +400,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         self.summarizer = summarizer
         self.summary = None
+
+        self.over_talking_filler_detector = over_talking_filler_detector
 
         self.interruptible_events: queue.Queue[InterruptibleEvent] = queue.Queue()
         self.interruptible_event_factory = self.QueueingInterruptibleEventFactory(

@@ -1,6 +1,14 @@
 """
 These are fillers a non-talking listener may say when talking to a person on a phone to indicate they are listening and following the conversation, but not wanting to interrupt:
 """
+import logging
+from logging import Logger
+
+import numpy as np
+
+from vocode.streaming.json_cache_proxy import JsonCacheProxy
+from vocode.streaming.openai_embedding import openai_embed
+
 IGNORED_WHILE_TALKING_FILLERS = [
     "uh",
     "um",
@@ -111,3 +119,29 @@ IGNORED_WHILE_TALKING_FILLERS = [
     "jaj",
 
 ]
+
+
+class OpenAIEmbeddingOverTalkingFillerDetector:
+
+    def __init__(self, cache_storage_path: str, thresh_hold=0.91, logger: Logger = None):
+        self.cache_openai_embed = JsonCacheProxy('openai-embeddings', func=openai_embed, postprocess_func=np.array, cache_storage_path=cache_storage_path)
+        if logger is None:
+            logger = logging.getLogger(__name__)
+
+        self.logger = logger
+        self.thresh_hold = thresh_hold
+
+    def normalize(self, text: str):
+        return text.strip(" .,")
+
+    def detect_filler(self, text: str):
+        if len(text) < 20:
+            embedding = openai_embed(self.normalize(text))
+            for filler in IGNORED_WHILE_TALKING_FILLERS:
+                similarity = np.dot(embedding, self.cache_openai_embed(self.normalize(filler)))
+                if similarity > self.thresh_hold:
+                    self.logger.info(
+                        f"Ignoring filler {text} similar to filler {filler} with similarity {similarity}.")
+                    return True
+
+        return False
