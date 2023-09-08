@@ -123,12 +123,12 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[Tuple[str, bool], None]:
         self.logger.debug("LLM generating response to human input")
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
             self.memory.append(self.get_memory_entry(human_input, cut_off_response))
-            yield cut_off_response
+            yield cut_off_response, False
             return
         self.memory.append(self.get_memory_entry(human_input, ""))
         if self.is_first_response and self.first_response:
@@ -146,7 +146,7 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
             sentence = re.sub(r"^\s+(.*)", r" \1", sentence)
             response_buffer += sentence
             self.memory[-1] = self.get_memory_entry(human_input, response_buffer)
-            yield sentence
+            yield sentence, True
 
     def update_last_bot_message_on_cut_off(self, message: str):
         last_message = self.memory[-1]

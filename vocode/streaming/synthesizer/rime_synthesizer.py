@@ -55,6 +55,9 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
             "speaker": self.speaker,
             "samplingRate": self.sampling_rate,
         }
+        if self.synthesizer_config.speed_alpha is not None:
+            body["speedAlpha"] = self.synthesizer_config.speed_alpha
+
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.RIME.value.split('_', 1)[-1]}.create_total",
         )

@@ -135,7 +135,7 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
         human_input: str,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[Tuple[str, bool], None]:
         asyncio.get_event_loop().run_in_executor(
             self.thread_pool_executor,
             lambda input: self.conversation.predict(input=input),
@@ -145,4 +145,4 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
         async for message in collate_response_async(
             self.llamacpp_get_tokens(),
         ):
-            yield str(message)
+            yield str(message), True

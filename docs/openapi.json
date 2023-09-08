@@ -1422,7 +1422,24 @@
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
             "default": "high"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "noise_suppression": {
+            "type": "boolean",
+            "title": "Noise Suppression",
+            "default": false
+          },
+          "endpointing_sensitivity": {
+            "type": "string",
+            "enum": ["auto", "relaxed"],
+            "title": "Endpointing Sensitivity",
+            "default": "auto"
+          },
+          "ivr_navigation_mode": {
+            "type": "string",
+            "enum": ["default", "off"],
+            "title": "Ivr Navigation Mode",
+            "default": "off"
+          }
         },
         "type": "object",
         "required": ["id", "user_id", "prompt", "actions", "voice"],
@@ -1508,7 +1525,24 @@
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
             "default": "high"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "noise_suppression": {
+            "type": "boolean",
+            "title": "Noise Suppression",
+            "default": false
+          },
+          "endpointing_sensitivity": {
+            "type": "string",
+            "enum": ["auto", "relaxed"],
+            "title": "Endpointing Sensitivity",
+            "default": "auto"
+          },
+          "ivr_navigation_mode": {
+            "type": "string",
+            "enum": ["default", "off"],
+            "title": "Ivr Navigation Mode",
+            "default": "off"
+          }
         },
         "type": "object",
         "required": ["prompt", "voice"],
@@ -1613,6 +1647,27 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Context Endpoint"
+          },
+          "noise_suppression": {
+            "anyOf": [
+              { "type": "boolean" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Noise Suppression"
+          },
+          "endpointing_sensitivity": {
+            "anyOf": [
+              { "type": "string", "enum": ["auto", "relaxed"] },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Endpointing Sensitivity"
+          },
+          "ivr_navigation_mode": {
+            "anyOf": [
+              { "type": "string", "enum": ["default", "off"] },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Ivr Navigation Mode"
           }
         },
         "type": "object",
@@ -1698,6 +1753,11 @@
             "default": false
           },
           "transcript": { "type": "string", "title": "Transcript" },
+          "machine_detection_result": {
+            "type": "string",
+            "enum": ["human", "machine"],
+            "title": "Machine Detection Result"
+          },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "$ref": "#/components/schemas/Agent" },
@@ -1714,6 +1774,11 @@
             "type": "string",
             "format": "date-time",
             "title": "End Time"
+          },
+          "hipaa_compliant": {
+            "type": "boolean",
+            "title": "Hipaa Compliant",
+            "default": false
           }
         },
         "type": "object",
@@ -1752,7 +1817,7 @@
         "properties": {
           "field_type": {
             "type": "string",
-            "enum": ["field_type_email", "field_type_address"],
+            "enum": ["field_type_email"],
             "title": "Field Type"
           },
           "label": { "type": "string", "title": "Label" },
@@ -1828,7 +1893,24 @@
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
             "default": "high"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "noise_suppression": {
+            "type": "boolean",
+            "title": "Noise Suppression",
+            "default": false
+          },
+          "endpointing_sensitivity": {
+            "type": "string",
+            "enum": ["auto", "relaxed"],
+            "title": "Endpointing Sensitivity",
+            "default": "auto"
+          },
+          "ivr_navigation_mode": {
+            "type": "string",
+            "enum": ["default", "off"],
+            "title": "Ivr Navigation Mode",
+            "default": "off"
+          }
         },
         "type": "object",
         "required": ["prompt"],
@@ -1844,6 +1926,17 @@
               { "$ref": "#/components/schemas/CreateCallAgentParams" }
             ],
             "title": "Agent"
+          },
+          "on_machine_answer": {
+            "type": "string",
+            "enum": ["continue", "hangup"],
+            "title": "On Machine Answer",
+            "default": "continue"
+          },
+          "hipaa_compliant": {
+            "type": "boolean",
+            "title": "Hipaa Compliant",
+            "default": false
           }
         },
         "type": "object",
@@ -1912,7 +2005,7 @@
           "api_key": { "type": "string", "title": "Api Key" }
         },
         "type": "object",
-        "required": ["id", "user_id", "type", "voice_id", "api_key"],
+        "required": ["id", "user_id", "type", "voice_id"],
         "title": "ElevenLabsVoice"
       },
       "ElevenLabsVoiceParams": {
@@ -1928,7 +2021,7 @@
           "api_key": { "type": "string", "title": "Api Key" }
         },
         "type": "object",
-        "required": ["type", "voice_id", "api_key"],
+        "required": ["type", "voice_id"],
         "title": "ElevenLabsVoiceParams"
       },
       "ElevenLabsVoiceUpdateParams": {
@@ -2031,7 +2124,8 @@
           "event_phone_call_connected",
           "event_phone_call_ended",
           "event_transcript",
-          "event_recording"
+          "event_recording",
+          "event_machine_detection"
         ],
         "title": "EventType",
         "description": "An enumeration."
@@ -2099,7 +2193,24 @@
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
             "default": "high"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "noise_suppression": {
+            "type": "boolean",
+            "title": "Noise Suppression",
+            "default": false
+          },
+          "endpointing_sensitivity": {
+            "type": "string",
+            "enum": ["auto", "relaxed"],
+            "title": "Endpointing Sensitivity",
+            "default": "auto"
+          },
+          "ivr_navigation_mode": {
+            "type": "string",
+            "enum": ["default", "off"],
+            "title": "Ivr Navigation Mode",
+            "default": "off"
+          }
         },
         "type": "object",
         "required": ["id", "user_id", "prompt", "actions", "voice"],
@@ -2120,6 +2231,11 @@
             "default": false
           },
           "transcript": { "type": "string", "title": "Transcript" },
+          "machine_detection_result": {
+            "type": "string",
+            "enum": ["human", "machine"],
+            "title": "Machine Detection Result"
+          },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "type": "string", "format": "uuid", "title": "Agent" },
@@ -2136,6 +2252,11 @@
             "type": "string",
             "format": "date-time",
             "title": "End Time"
+          },
+          "hipaa_compliant": {
+            "type": "boolean",
+            "title": "Hipaa Compliant",
+            "default": false
           }
         },
         "type": "object",
@@ -2424,7 +2545,8 @@
           "id": { "type": "string", "format": "uuid", "title": "Id" },
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
           "type": { "type": "string", "enum": ["voice_rime"], "title": "Type" },
-          "speaker": { "type": "string", "title": "Speaker" }
+          "speaker": { "type": "string", "title": "Speaker" },
+          "speed_alpha": { "type": "number", "title": "Speed Alpha" }
         },
         "type": "object",
         "required": ["id", "user_id", "type", "speaker"],
@@ -2433,7 +2555,8 @@
       "RimeVoiceParams": {
         "properties": {
           "type": { "type": "string", "enum": ["voice_rime"], "title": "Type" },
-          "speaker": { "type": "string", "title": "Speaker" }
+          "speaker": { "type": "string", "title": "Speaker" },
+          "speed_alpha": { "type": "number", "title": "Speed Alpha" }
         },
         "type": "object",
         "required": ["type", "speaker"],
@@ -2448,6 +2571,13 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Speaker"
+          },
+          "speed_alpha": {
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Speed Alpha"
           }
         },
         "type": "object",
