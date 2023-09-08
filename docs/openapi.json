@@ -1774,6 +1774,11 @@
             "type": "string",
             "format": "date-time",
             "title": "End Time"
+          },
+          "hipaa_compliant": {
+            "type": "boolean",
+            "title": "Hipaa Compliant",
+            "default": false
           }
         },
         "type": "object",
@@ -1927,6 +1932,11 @@
             "enum": ["continue", "hangup"],
             "title": "On Machine Answer",
             "default": "continue"
+          },
+          "hipaa_compliant": {
+            "type": "boolean",
+            "title": "Hipaa Compliant",
+            "default": false
           }
         },
         "type": "object",
@@ -2242,6 +2252,11 @@
             "type": "string",
             "format": "date-time",
             "title": "End Time"
+          },
+          "hipaa_compliant": {
+            "type": "boolean",
+            "title": "Hipaa Compliant",
+            "default": false
           }
         },
         "type": "object",
