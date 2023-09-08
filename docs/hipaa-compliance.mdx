@@ -1,0 +1,23 @@
+---
+title: "HIPAA Compliance"
+---
+
+The `hipaa_compliant` flag in the Vocode outbound calls API configures the system to not
+persist any potentially sensitive information. Turning on the flag makes the API supportable for use-cases requiring HIPAA compliance.
+
+In particular, turning on the flag:
+
+- Redacts the content of the prompt on the `calls` resource
+- Prevents the transcript from being written to the `calls` resource
+- Configures the call not to be recorded
+
+# Turning on the flag
+
+```python
+vocode_client.calls.create_call(
+    from_number="<YOUR VOCODE NUMBER>",
+    to_number="15555555555",
+    agent=...,
+    hipaa_compliant=True
+)
+```

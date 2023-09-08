@@ -173,7 +173,8 @@
         "multilingual",
         "injecting-context",
         "machine-detection",
-        "ivr-navigation"
+        "ivr-navigation",
+        "hipaa-compliance"
       ]
     }
   ],
