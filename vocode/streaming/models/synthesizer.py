@@ -47,7 +47,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
     sampling_rate: int
     audio_encoding: AudioEncoding
     should_encode_as_wav: bool = False
-    sentiment_config: Optional[SentimentConfig] = None,
+    sentiment_config: Optional[SentimentConfig] = None
     # added by bluberry
     initial_bot_sentiment: Optional[BotSentiment] = None
 
