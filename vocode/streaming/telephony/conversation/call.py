@@ -6,6 +6,7 @@ from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import PhoneCallEndedEvent
 from vocode.streaming.output_device.vonage_output_device import VonageOutputDevice
+from vocode.streaming.scalevoice_config import get_scalevoice_conversation_config
 
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
@@ -68,6 +69,7 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
             per_chunk_allowance_seconds=0.01,
             events_manager=events_manager,
             logger=logger,
+            **get_scalevoice_conversation_config(logger)
         )
 
     def attach_ws(self, ws: WebSocket):
