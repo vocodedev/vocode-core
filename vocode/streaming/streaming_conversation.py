@@ -37,6 +37,8 @@ from vocode.streaming.constants import (
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
     PER_CHUNK_ALLOWANCE_SECONDS,
     ALLOWED_IDLE_TIME,
+    ALLOWED_IDLE_TIME_FIRST,
+    RETRIVAL_TIME
 )
 from vocode.streaming.agent.base_agent import (
     AgentInput,
@@ -531,6 +533,38 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 await self.terminate()
                 return
             await asyncio.sleep(15)
+
+    async def follow_up(self):
+        """Terminates the conversation after 15 seconds if no activity is detected"""
+        while self.is_active():
+            if  not self.first_try and time.time() - self.last_action_timestamp > ALLOWED_IDLE_TIME_FIRST:
+                self.logger.debug("Conversation idle for too long, terminating")
+                self.agent.transcript.add_message(text='Are you still with me?', sender=Sender.BOT, conversation_id=self.id)
+                self.first_try = True
+            
+            elif self.first_try and not self.second_try and time.time() - self.last_action_timestamp > ALLOWED_IDLE_TIME_FIRST:
+                self.logger.debug("Conversation idle for too long, terminating")
+                self.agent.transcript.add_message(text='Are you still with me?', sender=Sender.BOT, conversation_id=self.id)
+                self.second_try = True
+                
+            elif self.first_try and self.second_try and time.time() - self.last_action_timestamp > ALLOWED_IDLE_TIME_FIRST:
+                self.first_try = False
+                self.second_try = False
+                self.terminate()
+                return
+            await asyncio.sleep(10)
+
+    async def retrive_conversation(self):
+        """Terminates the conversation after 15 seconds if no activity is detected"""
+        while self.is_active():
+            
+            if  time.time() - self.last_action_timestamp > RETRIVAL_TIME:
+     
+                self.logger.debug("Retrive Conversation")
+                
+                self.receive_message('So?')
+
+            await asyncio.sleep(5)
 
     async def track_bot_sentiment(self):
         """Updates self.bot_sentiment every second based on the current transcript"""
