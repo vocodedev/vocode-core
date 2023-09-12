@@ -86,6 +86,7 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
                 )
 
                 result = self.create_synthesis_result_from_wav(
+                    synthesizer_config=self.synthesizer_config,
                     file=io.BytesIO(read_response),
                     message=message,
                     chunk_size=chunk_size,

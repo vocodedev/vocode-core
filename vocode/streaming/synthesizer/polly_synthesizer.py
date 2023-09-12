@@ -70,7 +70,7 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
     def get_message_up_to(
         self,
         message: str,
-        seconds: int,
+        seconds: float,
         word_events,
     ) -> str:
         for event in word_events:
