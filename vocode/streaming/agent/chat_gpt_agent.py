@@ -100,14 +100,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         return parameters
 
     def create_first_response(self, first_prompt):
-        messages = [
-            (
+        messages = (
                 [{"role": "system", "content": self.agent_config.prompt_preamble}]
                 if self.agent_config.prompt_preamble
                 else []
-            )
-            + [{"role": "user", "content": first_prompt}]
-        ]
+            ) + ([{"role": "user", "content": first_prompt}] if first_prompt is not None else [])
 
         parameters = self.get_chat_parameters(messages)
         return openai.ChatCompletion.create(**parameters)
