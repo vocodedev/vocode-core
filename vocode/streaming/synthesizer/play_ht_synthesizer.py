@@ -1,7 +1,7 @@
 import asyncio
 import io
 import logging
-from typing import Optional
+from typing import Optional, List
 
 from aiohttp import ClientSession, ClientTimeout
 from pydub import AudioSegment
@@ -16,8 +16,12 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
     tracer,
+    FILLER_PHRASES,
+    FILLER_AUDIO_PATH,
+    FillerAudio
 )
 from vocode.streaming.utils.mp3_helper import decode_mp3
+from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
 
 
 TTS_ENDPOINT = "https://play.ht/api/v2/tts/stream"
@@ -38,8 +42,6 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
             raise ValueError(
                 "You must set the PLAY_HT_API_KEY and PLAY_HT_USER_ID environment variables"
             )
-        self.words_per_minute = 150
-        self.experimental_streaming = synthesizer_config.experimental_streaming
 
     async def create_speech(
         self,
@@ -69,21 +71,11 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
             f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.create_total",
         )
 
-        response = await self.aiohttp_session.post(
+        async with self.aiohttp_session.post(
             TTS_ENDPOINT, headers=headers, json=body, timeout=ClientTimeout(total=15)
-        )
-        if not response.ok:
-            raise Exception(f"Play.ht API error status code {response.status}")
-        if self.experimental_streaming:
-            return SynthesisResult(
-                self.experimental_mp3_streaming_output_generator(
-                    response, chunk_size, create_speech_span
-                ),  # should be wav
-                lambda seconds: self.get_message_cutoff_from_voice_speed(
-                    message, seconds, self.words_per_minute
-                ),
-            )
-        else:
+        ) as response:
+            if not response.ok:
+                raise Exception(f"Play.ht API error status code {response.status}")
             read_response = await response.read()
             create_speech_span.end()
             convert_span = tracer.start_span(
@@ -92,10 +84,84 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
             output_bytes_io = decode_mp3(read_response)
 
             result = self.create_synthesis_result_from_wav(
-                synthesizer_config=self.synthesizer_config,
                 file=output_bytes_io,
                 message=message,
                 chunk_size=chunk_size,
             )
             convert_span.end()
             return result
+
+    async def get_phrase_filler_audios(self) -> List[FillerAudio]:
+        filler_phrase_audios = []
+        for filler_phrase in FILLER_PHRASES:
+            cache_key = "-".join(
+                (
+                    str(filler_phrase.text),
+                    str(self.synthesizer_config.type),
+                    str(self.synthesizer_config.audio_encoding),
+                    str(self.synthesizer_config.sampling_rate),
+                    str(self.synthesizer_config.voice_id),
+                    str(self.synthesizer_config.speed)
+                )
+            )
+            filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.wav")
+            
+
+            if os.path.exists(filler_audio_path):
+                audio_data = open(filler_audio_path, "rb").read()
+            else:
+                self.logger.debug(f"Generating filler audio for {filler_phrase.text}")
+
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "X-User-ID": self.user_id,
+                    "Accept": "audio/mpeg",
+                    "Content-Type": "application/json",
+                }
+                body = {
+                    "voice": self.synthesizer_config.voice_id,
+                    "text": filler_phrase.text,
+                    "sample_rate": self.synthesizer_config.sampling_rate,
+                }
+                
+                if self.synthesizer_config.speed: # is not None and self.similarity_boost is not None:
+                    body["speed"] = self.synthesizer_config.speed
+                if self.synthesizer_config.seed:
+                    body["seed"] = self.synthesizer_config.seed
+                if self.synthesizer_config.temperature:
+                    body["temperature"] = self.synthesizer_config.temperature
+
+
+                create_speech_span = tracer.start_span(
+                            f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.create_total",
+                        )
+                
+                async with self.aiohttp_session.post(
+                            TTS_ENDPOINT, headers=headers, json=body, timeout=ClientTimeout(total=15)
+                        ) as response:
+                            if not response.ok:
+                                raise Exception(f"Play.ht API error status code {response.status}")
+                            audio_data = await response.read()
+                            create_speech_span.end()
+
+
+                            audio_segment: AudioSegment = AudioSegment.from_mp3(
+                            io.BytesIO(audio_data)  # type: ignore
+                        )
+
+                            audio_segment.export(filler_audio_path, format="wav")
+
+            filler_phrase_audios.append(
+                FillerAudio(
+                    filler_phrase,
+                    audio_data=convert_wav(
+                        filler_audio_path,
+                        output_sample_rate=self.synthesizer_config.sampling_rate,
+                        output_encoding=self.synthesizer_config.audio_encoding,
+                    ),
+                    synthesizer_config=self.synthesizer_config,
+                    is_interruptible=True,
+                    seconds_per_chunk=2,
+                )
+            )
+        return filler_phrase_audios
