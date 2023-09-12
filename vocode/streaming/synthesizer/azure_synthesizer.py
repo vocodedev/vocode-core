@@ -219,7 +219,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self,
         message: str,
         ssml: str,
-        seconds: int,
+        seconds: float,
         word_boundary_event_pool: WordBoundaryEventPool,
     ) -> str:
         events = word_boundary_event_pool.get_events_sorted()

@@ -77,7 +77,10 @@ class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
         audio_segment.export(output_bytes_io, format="wav")  # type: ignore
 
         result = self.create_synthesis_result_from_wav(
-            file=output_bytes_io, message=message, chunk_size=chunk_size
+            synthesizer_config=self.synthesizer_config,
+            file=output_bytes_io,
+            message=message,
+            chunk_size=chunk_size,
         )
 
         convert_span.end()

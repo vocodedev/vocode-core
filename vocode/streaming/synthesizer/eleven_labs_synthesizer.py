@@ -108,6 +108,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             output_bytes_io = decode_mp3(audio_data)
 
             result = self.create_synthesis_result_from_wav(
+                synthesizer_config=self.synthesizer_config,
                 file=output_bytes_io,
                 message=message,
                 chunk_size=chunk_size,

@@ -80,7 +80,10 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
             audio_file = io.BytesIO(base64.b64decode(data.get("audioContent")))
 
             result = self.create_synthesis_result_from_wav(
-                file=audio_file, message=message, chunk_size=chunk_size
+                synthesizer_config=self.synthesizer_config,
+                file=audio_file,
+                message=message,
+                chunk_size=chunk_size,
             )
             convert_span.end()
             return result

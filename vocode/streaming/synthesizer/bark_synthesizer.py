@@ -60,6 +60,7 @@ class BarkSynthesizer(BaseSynthesizer[BarkSynthesizerConfig]):
         write_wav(output_bytes_io, self.SAMPLE_RATE, int_audio_arr)
 
         result = self.create_synthesis_result_from_wav(
+            synthesizer_config=self.synthesizer_config,
             file=output_bytes_io,
             message=message,
             chunk_size=chunk_size,
