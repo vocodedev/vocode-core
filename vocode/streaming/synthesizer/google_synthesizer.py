@@ -106,6 +106,7 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
         output_bytes_io.seek(0)
 
         result = self.create_synthesis_result_from_wav(
+            synthesizer_config=self.synthesizer_config,
             file=output_bytes_io,
             message=message,
             chunk_size=chunk_size,
