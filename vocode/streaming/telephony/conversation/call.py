@@ -1,3 +1,6 @@
+from os import getenv
+from pathlib import Path
+
 from fastapi import WebSocket
 from enum import Enum
 import logging
@@ -80,6 +83,23 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
     async def attach_ws_and_start(self, ws: WebSocket):
         raise NotImplementedError
 
+    def save_conversation(self, logs_path: Path) -> None:
+        # if path doesn't exist, create it
+        logs_path.mkdir(parents=True, exist_ok=True)
+        # save transcript to file
+        if len(self.transcript.event_logs) > 0:
+            timestamp = self.transcript.event_logs[0].timestamp
+            with open(logs_path / f"{timestamp}_conversation.txt", "w") as f:
+                f.write(self.transcript.to_string(include_timestamps=True))
+            if self.summary is not None:
+                with open(logs_path / f"{timestamp}_summary.txt", "w") as f:
+                    f.write(self.summary)
+            return
+        self.logger.warning("Transcript is empty, not saving to file")
     async def tear_down(self):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
         await self.terminate()
+
+        logs_path = getenv("LOGS_PATH")
+        if logs_path is not None:
+            self.save_conversation(Path(logs_path))
