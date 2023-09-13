@@ -507,9 +507,21 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         self.agent.start()
         initial_message = self.agent.get_agent_config().initial_message
+        self.agent.attach_transcript(self.transcript)
         if initial_message:
             asyncio.create_task(self.send_initial_message(initial_message))
-        self.agent.attach_transcript(self.transcript)
+        elif isinstance(self.agent, ChatGPTAgent):
+            self.agent.first_response = self.agent.create_first_response(self.agent.agent_config.expected_first_prompt)
+            initial_message_tracker = asyncio.Event()
+            agent_response_event = (
+                self.interruptible_event_factory.create_interruptible_agent_response_event(
+                    AgentResponseMessage(message=BaseMessage(text=self.agent.first_response['choices'][0]['message']['content'])),
+                    is_interruptible=False,
+                    agent_response_tracker=initial_message_tracker,
+                )
+            )
+            self.agent_responses_worker.consume_nonblocking(agent_response_event)
+
         if mark_ready:
             await mark_ready()
         if self.synthesizer.get_synthesizer_config().sentiment_config:
