@@ -15,7 +15,8 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     tracer,
     FILLER_PHRASES,
     FILLER_AUDIO_PATH,
-    FillerAudio
+    FillerAudio,
+    encode_as_wav
 )
 from vocode.streaming.models.synthesizer import (
     ElevenLabsSynthesizerConfig,
@@ -27,6 +28,7 @@ from vocode.streaming.utils.mp3_helper import decode_mp3
 from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 import os
 import io
+from vocode.streaming.utils import convert_wav
 
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
@@ -54,6 +56,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.words_per_minute = 150
         self.experimental_streaming = synthesizer_config.experimental_streaming
         self.logger = logger or logging.getLogger(__name__)
+
 
 
     async def experimental_streaming_output_generator(
@@ -170,8 +173,35 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
             return result
 
+
+
     async def get_phrase_filler_audios(self) -> List[FillerAudio]:
-        filler_phrase_audios = []
+        # filler_phrase_audios = []
+        filler_phrase_audios = {'question' : [], 'confirm' : [], 'yep' : []}
+
+        key_map = {"Um..." : 'question', 
+                   "Uh..." : 'question', 
+                   "Uhm" : 'question', 
+                   "Uhmm" : 'question', 
+                   "Hmm..." : 'question', 
+                #    "uhmm yeah" : 'confirm', 
+
+                   "Okay..." : 'confirm', 
+                   "right..." : 'confirm', 
+                   "Alright..." : 'confirm', 
+                   "Yeah..." : 'confirm', 
+                   "o...ok" : 'confirm', 
+                   "well..." : 'confirm', 
+                   "I mean" : 'confirm', 
+
+                   "Let me see..." : 'question',
+
+                   "Yep" : 'yep',
+                   "Yeah go on" : 'yep',
+                   "um..." : 'yep',
+
+                }
+
         for filler_phrase in FILLER_PHRASES:
             cache_key = "-".join(
                 (
@@ -180,8 +210,12 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     str(self.synthesizer_config.audio_encoding),
                     str(self.synthesizer_config.sampling_rate),
                     str(self.voice_id),
+                    str(self.synthesizer_config.similarity_boost),
+                    str(self.synthesizer_config.stability),
+                    str(self.model_id),
                 )
             )
+            
             filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.wav")
             if os.path.exists(filler_audio_path):
                 audio_data = open(filler_audio_path, "rb").read()
@@ -205,9 +239,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 if self.model_id:
                     body["model_id"] = self.model_id
 
-                create_speech_span = tracer.start_span(
-                    f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_total",
-                )
                 async with aiohttp.ClientSession() as session:
                     async with session.request(
                         "POST",
@@ -221,24 +252,34 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                                 f"ElevenLabs API returned {response.status} status code"
                             )
                         audio_data = await response.read()
-                        create_speech_span.end()
-                        convert_span = tracer.start_span(
-                            f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.convert",
-                        )
+
+
                         audio_segment: AudioSegment = AudioSegment.from_mp3(
                             io.BytesIO(audio_data)  # type: ignore
                         )
 
-                        output_bytes_io = io.BytesIO()
-
-                        audio_segment.export(output_bytes_io, format="wav")  # type: ignore
+                        audio_segment.export(filler_audio_path, format="wav")
 
 
-                filler_phrase_audios.append(
-                    FillerAudio(
-                        filler_phrase,
-                        audio_data,
-                        self.synthesizer_config,
-                    )
+            filler_phrase_audios[key_map[filler_phrase.text]].append(
+
+                FillerAudio(
+                    filler_phrase,
+                    audio_data=convert_wav(
+                        filler_audio_path,
+                        output_sample_rate=self.synthesizer_config.sampling_rate,
+                        output_encoding=self.synthesizer_config.audio_encoding,
+                    ),
+                    synthesizer_config=self.synthesizer_config,
+                    is_interruptible=True,
+                    seconds_per_chunk=2,
                 )
+            )
         return filler_phrase_audios
+    
+    def save_as_wav(sef, data, filename, sample_rate=44100, sample_width=1, channels=1):
+        with wave.open(filename, 'wb') as wav_file:
+            wav_file.setnchannels(channels)
+            wav_file.setsampwidth(sample_width)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(data)
