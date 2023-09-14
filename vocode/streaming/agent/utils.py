@@ -113,7 +113,9 @@ def get_sentence_from_buffer(buffer: str):
 
 
 def format_openai_chat_messages_from_transcript(
-    transcript: Transcript, prompt_preamble: Optional[str] = None
+    transcript: Transcript, 
+    prompt_preamble: Optional[str] = None,
+    prompt_epilogue: Optional[str] = None
 ) -> List[dict]:
     chat_messages: List[Dict[str, Optional[Any]]] = (
         [{"role": "system", "content": prompt_preamble}] if prompt_preamble else []
@@ -169,6 +171,14 @@ def format_openai_chat_messages_from_transcript(
                     "content": event_log.action_output.response.json(),
                 }
             )
+    if prompt_epilogue:
+        chat_messages.append(
+            {
+                "role": "system", 
+                "content": prompt_epilogue,
+            }
+        )
+
     return chat_messages
 
 
