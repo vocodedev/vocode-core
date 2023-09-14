@@ -17,13 +17,11 @@ def get_voice_id(synthesizer_config: SynthesizerConfig) -> str:
         voice = synthesizer_config.voice_id # type: ignore
     return voice or synthesizer_config.type
 
-def cache_key(text, synthesizer_config: SynthesizerConfig) -> str:
-    config_text = synthesizer_config.json()
+def cache_key(text: str, voice_id: str, config_text: str) -> str:
     cleaned_text = text.lower().strip() # lowercase, remove leading/trailing whitespace
     cleaned_text = re.sub(r'\s+', '_', cleaned_text) # replace whitespace with underscore
     # cleaned_text = re.sub(r'[|<>"?*:\\.$[\]#/@]', '', cleaned_text) # this method does not handle escape characters
     cleaned_text = re.sub(r'\W+', '-', cleaned_text) # defined as alphanumeric only and underscore, convert to dash
-    voice_id = get_voice_id(synthesizer_config)
     hash_value = hashlib.md5((cleaned_text + config_text).encode()).hexdigest()[:8]
     return f"{voice_id}/synth_{cleaned_text[:32]}_{hash_value}.wav"
 
@@ -102,7 +100,9 @@ class CachingSynthesizer(BaseSynthesizer):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        cached_path = os.path.join(self.cache_path, cache_key(message.text, self.inner_synthesizer.get_synthesizer_config()))
+        config = self.inner_synthesizer.get_synthesizer_config()
+        voice_id = get_voice_id(config)
+        cached_path = os.path.join(self.cache_path, cache_key(message.text, voice_id, config.json()))
         if os.path.exists(cached_path):
             with open(cached_path, "rb") as f:
                 result = self.inner_synthesizer.create_synthesis_result_from_wav(f, message, chunk_size)

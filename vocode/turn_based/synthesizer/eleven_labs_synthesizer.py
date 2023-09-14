@@ -12,6 +12,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
         stability: Optional[float] = None,
         similarity_boost: Optional[float] = None,
         api_key: Optional[str] = None,
+        model_id: Optional[str] = None,
     ):
         import elevenlabs
 
@@ -22,6 +23,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
         self.validate_stability_and_similarity_boost(stability, similarity_boost)
         self.stability = stability
         self.similarity_boost = similarity_boost
+        self.model_id = model_id
 
     def validate_stability_and_similarity_boost(
         self, stability: Optional[float], similarity_boost: Optional[float]
@@ -39,6 +41,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
                 stability=self.stability, similarity_boost=self.similarity_boost
             )
 
-        audio = self.elevenlabs.generate(text, voice=voice)
+        kwargs = {"voice": voice}
+        if self.model_id is not None:
+            kwargs["model"] = self.model_id
+        audio = self.elevenlabs.generate(text, **kwargs)
 
         return AudioSegment.from_mp3(io.BytesIO(audio))  # type: ignore
