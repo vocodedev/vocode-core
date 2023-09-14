@@ -114,6 +114,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             extra_params["tier"] = self.transcriber_config.tier
         if self.transcriber_config.version:
             extra_params["version"] = self.transcriber_config.version
+        if self.transcriber_config.filler_words:
+            extra_params["filler_words"] = self.transcriber_config.filler_words
         if self.transcriber_config.keywords:
             extra_params["keywords"] = self.transcriber_config.keywords
         if (

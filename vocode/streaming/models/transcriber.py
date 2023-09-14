@@ -105,9 +105,10 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
 
 class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM.value):
     language: Optional[str] = None
-    model: Optional[str] = "nova"
+    model: Optional[str] = "general"
     tier: Optional[str] = None
     version: Optional[str] = None
+    filler_words: Optional[str] = None
     keywords: Optional[list] = None
 
 
