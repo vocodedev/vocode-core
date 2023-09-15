@@ -1,7 +1,8 @@
 import asyncio
 import logging
 import time
-from typing import Any, AsyncGenerator, Optional, Tuple, Union
+import os
+from typing import List, Any, AsyncGenerator, Optional, Tuple, Union
 import wave
 import aiohttp
 from opentelemetry.trace import Span
@@ -10,6 +11,9 @@ from vocode import getenv
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
+    FILLER_PHRASES,
+    FILLER_AUDIO_PATH,
+    FillerAudio,
     encode_as_wav,
     tracer,
 )
@@ -48,6 +52,66 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
         self.experimental_streaming = synthesizer_config.experimental_streaming
+        self.logger = logger or logging.getLogger(__name__)
+
+    async def get_phrase_filler_audios(self) -> List[FillerAudio]:
+        filler_phrase_audios = []
+        for filler_phrase in FILLER_PHRASES:
+            cache_key = "-".join(
+                (
+                    str(filler_phrase.text),
+                    str(self.synthesizer_config.type),
+                    str(self.synthesizer_config.audio_encoding),
+                    str(self.synthesizer_config.sampling_rate),
+                    str(self.voice_id),
+                    str(self.stability),
+                    str(self.similarity_boost),
+                )
+            )
+            filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.bytes")
+            if os.path.exists(filler_audio_path):
+                audio_data = open(filler_audio_path, "rb").read()
+            else:
+                self.logger.debug(f"Generating filler audio for {filler_phrase.text}")
+                voice = self.elevenlabs.Voice(voice_id=self.voice_id)
+                if self.stability is not None and self.similarity_boost is not None:
+                    voice.settings = self.elevenlabs.VoiceSettings(
+                        stability=self.stability, similarity_boost=self.similarity_boost
+                    )
+                url = self.make_url()
+
+                headers = {"xi-api-key": self.api_key}
+                body = {
+                    "text": filler_phrase.text,
+                    "voice_settings": voice.settings.dict() if voice.settings else None,
+                }
+                if self.model_id:
+                    body["model_id"] = self.model_id
+
+                session = self.aiohttp_session
+                response = await session.request(
+                    "POST",
+                    url,
+                    json=body,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=15),
+                )
+                if not response.ok:
+                    raise Exception(f"ElevenLabs API returned {response.status} status code")
+
+                audio_data = await response.read()                
+                # offset = self.synthesizer_config.sampling_rate * self.OFFSET_MS // 1000
+                # audio_data = audio_data[offset:]
+                with open(filler_audio_path, "wb") as f:
+                    f.write(audio_data)
+            filler_phrase_audios.append(
+                FillerAudio(
+                    filler_phrase,
+                    audio_data,
+                    self.synthesizer_config,
+                )
+            )
+        return filler_phrase_audios
 
     async def create_speech(
         self,
@@ -60,13 +124,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             voice.settings = self.elevenlabs.VoiceSettings(
                 stability=self.stability, similarity_boost=self.similarity_boost
             )
-        url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
+        url = self.make_url()
 
-        if self.experimental_streaming:
-            url += "/stream"
-
-        if self.optimize_streaming_latency:
-            url += f"?optimize_streaming_latency={self.optimize_streaming_latency}"
         headers = {"xi-api-key": self.api_key}
         body = {
             "text": message.text,
@@ -115,3 +174,13 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             convert_span.end()
 
             return result
+
+    def make_url(self):
+        url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
+
+        if self.experimental_streaming:
+            url += "/stream"
+
+        if self.optimize_streaming_latency:
+            url += f"?optimize_streaming_latency={self.optimize_streaming_latency}"
+        return url
