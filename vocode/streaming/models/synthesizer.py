@@ -106,13 +106,15 @@ class GoogleSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GOOGLE.val
 
 
 ELEVEN_LABS_ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
+ELEVEN_LABS_CHARLIE_VOICE_ID = "IKne3meq5aSn9XLyUdCD"
+ELEVEN_LABS_MYRA_VOICE_ID = "xiF4vIsZEX5eTp3pgNeH"
 
 
 class ElevenLabsSynthesizerConfig(
     SynthesizerConfig, type=SynthesizerType.ELEVEN_LABS.value
 ):
     api_key: Optional[str] = None
-    voice_id: Optional[str] = ELEVEN_LABS_ADAM_VOICE_ID
+    voice_id: Optional[str] = ELEVEN_LABS_CHARLIE_VOICE_ID
     optimize_streaming_latency: Optional[int]
     experimental_streaming: Optional[bool] = False
     stability: Optional[float]
