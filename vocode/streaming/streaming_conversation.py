@@ -273,6 +273,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 return
             try:
+                self.conversation.logger.debug("Processing agent's response")
                 agent_response = item.payload
                 if isinstance(agent_response, AgentResponseFillerAudio):
                     self.send_filler_audio(item.agent_response_tracker)
@@ -283,16 +284,18 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     await self.conversation.terminate()
                     return
 
+
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
                 )
+                self.conversation.logger.debug("Casted")
 
                 if self.conversation.filler_audio_worker is not None:
                     if (
                             self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                     ):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
-
+                        self.conversation.logger.debug("Sent filler audio")
                 self.conversation.logger.debug(
                     "Generatating speech for message message: {}".format(agent_response_message.message))
                 synthesis_result = await self.conversation.synthesizer.create_speech(
@@ -328,6 +331,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 item: InterruptibleAgentResponseEvent[Tuple[BaseMessage, SynthesisResult]],
         ):
             try:
+                self.conversation.logger.debug("Got message from agend")
                 message, synthesis_result = item.payload
                 # create an empty transcript message and attach it to the transcript
                 transcript_message = Message(

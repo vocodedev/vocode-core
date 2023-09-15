@@ -207,7 +207,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         agent_span_first = tracer.start_span(
             f"{tracer_name_start}.generate_first"  # type: ignore
         )
-        self.logger.debug("AGENT: Got transcription from agent: %s, %s", transcription.message, time.time())
+        self.logger.debug("AGENT: Got transcription from agent: %s", transcription.message)
         responses = self.generate_response(
             transcription.message,
             is_interrupt=transcription.is_interrupt,
@@ -215,20 +215,21 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         )
         is_first_response = True
         function_call = None
-        start = time.time()
         async for response in responses:
-            self.logger.debug("AGENT: Getting response from agent `%s` ,took %s, at %s", response, time.time() - start,
-                              time.time())
+            self.logger.debug("Got response from agent `%s`", response
+                              )
             if isinstance(response, FunctionCall):
                 function_call = response
                 continue
             if is_first_response:
                 agent_span_first.end()
                 is_first_response = False
+            self.logger.debug("Producing response `%s`", response)
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
+            self.logger.debug("Produced response `%s`", response)
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
