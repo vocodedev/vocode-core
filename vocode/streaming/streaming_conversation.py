@@ -295,7 +295,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                     ):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
-                        self.conversation.logger("Sent filler audio")
+                        self.conversation.logger.debug("Sent filler audio")
                 self.conversation.logger.debug(
                     "Generatating speech for message message: {}".format(agent_response_message.message))
                 synthesis_result = await self.conversation.synthesizer.create_speech(

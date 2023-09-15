@@ -29,7 +29,7 @@ from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
 
-FILLER_PHRASES = ["Dobře...", "Jo.", "Chápu.", "Jasně"]
+FILLER_PHRASES = ["Dobře...", "Jo jo...", "Chápu...", "Jasně...", "Tak jo...", "Podíváme se na to spolu...", ""]
 
 
 async def create_wav(

@@ -215,7 +215,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         )
         is_first_response = True
         function_call = None
-        start = time.time()
         async for response in responses:
             self.logger.debug("Got response from agent `%s`", response
                               )
