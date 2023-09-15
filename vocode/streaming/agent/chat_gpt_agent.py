@@ -178,4 +178,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         async for message in collate_response_async(
             openai_get_tokens(stream), get_functions=True
         ):
+            if self.agent_config.remove_exclamation:
+                # replace ! by . because it sounds better when speaking.
+                self.logger.info(f"Message before: {message}")
+                message = message.replace('!','.')
+                self.logger.info(f"Message after: {message}")
             yield message, True
