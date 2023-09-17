@@ -13,7 +13,12 @@ from langchain.memory import ConversationBufferMemory
 
 from stdout_filterer import RedactPhoneNumbers
 
-load_dotenv()
+vocode.setenv(
+    OPENAI_API_KEY="<your OpenAI key>",
+    DEEPGRAM_API_KEY="<your Deepgram key>",
+    AZURE_SPEECH_KEY="<your Azure key>",
+    AZURE_SPEECH_REGION="<your Azure region>",
+)
 
 from langchain.chat_models import ChatOpenAI
 from langchain.agents import initialize_agent
