@@ -10,7 +10,6 @@ import typing
 from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 
 from azure.ai.textanalytics.aio import TextAnalyticsClient
-
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
     AgentInput,
@@ -31,8 +30,7 @@ from vocode.streaming.constants import (
     PER_CHUNK_ALLOWANCE_SECONDS,
     ALLOWED_IDLE_TIME,
 )
-from vocode.streaming.ignored_while_talking_fillers_fork import IGNORED_WHILE_TALKING_FILLERS, \
-    OpenAIEmbeddingOverTalkingFillerDetector
+from vocode.streaming.ignored_while_talking_fillers_fork import OpenAIEmbeddingOverTalkingFillerDetector
 from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage
@@ -201,7 +199,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async def process(self, item: InterruptibleAgentResponseEvent[FillerAudio]):
             try:
                 filler_audio = item.payload
-                assert self.conversation.filler_audio_config is not None
+                # assert self.conversation.filler_audio_config is not None
                 filler_synthesis_result = filler_audio.create_synthesis_result()
                 self.current_filler_seconds_per_chunk = filler_audio.seconds_per_chunk
                 silence_threshold = (
@@ -249,12 +247,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
             )
 
-        def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+        def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event], sentiment: Optional[str] = None):
             assert self.conversation.filler_audio_worker is not None
             self.conversation.logger.debug("Sending filler audio")
+            self.conversation.logger.info(f"Sentiment: {sentiment}")
+            prefix = "p_" if sentiment == "positive" else "n_"
             if self.conversation.synthesizer.filler_audios:
                 filler_audio = random.choice(
-                    self.conversation.synthesizer.filler_audios
+                    [audio for audio in self.conversation.synthesizer.filler_audios if audio.message.text.startswith(prefix)]
                 )
                 self.conversation.logger.debug(f"Chose {filler_audio.message.text}")
                 event = self.interruptible_event_factory.create_interruptible_agent_response_event(
@@ -278,14 +278,21 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.debug("Processing agent's response")
                 agent_response = item.payload
                 if isinstance(agent_response, AgentResponseFillerAudio):
-                    self.send_filler_audio(item.agent_response_tracker)
+                    sentiment = None
+                    if self.conversation.text_analysis_client is not None:
+                        response = await self.conversation.text_analysis_client.analyze_sentiment(
+                            documents=[agent_response.transcript],
+                            show_opinion_mining=True,
+                        )
+                        sentiment = response[0].sentiment
+                        item.agent_response_tracker.sentiment = sentiment
+                    self.send_filler_audio(item.agent_response_tracker, sentiment)
                     return
                 if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")
                     item.agent_response_tracker.set()
                     await self.conversation.terminate()
                     return
-
 
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
@@ -523,7 +530,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             initial_message_tracker = asyncio.Event()
             agent_response_event = (
                 self.interruptible_event_factory.create_interruptible_agent_response_event(
-                    AgentResponseMessage(message=BaseMessage(text=self.agent.first_response['choices'][0]['message']['content'])),
+                    AgentResponseMessage(
+                        message=BaseMessage(text=self.agent.first_response['choices'][0]['message']['content'])),
                     is_interruptible=False,
                     agent_response_tracker=initial_message_tracker,
                 )
