@@ -4,14 +4,10 @@ import asyncio
 import json
 import logging
 import random
-import time
 import typing
 from enum import Enum
-from opentelemetry import trace
-from opentelemetry.trace import Span
 from typing import (
     AsyncGenerator,
-    Generator,
     Generic,
     Optional,
     Tuple,
@@ -20,6 +16,7 @@ from typing import (
     TYPE_CHECKING,
 )
 
+from opentelemetry import trace
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.action.phone_call_action import (
     TwilioPhoneCallAction,
@@ -30,7 +27,6 @@ from vocode.streaming.models.actions import (
     ActionInput,
     ActionOutput,
     FunctionCall,
-    FunctionFragment,
 )
 from vocode.streaming.models.agent import (
     AgentConfig,
@@ -38,7 +34,7 @@ from vocode.streaming.models.agent import (
     LLMAgentConfig,
 )
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.model import BaseModel, TypedModel
+from vocode.streaming.models.model import TypedModel
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import remove_non_letters_digits
@@ -102,7 +98,7 @@ class AgentResponseStop(AgentResponse, type=AgentResponseType.STOP.value):
 class AgentResponseFillerAudio(
     AgentResponse, type=AgentResponseType.FILLER_AUDIO.value
 ):
-    pass
+    transcript: Optional[str]
 
 
 AgentConfigType = TypeVar("AgentConfigType", bound=AgentConfig)
@@ -301,7 +297,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 )
             if self.agent_config.send_filler_audio:
                 self.produce_interruptible_agent_response_event_nonblocking(
-                    AgentResponseFillerAudio()
+                    AgentResponseFillerAudio(transcript=transcription.message)
                 )
             self.logger.debug("Responding to transcription")
             should_stop = False
