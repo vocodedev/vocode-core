@@ -13,12 +13,7 @@ from langchain.memory import ConversationBufferMemory
 
 from stdout_filterer import RedactPhoneNumbers
 
-vocode.setenv(
-    OPENAI_API_KEY="<your OpenAI key>",
-    DEEPGRAM_API_KEY="<your Deepgram key>",
-    AZURE_SPEECH_KEY="<your Azure key>",
-    AZURE_SPEECH_REGION="<your Azure region>",
-)
+load_dotenv()
 
 from langchain.chat_models import ChatOpenAI
 from langchain.agents import initialize_agent
@@ -32,7 +27,7 @@ if __name__ == "__main__":
         input("Objective: ")
         or "Find a random person in my contacts and tell them a joke"
     )
-    llm = ChatOpenAI(temperature=0, model_name="gpt-4")  # type: ignore
+    llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo")  # type: ignore
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     # Logging of LLMChains
     verbose = True
