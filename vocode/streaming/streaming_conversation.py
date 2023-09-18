@@ -9,6 +9,8 @@ import time
 import typing
 from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 
+from azure.ai.textanalytics.aio import TextAnalyticsClient
+
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
     AgentInput,
@@ -384,6 +386,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             transcriber: BaseTranscriber[TranscriberConfig],
             agent: BaseAgent,
             synthesizer: BaseSynthesizer,
+            text_analysis_client: Optional[TextAnalyticsClient] = None,
             conversation_id: Optional[str] = None,
             per_chunk_allowance_seconds: float = PER_CHUNK_ALLOWANCE_SECONDS,
             events_manager: Optional[EventsManager] = None,
@@ -401,6 +404,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent = agent
         self.synthesizer = synthesizer
         self.synthesis_enabled = True
+        self.text_analysis_client = text_analysis_client
 
         self.summarizer = summarizer
         self.summary = None
