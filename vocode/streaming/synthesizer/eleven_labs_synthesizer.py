@@ -2,10 +2,12 @@ import asyncio
 import logging
 import time
 import os
+import io
 from typing import List, Any, AsyncGenerator, Optional, Tuple, Union
 import wave
 import aiohttp
 from opentelemetry.trace import Span
+from pydub import AudioSegment
 
 from vocode import getenv
 from vocode.streaming.synthesizer.base_synthesizer import (
@@ -23,6 +25,7 @@ from vocode.streaming.models.synthesizer import (
 )
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.utils import convert_wav
 from vocode.streaming.utils.mp3_helper import decode_mp3
 from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 
@@ -68,7 +71,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     str(self.similarity_boost),
                 )
             )
-            filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.bytes")
+            filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.wav")
             if os.path.exists(filler_audio_path):
                 audio_data = open(filler_audio_path, "rb").read()
             else:
@@ -76,7 +79,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 voice = self.elevenlabs.Voice(voice_id=self.voice_id)
                 if self.stability is not None and self.similarity_boost is not None:
                     voice.settings = self.elevenlabs.VoiceSettings(
-                        stability=self.stability, similarity_boost=self.similarity_boost
+                        stability=self.stability, 
+                        similarity_boost=self.similarity_boost
                     )
                 url = self.make_url()
 
@@ -88,27 +92,39 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 if self.model_id:
                     body["model_id"] = self.model_id
 
-                session = self.aiohttp_session
-                response = await session.request(
-                    "POST",
-                    url,
-                    json=body,
-                    headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=15),
-                )
-                if not response.ok:
-                    raise Exception(f"ElevenLabs API returned {response.status} status code")
+                async with aiohttp.ClientSession() as session:
+                    async with session.request(
+                        "POST",
+                        url,
+                        json=body,
+                        headers=headers,
+                        timeout=aiohttp.ClientTimeout(total=15),
+                    ) as response:
+                        if not response.ok:
+                            raise Exception(f"ElevenLabs API returned {response.status} status code")
 
-                audio_data = await response.read()                
-                # offset = self.synthesizer_config.sampling_rate * self.OFFSET_MS // 1000
-                # audio_data = audio_data[offset:]
-                with open(filler_audio_path, "wb") as f:
-                    f.write(audio_data)
+                        audio_data = await response.read()  
+                        # offset = self.synthesizer_config.sampling_rate * self.OFFSET_MS // 1000
+                        # audio_data = audio_data[offset:]
+
+                        audio_segment: AudioSegment = AudioSegment.from_mp3(
+                            io.BytesIO(audio_data)  # type: ignore
+                        )         
+
+                        audio_segment.export(filler_audio_path, format="wav")
+
+
             filler_phrase_audios.append(
                 FillerAudio(
                     filler_phrase,
-                    audio_data,
-                    self.synthesizer_config,
+                    audio_data = convert_wav(
+                        filler_audio_path,
+                        output_sample_rate=self.synthesizer_config.sampling_rate,
+                        output_encoding=self.synthesizer_config.audio_encoding
+                    ),
+                    synthesizer_config=self.synthesizer_config,
+                    is_interruptible=False,
+                    seconds_per_chunk=2,
                 )
             )
         return filler_phrase_audios
