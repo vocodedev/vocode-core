@@ -2,6 +2,9 @@ import os
 
 from logging import Logger
 
+from azure.ai.textanalytics.aio import TextAnalyticsClient
+from azure.core.credentials import AzureKeyCredential
+
 from vocode.streaming.agent.gpt_summary_agent import ChatGPTSummaryAgent
 from vocode.streaming.ignored_while_talking_fillers_fork import OpenAIEmbeddingOverTalkingFillerDetector
 from vocode.streaming.models.agent import ChatGPTAgentConfig, AzureOpenAIConfig
@@ -19,6 +22,8 @@ def get_scalevoice_conversation_config(logger: Logger):
     AZURE_OPENAI_API_KEY_SUMMARY = os.environ['AZURE_OPENAI_API_KEY_SUMMARY']
     AZURE_OPENAI_API_BASE_SUMMARY = os.environ['AZURE_OPENAI_API_BASE_SUMMARY']
     PROJECT_ROOT = os.environ['PROJECT_ROOT']
+    AZURE_TEXT_ANALYTICS_KEY = os.environ['AZURE_TEXT_ANALYTICS_KEY']
+    AZURE_TEXT_ANALYTICS_ENDPOINT = os.environ['AZURE_TEXT_ANALYTICS_ENDPOINT']
 
     return dict(
         summarizer=ChatGPTSummaryAgent(logger=logger,
@@ -36,4 +41,7 @@ def get_scalevoice_conversation_config(logger: Logger):
                                            ),
                                        )) if AZURE_OPENAI_API_BASE_SUMMARY is not None else None,
         over_talking_filler_detector=OpenAIEmbeddingOverTalkingFillerDetector(PROJECT_ROOT + '/tmp/', logger=logger),
+        text_analysis_client=TextAnalyticsClient(endpoint=AZURE_TEXT_ANALYTICS_ENDPOINT,
+                                                 credential=AzureKeyCredential(AZURE_TEXT_ANALYTICS_KEY)),
+
     )
