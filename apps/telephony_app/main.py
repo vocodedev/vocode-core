@@ -52,8 +52,8 @@ telephony_server = TelephonyServer(
         TwilioInboundCallConfig(
             url="/inbound_call",
             agent_config=ChatGPTAgentConfig(
-                initial_message=BaseMessage(text="What up"),
-                prompt_preamble="Have a pleasant conversation about life",
+                initial_message=BaseMessage(text="Hello and welcome to the Assort Health Intake Assistant!"),
+                prompt_preamble="Collect the caller's name, date of birth, collect insurance information. Please also ask if they have a referral to a specific doctor, ask for the chief medical complaint, collect home address, and collect his email as well.",
                 generate_responses=True,
             ),
             twilio_config=TwilioConfig(
