@@ -30,8 +30,10 @@ from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 
 from vocode.streaming.models.agent import ChatGPTAgentConfig, FillerAudioConfig
+from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.synthesizer import (
     SentimentConfig,
+    ElevenLabsSynthesizerConfig,
 )
 from vocode.streaming.constants import (
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
@@ -53,7 +55,9 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     SynthesisResult,
     FillerAudio,
 )
-from vocode.streaming.utils import create_conversation_id, get_chunk_size_per_second
+from vocode.streaming.utils import (create_conversation_id, 
+                                    get_chunk_size_per_second,
+                                    convert_wav)
 from vocode.streaming.transcriber.base_transcriber import (
     Transcription,
     BaseTranscriber,
@@ -67,6 +71,8 @@ from vocode.streaming.utils.worker import (
     InterruptibleAgentResponseEvent,
     InterruptibleWorker,
 )
+
+
 
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
 
