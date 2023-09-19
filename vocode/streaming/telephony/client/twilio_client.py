@@ -29,7 +29,7 @@ class TwilioClient(BaseTelephonyClient):
         conversation_id: str,
         to_phone: str,
         from_phone: str,
-        record: bool = True,
+        record: bool = False,
         digits: Optional[str] = None,
     ) -> str:
         # TODO: Make this async. This is blocking.
