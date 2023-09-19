@@ -10,6 +10,7 @@ import typing
 from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 
 from azure.ai.textanalytics.aio import TextAnalyticsClient
+
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
     AgentInput,
@@ -251,10 +252,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
             assert self.conversation.filler_audio_worker is not None
             self.conversation.logger.debug("Sending filler audio")
             self.conversation.logger.info(f"Sentiment: {sentiment}")
-            prefix = "p_" if sentiment == "positive" else "n_"
+            prefix = "n_"  # Uses neutral filler audios by default.
+            if sentiment == "positive":
+                prefix = "p_"
+            elif sentiment == "question":
+                prefix = "q_"
+
             if self.conversation.synthesizer.filler_audios:
                 filler_audio = random.choice(
-                    [audio for audio in self.conversation.synthesizer.filler_audios if audio.message.text.startswith(prefix)]
+                    [audio for audio in self.conversation.synthesizer.filler_audios if
+                     audio.message.text.startswith(prefix)]
                 )
                 self.conversation.logger.debug(f"Chose {filler_audio.message.text}")
                 event = self.interruptible_event_factory.create_interruptible_agent_response_event(
@@ -278,8 +285,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.debug("Processing agent's response")
                 agent_response = item.payload
                 if isinstance(agent_response, AgentResponseFillerAudio):
-                    sentiment = None
-                    if self.conversation.text_analysis_client is not None:
+                    sentiment = "question" if "?" in agent_response.transcript else None
+                    # if question mark in transcript set sentiment to question **AND** ignore call to text analysis.
+                    if self.conversation.text_analysis_client is not None and sentiment is None:
                         response = await self.conversation.text_analysis_client.analyze_sentiment(
                             documents=[agent_response.transcript],
                             show_opinion_mining=True,
