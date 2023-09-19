@@ -4,6 +4,7 @@ import base64
 from enum import Enum
 import json
 import logging
+import time
 from typing import Optional
 from vocode import getenv
 from vocode.streaming.agent.factory import AgentFactory
@@ -104,6 +105,8 @@ class TwilioCall(Call[TwilioOutputDevice]):
 
         if twilio_call.answered_by in ("machine_start", "fax"):
             self.logger.info(f"Call answered by {twilio_call.answered_by}")
+            logging.info("I am ending the call now within the twilio call code because it was answered by a machine")
+            time.sleep(4)
             twilio_call.update(status="completed")
         else:
             await self.wait_for_twilio_start(ws)

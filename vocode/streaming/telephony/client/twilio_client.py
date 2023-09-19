@@ -1,9 +1,23 @@
+import asyncio
+import logging
+import os
+import time
+
 from typing import Optional
+
+from aioify import aioify
 from twilio.rest import Client
+from xml.etree import ElementTree as ET
 
 from vocode.streaming.models.telephony import BaseCallConfig, TwilioConfig
+from vocode.streaming.telephony.call_information_handler_helpers.call_information_handler import \
+    get_transfer_conference_sid, execute_status_update_by_telephony_id
+from vocode.streaming.telephony.call_information_handler_helpers.call_status import CallStatus
 from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
 from vocode.streaming.telephony.templater import Templater
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class TwilioClient(BaseTelephonyClient):
@@ -30,7 +44,7 @@ class TwilioClient(BaseTelephonyClient):
         to_phone: str,
         from_phone: str,
         record: bool = False,
-        digits: Optional[str] = None,
+        digits: Optional[str] = None
     ) -> str:
         # TODO: Make this async. This is blocking.
         twiml = self.get_connection_twiml(conversation_id=conversation_id)
@@ -40,6 +54,10 @@ class TwilioClient(BaseTelephonyClient):
             from_=from_phone,
             send_digits=digits,
             record=record,
+            # status_callback=f"{os.getenv('BASE_URL')}/update_call_status",
+            # status_callback_event=['busy', 'completed', 'failed', 'in-progress',
+            #                        'initiated', 'no-answer', 'queued', 'ringing'],
+            # status_callback_method="POST",
             **self.get_telephony_config().extra_params,
         )
         return twilio_call.sid
@@ -49,8 +67,31 @@ class TwilioClient(BaseTelephonyClient):
             base_url=self.base_url, call_id=conversation_id
         )
 
+    async def fetch_transfer_conference_sid(self, twilio_sid, max_retries=5, retry_interval=3):
+        for _ in range(max_retries):
+            response = await get_transfer_conference_sid(twilio_sid)
+            calls = response.get('data', {}).get('calls', [])
+
+            if calls and 'transfer_conference_sid' in calls[0]:
+                return calls[0]['transfer_conference_sid']
+
+            # If the data is not yet available, wait for retry_interval seconds before trying again
+            await asyncio.sleep(retry_interval)
+        return None  # Return None if data is not found after all retries
+
     async def end_call(self, twilio_sid):
-        # TODO: Make this async. This is blocking.
+        logging.info("I am ending the call now within the twilio client code")
+        current_call = self.twilio_client.calls(twilio_sid).fetch()
+        transfer_conference_sid = await self.fetch_transfer_conference_sid(twilio_sid)
+
+        # if the call is part of a conference, we should just let it keep going instead
+        if current_call.parent_call_sid is not None or transfer_conference_sid:
+            await execute_status_update_by_telephony_id(telephony_id=twilio_sid,
+                                                        call_status=CallStatus.TRANSFERRED.value)
+            return False
+
+        await execute_status_update_by_telephony_id(telephony_id=twilio_sid,
+                                                    call_status=CallStatus.ENDED_BEFORE_TRANSFER.value)
         response = self.twilio_client.calls(twilio_sid).update(status="completed")
         return response.status == "completed"
 
@@ -58,7 +99,7 @@ class TwilioClient(BaseTelephonyClient):
         self,
         to_phone: str,
         from_phone: str,
-        mobile_only: bool = True,
+        mobile_only: bool = False, # originally to conform with California law; we leave as False for testing purposes
     ):
         if len(to_phone) < 8:
             raise ValueError("Invalid 'to' phone")
