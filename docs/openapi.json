@@ -94,12 +94,27 @@
         "tags": ["numbers"],
         "summary": "Buy Number",
         "operationId": "buy_number",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BuyPhoneNumberRequest" }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/PhoneNumber" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
               }
             }
           }
@@ -1439,6 +1454,11 @@
             "enum": ["default", "off"],
             "title": "Ivr Navigation Mode",
             "default": "off"
+          },
+          "conversation_speed": {
+            "type": "number",
+            "title": "Conversation Speed",
+            "default": 1.0
           }
         },
         "type": "object",
@@ -1542,6 +1562,11 @@
             "enum": ["default", "off"],
             "title": "Ivr Navigation Mode",
             "default": "off"
+          },
+          "conversation_speed": {
+            "type": "number",
+            "title": "Conversation Speed",
+            "default": 1.0
           }
         },
         "type": "object",
@@ -1668,6 +1693,13 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Ivr Navigation Mode"
+          },
+          "conversation_speed": {
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Conversation Speed"
           }
         },
         "type": "object",
@@ -1737,6 +1769,13 @@
         "type": "object",
         "required": ["type"],
         "title": "AzureVoiceUpdateParams"
+      },
+      "BuyPhoneNumberRequest": {
+        "properties": {
+          "area_code": { "type": "string", "title": "Area Code" }
+        },
+        "type": "object",
+        "title": "BuyPhoneNumberRequest"
       },
       "Call": {
         "properties": {
@@ -1910,6 +1949,11 @@
             "enum": ["default", "off"],
             "title": "Ivr Navigation Mode",
             "default": "off"
+          },
+          "conversation_speed": {
+            "type": "number",
+            "title": "Conversation Speed",
+            "default": 1.0
           }
         },
         "type": "object",
@@ -2210,6 +2254,11 @@
             "enum": ["default", "off"],
             "title": "Ivr Navigation Mode",
             "default": "off"
+          },
+          "conversation_speed": {
+            "type": "number",
+            "title": "Conversation Speed",
+            "default": 1.0
           }
         },
         "type": "object",
