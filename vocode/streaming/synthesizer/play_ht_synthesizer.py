@@ -92,6 +92,7 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
             output_bytes_io = decode_mp3(read_response)
 
             result = self.create_synthesis_result_from_wav(
+                synthesizer_config=self.synthesizer_config,
                 file=output_bytes_io,
                 message=message,
                 chunk_size=chunk_size,

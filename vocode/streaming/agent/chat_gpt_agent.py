@@ -9,6 +9,7 @@ import logging
 from pydantic import BaseModel
 
 from vocode import getenv
+from vocode.streaming.utils.make_disfluencies import make_disfluency
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.actions import FunctionCall, FunctionFragment
@@ -180,7 +181,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         ):
             if self.agent_config.remove_exclamation:
                 # replace ! by . because it sounds better when speaking.
-                self.logger.info(f"Message before: {message}")
                 message = message.replace('!','.')
-                self.logger.info(f"Message after: {message}")
+            message = make_disfluency(message)
             yield message, True
