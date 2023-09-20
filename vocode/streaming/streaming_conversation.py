@@ -613,6 +613,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             raise ValueError("Summarizer or summary_character_limit not set")
         while self.is_active():
             await asyncio.sleep(2)  # TODO: make this configurable or replace with hook on new message
+            # Check if the transcript has changed and is longer than the limit.
             if self.transcript.to_string() != prev_transcript \
                     and len(self.transcript.to_string()) > self.summary_character_limit:
                 self.logger.info("Summarizing conversation...")
