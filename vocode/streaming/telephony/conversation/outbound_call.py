@@ -1,9 +1,8 @@
 import logging
-from typing import Optional, Union
-from vocode import getenv
+from typing import Optional
 
+from vocode import getenv
 from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.synthesizer import (
     SynthesizerConfig,
 )
@@ -27,23 +26,24 @@ from vocode.streaming.utils import create_conversation_id
 
 class OutboundCall:
     def __init__(
-        self,
-        base_url: str,
-        to_phone: str,
-        from_phone: str,
-        config_manager: BaseConfigManager,
-        agent_config: AgentConfig,
-        twilio_config: Optional[TwilioConfig] = None,
-        vonage_config: Optional[VonageConfig] = None,
-        transcriber_config: Optional[TranscriberConfig] = None,
-        synthesizer_config: Optional[SynthesizerConfig] = None,
-        conversation_id: Optional[str] = None,
-        logger: Optional[logging.Logger] = None,
-        mobile_only: bool = True,
-        digits: Optional[
-            str
-        ] = None,  # Keys to press when the call connects, see send_digits https://www.twilio.com/docs/voice/api/call-resource#create-a-call-resource
-        output_to_speaker: bool = False,
+            self,
+            base_url: str,
+            to_phone: str,
+            from_phone: str,
+            config_manager: BaseConfigManager,
+            agent_config: AgentConfig,
+            twilio_config: Optional[TwilioConfig] = None,
+            vonage_config: Optional[VonageConfig] = None,
+            transcriber_config: Optional[TranscriberConfig] = None,
+            synthesizer_config: Optional[SynthesizerConfig] = None,
+            conversation_id: Optional[str] = None,
+            logger: Optional[logging.Logger] = None,
+            mobile_only: bool = True,
+            digits: Optional[
+                str
+            ] = None,
+            # Keys to press when the call connects, see send_digits https://www.twilio.com/docs/voice/api/call-resource#create-a-call-resource
+            output_to_speaker: bool = False,
     ):
         self.base_url = base_url
         self.to_phone = to_phone
@@ -86,7 +86,7 @@ class OutboundCall:
             raise ValueError("No telephony config provided")
 
     def create_transcriber_config(
-        self, transcriber_config_override: Optional[TranscriberConfig]
+            self, transcriber_config_override: Optional[TranscriberConfig]
     ) -> TranscriberConfig:
         if transcriber_config_override is not None:
             return transcriber_config_override
@@ -98,7 +98,7 @@ class OutboundCall:
             raise ValueError("No telephony config provided")
 
     def create_synthesizer_config(
-        self, synthesizer_config_override: Optional[SynthesizerConfig]
+            self, synthesizer_config_override: Optional[SynthesizerConfig]
     ) -> SynthesizerConfig:
         if synthesizer_config_override is not None:
             return synthesizer_config_override
@@ -120,7 +120,7 @@ class OutboundCall:
             conversation_id=self.conversation_id,
             to_phone=self.to_phone,
             from_phone=self.from_phone,
-            record=self.telephony_client.get_telephony_config().record,
+            record=True,  # self.telephony_client.get_telephony_config().record,
             digits=self.digits,
         )
         if isinstance(self.telephony_client, TwilioClient):
