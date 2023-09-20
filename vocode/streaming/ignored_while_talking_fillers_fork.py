@@ -123,8 +123,8 @@ IGNORED_WHILE_TALKING_FILLERS = [
 
 class OpenAIEmbeddingOverTalkingFillerDetector:
 
-    def __init__(self, cache_storage_path: str, thresh_hold=0.91, logger: Logger = None):
-        self.cache_openai_embed = JsonCacheProxy('openai-embeddings', func=openai_embed, postprocess_func=np.array, cache_storage_path=cache_storage_path)
+    def __init__(self, cache_storage_path: str = JsonCacheProxy.DEFAULT_CACHE_STORAGE_PATH, thresh_hold=0.91, logger: Logger = None):
+        self.cache_openai_embed = JsonCacheProxy('openai-embeddings-fillers', func=openai_embed, postprocess_func=np.array, cache_storage_path=cache_storage_path)
         if logger is None:
             logger = logging.getLogger(__name__)
 

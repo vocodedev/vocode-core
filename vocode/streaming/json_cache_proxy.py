@@ -24,8 +24,11 @@ def json_file_to_dict(file_path: str):
 
 
 class JsonCacheProxy:
+
+    DEFAULT_CACHE_STORAGE_PATH = os.path.dirname(os.path.abspath(__file__)) + '/cache/'
+
     def __init__(self, name: str, func: Callable, postprocess_func: Callable = lambda x: x,
-                 cache_storage_path='/tmp/scale-voice-json-cache-proxy/'):
+                 cache_storage_path=DEFAULT_CACHE_STORAGE_PATH):
         self.postprocess_func = postprocess_func
 
         if not os.path.exists(cache_storage_path):

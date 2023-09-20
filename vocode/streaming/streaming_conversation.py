@@ -44,6 +44,7 @@ from vocode.streaming.models.transcript import (
     TranscriptCompleteEvent,
 )
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.response_classifier import OpenaiEmbeddingsResponseClassifier
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
@@ -287,7 +288,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.debug("Processing agent's response")
                 agent_response = item.payload
                 if isinstance(agent_response, AgentResponseFillerAudio):
-                    sentiment = "question" if "?" in agent_response.transcript else None
+                    if self.conversation.openai_embeddings_response_classifier:
+                        response = self.conversation.openai_embeddings_response_classifier.classify_response(agent_response.transcript)
+                        sentiment = "question" if response.is_question else None
+
+                    else:
+                        sentiment = "question" if "?" in agent_response.transcript else None
+
                     # if question mark in transcript set sentiment to question **AND** ignore call to text analysis.
                     if self.conversation.text_analysis_client is not None and sentiment is None:
                         response = await self.conversation.text_analysis_client.analyze_sentiment(
@@ -411,6 +418,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             summarizer: Optional[ChatGPTSummaryAgent] = None,
             summary_character_limit: Optional[int] = None,
             over_talking_filler_detector: Optional[OpenAIEmbeddingOverTalkingFillerDetector] = None,
+            openai_embeddings_response_classifier: Optional[OpenaiEmbeddingsResponseClassifier] = None
     ):
         self.summary_character_limit = summary_character_limit
         self.id = conversation_id or create_conversation_id()
@@ -428,6 +436,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.summarizer = summarizer
 
         self.over_talking_filler_detector = over_talking_filler_detector
+        self.openai_embeddings_response_classifier = openai_embeddings_response_classifier
 
         self.interruptible_events: queue.Queue[InterruptibleEvent] = queue.Queue()
         self.interruptible_event_factory = self.QueueingInterruptibleEventFactory(

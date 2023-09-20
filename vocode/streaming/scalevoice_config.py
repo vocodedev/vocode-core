@@ -8,6 +8,7 @@ from azure.core.credentials import AzureKeyCredential
 from vocode.streaming.agent.gpt_summary_agent import ChatGPTSummaryAgent
 from vocode.streaming.ignored_while_talking_fillers_fork import OpenAIEmbeddingOverTalkingFillerDetector
 from vocode.streaming.models.agent import ChatGPTAgentConfig, AzureOpenAIConfig
+from vocode.streaming.response_classifier import OpenaiEmbeddingsResponseClassifier
 
 SUMMARIZER_PROMPT_PREAMBLE = """You are creating summaries for telephone calls transcripts between AI voice bot and customer."""
 
@@ -45,7 +46,8 @@ def get_scalevoice_conversation_config(logger: Logger,
                                                engine="gpt4"  # always use gpt4
                                            ),
                                        )) if AZURE_OPENAI_API_BASE_SUMMARY is not None else None,
-        over_talking_filler_detector=OpenAIEmbeddingOverTalkingFillerDetector(PROJECT_ROOT + '/tmp/', logger=logger),
+        over_talking_filler_detector=OpenAIEmbeddingOverTalkingFillerDetector(logger=logger),
+        openai_embeddings_response_classifier=OpenaiEmbeddingsResponseClassifier(),
         text_analysis_client=TextAnalyticsClient(endpoint=AZURE_TEXT_ANALYTICS_ENDPOINT,
                                                  credential=AzureKeyCredential(AZURE_TEXT_ANALYTICS_KEY)),
 
