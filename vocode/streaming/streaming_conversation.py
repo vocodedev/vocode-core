@@ -10,7 +10,6 @@ import typing
 from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 
 from azure.ai.textanalytics.aio import TextAnalyticsClient
-
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
     AgentInput,
@@ -252,8 +251,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
             assert self.conversation.filler_audio_worker is not None
             self.conversation.logger.debug("Sending filler audio")
             self.conversation.logger.info(f"Sentiment: {sentiment}")
+            conversation_length = len(self.conversation.transcript.event_logs)
             prefix = "n_"  # Uses neutral filler audios by default.
-            if sentiment == "positive":
+            if conversation_length < 3:
+                prefix = "f_"
+            elif sentiment == "positive":
                 prefix = "p_"
             elif sentiment == "question":
                 prefix = "q_"
