@@ -1,5 +1,5 @@
 import time
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
@@ -50,6 +50,7 @@ class ActionFinish(EventLog):
 class Summary(BaseModel):
     text: str
     timestamp: float = Field(default_factory=time.time)
+    last_message_ind: int
 
     def to_string(self, include_timestamp: bool = False) -> str:
         return f"{self.text}"
@@ -64,6 +65,36 @@ class Transcript(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    @property
+    def num_messages(self):
+        return len(self.event_logs)
+
+    @property
+    def last_summary_message_ind(self) -> Optional[int]:
+        if self.summaries is None or len(self.summaries) == 0:
+            return None
+        return self.summaries[-1].last_message_ind
+
+    @property
+    def num_summaries(self):
+        if self.summaries is None:
+            return 0
+        return len(self.summaries)
+
+    @property
+    def last_summary(self) -> Optional[Summary]:
+        if self.summaries is None or len(self.summaries) == 0:
+            return None
+        return self.summaries[-1]
+
+    def summary_data(self) -> Tuple[str, Optional[str]]:
+        transcript = self.to_string() if self.summaries is None else self.to_string_from(
+            self.summaries[-1].last_message_ind)
+        previous_summary = self.last_summary
+        previous_summary_text = previous_summary.text if previous_summary is not None else None
+
+        return transcript, previous_summary_text
+
     def attach_events_manager(self, events_manager: EventsManager):
         self.events_manager = events_manager
 
@@ -71,6 +102,13 @@ class Transcript(BaseModel):
         return "\n".join(
             event.to_string(include_timestamp=include_timestamps)
             for event in self.event_logs
+        )
+
+    def to_string_from(self, index: int, include_timestamps: bool = False) -> str:
+        """Return a string representation of the transcript from a given index."""
+        return "\n".join(
+            event.to_string(include_timestamp=include_timestamps)
+            for event in self.event_logs[index:]
         )
 
     def maybe_publish_transcript_event_from_message(
@@ -123,10 +161,12 @@ class Transcript(BaseModel):
     def add_summary(self, text: str):
 
         timestamp = time.time()
+        # FIXME: avoid adding duplicate summaries for example self.num_message == self.last_summary_message_ind
         self.summaries.append(
             Summary(
                 text=text,
                 timestamp=timestamp,
+                last_message_ind=self.num_messages
             )
         )
 

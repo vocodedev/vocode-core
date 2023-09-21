@@ -607,21 +607,30 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 prev_transcript = self.transcript.to_string()
 
     async def summarize_conversation(self):
-        prev_transcript = None
+        self.logger.info("Summarizer started")
         if self.summarizer is None or self.summary_character_limit is None:
-            self.logger.error("Summarizer or summary_character_limit not set. Not using summarized.")
+            self.logger.error("Summarizer or summary_character_limit not set. Not using summarizer.")
             raise ValueError("Summarizer or summary_character_limit not set")
         while self.is_active():
             await asyncio.sleep(2)  # TODO: make this configurable or replace with hook on new message
+            # FIXME: replace character limit with gpt token limit?
             # Check if the transcript has changed and is longer than the limit.
-            if self.transcript.to_string() != prev_transcript \
-                    and len(self.transcript.to_string()) > self.summary_character_limit:
+            num_summaries = self.transcript.num_summaries
+            sum_transcript, previous_summary_text = self.transcript.summary_data()
+            if len(sum_transcript) > self.summary_character_limit:
                 self.logger.info("Summarizing conversation...")
+            # if self.transcript.num_messages == self.transcript.last_summary_message_ind + 1:
 
-                summarizer_response = await self.summarizer.get_summary(self.transcript.to_string())
-                self.summary = summarizer_response["choices"][0].message.content
-                self.logger.debug("Summary %s", self.summary)
-                prev_transcript = self.transcript.to_string()
+            # convo = self.transcript
+            # if convo != prev_transcript \
+            #         and len(convo) > self.summary_character_limit:
+            #     self.logger.info("Summarizing conversation...")
+            #
+            #     # TODO: chain previous summaries to the new summary.
+            #     summarizer_response = await self.summarizer.get_summary(convo)
+            #     self.summary = summarizer_response["choices"][0].message.content
+            #     self.logger.debug("Summary %s", self.summary)
+            #     self.transcript.add_summary(self.summary)
 
     async def update_bot_sentiment(self):
         new_bot_sentiment = await self.bot_sentiment_analyser.analyse(
