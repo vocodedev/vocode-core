@@ -416,7 +416,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             events_manager: Optional[EventsManager] = None,
             logger: Optional[logging.Logger] = None,
             summarizer: Optional[ChatGPTSummaryAgent] = None,
-            summary_character_limit: Optional[int] = None,
+            summary_character_limit: Optional[int] = 500,
             over_talking_filler_detector: Optional[OpenAIEmbeddingOverTalkingFillerDetector] = None,
             openai_embeddings_response_classifier: Optional[OpenaiEmbeddingsResponseClassifier] = None
     ):
@@ -618,7 +618,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     async def summarize_conversation(self):
         self.logger.info("Summarizer started")
-        if self.summarizer is None or self.summary_character_limit is None:
+        if self.summarizer is None:
             self.logger.error("Summarizer or summary_character_limit not set. Not using summarizer.")
             raise ValueError("Summarizer or summary_character_limit not set")
         while self.is_active():
