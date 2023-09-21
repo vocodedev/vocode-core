@@ -36,7 +36,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             openai_api_key: Optional[str] = None,
             vector_db_factory=VectorDBFactory(),
             goodbye_phrase: Optional[str] = "STOP CALL",
-            last_messages_cnt: int = 1_000,
+            last_messages_cnt: int = 4,
     ):
         super().__init__(
             agent_config=agent_config, action_factory=action_factory, logger=logger
