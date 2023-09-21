@@ -424,7 +424,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.text_analysis_client = text_analysis_client
 
         self.summarizer = summarizer
-        self.summary = None
 
         self.over_talking_filler_detector = over_talking_filler_detector
 
@@ -619,18 +618,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             sum_transcript, previous_summary_text = self.transcript.summary_data()
             if len(sum_transcript) > self.summary_character_limit:
                 self.logger.info("Summarizing conversation...")
-            # if self.transcript.num_messages == self.transcript.last_summary_message_ind + 1:
-
-            # convo = self.transcript
-            # if convo != prev_transcript \
-            #         and len(convo) > self.summary_character_limit:
-            #     self.logger.info("Summarizing conversation...")
-            #
-            #     # TODO: chain previous summaries to the new summary.
-            #     summarizer_response = await self.summarizer.get_summary(convo)
-            #     self.summary = summarizer_response["choices"][0].message.content
-            #     self.logger.debug("Summary %s", self.summary)
-            #     self.transcript.add_summary(self.summary)
+                summarizer_response = await self.summarizer.get_summary(sum_transcript)
+                self.logger.info("Summary %s", summarizer_response["choices"][0].message.content)
+                self.transcript.add_summary(summarizer_response["choices"][0].message.content)
 
     async def update_bot_sentiment(self):
         new_bot_sentiment = await self.bot_sentiment_analyser.analyse(

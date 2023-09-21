@@ -2,7 +2,6 @@ import time
 from typing import List, Optional, Tuple
 
 from pydantic import BaseModel, Field
-
 from vocode.streaming.models.actions import ActionInput, ActionOutput
 from vocode.streaming.models.events import ActionEvent, Sender, Event, EventType
 from vocode.streaming.utils.events_manager import EventsManager
@@ -161,13 +160,17 @@ class Transcript(BaseModel):
     def add_summary(self, text: str):
 
         timestamp = time.time()
+        summary = Summary(
+            text=text,
+            timestamp=timestamp,
+            last_message_ind=self.num_messages
+        )
+        if self.summaries is None:
+            self.summaries = [summary]
+            return
         # FIXME: avoid adding duplicate summaries for example self.num_message == self.last_summary_message_ind
         self.summaries.append(
-            Summary(
-                text=text,
-                timestamp=timestamp,
-                last_message_ind=self.num_messages
-            )
+            summary
         )
 
     def add_bot_message(self, text: str, conversation_id: str):
