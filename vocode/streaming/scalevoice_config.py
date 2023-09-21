@@ -1,5 +1,4 @@
 import os
-
 from logging import Logger
 
 from azure.ai.textanalytics.aio import TextAnalyticsClient
@@ -9,8 +8,10 @@ from vocode.streaming.agent.gpt_summary_agent import ChatGPTSummaryAgent
 from vocode.streaming.ignored_while_talking_fillers_fork import OpenAIEmbeddingOverTalkingFillerDetector
 from vocode.streaming.models.agent import ChatGPTAgentConfig, AzureOpenAIConfig
 
+SUMMARIZER_PROMPT_PREAMBLE = """You are creating summaries for telephone calls transcripts between AI voice bot and customer."""
 
-def get_scalevoice_conversation_config(logger: Logger):
+
+def get_scalevoice_conversation_config(logger: Logger, summarizer_prompt_preamble: str = SUMMARIZER_PROMPT_PREAMBLE):
     """
     This is a quick hack to pass configuration to the config below.
     The disadvantage is that we have to be able to quickly change this code on changes beyond the environmental variables.
@@ -33,7 +34,7 @@ def get_scalevoice_conversation_config(logger: Logger):
                                        base=AZURE_OPENAI_API_BASE_SUMMARY,
                                        agent_config=ChatGPTAgentConfig(
 
-                                           prompt_preamble="You are creating summaries for telephone calls transcripts between AI voice bot and customer.",
+                                           prompt_preamble=summarizer_prompt_preamble,
                                            azure_params=AzureOpenAIConfig(
                                                api_type="azure",
                                                api_version="2023-03-15-preview",

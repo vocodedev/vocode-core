@@ -614,11 +614,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             await asyncio.sleep(2)  # TODO: make this configurable or replace with hook on new message
             # FIXME: replace character limit with gpt token limit?
             # Check if the transcript has changed and is longer than the limit.
-            num_summaries = self.transcript.num_summaries
-            sum_transcript, previous_summary_text = self.transcript.summary_data()
-            if len(sum_transcript) > self.summary_character_limit:
+            transcript_to_sum, previous_summary_text = self.transcript.summary_data()
+            if len(transcript_to_sum) > self.summary_character_limit:
                 self.logger.info("Summarizing conversation...")
-                summarizer_response = await self.summarizer.get_summary(sum_transcript)
+                summarizer_response = await self.summarizer.get_summary(transcript=transcript_to_sum,
+                                                                        last_summary=previous_summary_text)
+
                 self.logger.info("Summary %s", summarizer_response["choices"][0].message.content)
                 self.transcript.add_summary(summarizer_response["choices"][0].message.content)
 
