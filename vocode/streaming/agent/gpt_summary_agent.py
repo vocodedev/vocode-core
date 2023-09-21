@@ -23,11 +23,14 @@ class ChatGPTSummaryAgent:
         self.logger = logger
 
     # create async function to call openai and use params from agent_config
-    async def get_summary(self, message: str):
+    async def get_summary(self, transcript: str, last_summary: Optional[str] = None):
         # TODO: consider using only diff and chaining previous summaries.
+        if last_summary is not None:
+            transcript += '\n THIS IS SUMMARY OF CONVERSATION SO FAR: \n' + last_summary
+
         messages = [
             {"role": "system", "content": self.agent_config.prompt_preamble},
-            {"role": "user", "content": message}
+            {"role": "user", "content": transcript}
         ]
         m = await openai.ChatCompletion.acreate(
             engine=self.agent_config.azure_params.engine,

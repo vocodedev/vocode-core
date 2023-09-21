@@ -409,8 +409,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             events_manager: Optional[EventsManager] = None,
             logger: Optional[logging.Logger] = None,
             summarizer: Optional[ChatGPTSummaryAgent] = None,
+            summary_character_limit: Optional[int] = None,
             over_talking_filler_detector: Optional[OpenAIEmbeddingOverTalkingFillerDetector] = None,
     ):
+        self.summary_character_limit = summary_character_limit
         self.id = conversation_id or create_conversation_id()
         self.logger = wrap_logger(
             logger or logging.getLogger(__name__),
@@ -424,7 +426,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.text_analysis_client = text_analysis_client
 
         self.summarizer = summarizer
-        self.summary = None
 
         self.over_talking_filler_detector = over_talking_filler_detector
 
@@ -607,17 +608,22 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 prev_transcript = self.transcript.to_string()
 
     async def summarize_conversation(self):
-        prev_transcript = None
+        self.logger.info("Summarizer started")
+        if self.summarizer is None or self.summary_character_limit is None:
+            self.logger.error("Summarizer or summary_character_limit not set. Not using summarizer.")
+            raise ValueError("Summarizer or summary_character_limit not set")
         while self.is_active():
-            await asyncio.sleep(20)
-            if self.transcript.to_string() != prev_transcript:
+            await asyncio.sleep(2)  # TODO: make this configurable or replace with hook on new message
+            # FIXME: replace character limit with gpt token limit?
+            # Check if the transcript has changed and is longer than the limit.
+            transcript_to_sum, previous_summary_text = self.transcript.summary_data()
+            if len(transcript_to_sum) > self.summary_character_limit:
                 self.logger.info("Summarizing conversation...")
+                summarizer_response = await self.summarizer.get_summary(transcript=transcript_to_sum,
+                                                                        last_summary=previous_summary_text)
 
-                summarizer_response = await self.summarizer.get_summary(self.transcript.to_string())
-                # TODO: saving all sumamries, rn it reassigns using latest.
-                self.summary = summarizer_response["choices"][0].message.content
-                self.logger.info("Summary %s", self.summary)
-                prev_transcript = self.transcript.to_string()
+                self.logger.info("Summary %s", summarizer_response["choices"][0].message.content)
+                self.transcript.add_summary(summarizer_response["choices"][0].message.content)
 
     async def update_bot_sentiment(self):
         new_bot_sentiment = await self.bot_sentiment_analyser.analyse(

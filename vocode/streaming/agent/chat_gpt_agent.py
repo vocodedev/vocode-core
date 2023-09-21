@@ -1,11 +1,11 @@
-import logging
-import logging
-import openai
-import time
-from pydantic import BaseModel
-from typing import Any, Dict, List, Optional, Tuple, Union
-from typing import AsyncGenerator, Optional, Tuple
 import asyncio
+import logging
+import time
+from typing import Any, Dict, List, Union
+from typing import AsyncGenerator, Optional, Tuple
+
+import openai
+
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent
@@ -15,11 +15,16 @@ from vocode.streaming.agent.utils import (
     openai_get_tokens,
     vector_db_result_to_openai_chat_message,
 )
-from vocode.streaming.models.actions import FunctionCall, FunctionFragment
+from vocode.streaming.models.actions import FunctionCall
 from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.vector_db.factory import VectorDBFactory
+
+
+def messages_from_transcript(transcript: Transcript, system_prompt: str):
+    last_summary = transcript.last_summary
+    if last_summary is not None:
+        system_prompt += '\n THIS IS SUMMARY OF CONVERSATION SO FAR' + last_summary.text
 
 
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
@@ -31,6 +36,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             openai_api_key: Optional[str] = None,
             vector_db_factory=VectorDBFactory(),
             goodbye_phrase: Optional[str] = "STOP CALL",
+            last_messages_cnt: int = 1_000,
     ):
         super().__init__(
             agent_config=agent_config, action_factory=action_factory, logger=logger
@@ -53,6 +59,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             else None
         )
         self.is_first_response = True
+        self.last_messages_cnt = last_messages_cnt
         self.goodbye_phrase = goodbye_phrase
         if goodbye_phrase is not None:
             self.agent_config.end_conversation_on_goodbye = True
@@ -61,9 +68,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             self.vector_db = vector_db_factory.create_vector_db(
                 self.agent_config.vector_db_config
             )
-    async def is_goodbye(self, message:str):
-        return self.goodbye_phrase.lower() in message.lower()
 
+    async def is_goodbye(self, message: str):
+        return self.goodbye_phrase.lower() in message.lower()
 
     def create_goodbye_detection_task(self, message: str):
         return asyncio.create_task(self.is_goodbye(message))
@@ -79,9 +86,24 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     def get_chat_parameters(self, messages: Optional[List] = None):
         assert self.transcript is not None
+
         messages = messages or format_openai_chat_messages_from_transcript(
             self.transcript, self.agent_config.prompt_preamble
         )
+        last_summary = self.transcript.last_summary
+        # TODO:refactor
+        if last_summary is not None:
+            # insert into system prompt as new line
+            if self.agent_config.prompt_preamble is not None:
+                first_message = messages[0]
+                # check if it is system message
+                if first_message['role'] == 'system':
+                    first_message['content'] = self.agent_config.prompt_preamble + '\n' + last_summary.text
+                    # cut messages to self.last_messages_cnt
+                    if len(messages) - 1 > self.last_messages_cnt:
+                        messages = [first_message] + messages[-self.last_messages_cnt:]
+                else:
+                    self.logger.error('First message is not system message, not inserting summary. Something is wrong.')
 
         parameters: Dict[str, Any] = {
             "messages": messages,
@@ -101,10 +123,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     def create_first_response(self, first_prompt):
         messages = (
-                [{"role": "system", "content": self.agent_config.prompt_preamble}]
-                if self.agent_config.prompt_preamble
-                else []
-            ) + ([{"role": "user", "content": first_prompt}] if first_prompt is not None else [])
+                       [{"role": "system", "content": self.agent_config.prompt_preamble}]
+                       if self.agent_config.prompt_preamble
+                       else []
+                   ) + ([{"role": "user", "content": first_prompt}] if first_prompt is not None else [])
 
         parameters = self.get_chat_parameters(messages)
         return openai.ChatCompletion.create(**parameters)
