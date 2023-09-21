@@ -5,7 +5,7 @@ from fastapi import FastAPI
 
 # sys.path.insert(0, "/vocode")
 
-from vocode.streaming.models.agent import ChatGPTAgentConfig
+from vocode.streaming.models.agent import ChatGPTAgentConfig, CutOffResponse
 from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
 from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 
@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 conversation_router = ConversationRouter(
-    agent=ChatGPTAgent(
-        ChatGPTAgentConfig(
+    agent_thunk=lambda: ChatGPTAgent(
+        agent_config=ChatGPTAgentConfig(
             initial_message=BaseMessage(text="Hey Charlie!"),
             prompt_preamble="""
             You are pretending to be a human employee in a corporate training scenario. Do not break character or say that you are an AI language model.
@@ -39,6 +39,9 @@ conversation_router = ConversationRouter(
                         At the start of this roleplay scenario, Charlie and Kate are having an in-person 1:1 meeting. No context has been established yet.
                         
                         Again, you are roleplaying as Kate, and must not break character, and must respond with exactly the emotional responses of Kate. You should talk about the specifics of work as if you, Kate, were really an employee with a complex personality.""",
+            cut_off_response=CutOffResponse(
+                messages=[BaseMessage(text="MOTHERFUCKER!!! Bananas.")]
+            ),
         )
     ),
     synthesizer_thunk=lambda output_audio_config: ElevenLabsSynthesizer(
