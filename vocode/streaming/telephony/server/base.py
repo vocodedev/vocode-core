@@ -23,6 +23,7 @@ from vocode.streaming.telephony.constants import (
     VONAGE_AUDIO_ENCODING,
     VONAGE_SAMPLING_RATE,
 )
+from vocode.streaming.telephony.conversation.factory import CallFactory
 
 from vocode.streaming.telephony.server.router.calls import CallsRouter
 from vocode.streaming.models.telephony import (
@@ -66,6 +67,7 @@ class TelephonyServer:
         base_url: str,
         config_manager: BaseConfigManager,
         inbound_call_configs: List[AbstractInboundCallConfig] = [],
+        call_factory: CallFactory = CallFactory(),
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
@@ -86,6 +88,7 @@ class TelephonyServer:
                 agent_factory=agent_factory,
                 synthesizer_factory=synthesizer_factory,
                 events_manager=self.events_manager,
+                call_factory=call_factory,
                 logger=self.logger,
             ).get_router()
         )
