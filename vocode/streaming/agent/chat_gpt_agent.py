@@ -182,5 +182,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             if self.agent_config.remove_exclamation:
                 # replace ! by . because it sounds better when speaking.
                 message = message.replace('!','.')
-            message = make_disfluency(message)
+            if self.agent_config.add_disfluencies:
+                # artificially add disfluencies to message
+                message = make_disfluency(message)
             yield message, True
