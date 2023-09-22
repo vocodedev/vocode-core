@@ -4,7 +4,7 @@ import asyncio
 import queue
 import random
 import threading
-from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, cast
+from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 import logging
 import time
 import typing
@@ -15,7 +15,6 @@ from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import (
     Message,
@@ -23,13 +22,12 @@ from vocode.streaming.models.transcript import (
     TranscriptCompleteEvent,
 )
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
+from vocode.streaming.models.transcriber import  TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager
-from vocode.streaming.utils.goodbye_model import GoodbyeModel
 
-from vocode.streaming.models.agent import ChatGPTAgentConfig, FillerAudioConfig
+from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.synthesizer import (
     SentimentConfig,
 )
