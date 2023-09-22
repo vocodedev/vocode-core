@@ -10,6 +10,7 @@ import typing
 from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 
 from azure.ai.textanalytics.aio import TextAnalyticsClient
+
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
     AgentInput,
@@ -131,11 +132,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     return
 
             if transcription.is_final:
-                self.conversation.logger.info(
-                    "Got transcription {}, confidence: {}, is_final: {}, time_took: {}".format(
-                        transcription.message, transcription.confidence, transcription.is_final, transcription.time_took
+                self.conversation.logger.debug(
+                    "Got transcription {}, confidence: {}, is_final: {}".format(
+                        transcription.message, transcription.confidence, transcription.is_final
                     )
                 )
+
             if (
                     not self.conversation.is_human_speaking
                     and self.conversation.is_interrupt(transcription)
@@ -152,6 +154,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
                 # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
+
                 event = self.interruptible_event_factory.create_interruptible_event(
                     TranscriptionAgentInput(
                         transcription=transcription,
@@ -161,6 +164,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                 )
                 self.output_queue.put_nowait(event)
+                self.conversation.logger.info(f"User said: {transcription.message}")
 
     class FillerAudioWorker(InterruptibleAgentResponseWorker):
         """
@@ -250,8 +254,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event], sentiment: Optional[str] = None):
             assert self.conversation.filler_audio_worker is not None
-            self.conversation.logger.debug("Sending filler audio")
-            self.conversation.logger.info(f"Sentiment: {sentiment}")
+            self.conversation.logger.info(f"Sending filler audio with sentiment {sentiment}")
             conversation_length = len(self.conversation.transcript.event_logs)
             prefix = "n_"  # Uses neutral filler audios by default.
             if conversation_length < 3:
@@ -266,7 +269,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     [audio for audio in self.conversation.synthesizer.filler_audios if
                      audio.message.text.startswith(prefix)]
                 )
-                self.conversation.logger.debug(f"Chose {filler_audio.message.text}")
+                self.conversation.logger.info(f"Chose {filler_audio.message.text}")
                 event = self.interruptible_event_factory.create_interruptible_agent_response_event(
                     filler_audio,
                     is_interruptible=filler_audio.is_interruptible,
@@ -285,11 +288,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 return
             try:
-                self.conversation.logger.debug("Processing agent's response")
                 agent_response = item.payload
                 if isinstance(agent_response, AgentResponseFillerAudio):
                     if self.conversation.openai_embeddings_response_classifier:
-                        response = self.conversation.openai_embeddings_response_classifier.classify_response(agent_response.transcript)
+                        response = self.conversation.openai_embeddings_response_classifier.classify_response(
+                            agent_response.transcript)
                         sentiment = "question" if response.is_question else None
 
                     else:
@@ -314,16 +317,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
                 )
-                self.conversation.logger.debug("Casted")
 
                 if self.conversation.filler_audio_worker is not None:
                     if (
                             self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                     ):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
-                        self.conversation.logger.debug("Sent filler audio")
-                self.conversation.logger.debug(
-                    "Generatating speech for message message: {}".format(agent_response_message.message))
+
+                self.conversation.logger.info(f"Agent said: {agent_response_message.message}")
                 synthesis_result = await self.conversation.synthesizer.create_speech(
                     agent_response_message.message,
                     self.chunk_size,
@@ -357,7 +358,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 item: InterruptibleAgentResponseEvent[Tuple[BaseMessage, SynthesisResult]],
         ):
             try:
-                self.conversation.logger.debug("Got message from agend")
                 message, synthesis_result = item.payload
                 # create an empty transcript message and attach it to the transcript
                 transcript_message = Message(
@@ -382,7 +382,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                 )
                 item.agent_response_tracker.set()
-                self.conversation.logger.info("Message sent: {}".format(message_sent))
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(
                         message_sent
@@ -597,7 +596,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.agent.get_agent_config().allowed_idle_time_seconds
                     or ALLOWED_IDLE_TIME
             ):
-                self.logger.debug("Conversation idle for too long")
+                self.logger.info("Conversation idle for too long")
                 transcription = Transcription(
                     message="THIS IS SYSTEM MESSAGE: Conversation idle for too long. ASK USER IF THEY ARE STILL THERE.",
                     confidence=1.0,
@@ -630,9 +629,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.logger.info("Summarizing conversation...")
                 summarizer_response = await self.summarizer.get_summary(transcript=transcript_to_sum,
                                                                         last_summary=previous_summary_text)
+                summary = summarizer_response["choices"][0].message.content
 
-                self.logger.info("Summary %s", summarizer_response["choices"][0].message.content)
-                self.transcript.add_summary(summarizer_response["choices"][0].message.content)
+                self.logger.info("Summary: %s", summary)
+                self.transcript.add_summary(summary)
 
     async def update_bot_sentiment(self):
         new_bot_sentiment = await self.bot_sentiment_analyser.analyse(
@@ -750,6 +750,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                 )
                 message_sent = f"{synthesis_result.get_message_up_to(seconds_spoken)}-"
+                self.logger.info(f"Interrupted agent said: {message_sent}")
                 cut_off = True
                 break
             if chunk_idx == 0:
@@ -765,11 +766,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     0,
                 )
             )
-            self.logger.debug(
-                "Voice output Worker: Sent chunk number {} with length {} seconds for message {}".format(chunk_idx,
-                                                                                                         speech_length_seconds,
-                                                                                                         message)
-            )
+
             self.mark_last_action_timestamp()
             chunk_idx += 1
             seconds_spoken += seconds_per_chunk
