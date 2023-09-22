@@ -91,9 +91,9 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
             timestamp = self.transcript.event_logs[0].timestamp
             with open(logs_path / f"{timestamp}_conversation.txt", "w") as f:
                 f.write(self.transcript.to_string(include_timestamps=True))
-            if self.summary is not None:
-                with open(logs_path / f"{timestamp}_summary.txt", "w") as f:
-                    f.write(self.summary)
+            # if self.summary is not None:
+            #     with open(logs_path / f"{timestamp}_summary.txt", "w") as f:
+            #         f.write(self.summary)
             return
         self.logger.warning("Transcript is empty, not saving to file")
     async def tear_down(self):
