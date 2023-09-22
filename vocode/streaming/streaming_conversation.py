@@ -164,7 +164,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                 )
                 self.output_queue.put_nowait(event)
-                self.conversation.logger.info(f"User said: {transcription.message}")
+                self.conversation.logger.info(f"USER: {transcription.message}")
 
     class FillerAudioWorker(InterruptibleAgentResponseWorker):
         """
@@ -212,6 +212,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 await asyncio.sleep(silence_threshold)
                 self.conversation.logger.debug("Sending filler audio to output")
+                self.conversation.logger.info(f"BOT (filler): {filler_audio.message.text}")
                 self.filler_audio_started_event = threading.Event()
                 await self.conversation.send_speech_to_output(
                     filler_audio.message.text,
@@ -324,7 +325,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     ):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
 
-                self.conversation.logger.info(f"Agent said: {agent_response_message.message}")
+                self.conversation.logger.info(f"BOT: {agent_response_message.message}")
                 synthesis_result = await self.conversation.synthesizer.create_speech(
                     agent_response_message.message,
                     self.chunk_size,
