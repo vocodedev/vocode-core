@@ -50,6 +50,7 @@ class VonageCall(Call[VonageOutputDevice]):
         events_manager: Optional[EventsManager] = None,
         output_to_speaker: bool = False,
         logger: Optional[logging.Logger] = None,
+        **kwargs,
     ):
         super().__init__(
             from_phone,
@@ -66,6 +67,7 @@ class VonageCall(Call[VonageOutputDevice]):
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
             logger=logger,
+            **kwargs,
         )
         self.output_to_speaker = output_to_speaker
         self.base_url = base_url

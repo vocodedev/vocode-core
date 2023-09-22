@@ -51,6 +51,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
+        **kwargs,
     ):
         super().__init__(
             from_phone,
@@ -67,6 +68,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
             logger=logger,
+            **kwargs,
         )
         self.base_url = base_url
         self.config_manager = config_manager
