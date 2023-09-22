@@ -1,23 +1,23 @@
-import asyncio
-from fastapi import WebSocket
 import base64
-from enum import Enum
 import json
 import logging
+from enum import Enum
 from typing import Optional
+
+from fastapi import WebSocket
+
 from vocode import getenv
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import PhoneCallConnectedEvent
-
-from vocode.streaming.models.telephony import TwilioConfig
-from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
 from vocode.streaming.models.synthesizer import (
     SynthesizerConfig,
 )
+from vocode.streaming.models.telephony import TwilioConfig
 from vocode.streaming.models.transcriber import (
     TranscriberConfig,
 )
+from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
 from vocode.streaming.synthesizer.factory import SynthesizerFactory
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
 from vocode.streaming.telephony.config_manager.base_config_manager import (
@@ -35,22 +35,22 @@ class PhoneCallWebsocketAction(Enum):
 
 class TwilioCall(Call[TwilioOutputDevice]):
     def __init__(
-        self,
-        from_phone: str,
-        to_phone: str,
-        base_url: str,
-        config_manager: BaseConfigManager,
-        agent_config: AgentConfig,
-        transcriber_config: TranscriberConfig,
-        synthesizer_config: SynthesizerConfig,
-        twilio_sid: str,
-        twilio_config: Optional[TwilioConfig] = None,
-        conversation_id: Optional[str] = None,
-        transcriber_factory: TranscriberFactory = TranscriberFactory(),
-        agent_factory: AgentFactory = AgentFactory(),
-        synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
-        events_manager: Optional[EventsManager] = None,
-        logger: Optional[logging.Logger] = None,
+            self,
+            from_phone: str,
+            to_phone: str,
+            base_url: str,
+            config_manager: BaseConfigManager,
+            agent_config: AgentConfig,
+            transcriber_config: TranscriberConfig,
+            synthesizer_config: SynthesizerConfig,
+            twilio_sid: str,
+            twilio_config: Optional[TwilioConfig] = None,
+            conversation_id: Optional[str] = None,
+            transcriber_factory: TranscriberFactory = TranscriberFactory(),
+            agent_factory: AgentFactory = AgentFactory(),
+            synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+            events_manager: Optional[EventsManager] = None,
+            logger: Optional[logging.Logger] = None,
     ):
         super().__init__(
             from_phone,
@@ -88,7 +88,8 @@ class TwilioCall(Call[TwilioOutputDevice]):
 
         twilio_call_ref = self.telephony_client.twilio_client.calls(self.twilio_sid)
         twilio_call = twilio_call_ref.fetch()
-        self.logger.info(f"Config: {self.config_manager.get_config(self.id)}")
+        call_config = await self.config_manager.get_config(self.id)
+        self.logger.info(f"Config: {call_config.json()}")
         if self.twilio_config.record:
             recordings_create_params = (
                 self.twilio_config.extra_params.get("recordings_create_params")
@@ -147,7 +148,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
             chunk = base64.b64decode(media["payload"])
             if self.latest_media_timestamp + 20 < int(media["timestamp"]):
                 bytes_to_fill = 8 * (
-                    int(media["timestamp"]) - (self.latest_media_timestamp + 20)
+                        int(media["timestamp"]) - (self.latest_media_timestamp + 20)
                 )
                 self.logger.debug(f"Filling {bytes_to_fill} bytes of silence")
                 # NOTE: 0xff is silence for mulaw audio
