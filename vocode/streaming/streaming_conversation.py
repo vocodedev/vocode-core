@@ -624,7 +624,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         filler_audio_noise = FillerAudio(
                         BaseMessage(text="Noise"),
                         audio_data=convert_wav(
-                            '/Users/mohammadaminroohi/miniconda3/envs/vocode_1/lib/python3.9/site-packages/vocode/streaming/pink BL.wav',
+                            './pink BL.wav',
                             output_sample_rate=8000,
                             output_encoding=AudioEncoding.MULAW,
                         ),
@@ -639,17 +639,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             )
         self.filler_audio_worker.consume_nonblocking(event)
         print(convert_wav(
-                            '/Users/mohammadaminroohi/miniconda3/envs/vocode_1/lib/python3.9/site-packages/vocode/streaming/pink BL.wav',
+                            './pink BL.wav',
                             output_sample_rate=8000,
                             output_encoding=AudioEncoding.MULAW,
                         ))
-        # while True:
-
-            # self.filler_audio_worker.consume_nonblocking(event)
-
-            # await asyncio.sleep(1)
         
-    
 
     async def send_speech_to_output(
         self,
