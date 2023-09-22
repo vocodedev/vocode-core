@@ -88,7 +88,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
 
         twilio_call_ref = self.telephony_client.twilio_client.calls(self.twilio_sid)
         twilio_call = twilio_call_ref.fetch()
-
+        self.logger.info(f"Config: {self.config_manager.get_config(self.id)}")
         if self.twilio_config.record:
             recordings_create_params = (
                 self.twilio_config.extra_params.get("recordings_create_params")
@@ -101,7 +101,6 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 else twilio_call_ref.recordings.create()
             )
             self.logger.info(f"Recording: {recording.sid}")
-            self.logger.info(f"Config: {self.config_manager.get_config(self.id)}")
 
         if twilio_call.answered_by in ("machine_start", "fax"):
             self.logger.info(f"Call answered by {twilio_call.answered_by}")
