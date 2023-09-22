@@ -26,6 +26,7 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
     ):
         super().__init__(transcriber_config)
         self.logger = logger
+        self.audio_cursor = 0.0
 
         format = None
         if self.transcriber_config.audio_encoding == AudioEncoding.LINEAR16:
@@ -140,6 +141,13 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
                     data.append(chunk)
                 except queue.Empty:
                     break
+                num_channels = 1
+                sample_width = 2
+                self.audio_cursor += len(chunk) / (
+                    self.transcriber_config.sampling_rate
+                    * num_channels
+                    * sample_width
+                )
 
             yield b"".join(data)
 

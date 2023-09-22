@@ -1,3 +1,7 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from collections import defaultdict
 import os
 import re
@@ -42,6 +46,7 @@ from vocode.streaming.models.synthesizer import (
 )
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
+    AzureTranscriberConfig,
     AssemblyAITranscriberConfig,
     PunctuationEndpointingConfig,
 )
@@ -59,7 +64,9 @@ from vocode.streaming.synthesizer import (
     RimeSynthesizer,
     StreamElementsSynthesizer,
 )
-from vocode.streaming.transcriber import DeepgramTranscriber, AssemblyAITranscriber
+from vocode.streaming.transcriber import (DeepgramTranscriber, 
+                                          AssemblyAITranscriber,
+                                          AzureTranscriber)
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import get_chunk_size_per_second, remove_non_letters_digits
 from vocode.streaming.utils.worker import InterruptibleEvent
@@ -97,7 +104,7 @@ synthesizer_classes = {
 STREAMING_SYNTHESIZERS = ["azure", "elevenlabs"]
 
 
-TRANSCRIBER_CHOICES = ["deepgram", "assemblyai"]
+TRANSCRIBER_CHOICES = ["deepgram", "assemblyai", "azure"]
 AGENT_CHOICES = [
     "gpt_gpt-3.5-turbo",
     "gpt_gpt-4",
@@ -267,6 +274,13 @@ def get_transcriber(transcriber_name, file_input):
                 endpointing_config=PunctuationEndpointingConfig(),
             )
         )
+    elif transcriber_name == "azure":
+        transcriber = AzureTranscriber(
+            AzureTranscriberConfig.from_input_device(
+                file_input,
+                endpointing_config=PunctuationEndpointingConfig(),
+            )
+        )
     elif transcriber_name == "assemblyai":
         transcriber = AssemblyAITranscriber(
             AssemblyAITranscriberConfig.from_input_device(
@@ -417,6 +431,7 @@ async def run_synthesizers():
                     f"[Synthesizer: {synthesizer_name}] Exception while synthesizing: {e}. Skipping {synthesizer_name}..."
                 )
                 continue
+
             chunk_generator = synthesis_result.chunk_generator
 
             with tqdm(desc=f"{synthesizer_name.title()} Synthesizing") as pbar:
@@ -433,6 +448,7 @@ async def run_synthesizers():
 
             if current_synthesizer_is_streaming:
                 total_synthesis_span.end()
+            await synthesizer.tear_down()
 
 
 async def run_transcribers():
@@ -563,7 +579,11 @@ async def main():
         create_graphs(final_results)
 
     print("Benchmarking complete!")
+    return
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
