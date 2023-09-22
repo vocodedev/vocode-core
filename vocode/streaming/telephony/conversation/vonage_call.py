@@ -26,7 +26,6 @@ from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.output_device.speaker_output import SpeakerOutput
 from vocode.streaming.telephony.constants import VONAGE_CHUNK_SIZE, VONAGE_SAMPLING_RATE
 from vocode.streaming.utils.state_manager import (
-    ConversationStateManager,
     VonageCallStateManager,
 )
 

@@ -1,5 +1,4 @@
 from fastapi import WebSocket
-from enum import Enum
 import logging
 from typing import Optional, TypeVar, Union
 from vocode.streaming.agent.factory import AgentFactory

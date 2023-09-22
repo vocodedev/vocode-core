@@ -1,4 +1,3 @@
-import asyncio
 from fastapi import WebSocket
 import base64
 from enum import Enum
