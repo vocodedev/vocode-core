@@ -16,10 +16,6 @@ from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
 
 
-class StreamingConversationFactory():
-    def create_streaming_conversation():
-        pass
-
 class CallFactory:
     def create_call(
         base_url: str,
