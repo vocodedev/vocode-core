@@ -101,6 +101,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 else twilio_call_ref.recordings.create()
             )
             self.logger.info(f"Recording: {recording.sid}")
+            self.logger.info(f"Config: {self.config_manager.get_config(self.id)}")
 
         if twilio_call.answered_by in ("machine_start", "fax"):
             self.logger.info(f"Call answered by {twilio_call.answered_by}")
