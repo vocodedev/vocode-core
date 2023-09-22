@@ -61,7 +61,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
             agent_config,
             transcriber_config,
             synthesizer_config,
-            conversation_id=conversation_id,
+            conversation_id=twilio_sid,
             events_manager=events_manager,
             transcriber_factory=transcriber_factory,
             agent_factory=agent_factory,
