@@ -89,7 +89,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
         twilio_call_ref = self.telephony_client.twilio_client.calls(self.twilio_sid)
         twilio_call = twilio_call_ref.fetch()
         call_config = await self.config_manager.get_config(self.id)
-        self.logger.info(f"Config: {call_config.json()}")
+        # self.logger.info(f"Config: {call_config.json()}")
         if self.twilio_config.record:
             recordings_create_params = (
                 self.twilio_config.extra_params.get("recordings_create_params")
