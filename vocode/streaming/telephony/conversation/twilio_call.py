@@ -68,6 +68,10 @@ class TwilioCall(Call[TwilioOutputDevice]):
             synthesizer_factory=synthesizer_factory,
             logger=logger,
         )
+        self.logger.info(f"Agent config: {agent_config.json()}")
+        self.logger.info(f"Transcriber config: {transcriber_config.json()}")
+        self.logger.info(f"Synthesizer config: {synthesizer_config.json()}")
+
         self.base_url = base_url
         self.config_manager = config_manager
         self.twilio_config = twilio_config or TwilioConfig(
@@ -88,8 +92,6 @@ class TwilioCall(Call[TwilioOutputDevice]):
 
         twilio_call_ref = self.telephony_client.twilio_client.calls(self.twilio_sid)
         twilio_call = twilio_call_ref.fetch()
-        call_config = await self.config_manager.get_config(self.id)
-        # self.logger.info(f"Config: {call_config.json()}")
         if self.twilio_config.record:
             recordings_create_params = (
                 self.twilio_config.extra_params.get("recordings_create_params")
