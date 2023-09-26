@@ -291,13 +291,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
             try:
                 agent_response = item.payload
                 if isinstance(agent_response, AgentResponseFillerAudio):
+                    sentiment = None
                     if self.conversation.openai_embeddings_response_classifier:
                         response = self.conversation.openai_embeddings_response_classifier.classify_response(
                             agent_response.transcript)
                         sentiment = "question" if response.is_question else None
-
-                    else:
-                        sentiment = "question" if "?" in agent_response.transcript else None
 
                     # if question mark in transcript set sentiment to question **AND** ignore call to text analysis.
                     if self.conversation.text_analysis_client is not None and sentiment is None:

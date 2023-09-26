@@ -200,6 +200,28 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         else:
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
+        # log number of tokens in prompt, messages and total
+        orig_prompt_tokens = len(self.agent_config.prompt_preamble.split())
+        self.logger.info(
+            f"Number of tokens in original prompt: {orig_prompt_tokens}, gpt approx:{orig_prompt_tokens * 4 / 3}"
+        )
+        messages = chat_parameters["messages"]
+        updated_prompt_tokens = len(messages[0]["content"].split())
+        self.logger.info(
+            f"Number of tokens in updated prompt: {updated_prompt_tokens}, gpt approx:{updated_prompt_tokens * 4 / 3}"
+        )
+        other_messages = messages[1:] if len(messages) > 1 else []
+        other_messages_tokens = sum(
+            [len(message["content"].split()) for message in other_messages]
+        )
+        self.logger.info(
+            f"Number of tokens in other messages: {other_messages_tokens}, gpt approx:{other_messages_tokens * 4 / 3}"
+        )
+        total_tokens = orig_prompt_tokens + other_messages_tokens
+        self.logger.info(
+            f"Total number of tokens: {total_tokens}, gpt approx:{total_tokens * 4 / 3}"
+        )
+
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
         async for message in collate_response_async(
                 openai_get_tokens(stream), get_functions=True
