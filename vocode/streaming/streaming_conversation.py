@@ -133,16 +133,18 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         transcription.message, transcription.confidence
                     )
                 )
-            if (
-                not self.conversation.is_human_speaking
-                and self.conversation.is_interrupt(transcription)
-            ):
-                self.conversation.current_transcription_is_interrupt = (
-                    self.conversation.broadcast_interrupt()
-                )
-                if self.conversation.current_transcription_is_interrupt:
-                    self.conversation.logger.debug("sending interrupt")
-                self.conversation.logger.debug("Human started speaking")
+            if (self.conversation.is_bot_speaking 
+                and not self.conversation.is_human_speaking) or self.conversation.is_synthesizing:
+                if self.conversation.is_interrupt(transcription):
+                    self.conversation.current_transcription_is_interrupt = (
+                        self.conversation.broadcast_interrupt()
+                    )
+                    if self.conversation.current_transcription_is_interrupt:
+                        self.conversation.logger.debug("sending interrupt")
+                    self.conversation.logger.debug("Human started speaking")
+                else:    
+                    self.conversation.logger.debug(f"Bluberry - Ignoring human utterance: {transcription.message}")
+                    return
 
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
@@ -293,11 +295,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
 
                 self.conversation.logger.debug("Synthesizing speech for message")
+                self.conversation.is_synthesizing = True
                 synthesis_result = await self.conversation.synthesizer.create_speech(
                     agent_response_message.message,
                     self.chunk_size,
                     bot_sentiment=self.conversation.bot_sentiment,
                 )
+                self.conversation.is_synthesizing = False
                 self.produce_interruptible_agent_response_event_nonblocking(
                     (agent_response_message.message, synthesis_result),
                     is_interruptible=item.is_interruptible,
@@ -336,6 +340,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                     publish_to_events_manager=False,
                 )
+                # set flag for bot speaking
+                self.conversation.is_bot_speaking = True
                 message_sent, cut_off = await self.conversation.send_speech_to_output(
                     message.text,
                     synthesis_result,
@@ -343,6 +349,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
                     transcript_message=transcript_message,
                 )
+                # set flag to indicate bot finished speaking
+                self.conversation.is_bot_speaking = False
                 # publish the transcript message now that it includes what was said during send_speech_to_output
                 self.conversation.transcript.maybe_publish_transcript_event_from_message(
                     message=transcript_message,
@@ -454,7 +462,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 emotions=self.sentiment_config.emotions
             )
 
+        # set up flags to better handle interruptions
         self.is_human_speaking = False
+        self.is_bot_speaking = False
+        self.is_synthesizing = False
         self.active = False
         self.mark_last_action_timestamp()
 
@@ -532,7 +543,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriber.unmute()
 
     async def check_for_idle(self):
-        """Terminates the conversation after 15 seconds if no activity is detected"""
+        """Terminates the conversation after allowed_idle_time_seconds seconds if no activity is detected"""
         while self.is_active():
             if time.time() - self.last_action_timestamp > (
                 self.agent.get_agent_config().allowed_idle_time_seconds
@@ -596,10 +607,34 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent_responses_worker.cancel_current_task()
         return num_interrupts > 0
 
-    def is_interrupt(self, transcription: Transcription):
-        return transcription.confidence >= (
+    def is_interrupt(self, transcription: Transcription):        
+        # guarantee minimum confidence in transcription
+        if transcription.confidence >= (
             self.transcriber.get_transcriber_config().min_interrupt_confidence or 0
-        )
+        ):
+            message = transcription.message.lower().strip()
+            words = message.split()
+            interruption_threshold = self.transcriber.get_transcriber_config().interruption_threshold
+            # Verbal cues that indicate no interruption
+            verbal_cues = ["uh", "um", "mhm", "yes", "yeah", "okay", "i see", "i understand", "go on", "go ahead"]
+
+            if (len(words)==0):
+                # No interruption for no words uttered
+                return False
+              
+            if any(cue in message for cue in verbal_cues) and (len(words) <= interruption_threshold):
+                # No interruption for positive verbal cues in short utterances
+                return False
+
+            # Check for interruptions with more than two words
+            if len(words) > interruption_threshold:
+                return True
+            # TODO: implement logic for active listening cues
+            return True
+        else:
+            return False
+
+
 
     async def send_speech_to_output(
         self,
