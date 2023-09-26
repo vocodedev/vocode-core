@@ -5,7 +5,7 @@ from typing import Optional
 import websockets
 from websockets.client import WebSocketClientProtocol
 import audioop
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 from vocode import getenv
 
 from vocode.streaming.transcriber.base_transcriber import (
@@ -125,7 +125,12 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         ):
             extra_params["punctuate"] = "true"
         url_params.update(extra_params)
-        return f"wss://api.deepgram.com/v1/listen?{urlencode(url_params)}"
+
+        # Encode the "keywords" field first
+        encoded_keywords = "&".join([f"keywords={quote(kw)}" for kw in url_params["keywords"]])
+        del url_params["keywords"]
+
+        return f"wss://api.deepgram.com/v1/listen?{urlencode(url_params)}&{encoded_keywords}"
 
     def is_speech_final(
         self, current_buffer: str, deepgram_response: dict, time_silent: float
