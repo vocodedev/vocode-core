@@ -2,6 +2,7 @@ import asyncio
 import os
 from typing import (
     Any,
+    Dict,
     AsyncGenerator,
     Generator,
     Callable,
@@ -29,17 +30,35 @@ from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 
-FILLER_PHRASES = [
-    BaseMessage(text="Um - "),
-    BaseMessage(text="Uh - "),
-    # BaseMessage(text="Uh-huh - "),
-    # BaseMessage(text="Mmhmm - "),
-    # BaseMessage(text="Hmm - "),
-    BaseMessage(text="Yeah - "),
-    # BaseMessage(text="Okay - "),
-    # BaseMessage(text="Right - "),
-    # BaseMessage(text="Let me see - "),
-]
+FILLER_KEY: Dict = {
+    'question': ["Um...","Uh...","Uhm...","Hmm..."],
+    'confirm': ["Uh-huh...","Mmhmm...","Yeah..."]
+}
+
+FILLERS = [] 
+for key in FILLER_KEY:
+    FILLERS += FILLER_KEY[key]
+FILLERS = list(set(FILLERS))
+
+FILLER_PHRASES = [BaseMessage(text=filler) 
+                  for filler in FILLERS]
+
+# FILLER_PHRASES = [
+#     BaseMessage(text="Um..."),
+#     BaseMessage(text="Uh..."),
+#     BaseMessage(text="Uhm..."),
+#     BaseMessage(text="Hmm..."),
+
+#     BaseMessage(text="Uh-huh..."),
+#     BaseMessage(text="Mmhmm..."),
+#     BaseMessage(text="Yeah..."),
+#     # BaseMessage(text="Okay - "),
+#     # BaseMessage(text="Right - "),
+#     # BaseMessage(text="Let me see - "),
+# ]
+
+
+
 FILLER_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "filler_audio")
 TYPING_NOISE_PATH = "%s/typing-noise.wav" % FILLER_AUDIO_PATH
 
@@ -132,7 +151,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             assert (
                 synthesizer_config.sampling_rate == 8000
             ), "MuLaw encoding only supports 8kHz sampling rate"
-        self.filler_audios: List[FillerAudio] = []
+        self.filler_audios: Dict[str,List[FillerAudio]] = {}
         if aiohttp_session:
             # the caller is responsible for closing the session
             self.aiohttp_session = aiohttp_session

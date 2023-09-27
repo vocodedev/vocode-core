@@ -251,10 +251,24 @@ class StreamingConversation(Generic[OutputDeviceType]):
         def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
             assert self.conversation.filler_audio_worker is not None
             self.conversation.logger.debug("Sending filler audio")
+
+            last_user_message = self.conversation.transcript.get_last_user_message()[1]
+            filler_audios = self.conversation.synthesizer.filler_audios
             if self.conversation.synthesizer.filler_audios:
-                filler_audio = random.choice(
-                    self.conversation.synthesizer.filler_audios
-                )
+                if '?' in last_user_message and not self.conversation.is_interrupted:
+                    filler_audio = random.choice(
+                        filler_audios['question']
+                    )
+                    self.conversation.logger.debug("Chose question type")
+                elif not self.conversation.is_interrupted:
+                    filler_audio = random.choice(
+                        filler_audios['confirm']
+                    )
+                    self.conversation.logger.debug("Chose confirm type")
+                elif self.conversation.is_interrupted:
+                    filler_audio = random.choice(
+                        filler_audios['confirm']
+                    )         
                 self.conversation.logger.debug(f"Chose {filler_audio.message.text}")
                 event = self.interruptible_event_factory.create_interruptible_agent_response_event(
                     filler_audio,
@@ -340,6 +354,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                     publish_to_events_manager=False,
                 )
+                # set flag for bot interruption
+                self.conversation.is_interrupted = False
                 # set flag for bot speaking
                 self.conversation.is_bot_speaking = True
                 message_sent, cut_off = await self.conversation.send_speech_to_output(
@@ -349,6 +365,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
                     transcript_message=transcript_message,
                 )
+                # set flag to indicate whether bot was interrupted
+                self.conversation.is_interrupted = True
                 # set flag to indicate bot finished speaking
                 self.conversation.is_bot_speaking = False
                 # publish the transcript message now that it includes what was said during send_speech_to_output
@@ -465,6 +483,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # set up flags to better handle interruptions
         self.is_human_speaking = False
         self.is_bot_speaking = False
+        self.is_interrupted = False
         self.is_synthesizing = False
         self.active = False
         self.mark_last_action_timestamp()
@@ -482,6 +501,17 @@ class StreamingConversation(Generic[OutputDeviceType]):
         return ConversationStateManager(conversation=self)
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
+        # create filler audios before starting the output device
+        if self.agent.get_agent_config().send_filler_audio:
+            if not isinstance(
+                self.agent.get_agent_config().send_filler_audio, FillerAudioConfig
+            ):
+                self.filler_audio_config = FillerAudioConfig()
+            else:
+                self.filler_audio_config = typing.cast(
+                    FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
+                )
+            await self.synthesizer.set_filler_audios(self.filler_audio_config)
         self.transcriber.start()
         self.transcriptions_worker.start()
         self.agent_responses_worker.start()
@@ -494,16 +524,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         is_ready = await self.transcriber.ready()
         if not is_ready:
             raise Exception("Transcriber startup failed")
-        if self.agent.get_agent_config().send_filler_audio:
-            if not isinstance(
-                self.agent.get_agent_config().send_filler_audio, FillerAudioConfig
-            ):
-                self.filler_audio_config = FillerAudioConfig()
-            else:
-                self.filler_audio_config = typing.cast(
-                    FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
-                )
-            await self.synthesizer.set_filler_audios(self.filler_audio_config)
+
 
         self.agent.start()
         initial_message = self.agent.get_agent_config().initial_message
