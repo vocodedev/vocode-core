@@ -76,7 +76,7 @@ class OutboundCall:
     def create_telephony_client(self) -> BaseTelephonyClient:
         if self.twilio_config is not None:
             return TwilioClient(
-                base_url=self.base_url, twilio_config=self.twilio_config
+                base_url=self.base_url, twilio_config=self.twilio_config,
             )
         elif self.vonage_config is not None:
             return VonageClient(
