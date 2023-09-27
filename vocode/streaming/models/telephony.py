@@ -20,6 +20,7 @@ from vocode.streaming.telephony.constants import (
     VONAGE_AUDIO_ENCODING,
     VONAGE_SAMPLING_RATE,
 )
+from vocode.streaming.telephony.noise_canceler.noise_canceling import NoiseCancelingConfig
 
 
 class TwilioConfig(BaseModel):
@@ -27,6 +28,7 @@ class TwilioConfig(BaseModel):
     auth_token: str
     record: bool = False
     extra_params: Optional[Dict[str, Any]] = {}
+    noise_canceling_config: Optional[NoiseCancelingConfig] = None
 
 
 class VonageConfig(BaseModel):

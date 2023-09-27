@@ -10,3 +10,4 @@ credentials.json
 benchmark_results/
 private.key
 dump.rdb
+.idea

@@ -35,22 +35,22 @@ class PhoneCallWebsocketAction(Enum):
 
 class TwilioCall(Call[TwilioOutputDevice]):
     def __init__(
-        self,
-        from_phone: str,
-        to_phone: str,
-        base_url: str,
-        config_manager: BaseConfigManager,
-        agent_config: AgentConfig,
-        transcriber_config: TranscriberConfig,
-        synthesizer_config: SynthesizerConfig,
-        twilio_sid: str,
-        twilio_config: Optional[TwilioConfig] = None,
-        conversation_id: Optional[str] = None,
-        transcriber_factory: TranscriberFactory = TranscriberFactory(),
-        agent_factory: AgentFactory = AgentFactory(),
-        synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
-        events_manager: Optional[EventsManager] = None,
-        logger: Optional[logging.Logger] = None,
+            self,
+            from_phone: str,
+            to_phone: str,
+            base_url: str,
+            config_manager: BaseConfigManager,
+            agent_config: AgentConfig,
+            transcriber_config: TranscriberConfig,
+            synthesizer_config: SynthesizerConfig,
+            twilio_sid: str,
+            twilio_config: Optional[TwilioConfig] = None,
+            conversation_id: Optional[str] = None,
+            transcriber_factory: TranscriberFactory = TranscriberFactory(),
+            agent_factory: AgentFactory = AgentFactory(),
+            synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+            events_manager: Optional[EventsManager] = None,
+            logger: Optional[logging.Logger] = None,
     ):
         super().__init__(
             from_phone,
@@ -67,6 +67,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
             logger=logger,
+            noise_canceling_config=twilio_config.noise_canceling_config,
         )
         self.base_url = base_url
         self.config_manager = config_manager
@@ -145,9 +146,11 @@ class TwilioCall(Call[TwilioOutputDevice]):
         if data["event"] == "media":
             media = data["media"]
             chunk = base64.b64decode(media["payload"])
+            if self.noise_canceler:
+                chunk = self.cancel_noise(chunk)
             if self.latest_media_timestamp + 20 < int(media["timestamp"]):
                 bytes_to_fill = 8 * (
-                    int(media["timestamp"]) - (self.latest_media_timestamp + 20)
+                        int(media["timestamp"]) - (self.latest_media_timestamp + 20)
                 )
                 self.logger.debug(f"Filling {bytes_to_fill} bytes of silence")
                 # NOTE: 0xff is silence for mulaw audio
