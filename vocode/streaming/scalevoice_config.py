@@ -10,9 +10,33 @@ from vocode.streaming.ignored_while_talking_fillers_fork import OpenAIEmbeddingO
 from vocode.streaming.models.agent import ChatGPTAgentConfig, AzureOpenAIConfig
 from vocode.streaming.response_classifier import OpenaiEmbeddingsResponseClassifier
 
-SUMMARIZER_PROMPT_PREAMBLE = """You are creating summaries for telephone calls transcripts between AI voice bot and customer."""
+SUMMARIZER_PROMPT_PREAMBLE = """You are creating summaries for telephone calls transcripts between AI voice bot and customer.
+Bot`s name is Romana. Customer`s responses are after ``Human:`` and bot`s responses are after ``Bot:``.
 
+You will generate increasingly concise entity-dense summaries of the given call transcript.
+If previous summary exists it will be added below call transcript. Use it as a reference you need to keep all the entities
+and just update the summary with new information.
 
+Guidelines:
+- The summary should (4-5 sentences, ~80 words), be a concise and accurate summary of the call transcript.
+- Make space with fusion, compression, and removal of uninformative phrases like "the article discusses".
+- The summaries should become highly dense and concise, yet self-contained, e.g., easily understood without the article.
+- Never drop entities from the previous summary.
+- The most important entities are names, locations, and dates and cars discussed in the call and very important what
+agent and customer discussed already - e.g. financial terms, location of car etc. It is first priority so
+GPT-3 can use it later in the conversation and won't repeat itself or forget important information.
+
+Remember: Try to keep the summary as short as possible, but not shorter. Summary is later used by GPT-3 as a reference to
+what it have discussed and agreed with the customer. If the summary is too short or missing some important information,
+the GPT-3 will not be able to continue correctly the conversation.
+
+NEVER ADD CAR DETAILS AND OPTIONS INTO THE SUMMARY
+KEEP THE SUMMARY SHORT
+
+Fill in the summary after the line ``SUMMARY:``. If there is no summary yet, create one.
+SUMMARY:
+
+"""
 def get_scalevoice_conversation_config(logger: Logger,
                                        summarizer_prompt_preamble: Optional[str] = None):
     """

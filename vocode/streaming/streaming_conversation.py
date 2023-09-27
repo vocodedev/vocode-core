@@ -414,7 +414,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             events_manager: Optional[EventsManager] = None,
             logger: Optional[logging.Logger] = None,
             summarizer: Optional[ChatGPTSummaryAgent] = None,
-            summary_character_limit: Optional[int] = 500,
+            summary_character_limit: Optional[int] = 250,
             over_talking_filler_detector: Optional[OpenAIEmbeddingOverTalkingFillerDetector] = None,
             openai_embeddings_response_classifier: Optional[OpenaiEmbeddingsResponseClassifier] = None
     ):
