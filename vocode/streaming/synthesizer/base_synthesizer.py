@@ -1,5 +1,6 @@
 import asyncio
 import os
+import __main__
 from typing import (
     Any,
     Dict,
@@ -29,6 +30,10 @@ from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.synthesizer import SynthesizerConfig
+import logging
+
+# Get the root logger
+logger = logging.getLogger()
 
 FILLER_KEY: Dict = {
     'question': ["Um...","Uh...","Uhm...","Hmm..."],
@@ -43,23 +48,27 @@ FILLERS = list(set(FILLERS))
 FILLER_PHRASES = [BaseMessage(text=filler) 
                   for filler in FILLERS]
 
-# FILLER_PHRASES = [
-#     BaseMessage(text="Um..."),
-#     BaseMessage(text="Uh..."),
-#     BaseMessage(text="Uhm..."),
-#     BaseMessage(text="Hmm..."),
 
-#     BaseMessage(text="Uh-huh..."),
-#     BaseMessage(text="Mmhmm..."),
-#     BaseMessage(text="Yeah..."),
-#     # BaseMessage(text="Okay - "),
-#     # BaseMessage(text="Right - "),
-#     # BaseMessage(text="Let me see - "),
-# ]
+DOCKER_CONTAINER = os.getenv("DOCKER_CONTAINER")
+try:
+    if DOCKER_CONTAINER:
+        main_dir = "/code"
+    else:
+        main_dir = os.path.dirname(__main__.__file__)
+
+    FILLER_AUDIO_PATH = os.path.join(main_dir, 
+                                     "_submodules",
+                                     "vocode-python",
+                                     "vocode",
+                                     "streaming",
+                                     "synthesizer",
+                                     "filler_audio")
+    os.makedirs(FILLER_AUDIO_PATH, exist_ok=True)
+except Exception as e:
+    print(f"Error: {e}")
+    FILLER_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "filler_audio")
 
 
-
-FILLER_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "filler_audio")
 TYPING_NOISE_PATH = "%s/typing-noise.wav" % FILLER_AUDIO_PATH
 
 

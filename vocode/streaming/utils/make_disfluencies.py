@@ -12,13 +12,14 @@ def make_disfluency(message: str):
     filler_list = ['uh','um']
     filler_list_pause = [filler + ' -' for filler in filler_list]
     capitalized_filler_list = [filler.capitalize() for filler in filler_list_pause]
-    prob_start = 0.2
+    prob_start = 0.1
     prob_mid = 0.2  
+    # check if there are other filler words already
+    filler_in_message = any([filler in message.lower() for filler in filler_list])
     # Split the text into words
     words = message.split()
-    # check if there are other filler words already
-    no_filler_in_words = set(words).isdisjoint(filler_list)
-    if no_filler_in_words:
+    # no_filler_in_words = set(words).isdisjoint(filler_list)
+    if not filler_in_message:
         # Iterate through the words and insert "um" after words in list
         if len(words) > 2:
             for i, word in enumerate(words[:-2]):

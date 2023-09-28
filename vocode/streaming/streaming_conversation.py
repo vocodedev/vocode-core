@@ -133,8 +133,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         transcription.message, transcription.confidence
                     )
                 )
+                # ignore low confidence trancriptions
+                if transcription.confidence < self.conversation.transcriber.get_transcriber_config().min_interrupt_confidence:
+                    self.conversation.logger.info("Ignoring low confidence transcription")
+                    return
+            # check interruption
             if (self.conversation.is_bot_speaking 
-                and not self.conversation.is_human_speaking) or self.conversation.is_synthesizing:
+                # or not self.conversation.is_human_speaking 
+                or self.conversation.is_synthesizing):
                 if self.conversation.is_interrupt(transcription):
                     self.conversation.current_transcription_is_interrupt = (
                         self.conversation.broadcast_interrupt()
@@ -255,7 +261,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             last_user_message = self.conversation.transcript.get_last_user_message()[1]
             filler_audios = self.conversation.synthesizer.filler_audios
             if self.conversation.synthesizer.filler_audios:
-                if '?' in last_user_message and not self.conversation.is_interrupted:
+                if '?' in last_user_message:
                     filler_audio = random.choice(
                         filler_audios['question']
                     )
@@ -266,6 +272,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                     self.conversation.logger.debug("Chose confirm type")
                 elif self.conversation.is_interrupted:
+                    # TODO: add different types of filler audios for interruptions
                     filler_audio = random.choice(
                         filler_audios['confirm']
                     )         
@@ -366,7 +373,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     transcript_message=transcript_message,
                 )
                 # set flag to indicate whether bot was interrupted
-                self.conversation.is_interrupted = True
+                self.conversation.is_interrupted = cut_off
                 # set flag to indicate bot finished speaking
                 self.conversation.is_bot_speaking = False
                 # publish the transcript message now that it includes what was said during send_speech_to_output
@@ -637,10 +644,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             words = message.split()
             interruption_threshold = self.transcriber.get_transcriber_config().interruption_threshold
             # Verbal cues that indicate no interruption
-            verbal_cues = ["uh", "um", "mhm", "yes", "yeah", "okay", "i see", "i understand", "go on", "go ahead"]
+            verbal_cues = ["uh", "um", "mhm", 
+                           "yes", "yeah", "okay", 
+                           "i see", "i understand", "go on", "go ahead"]
 
-            if (len(words)==0):
-                # No interruption for no words uttered
+            if len(words)==0 or len(words)==1:
+                # No interruption for no words or one word uttered
                 return False
               
             if any(cue in message for cue in verbal_cues) and (len(words) <= interruption_threshold):
