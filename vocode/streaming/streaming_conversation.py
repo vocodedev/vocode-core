@@ -398,6 +398,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             self.conversation.logger.debug(
                                 "Agent said goodbye, ending call"
                             )
+                            await asyncio.sleep(2)  # Wait for 2 seconds
                             await self.conversation.terminate()
                     except asyncio.TimeoutError:
                         pass
