@@ -1,4 +1,5 @@
 import logging
+from copy import deepcopy
 from typing import Optional
 
 import numpy as np
@@ -8,19 +9,23 @@ from vocode.streaming.telephony.noise_canceler.base_noise_canceler import BaseNo
 from vocode.streaming.telephony.noise_canceler.noise_canceling import NoiseCancelingType, NoiseCancelingConfig
 
 
-class PicoVoiceNoiceCancelingConfig(NoiseCancelingConfig, type=NoiseCancelingType.PICO_VOICE.value):
+class PicoVoiceNoiseCancelingConfig(NoiseCancelingConfig, type=NoiseCancelingType.PICO_VOICE.value):
     access_key: str
 
 
-class PicoVoiceNoiseCanceler(BaseNoiseCanceler[PicoVoiceNoiceCancelingConfig]):
-    def __init__(self, noise_canceling_config: PicoVoiceNoiceCancelingConfig, logger: Optional[logging.Logger] = None):
+class PicoVoiceNoiseCanceler(BaseNoiseCanceler[PicoVoiceNoiseCancelingConfig]):
+    def __init__(self, noise_canceling_config: PicoVoiceNoiseCancelingConfig, logger: Optional[logging.Logger] = None):
         super().__init__(noise_canceling_config, logger)
         self.access_key = noise_canceling_config.access_key
         self.koala = pvkoala.create(access_key=self.access_key)
+        self.buffer = b''
 
     def cancel_noise(self, audio: bytes) -> bytes:
-        audio += b'\xff' * (256 - len(audio))
-        input_frame = np.frombuffer(audio, dtype=np.int8)
+        self.buffer += audio
+        if len(self.buffer) < 256:
+            return b'\xff' * 160
+        input_frame = np.frombuffer(self.buffer, dtype=np.int8)
         processed = self.koala.process(input_frame[0:256])
         audio = np.array(processed, dtype=np.int8).tobytes()
-        return audio[:160]
+        self.buffer = deepcopy(self.buffer[160:])
+        return deepcopy(audio[:160])
