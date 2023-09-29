@@ -57,4 +57,4 @@ class SpeakerOutput(BaseOutputDevice):
         cls,
         **kwargs,
     ):
-        return 
+        return

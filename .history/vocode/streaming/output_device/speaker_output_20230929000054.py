@@ -20,17 +20,10 @@ class SpeakerOutput(BaseOutputDevice):
         sampling_rate = sampling_rate or int(
             self.device_info.get("default_samplerate", self.DEFAULT_SAMPLING_RATE)
         )
-        import sounddevice as sd
+        
         super().__init__(sampling_rate, audio_encoding)
         self.blocksize = blocksize or self.sampling_rate
-        self.stream = sd.OutputStream(
-            channels=1,
-            samplerate=self.sampling_rate,
-            dtype=np.int16,
-            blocksize=self.blocksize,
-            device=int(self.device_info["index"]),
-            callback=self.callback,
-        )
+        self.stream = None
         self.stream.start()
         self.queue: queue.Queue[np.ndarray] = queue.Queue()
 
@@ -57,4 +50,4 @@ class SpeakerOutput(BaseOutputDevice):
         cls,
         **kwargs,
     ):
-        return 
+        return cls(sd.query_devices(kind="output"), **kwargs)

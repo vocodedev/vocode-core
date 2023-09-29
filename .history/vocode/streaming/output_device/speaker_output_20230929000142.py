@@ -23,6 +23,7 @@ class SpeakerOutput(BaseOutputDevice):
         import sounddevice as sd
         super().__init__(sampling_rate, audio_encoding)
         self.blocksize = blocksize or self.sampling_rate
+        
         self.stream = sd.OutputStream(
             channels=1,
             samplerate=self.sampling_rate,
