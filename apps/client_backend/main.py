@@ -1,7 +1,7 @@
 import logging
 import sys
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 
 # sys.path.insert(0, "/vocode")
 
@@ -53,3 +53,8 @@ conversation_router = ConversationRouter(
 )
 
 app.include_router(conversation_router.get_router())
+
+
+@app.get("/health")
+def read_health():
+    return Response("Healthy", status_code=200)
