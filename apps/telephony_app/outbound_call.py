@@ -7,10 +7,7 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
 from vocode.streaming.models.telephony import TwilioConfig
 from vocode.streaming.models.transcriber import DeepgramTranscriberConfig, PunctuationEndpointingConfig
-from vocode.streaming.telephony.noise_canceler.noise_reduce import NoiseReduceNoiseCancelingConfig
-from vocode.streaming.telephony.noise_canceler.pico_voice import PicoVoiceNoiseCancelingConfig
-from vocode.streaming.telephony.noise_canceler.rnn_noise_wrapper import RRNWrapperNoiseCancelingConfig
-from vocode.streaming.telephony.noise_canceler.web_rtc import WebRTCNoiseCancelingConfig
+from vocode.streaming.telephony.noise_canceler import WebRTCNoiseCancelingConfig
 
 load_dotenv()
 

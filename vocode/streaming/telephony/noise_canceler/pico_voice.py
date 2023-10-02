@@ -3,7 +3,6 @@ from copy import deepcopy
 from typing import Optional
 
 import numpy as np
-import pvkoala
 
 from vocode.streaming.telephony.noise_canceler.base_noise_canceler import BaseNoiseCanceler
 from vocode.streaming.telephony.noise_canceler.noise_canceling import NoiseCancelingType, NoiseCancelingConfig
@@ -15,6 +14,8 @@ class PicoVoiceNoiseCancelingConfig(NoiseCancelingConfig, type=NoiseCancelingTyp
 
 class PicoVoiceNoiseCanceler(BaseNoiseCanceler[PicoVoiceNoiseCancelingConfig]):
     def __init__(self, noise_canceling_config: PicoVoiceNoiseCancelingConfig, logger: Optional[logging.Logger] = None):
+        import pvkoala
+
         super().__init__(noise_canceling_config, logger)
         self.access_key = noise_canceling_config.access_key
         self.koala = pvkoala.create(access_key=self.access_key)

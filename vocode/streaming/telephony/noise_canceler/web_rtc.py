@@ -2,8 +2,6 @@ import logging
 from copy import deepcopy
 from typing import Optional
 
-from webrtc_noise_gain_cpp import AudioProcessor
-
 from vocode.streaming.telephony.noise_canceler.base_noise_canceler import BaseNoiseCanceler
 from vocode.streaming.telephony.noise_canceler.noise_canceling import NoiseCancelingConfig, NoiseCancelingType
 
@@ -14,7 +12,10 @@ class WebRTCNoiseCancelingConfig(NoiseCancelingConfig, type=NoiseCancelingType.W
 
 
 class WebRTCNoiseCanceler(BaseNoiseCanceler[WebRTCNoiseCancelingConfig]):
+
     def __init__(self, noise_canceling_config: WebRTCNoiseCancelingConfig, logger: Optional[logging.Logger] = None):
+        from webrtc_noise_gain_cpp import AudioProcessor
+
         super().__init__(noise_canceling_config, logger)
         self.audio_processor = AudioProcessor(self.noise_canceling_config.auto_gain_dbfs,
                                               self.noise_canceling_config.noise_suppression_level)
