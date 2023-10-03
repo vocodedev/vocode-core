@@ -10,3 +10,5 @@ credentials.json
 benchmark_results/
 private.key
 dump.rdb
+# filler audios
+**/*-synthesizer_eleven_labs-*.wav
