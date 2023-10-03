@@ -38,20 +38,19 @@ async def main():
         transcriber=AzureTranscriber(
             AzureTranscriberConfig.from_input_device(
                 microphone_input
-            )
+            ),
+            logger=logger
         ),
         agent=ChatGPTAgent(
             ChatGPTAgentConfig(
                 initial_message=BaseMessage(text="What up"),
                 prompt_preamble="""The AI is having a pleasant conversation about life""",
-                end_conversation_on_goodbye=True,
-                track_bot_sentiment=True,
-                send_filler_audio=True,
+                end_conversation_on_goodbye=True
             )
         ),
-        synthesizer=CachingSynthesizer(AzureSynthesizer(
-            AzureSynthesizerConfig.from_output_device(speaker_output)
-        )),
+        synthesizer=AzureSynthesizer(
+            AzureSynthesizerConfig.from_output_device(speaker_output, logger=logger),
+        ),
         logger=logger,
     )
     await conversation.start()
