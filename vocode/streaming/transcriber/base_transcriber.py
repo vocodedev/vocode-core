@@ -2,17 +2,20 @@ from __future__ import annotations
 
 import asyncio
 import audioop
+import logging
+
 from opentelemetry import trace, metrics
-from typing import Generic, TypeVar, Union
+from typing import Generic, TypeVar, Union, Optional
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.model import BaseModel
 
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
-
+from vocode.utils.context_tracker import ContextTrackerFactory
 
 tracer = trace.get_tracer(__name__)
 meter = metrics.get_meter(__name__)
+
 
 class Transcription(BaseModel):
     message: str
@@ -54,11 +57,17 @@ class AbstractTranscriber(Generic[TranscriberConfigType]):
 
 class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWorker):
     def __init__(
-        self,
-        transcriber_config: TranscriberConfigType,
+            self,
+            transcriber_config: TranscriberConfigType,
+            logger: Optional[logging.Logger] = None,
+
     ):
+        self.logger = logger or logging.getLogger(__name__)
         self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
+        context_tracker_factory = ContextTrackerFactory()
+        self.context_tracker = context_tracker_factory.create_context_tracker(
+            self.transcriber_config.context_tracker_config, logger)
         AsyncWorker.__init__(self, self.input_queue, self.output_queue)
         AbstractTranscriber.__init__(self, transcriber_config)
 
@@ -79,8 +88,8 @@ class BaseThreadAsyncTranscriber(
     AbstractTranscriber[TranscriberConfigType], ThreadAsyncWorker
 ):
     def __init__(
-        self,
-        transcriber_config: TranscriberConfigType,
+            self,
+            transcriber_config: TranscriberConfigType,
     ):
         self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()

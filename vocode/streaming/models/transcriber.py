@@ -12,6 +12,7 @@ from vocode.streaming.telephony.constants import (
 )
 from .audio_encoding import AudioEncoding
 from .model import TypedModel
+from vocode.utils.context_tracker import BaseContextTrackerConfig
 
 AZURE_DEFAULT_LANGUAGE = "en-US"
 
@@ -55,6 +56,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     downsampling: Optional[int] = None
     min_interrupt_confidence: Optional[float] = None
     mute_during_speech: bool = False
+    context_tracker_config: BaseContextTrackerConfig = None
 
     @validator("min_interrupt_confidence")
     def min_interrupt_confidence_must_be_between_0_and_1(cls, v):

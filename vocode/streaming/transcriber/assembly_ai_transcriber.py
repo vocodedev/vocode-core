@@ -46,14 +46,13 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
         api_key: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(transcriber_config)
+        super().__init__(transcriber_config, logger)
         self.api_key = api_key or getenv("ASSEMBLY_AI_API_KEY")
         if not self.api_key:
             raise Exception(
                 "Please set ASSEMBLY_AI_API_KEY environment variable or pass it as a parameter"
             )
         self._ended = False
-        self.logger = logger or logging.getLogger(__name__)
         if self.transcriber_config.endpointing_config:
             raise Exception("Assembly AI endpointing config not supported yet")
 

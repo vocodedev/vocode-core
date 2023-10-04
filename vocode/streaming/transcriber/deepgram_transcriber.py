@@ -52,7 +52,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         api_key: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(transcriber_config)
+        super().__init__(transcriber_config, logger)
         self.api_key = api_key or getenv("DEEPGRAM_API_KEY")
         if not self.api_key:
             raise Exception(
@@ -60,7 +60,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             )
         self._ended = False
         self.is_ready = False
-        self.logger = logger or logging.getLogger(__name__)
         self.audio_cursor = 0.0
 
     async def _run_loop(self):
@@ -238,25 +237,27 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         num_buffer_utterances += 1
 
                     if speech_final:
-                        self.output_queue.put_nowait(
-                            Transcription(
-                                message=buffer,
-                                confidence=buffer_avg_confidence,
-                                is_final=True,
+                        if (self.context_tracker is None) or self.context_tracker.is_part_of_context(buffer):
+                            self.output_queue.put_nowait(
+                                Transcription(
+                                    message=buffer,
+                                    confidence=buffer_avg_confidence,
+                                    is_final=True,
+                                )
                             )
-                        )
                         buffer = ""
                         buffer_avg_confidence = 0
                         num_buffer_utterances = 1
                         time_silent = 0
                     elif top_choice["transcript"] and confidence > 0.0:
-                        self.output_queue.put_nowait(
-                            Transcription(
-                                message=buffer,
-                                confidence=confidence,
-                                is_final=False,
+                        if self.context_tracker is None or self.context_tracker.is_part_of_context(buffer):
+                            self.output_queue.put_nowait(
+                                Transcription(
+                                    message=buffer,
+                                    confidence=confidence,
+                                    is_final=False,
+                                )
                             )
-                        )
                         time_silent = self.calculate_time_silent(data)
                     else:
                         time_silent += data["duration"]
