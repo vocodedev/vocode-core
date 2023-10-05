@@ -356,7 +356,7 @@
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
+            "content": { "audio/mpeg": {} }
           },
           "422": {
             "description": "Validation Error",
@@ -1792,10 +1792,10 @@
             "default": false
           },
           "transcript": { "type": "string", "title": "Transcript" },
-          "machine_detection_result": {
+          "human_detection_result": {
             "type": "string",
-            "enum": ["human", "machine"],
-            "title": "Machine Detection Result"
+            "enum": ["human", "no_human"],
+            "title": "Human Detection Result"
           },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
@@ -1818,6 +1818,11 @@
             "type": "boolean",
             "title": "Hipaa Compliant",
             "default": false
+          },
+          "on_no_human_answer": {
+            "type": "string",
+            "enum": ["continue", "hangup"],
+            "title": "On No Human Answer"
           }
         },
         "type": "object",
@@ -1971,10 +1976,10 @@
             ],
             "title": "Agent"
           },
-          "on_machine_answer": {
+          "on_no_human_answer": {
             "type": "string",
             "enum": ["continue", "hangup"],
-            "title": "On Machine Answer",
+            "title": "On No Human Answer",
             "default": "continue"
           },
           "hipaa_compliant": {
@@ -2174,7 +2179,7 @@
           "event_phone_call_ended",
           "event_transcript",
           "event_recording",
-          "event_machine_detection"
+          "event_human_detection"
         ],
         "title": "EventType",
         "description": "An enumeration."
@@ -2285,10 +2290,10 @@
             "default": false
           },
           "transcript": { "type": "string", "title": "Transcript" },
-          "machine_detection_result": {
+          "human_detection_result": {
             "type": "string",
-            "enum": ["human", "machine"],
-            "title": "Machine Detection Result"
+            "enum": ["human", "no_human"],
+            "title": "Human Detection Result"
           },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
@@ -2311,6 +2316,11 @@
             "type": "boolean",
             "title": "Hipaa Compliant",
             "default": false
+          },
+          "on_no_human_answer": {
+            "type": "string",
+            "enum": ["continue", "hangup"],
+            "title": "On No Human Answer"
           }
         },
         "type": "object",
@@ -2334,6 +2344,11 @@
             "type": "string",
             "format": "uuid",
             "title": "Inbound Agent"
+          },
+          "outbound_only": {
+            "type": "boolean",
+            "title": "Outbound Only",
+            "default": false
           },
           "number": { "type": "string", "title": "Number" }
         },
@@ -2369,6 +2384,11 @@
           "active": { "type": "boolean", "title": "Active", "default": true },
           "label": { "type": "string", "title": "Label", "default": "" },
           "inbound_agent": { "$ref": "#/components/schemas/Agent" },
+          "outbound_only": {
+            "type": "boolean",
+            "title": "Outbound Only",
+            "default": false
+          },
           "number": { "type": "string", "title": "Number" }
         },
         "type": "object",
