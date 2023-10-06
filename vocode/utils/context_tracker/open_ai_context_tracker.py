@@ -41,14 +41,8 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
         )
         self.logger.debug(f"openai for start response: {response}")
 
-    async def is_part_of_context(self, user_message: str) -> bool:
-        self.logger.error(f"user message: {user_message}")
-        self.messages.append({"role": "user", "content": user_message})
-        self.logger.debug(f"model: {self.config.model}")
-        self.logger.debug(f"prompt: {self.config.prompt}")
-        self.logger.debug(f"messages: {self.messages}")
-        self.logger.debug(f"api_key: {self.config.api_key}")
-        response = await openai.ChatCompletion.acreate(
+    def is_part_of_context(self, user_message: str) -> bool:
+        response = openai.ChatCompletion.create(
             model=self.config.model,
             messages=self.messages,
             stream=True,
