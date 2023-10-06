@@ -42,6 +42,7 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
             model=self.config.model,
             messages=self.messages,
         )
+        self.logger.debug(f"openai response: {response}")
         resp = response['choices'][0]['message']['content']
         logging.debug("openai response: %s", resp)
         self.messages.append({"role": "assistant", "content": resp})
