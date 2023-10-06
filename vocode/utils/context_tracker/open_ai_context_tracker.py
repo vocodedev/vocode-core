@@ -23,7 +23,7 @@ contacti base features are now available on amazon web services and you can seee
 class OpenAIContextTrackerConfig(BaseContextTrackerConfig, type=ContextTrackerType.OPEN_AI.value):
     api_key: str = None
     model: str = "gpt-3.5-turbo"
-    PROMPT: str = None
+    prompt: str = None
 
 
 class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
@@ -32,12 +32,16 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
         openai.api_key = config.api_key or getenv("OPENAI_API_KEY")
         if not openai.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
-        base_prompt = self.config.PROMPT or PROMPT
+        base_prompt = self.config.prompt or PROMPT
         self.messages = [{"role": "system", "content": base_prompt}]
 
     def is_part_of_context(self, user_message: str) -> bool:
         self.logger.error(f"user message: {user_message}")
         self.messages.append({"role": "user", "content": user_message})
+        self.logger.debug(f"model: {self.config.model}")
+        self.logger.debug(f"prompt: {self.config.prompt}")
+        self.logger.debug(f"messages: {self.messages}")
+        self.logger.debug(f"api_key: {self.config.api_key}")
         response = openai.ChatCompletion.create(
             model=self.config.model,
             messages=self.messages,
