@@ -21,9 +21,9 @@ contacti base features are now available on amazon web services and you can seee
 
 
 class OpenAIContextTrackerConfig(BaseContextTrackerConfig, type=ContextTrackerType.OPEN_AI.value):
-    api_key: str
+    api_key: str = getenv("OPENAI_API_KEY")
     model: str = "gpt-3.5-turbo"
-    prompt: str
+    prompt: str = PROMPT
 
 
 class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
