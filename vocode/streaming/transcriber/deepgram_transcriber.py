@@ -248,15 +248,13 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         num_buffer_utterances = 1
                         time_silent = 0
                     elif top_choice["transcript"] and confidence > 0.0:
-                        self.logger.debug(f"buffer before context check non final: {buffer}")
-                        if self.context_tracker is None or self.context_tracker.is_part_of_context(buffer):
-                            self.output_queue.put_nowait(
-                                Transcription(
-                                    message=buffer,
-                                    confidence=confidence,
-                                    is_final=False,
-                                )
+                        self.output_queue.put_nowait(
+                            Transcription(
+                                message=buffer,
+                                confidence=confidence,
+                                is_final=False,
                             )
+                        )
                         time_silent = self.calculate_time_silent(data)
                     else:
                         time_silent += data["duration"]
