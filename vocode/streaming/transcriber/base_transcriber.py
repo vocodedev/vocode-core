@@ -62,6 +62,7 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
             logger: Optional[logging.Logger] = None,
 
     ):
+        # self.transcriber_config = transcriber_config
         self.logger = logger or logging.getLogger(__name__)
         self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
