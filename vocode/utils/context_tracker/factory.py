@@ -1,8 +1,8 @@
 import logging
 from typing import Optional
 
-from vocode.utils.context_tracker import BaseContextTrackerConfig, BaseContextTracker
-from vocode.utils.context_tracker import OpenAIContextTrackerConfig, OpenAIContextTracker
+from vocode.utils.context_tracker.context_tracker import BaseContextTrackerConfig, BaseContextTracker
+from vocode.utils.context_tracker.open_ai_context_tracker import OpenAIContextTrackerConfig, OpenAIContextTracker
 
 
 class ContextTrackerFactory:

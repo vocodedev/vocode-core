@@ -11,7 +11,7 @@ from vocode.streaming.models.model import BaseModel
 
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
-from vocode.utils.context_tracker import ContextTrackerFactory
+from vocode.utils.context_tracker.factory import ContextTrackerFactory
 
 tracer = trace.get_tracer(__name__)
 meter = metrics.get_meter(__name__)
