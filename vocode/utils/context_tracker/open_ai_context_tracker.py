@@ -4,7 +4,8 @@ from typing import Optional
 import openai
 
 from vocode import getenv
-from vocode.utils.context_tracker import BaseContextTracker, BaseContextTrackerConfig, ContextTrackerConfigType
+from vocode.utils.context_tracker import BaseContextTracker, BaseContextTrackerConfig
+from vocode.utils.context_tracker.context_tracker import ContextTrackerType
 
 PROMPT = """
 There is an ongoing call, between a call center, how tries to sell some stuff and potential customer.
@@ -16,7 +17,7 @@ call context = trying to sell a box of cup cakes
 """
 
 
-class OpenAIContextTrackerConfig(BaseContextTrackerConfig, type=ContextTrackerConfigType.OPEN_AI.value):
+class OpenAIContextTrackerConfig(BaseContextTrackerConfig, type=ContextTrackerType.OPEN_AI.value):
     api_key: str = None
     model: str = "gpt-3.5-turbo"
     PROMPT: str = None
