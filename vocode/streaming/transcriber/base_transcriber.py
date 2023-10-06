@@ -68,7 +68,7 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
         self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
         context_tracker_factory = ContextTrackerFactory()
         self.context_tracker = context_tracker_factory.create_context_tracker(
-            self.transcriber_config.context_tracker_config, logger)
+            transcriber_config.context_tracker_config, logger)
         AsyncWorker.__init__(self, self.input_queue, self.output_queue)
         AbstractTranscriber.__init__(self, transcriber_config)
 

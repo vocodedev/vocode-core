@@ -11,6 +11,6 @@ class ContextTrackerFactory:
             transcriber_config: BaseContextTrackerConfig,
             logger: Optional[logging.Logger] = None,
     ) -> BaseContextTracker:
-        logger.debug(f"Creating context tracker of type {transcriber_config.type}")
+        logger.debug(f"Creating context tracker of type {transcriber_config}")
         if isinstance(transcriber_config, OpenAIContextTrackerConfig):
             return OpenAIContextTracker(transcriber_config, logger=logger)
