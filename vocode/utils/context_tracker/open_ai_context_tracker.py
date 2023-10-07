@@ -4,6 +4,7 @@ from typing import Optional
 import openai
 
 from vocode import getenv
+from vocode.streaming.models.agent import AzureOpenAIConfig
 from vocode.utils.context_tracker import BaseContextTracker, BaseContextTrackerConfig
 from vocode.utils.context_tracker.context_tracker import ContextTrackerType
 
@@ -24,12 +25,24 @@ class OpenAIContextTrackerConfig(BaseContextTrackerConfig, type=ContextTrackerTy
     api_key: str = getenv("OPENAI_API_KEY")
     model: str = "gpt-3.5-turbo"
     prompt: str = PROMPT
+    azure_config: AzureOpenAIConfig = None
 
 
 class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
     def __init__(self, config: OpenAIContextTrackerConfig, logger: Optional[logging.Logger] = None):
         super().__init__(config, logger)
-        openai.api_key = getenv("OPENAI_API_KEY")
+
+        if self.config.azure_config:
+            openai.api_type = self.config.azure_config.api_type
+            openai.api_base = getenv("AZURE_OPENAI_API_BASE")
+            openai.api_version = self.config.azure_config.api_version
+            openai.api_key = getenv("AZURE_OPENAI_API_KEY")
+        else:
+            openai.api_type = "open_ai"
+            openai.api_base = "https://api.openai.com/v1"
+            openai.api_version = None
+            openai.api_key = self.config.api_key or getenv("OPENAI_API_KEY")
+
         if not openai.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
         base_prompt = PROMPT
@@ -42,11 +55,18 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
         self.logger.debug(f"openai for start response: {response}")
 
     def is_part_of_context(self, user_message: str) -> bool:
-        response = openai.ChatCompletion.create(
+        self.messages.append({"role": "user", "content": user_message})
+        parameters = dict(
             model=self.config.model,
             messages=self.messages,
             stream=True,
         )
+        if self.config.azure_config is not None:
+            parameters["engine"] = self.config.azure_config.engine
+        else:
+            parameters["model"] = self.config.model
+
+        response = openai.ChatCompletion.create(**parameters)
         self.logger.debug(f"openai response: {response}")
         resp = response['choices'][0]['message']['content']
         logging.debug("openai response: %s", resp)
