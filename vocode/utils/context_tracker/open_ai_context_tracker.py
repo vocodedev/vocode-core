@@ -49,6 +49,19 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
         self.messages = [{"role": "system", "content": base_prompt}]
 
     def is_part_of_context(self, user_message: str) -> bool:
+        parameters = self._generate_parameters(user_message)
+
+        response = openai.ChatCompletion.create(**parameters)
+        self.logger.debug(f"openai response all: {response}")
+        resp = response['choices'][0]['message']['content']
+        self.logger.debug("openai response: %s", resp)
+        self.messages.append({"role": "assistant", "content": resp})
+        is_related_to_context = 'true' in resp.lower()
+        self.logger.debug(
+            f"context tracker got message: {user_message}, and is_related_to_context is: {is_related_to_context}")
+        return is_related_to_context
+
+    def _generate_parameters(self, user_message):
         self.messages.append({"role": "user", "content": user_message})
         parameters = dict(
             model=self.config.model,
@@ -59,13 +72,4 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
             parameters["engine"] = self.config.azure_config.engine
         else:
             parameters["model"] = self.config.model
-        self.logger.debug(f"openai parameters: {parameters}")
-        response = openai.ChatCompletion.create(**parameters)
-        self.logger.debug(f"openai response: {response}")
-        resp = response['choices'][0]['message']['content']
-        logging.debug("openai response: %s", resp)
-        self.messages.append({"role": "assistant", "content": resp})
-        is_related_to_context = 'true' in resp.lower()
-        self.logger.debug(
-            f"context tracker got message: {user_message}, and is_related_to_context is: {is_related_to_context}")
-        return is_related_to_context
+        return parameters
