@@ -10,12 +10,11 @@ from vocode.utils.context_tracker.context_tracker import ContextTrackerType
 
 PROMPT = """
 There is an ongoing chat, between a call center, who is trying do telemarketing. You can see 
-customer side of the chat, and you want to determine if the last message is related to context of the call.
-we get both parts of chat from caller and the one who answers, and we want to determine if the last message is a 
+customer side of the chat, and you want to determine if the last message is related to context of the chat.
+You get costumer side of chat, and we want to determine if the last message is a 
 response to caller, or just random people talking around the client.
-Answer TRUE if it's related to context, or FALSE if it's not, just one of this words.
+Answer TRUE if it's related to context, or FALSE if it's not, just one of these words.
 the context of call is as follow:
-call context = 
 act as a phone announcer, just generate on side of things. ask for their name, and tell dear NAME,
 contacti base features are now available on amazon web services and you can seee out features on www.contacti.AI
 """
@@ -52,7 +51,6 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
         parameters = self._generate_parameters(user_message)
 
         response = openai.ChatCompletion.create(**parameters)
-        self.logger.debug(f"openai response all: {response}")
         resp = response['choices'][0]['message']['content']
         self.logger.debug("openai response: %s", resp)
         self.messages.append({"role": "assistant", "content": resp})
@@ -66,10 +64,15 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
         parameters = dict(
             model=self.config.model,
             messages=self.messages,
-            stream=True,
         )
         if self.config.azure_config is not None:
             parameters["engine"] = self.config.azure_config.engine
         else:
             parameters["model"] = self.config.model
         return parameters
+
+
+config = OpenAIContextTrackerConfig(api_key="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")
+context_tracker = OpenAIContextTracker(config=config, logger=logging.getLogger(__name__))
+context_tracker.is_part_of_context("hello")
+context_tracker.is_part_of_context("how can i help you?")
