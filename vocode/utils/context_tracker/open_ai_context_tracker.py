@@ -65,7 +65,7 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
             parameters["engine"] = self.config.azure_config.engine
         else:
             parameters["model"] = self.config.model
-
+        self.logger.debug(f"openai parameters: {parameters}")
         response = openai.ChatCompletion.create(**parameters)
         self.logger.debug(f"openai response: {response}")
         resp = response['choices'][0]['message']['content']
