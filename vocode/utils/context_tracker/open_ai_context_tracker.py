@@ -47,12 +47,6 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
         base_prompt = PROMPT
         self.messages = [{"role": "system", "content": base_prompt}]
-        response = openai.ChatCompletion.create(
-            model=self.config.model,
-            messages=self.messages,
-            stream=True,
-        )
-        self.logger.debug(f"openai for start response: {response}")
 
     def is_part_of_context(self, user_message: str) -> bool:
         self.messages.append({"role": "user", "content": user_message})
