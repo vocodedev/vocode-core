@@ -70,9 +70,3 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
         else:
             parameters["model"] = self.config.model
         return parameters
-
-
-config = OpenAIContextTrackerConfig(api_key="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")
-context_tracker = OpenAIContextTracker(config=config, logger=logging.getLogger(__name__))
-context_tracker.is_part_of_context("hello")
-context_tracker.is_part_of_context("how can i help you?")
