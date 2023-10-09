@@ -8,28 +8,20 @@ from vocode.streaming.models.agent import AzureOpenAIConfig
 from vocode.utils.context_tracker import BaseContextTracker, BaseContextTrackerConfig
 from vocode.utils.context_tracker.context_tracker import ContextTrackerType
 
-PROMPT = """
-There is an ongoing chat, between a call center, who is trying do telemarketing. You can see 
-customer side of the chat, and you want to determine if the last message is related to context of the chat.
-You get costumer side of chat, and we want to determine if the last message is a 
-response to caller, or just random people talking around the client.
-Answer TRUE if it's related to context, or FALSE if it's not, just one of these words.
-the context of call is as follow:
-act as a phone announcer, just generate on side of things. ask for their name, and tell dear NAME,
-contacti base features are now available on amazon web services and you can seee out features on www.contacti.AI
-"""
-
 
 class OpenAIContextTrackerConfig(BaseContextTrackerConfig, type=ContextTrackerType.OPEN_AI.value):
     api_key: str = getenv("OPENAI_API_KEY")
     model: str = "gpt-3.5-turbo"
-    prompt: str = PROMPT
+    prompt: str = ""
     azure_config: AzureOpenAIConfig = None
 
 
 class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
     def __init__(self, config: OpenAIContextTrackerConfig, logger: Optional[logging.Logger] = None):
         super().__init__(config, logger)
+
+        if self.config.prompt == "":
+            raise ValueError("Prompt must be set in config")
 
         if self.config.azure_config:
             openai.api_type = self.config.azure_config.api_type
@@ -44,8 +36,8 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
 
         if not openai.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
-        base_prompt = PROMPT
-        self.messages = [{"role": "system", "content": base_prompt}]
+
+        self.messages = [{"role": "system", "content": self.config.prompt}]
 
     def is_part_of_context(self, user_message: str) -> bool:
         parameters = self._generate_parameters(user_message)
