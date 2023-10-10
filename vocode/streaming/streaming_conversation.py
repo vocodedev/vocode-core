@@ -355,9 +355,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
             try:
                 message, synthesis_result = item.payload
                 metadata = message.metadata or {}
+
+                if self.conversation.bot_sentiment:
+                    metadata["sentiment"] = self.conversation.bot_sentiment
+                if synthesis_result.cached_path:
+                    metadata["path"] = synthesis_result.cached_path
+                metadata["is_final"] = False
+
                 # create an empty transcript message and attach it to the transcript
                 transcript_message = Message(
-                    text="",
+                    text=message.text,
                     sender=Sender.BOT,
                     metadata=metadata
                 )
@@ -366,6 +373,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                     publish_to_events_manager=False,
                 )
+
+                # Clients may want to show the transcript as soon as the bot starts speaking, not after
+                if self.conversation.output_device and hasattr(self.conversation.output_device, "consume_transcript"):
+                    self.conversation.output_device.consume_transcript(transcript_message)
+                    
                 message_sent, cut_off, duration = await self.conversation.send_speech_to_output(
                     message.text,
                     synthesis_result,
@@ -375,16 +387,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 # Only approximate duration since we don't know the exact duration of the last chunk
                 metadata["duration"] = duration
-                if synthesis_result.cached_path:
-                    metadata["path"] = synthesis_result.cached_path
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(
                         message_sent
                     )
                     metadata["cut_off"] = True
-                
-                if self.conversation.bot_sentiment:
-                    metadata["sentiment"] = self.conversation.bot_sentiment
+                metadata["is_final"] = True
 
                 # publish the transcript message now that it includes what was said during send_speech_to_output
                 self.conversation.transcript.maybe_publish_transcript_event_from_message(
