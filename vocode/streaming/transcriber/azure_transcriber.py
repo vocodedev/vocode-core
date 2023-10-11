@@ -82,7 +82,7 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
                 "auto_detect_source_language_config"
             ] = auto_detect_source_language_config
         else:
-            speech_params["language"] = self.transcriber_config.language
+            speech_params["language"] = self.transcriber_config.language_code
 
         self.speech = speechsdk.SpeechRecognizer(**speech_params)
 

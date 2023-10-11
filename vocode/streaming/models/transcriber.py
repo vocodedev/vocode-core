@@ -166,7 +166,6 @@ class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.val
 
 
 class AzureTranscriberConfig(TranscriberConfig, type=TranscriberType.AZURE.value):
-    language: str = AZURE_DEFAULT_LANGUAGE
     candidate_languages: Optional[List[str]] = None
 
     # https://learn.microsoft.com/en-gb/azure/cognitive-services/speech-service/how-to-recognize-speech?pivots=programming-language-csharp#change-how-silence-is-handled
