@@ -23,7 +23,8 @@ FillerPhrases = [
 
 
 class FillerModel(EmbeddingModel):
-    def __init__(self, embeddings_cache_path: str, embeddings_file: str, openai_api_key: Optional[str] = None):
+    def __init__(self, embeddings_cache_path: str = "filler_embeddings", embeddings_file: str = 'filler_embeddings',
+                 openai_api_key: Optional[str] = None):
         self.phrases = FillerPhrases
         self.strict_phrases = ["hmm", 'go on', "tell me more", "please continue"]
         super().__init__(embeddings_cache_path, embeddings_file, openai_api_key)

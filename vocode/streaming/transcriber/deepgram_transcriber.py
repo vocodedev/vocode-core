@@ -21,6 +21,7 @@ from vocode.streaming.models.transcriber import (
     TimeEndpointingConfig,
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
+from vocode.streaming.utils.interrupt_model import InterruptModel
 
 PUNCTUATION_TERMINATORS = [".", "!", "?"]
 NUM_RESTARTS = 5
@@ -59,6 +60,12 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self._ended = False
         self.is_ready = False
         self.audio_cursor = 0.0
+        self.interrupt_on_blockers: bool = self.transcriber_config.interrupt_on_blockers
+        if self.interrupt_on_blockers:
+            self.interrupt_model: InterruptModel = InterruptModel()
+            self.interrupt_model_initialize_task = asyncio.create_task(
+                self.interrupt_model.initialize_embeddings()
+            )
 
     async def _run_loop(self):
         restarts = 0
@@ -126,7 +133,10 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             self, current_buffer: str, deepgram_response: dict, time_silent: float
     ):
         transcript = deepgram_response["channel"]["alternatives"][0]["transcript"]
-
+        if self.interrupt_on_blockers:
+            is_interrupt_task = asyncio.create_task(self.interrupt_model.is_interrupt(transcript))
+            if await asyncio.wait_for(is_interrupt_task, timeout=0.1):
+                return True
         # if it is not time based, then return true if speech is final and there is a transcript
         if not self.transcriber_config.endpointing_config:
             return transcript and deepgram_response["speech_final"]
