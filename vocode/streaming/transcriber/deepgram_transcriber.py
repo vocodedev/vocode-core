@@ -116,6 +116,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             extra_params["version"] = self.transcriber_config.version
         if self.transcriber_config.filler_words:
             extra_params["filler_words"] = self.transcriber_config.filler_words
+        if self.transcriber_config.deepgram_endpointing:
+            extra_params["endpointing"] = self.transcriber_config.deepgram_endpointing
         if self.transcriber_config.keywords:
             extra_params["keywords"] = self.transcriber_config.keywords
         if (
@@ -129,8 +131,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         # Encode the "keywords" field first
         encoded_keywords = "&".join([f"keywords={quote(kw)}" for kw in url_params["keywords"]])
         del url_params["keywords"]
-
-        return f"wss://api.deepgram.com/v1/listen?{urlencode(url_params)}&{encoded_keywords}"
+        final_url = f"wss://api.deepgram.com/v1/listen?{urlencode(url_params)}&{encoded_keywords}"
+        return final_url
 
     def is_speech_final(
         self, current_buffer: str, deepgram_response: dict, time_silent: float
