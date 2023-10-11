@@ -125,16 +125,24 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         if len(all_responses) > 0 and self.extract_belief_state:
             # FIXME: stardardize this
             formatted_responses = "\n".join(["BOT: " + response for response in all_responses])
-            self.logger.info("AGENT: Got responses from agent for dialog state extraction: %s", formatted_responses)
-            belief_state = await self.extract_belief_state(formatted_responses)
-            self.logger.info("AGENT: Got belief state from agent: %s", belief_state)
+            self.logger.info("Got responses from agent for dialog state extraction: %s", formatted_responses)
+            belief_state = await self.get_belief_state(formatted_responses)
+            # TODO: update belief state in transcript.
+            self.logger.info("Got belief state from agent: %s", belief_state)
+            async for response in self.follow_response(formatted_responses):
+                self.logger.info("Got follow up response from agent: `%s`", response)
+                self.produce_interruptible_agent_response_event_nonblocking(
+                    AgentResponseMessage(message=BaseMessage(text=response)),
+                    is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+                )
+
         # TODO: implement should_stop for generate_responses
         if function_call and self.agent_config.actions is not None:
             await self.call_function(function_call, agent_input)
 
         return False
 
-    async def extract_belief_state(self, bot_responses: str) -> str:
+    async def get_belief_state(self, bot_responses: str) -> str:
         """
         Extract the belief state by submitting the concatenated bot's responses to the model.
 
@@ -158,6 +166,22 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         belief_state = chat_completion.choices[0].message.content
 
         return belief_state
+
+    async def follow_response(self, combined_response: str) -> AsyncGenerator:
+        """
+        Follow the response by the agent to the user's input.
+        :param combined_response: The response by the agent to the user's input.
+        :return: The response by the agent to the user's input. Separated into individual senteces.
+        """
+        chat_parameters = self.get_chat_parameters()
+        chat_parameters["stream"] = True
+        chat_parameters["messages"].append({"role": "assistant", "content": combined_response})
+
+        stream = await openai.ChatCompletion.acreate(**chat_parameters)
+        async for message in collate_response_async(
+                openai_get_tokens(stream), get_functions=True
+        ):
+            yield message
 
     def get_chat_parameters(self, messages: Optional[List] = None, belief_state_extract: bool = False):
         assert self.transcript is not None
