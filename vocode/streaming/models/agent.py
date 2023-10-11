@@ -1,10 +1,10 @@
-from typing import List, Optional, Union
 from enum import Enum
+from typing import List, Optional, Union
+
 from langchain.prompts import PromptTemplate
-
 from pydantic import validator
-from vocode.streaming.models.actions import ActionConfig
 
+from vocode.streaming.models.actions import ActionConfig
 from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
 from .vector_db import VectorDBConfig
@@ -89,6 +89,7 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
 
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     prompt_preamble: str
+    belief_state_prompt: Optional[str] = None
     expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE

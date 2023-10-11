@@ -8,7 +8,7 @@ import openai
 
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
-from vocode.streaming.agent.base_agent import RespondAgent
+from vocode.streaming.agent.base_agent import RespondAgent, AgentInput, AgentResponseMessage
 from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
     collate_response_async,
@@ -17,7 +17,9 @@ from vocode.streaming.agent.utils import (
 )
 from vocode.streaming.models.actions import FunctionCall
 from vocode.streaming.models.agent import ChatGPTAgentConfig
+from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcript import Transcript
+from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.vector_db.factory import VectorDBFactory
 
 
@@ -69,6 +71,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 self.agent_config.vector_db_config
             )
 
+    @property
+    def extract_belief_state(self):
+        return self.agent_config.belief_state_prompt is not None
+
     async def is_goodbye(self, message: str):
         return self.goodbye_phrase.lower() in message.lower()
 
@@ -84,26 +90,101 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             for action_config in self.agent_config.actions
         ]
 
-    def get_chat_parameters(self, messages: Optional[List] = None):
+    async def handle_generate_response(
+            self, transcription: Transcription, agent_input: AgentInput
+    ) -> bool:
+        conversation_id = agent_input.conversation_id
+
+        self.logger.debug("AGENT: Got transcription from agent: %s", transcription.message)
+        responses = self.generate_response(
+            transcription.message,
+            is_interrupt=transcription.is_interrupt,
+            conversation_id=conversation_id,
+        )
+        is_first_response = True
+        function_call = None
+        all_responses = []
+        async for response in responses:
+            self.logger.debug("Got response from agent `%s`", response
+                              )
+            if isinstance(response, FunctionCall):
+                function_call = response
+                continue
+            if isinstance(response, str):
+                all_responses.append(response)
+
+            if is_first_response:
+                is_first_response = False
+            self.logger.debug("Producing response `%s`", response)
+            self.produce_interruptible_agent_response_event_nonblocking(
+                AgentResponseMessage(message=BaseMessage(text=response)),
+                is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+            )
+            self.logger.debug("Produced response `%s`", response)
+
+        if len(all_responses) > 0 and self.extract_belief_state:
+            # FIXME: stardardize this
+            formatted_responses = "\n".join(["BOT: " + response for response in all_responses])
+            self.logger.info("AGENT: Got responses from agent for dialog state extraction: %s", formatted_responses)
+            belief_state = await self.extract_belief_state(formatted_responses)
+            self.logger.info("AGENT: Got belief state from agent: %s", belief_state)
+        # TODO: implement should_stop for generate_responses
+        if function_call and self.agent_config.actions is not None:
+            await self.call_function(function_call, agent_input)
+
+        return False
+
+    async def extract_belief_state(self, bot_responses: str) -> str:
+        """
+        Extract the belief state by submitting the concatenated bot's responses to the model.
+
+        Args:
+        bot_responses (str): The concatenated responses from the bot.
+
+        Returns:
+        str: The belief state extracted by the model.
+        """
         assert self.transcript is not None
 
-        messages = messages or format_openai_chat_messages_from_transcript(
-            self.transcript, self.agent_config.prompt_preamble
-        )
-        last_summary = self.transcript.last_summary
-        # TODO:refactor
-        if last_summary is not None:
-            # insert into system prompt as new line
-            if self.agent_config.prompt_preamble is not None:
-                first_message = messages[0]
-                # check if it is system message
-                if first_message['role'] == 'system':
-                    first_message['content'] = self.agent_config.prompt_preamble + '\n' + last_summary.text
-                    # cut messages to self.last_messages_cnt
-                    if len(messages) - 1 > self.last_messages_cnt:
-                        messages = [first_message] + messages[-self.last_messages_cnt:]
-                else:
-                    self.logger.error('First message is not system message, not inserting summary. Something is wrong.')
+        # Prepare the prompt with the concatenated bot responses
+        belief_state_prompt = bot_responses  # You might want to prepend/append additional text here
+
+        # Prepare the chat parameters
+        chat_parameters = self.get_chat_parameters(belief_state_extract=True)
+        chat_parameters["messages"].append({"role": "system", "content": belief_state_prompt})
+
+        # Call the model
+        chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
+        belief_state = chat_completion.choices[0].message.content
+
+        return belief_state
+
+    def get_chat_parameters(self, messages: Optional[List] = None, belief_state_extract: bool = False):
+        assert self.transcript is not None
+        if belief_state_extract:
+            messages = messages or format_openai_chat_messages_from_transcript(
+                self.transcript, self.agent_config.belief_state_prompt,
+            )
+        else:
+            messages = messages or format_openai_chat_messages_from_transcript(
+                self.transcript, self.agent_config.prompt_preamble
+            )
+
+        # Commented for now because it will be used with belief state.
+        # last_summary = self.transcript.last_summary
+        # # TODO:refactor
+        # if last_summary is not None:
+        #     # insert into system prompt as new line
+        #     if self.agent_config.prompt_preamble is not None:
+        #         first_message = messages[0]
+        #         # check if it is system message
+        #         if first_message['role'] == 'system':
+        #             first_message['content'] = self.agent_config.prompt_preamble + '\n' + last_summary.text
+        #             # cut messages to self.last_messages_cnt
+        #             if len(messages) - 1 > self.last_messages_cnt:
+        #                 messages = [first_message] + messages[-self.last_messages_cnt:]
+        #         else:
+        #             self.logger.error('First message is not system message, not inserting summary. Something is wrong.')
 
         parameters: Dict[str, Any] = {
             "messages": messages,
