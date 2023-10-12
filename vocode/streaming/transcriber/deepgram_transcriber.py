@@ -134,6 +134,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
     ):
         transcript = deepgram_response["channel"]["alternatives"][0]["transcript"]
         if self.interrupt_on_blockers:
+            self.logger.debug("Checking for interrupt")
             is_interrupt_task = asyncio.create_task(self.interrupt_model.is_interrupt(transcript))
             if await asyncio.wait_for(is_interrupt_task, timeout=0.1):
                 return True
