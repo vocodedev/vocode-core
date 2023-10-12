@@ -18,7 +18,7 @@ class EmbeddingModel:
     def __init__(self, embeddings_cache_path: str, embeddings_file: str, openai_api_key: Optional[str] = None,
                  logger: Optional[logging.Logger] = None):
         self.logger = logger or logging.getLogger(__name__)
-        self.goodbye_embeddings: Optional[np.ndarray] = None
+        self.embeddings: Optional[np.ndarray] = None
         self.embeddings_cache_path = embeddings_cache_path
         openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
         if not openai.api_key:
@@ -34,7 +34,7 @@ class EmbeddingModel:
             return embeddings
 
     async def initialize_embeddings(self):
-        self.goodbye_embeddings = await self.load_or_create_embeddings(
+        self.embeddings = await self.load_or_create_embeddings(
             f"{self.embeddings_cache_path}/{self.embeddings_file}.npy"
         )
 
@@ -47,13 +47,13 @@ class EmbeddingModel:
         return embeddings
 
     async def is_similar(self, text):
-        assert self.goodbye_embeddings is not None, "Embeddings not initialized"
+        assert self.embeddings is not None, "Embeddings not initialized"
         text_lower = text.lower()
         for phrase in self.strict_phrases:
             if phrase in text_lower:
                 return True
         embedding = await self.create_embedding(text.strip().lower())
-        similarity_results = embedding @ self.goodbye_embeddings
+        similarity_results = embedding @ self.embeddings
         return np.max(similarity_results) > SIMILARITY_THRESHOLD
 
     async def create_embedding(self, text) -> np.ndarray:
