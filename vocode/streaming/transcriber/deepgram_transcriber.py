@@ -61,11 +61,11 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self.is_ready = False
         self.audio_cursor = 0.0
         self.interrupt_on_blockers: bool = self.transcriber_config.interrupt_on_blockers
-        if self.interrupt_on_blockers:
-            self.interrupt_model: InterruptModel = InterruptModel()
-            self.interrupt_model_initialize_task = asyncio.create_task(
-                self.interrupt_model.initialize_embeddings()
-            )
+        # if self.interrupt_on_blockers:
+        #     self.interrupt_model: InterruptModel = InterruptModel()
+        #     self.interrupt_model_initialize_task = asyncio.create_task(
+        #         self.interrupt_model.initialize_embeddings()
+        #     )
 
     async def _run_loop(self):
         restarts = 0
@@ -133,11 +133,11 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             self, current_buffer: str, deepgram_response: dict, time_silent: float
     ):
         transcript = deepgram_response["channel"]["alternatives"][0]["transcript"]
-        if self.interrupt_on_blockers:
-            self.logger.debug("Checking for interrupt")
-            is_interrupt_task = asyncio.create_task(self.interrupt_model.is_interrupt(transcript))
-            if await asyncio.wait_for(is_interrupt_task, timeout=0.1):
-                return True
+        # if self.interrupt_on_blockers:
+        #     self.logger.debug("Checking for interrupt")
+        #     is_interrupt_task = asyncio.create_task(self.interrupt_model.is_interrupt(transcript))
+        #     if await asyncio.wait_for(is_interrupt_task, timeout=0.1):
+        #         return True
         # if it is not time based, then return true if speech is final and there is a transcript
         if not self.transcriber_config.endpointing_config:
             return transcript and deepgram_response["speech_final"]
@@ -245,9 +245,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                                                     ) * (num_buffer_utterances / (num_buffer_utterances + 1))
                         num_buffer_utterances += 1
                     if speech_final:
-                        self.logger.debug(f"buffer before context check final: {buffer}")
                         if (self.context_tracker is None) or self.context_tracker.is_part_of_context(buffer):
-                            self.logger.debug(f"buffer after context check final: {buffer}")
                             self.output_queue.put_nowait(
                                 Transcription(
                                     message=buffer,
