@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import time
 from typing import Any, Dict, List, Union
@@ -39,6 +40,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             vector_db_factory=VectorDBFactory(),
             goodbye_phrase: Optional[str] = "STOP CALL",
             last_messages_cnt: int = 10,
+
     ):
         super().__init__(
             agent_config=agent_config, action_factory=action_factory, logger=logger
@@ -127,7 +129,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             formatted_responses = "\n".join(["BOT: " + response for response in all_responses])
             self.logger.info("Got responses from agent for dialog state extraction: %s", formatted_responses)
             belief_state = await self.get_belief_state(formatted_responses)
-            # TODO: update belief state in transcript.
+
+            self.transcript.update_belief_state(belief_state)
+
             self.logger.info("Got belief state from agent: %s", belief_state)
             async for response in self.follow_response(formatted_responses):
                 self.logger.info("Got follow up response from agent: `%s`", response)
@@ -142,7 +146,26 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         return False
 
-    async def get_belief_state(self, bot_responses: str) -> str:
+    def _parse_belief_state(self, belief_state: str) -> dict[str, str]:
+        """
+        Parse the belief state from the response.
+        :param belief_state: The response from the model which must contain JSON parsable belief state.
+        :return: The belief state extracted from the response.
+        """
+
+        # FIXME: is this needed?
+        if 'DIALOG_STATE_UPDATE:' in belief_state:
+            belief_state = belief_state.split('DIALOG_STATE_UPDATE:')[1].strip()
+
+        try:
+            # Data must be in JSON format
+            return json.loads(belief_state)
+        except ValueError:
+            self.logger.error("No JSON data parsed in response.")
+            # handle it better
+            return {}
+
+    async def get_belief_state(self, bot_responses: str) -> dict[str, str]:
         """
         Extract the belief state by submitting the concatenated bot's responses to the model.
 
@@ -163,9 +186,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         # Call the model
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
-        belief_state = chat_completion.choices[0].message.content
-
-        return belief_state
+        return self._parse_belief_state(chat_completion.choices[0].message.content)
 
     async def follow_response(self, combined_response: str) -> AsyncGenerator:
         """
