@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import List, Optional
 
@@ -14,7 +15,9 @@ class EmbeddingModel:
     phrases: List[str] = []
     strict_phrases: List[str] = []
 
-    def __init__(self, embeddings_cache_path: str, embeddings_file: str, openai_api_key: Optional[str] = None):
+    def __init__(self, embeddings_cache_path: str, embeddings_file: str, openai_api_key: Optional[str] = None,
+                 logger: Optional[logging.Logger] = None):
+        self.logger = logger or logging.getLogger(__name__)
         self.goodbye_embeddings: Optional[np.ndarray] = None
         self.embeddings_cache_path = embeddings_cache_path
         openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
