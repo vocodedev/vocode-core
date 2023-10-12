@@ -58,6 +58,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     mute_during_speech: bool = False
     context_tracker_config: BaseContextTrackerConfig = None
     interrupt_on_blockers: bool = False
+    skip_on_filler_audio: bool = False
 
     @validator("min_interrupt_confidence")
     def min_interrupt_confidence_must_be_between_0_and_1(cls, v):

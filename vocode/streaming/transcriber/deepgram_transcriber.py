@@ -127,12 +127,22 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
     ):
 
         transcript = deepgram_response["channel"]["alternatives"][0]["transcript"]
-        if self.interrupt_on_blockers:
+        if self.transcriber_config.skip_on_filler_audio:
+            is_interrupt_task = asyncio.create_task(
+                self.skip_model.is_filler(transcript)
+            )
+            try:
+                is_skip = await asyncio.wait_for(is_interrupt_task, timeout=1)
+                if is_skip:
+                    return False
+            except TimeoutError:
+                pass
+        if self.transcriber_config.interrupt_on_blockers:
             is_interrupt_task = asyncio.create_task(
                 self.interrupt_model.is_interrupt(transcript)
             )
             try:
-                is_interrupt = await asyncio.wait_for(is_interrupt_task, timeout=0.1)
+                is_interrupt = await asyncio.wait_for(is_interrupt_task, timeout=1)
                 if is_interrupt:
                     return True
             except TimeoutError:

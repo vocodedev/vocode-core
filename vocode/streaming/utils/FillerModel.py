@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from vocode.streaming.utils.embedding_model import EmbeddingModel
@@ -24,10 +25,10 @@ FillerPhrases = [
 
 class FillerModel(EmbeddingModel):
     def __init__(self, embeddings_cache_path: str = "filler_embeddings", embeddings_file: str = 'filler_embeddings',
-                 openai_api_key: Optional[str] = None):
+                 openai_api_key: Optional[str] = None, logger: Optional[logging.Logger] = None):
         self.phrases = FillerPhrases
         self.strict_phrases = ["hmm", 'go on', "tell me more", "please continue"]
-        super().__init__(embeddings_cache_path, embeddings_file, openai_api_key)
+        super().__init__(embeddings_cache_path, embeddings_file, openai_api_key, logger)
 
     async def is_filler(self, text: str) -> bool:
         return await self.is_similar(text)
