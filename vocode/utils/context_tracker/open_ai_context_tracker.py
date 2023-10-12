@@ -44,7 +44,6 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
 
         response = openai.ChatCompletion.create(**parameters)
         resp = response['choices'][0]['message']['content']
-        self.logger.debug("openai response: %s", resp)
         self.messages.append({"role": "assistant", "content": resp})
         is_related_to_context = 'true' in resp.lower()
         self.logger.debug(

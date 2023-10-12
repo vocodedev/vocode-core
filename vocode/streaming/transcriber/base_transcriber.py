@@ -67,12 +67,10 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
         self.logger = logger or logging.getLogger(__name__)
         self.interrupt_on_blockers: bool = self.transcriber_config.interrupt_on_blockers
         if self.interrupt_on_blockers:
-            self.logger.debug("Initializing interrupt model")
             self.interrupt_model: InterruptModel = InterruptModel(logger=self.logger)
             self.interrupt_model_initialize_task = asyncio.create_task(
                 self.interrupt_model.initialize_embeddings()
             )
-            self.logger.debug("Initialized interrupt model")
         self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
         context_tracker_factory = ContextTrackerFactory()

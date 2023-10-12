@@ -39,7 +39,7 @@ class EmbeddingModel:
         )
 
     async def create_embeddings(self):
-        print("Creating embeddings...")
+        self.logger.debug(f"creating embeddings for {self.__class__.__name__}")
         size = EMBEDDING_SIZE
         embeddings = np.empty((size, len(self.phrases)))
         for i, goodbye_phrase in enumerate(self.phrases):
