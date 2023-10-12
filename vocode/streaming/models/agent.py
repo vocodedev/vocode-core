@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import List, Optional, Union
 
+from jinja2 import Template
 from langchain.prompts import PromptTemplate
 from pydantic import validator
 
@@ -88,8 +89,11 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
 
 
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
-    prompt_preamble: str
-    belief_state_prompt: Optional[str] = None
+    prompt_preamble: Union[str, Template]
+    belief_state_prompt: Optional[Union[str, Template]] = None
+
+    dialog_state: Optional[BaseModel] = None
+
     expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
@@ -97,6 +101,9 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     cut_off_response: Optional[CutOffResponse] = None
     azure_params: Optional[AzureOpenAIConfig] = None
     vector_db_config: Optional[VectorDBConfig] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):

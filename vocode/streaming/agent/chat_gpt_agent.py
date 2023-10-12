@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Union
 from typing import AsyncGenerator, Optional, Tuple
 
 import openai
+from jinja2 import Template
 
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
@@ -39,7 +40,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             openai_api_key: Optional[str] = None,
             vector_db_factory=VectorDBFactory(),
             goodbye_phrase: Optional[str] = "STOP CALL",
-            last_messages_cnt: int = 10,
+            last_messages_cnt: int = 10
 
     ):
         super().__init__(
@@ -72,6 +73,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             self.vector_db = vector_db_factory.create_vector_db(
                 self.agent_config.vector_db_config
             )
+
+        self.dialog_state = self.agent_config.dialog_state  # FIXME: ugly flow refactor it.
 
     @property
     def extract_belief_state(self):
@@ -204,15 +207,27 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         ):
             yield message
 
+    def _get_dialog_state_prompt(self):
+        self.agent_config.prompt_preamble
+        #
+        # if isinstance(self.agent_config.belief_state_prompt, str):
+        #     return self.agent_config.prompt_preamble
+        # elif isinstance(self.agent_config.belief_state_prompt, Template):
+
     def get_chat_parameters(self, messages: Optional[List] = None, belief_state_extract: bool = False):
         assert self.transcript is not None
+
         if belief_state_extract:
             messages = messages or format_openai_chat_messages_from_transcript(
                 self.transcript, self.agent_config.belief_state_prompt,
             )
         else:
+            if isinstance(self.agent_config.belief_state_prompt, str):
+                system_prompt = self.agent_config.prompt_preamble
+            elif isinstance(self.agent_config.belief_state_prompt, Template):
+                system_prompt = self.agent_config.prompt_preamble.render(self.dialog_state)
             messages = messages or format_openai_chat_messages_from_transcript(
-                self.transcript, self.agent_config.prompt_preamble
+                self.transcript, system_prompt
             )
 
         # Commented for now because it will be used with belief state.
@@ -327,26 +342,26 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
         # log number of tokens in prompt, messages and total
-        orig_prompt_tokens = len(self.agent_config.prompt_preamble.split())
-        self.logger.info(
-            f"Number of tokens in original prompt: {orig_prompt_tokens}, gpt approx:{orig_prompt_tokens * 4 / 3}"
-        )
-        messages = chat_parameters["messages"]
-        updated_prompt_tokens = len(messages[0]["content"].split())
-        self.logger.info(
-            f"Number of tokens in updated prompt: {updated_prompt_tokens}, gpt approx:{updated_prompt_tokens * 4 / 3}"
-        )
-        other_messages = messages[1:] if len(messages) > 1 else []
-        other_messages_tokens = sum(
-            [len(message["content"].split()) for message in other_messages]
-        )
-        self.logger.info(
-            f"Number of tokens in other messages: {other_messages_tokens}, gpt approx:{other_messages_tokens * 4 / 3}"
-        )
-        total_tokens = orig_prompt_tokens + other_messages_tokens
-        self.logger.info(
-            f"Total number of tokens: {total_tokens}, gpt approx:{total_tokens * 4 / 3}"
-        )
+        # orig_prompt_tokens = len(self.agent_config.prompt_preamble.split())
+        # self.logger.info(
+        #     f"Number of tokens in original prompt: {orig_prompt_tokens}, gpt approx:{orig_prompt_tokens * 4 / 3}"
+        # )
+        # messages = chat_parameters["messages"]
+        # updated_prompt_tokens = len(messages[0]["content"].split())
+        # self.logger.info(
+        #     f"Number of tokens in updated prompt: {updated_prompt_tokens}, gpt approx:{updated_prompt_tokens * 4 / 3}"
+        # )
+        # other_messages = messages[1:] if len(messages) > 1 else []
+        # other_messages_tokens = sum(
+        #     [len(message["content"].split()) for message in other_messages]
+        # )
+        # self.logger.info(
+        #     f"Number of tokens in other messages: {other_messages_tokens}, gpt approx:{other_messages_tokens * 4 / 3}"
+        # )
+        # total_tokens = orig_prompt_tokens + other_messages_tokens
+        # self.logger.info(
+        #     f"Total number of tokens: {total_tokens}, gpt approx:{total_tokens * 4 / 3}"
+        # )
 
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
         async for message in collate_response_async(

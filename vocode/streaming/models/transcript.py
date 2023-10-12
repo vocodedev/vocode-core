@@ -79,6 +79,12 @@ class Transcript(BaseModel):
         return len(self.event_logs)
 
     @property
+    def last_message(self) -> Optional[EventLog]:
+        if self.num_messages == 0:
+            return None
+        return self.event_logs[-1]
+
+    @property
     def last_summary_message_ind(self) -> Optional[int]:
         if self.summaries is None or len(self.summaries) == 0:
             return None
