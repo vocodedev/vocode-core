@@ -21,7 +21,6 @@ from vocode.streaming.models.transcriber import (
     TimeEndpointingConfig,
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.utils.interrupt_model import InterruptModel
 
 PUNCTUATION_TERMINATORS = [".", "!", "?"]
 NUM_RESTARTS = 5
@@ -60,12 +59,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self._ended = False
         self.is_ready = False
         self.audio_cursor = 0.0
-        self.interrupt_on_blockers: bool = self.transcriber_config.interrupt_on_blockers
-        if self.interrupt_on_blockers:
-            self.interrupt_model: InterruptModel = InterruptModel()
-            self.interrupt_model_initialize_task = asyncio.create_task(
-                self.interrupt_model.initialize_embeddings()
-            )
 
     async def _run_loop(self):
         restarts = 0

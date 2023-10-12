@@ -10,6 +10,7 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.model import BaseModel
 
 from vocode.streaming.models.transcriber import TranscriberConfig
+from vocode.streaming.utils.interrupt_model import InterruptModel
 from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
 from vocode.utils.context_tracker.factory import ContextTrackerFactory
 
@@ -64,6 +65,12 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
     ):
         self.transcriber_config = transcriber_config
         self.logger = logger or logging.getLogger(__name__)
+        self.interrupt_on_blockers: bool = self.transcriber_config.interrupt_on_blockers
+        if self.interrupt_on_blockers:
+            self.interrupt_model: InterruptModel = InterruptModel(logger=self.logger)
+            self.interrupt_model_initialize_task = asyncio.create_task(
+                self.interrupt_model.initialize_embeddings()
+            )
         self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
         context_tracker_factory = ContextTrackerFactory()
