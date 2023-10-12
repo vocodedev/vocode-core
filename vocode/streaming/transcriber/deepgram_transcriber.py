@@ -127,22 +127,13 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
     ):
 
         transcript = deepgram_response["channel"]["alternatives"][0]["transcript"]
-        if self.transcriber_config.skip_on_filler_audio:
-            is_interrupt_task = asyncio.create_task(
-                self.skip_model.is_filler(transcript)
-            )
-            try:
-                is_skip = await asyncio.wait_for(is_interrupt_task, timeout=1)
-                if is_skip:
-                    return False
-            except Exception as e:
-                self.logger.debug("Timeout on skip model %s", repr(e))
+
         if self.transcriber_config.interrupt_on_blockers:
             is_interrupt_task = asyncio.create_task(
                 self.interrupt_model.is_interrupt(transcript)
             )
             try:
-                is_interrupt = await asyncio.wait_for(is_interrupt_task, timeout=1)
+                is_interrupt = await asyncio.wait_for(is_interrupt_task, timeout=.1)
                 if is_interrupt:
                     return True
             except Exception as e:
@@ -165,16 +156,27 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         elif isinstance(
                 self.transcriber_config.endpointing_config, PunctuationEndpointingConfig
         ):
-            return (
-                           transcript
-                           and deepgram_response["speech_final"]
-                           and transcript.strip()[-1] in PUNCTUATION_TERMINATORS
-                   ) or (
-                           not transcript
-                           and current_buffer
-                           and (time_silent + deepgram_response["duration"])
-                           > self.transcriber_config.endpointing_config.time_cutoff_seconds
-                   )
+            is_finished = (
+                                  transcript
+                                  and deepgram_response["speech_final"]
+                                  and transcript.strip()[-1] in PUNCTUATION_TERMINATORS
+                          ) or (
+                                  not transcript
+                                  and current_buffer
+                                  and (time_silent + deepgram_response["duration"])
+                                  > self.transcriber_config.endpointing_config.time_cutoff_seconds
+                          )
+            if is_finished and self.transcriber_config.skip_on_filler_audio:
+                is_interrupt_task = asyncio.create_task(
+                    self.skip_model.is_filler(transcript)
+                )
+                try:
+                    is_skip = await asyncio.wait_for(is_interrupt_task, timeout=.1)
+                    if is_skip:
+                        return False
+                except Exception as e:
+                    self.logger.debug("Timeout on skip model %s", repr(e))
+            return is_finished
         raise Exception("Endpointing config not supported")
 
     def calculate_time_silent(self, data: dict):
