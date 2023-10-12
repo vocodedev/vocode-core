@@ -37,6 +37,7 @@ class InterruptModel(EmbeddingModel):
         super().__init__(embeddings_cache_path, embeddings_file, openai_api_key, logger)
 
     async def is_interrupt(self, text: str) -> bool:
+        self.logger.debug(f"checking if interrupt: {text}")
         time = datetime.datetime.now()
         is_similar = await self.is_similar(text)
         self.logger.debug(f"is_interrupt:{is_similar}, took: {datetime.datetime.now() - time}")
