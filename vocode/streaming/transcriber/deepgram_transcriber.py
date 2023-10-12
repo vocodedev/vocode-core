@@ -135,8 +135,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 is_skip = await asyncio.wait_for(is_interrupt_task, timeout=1)
                 if is_skip:
                     return False
-            except TimeoutError:
-                pass
+            except asyncio.exceptions.TimeoutError:
+                self.logger.debug("Timeout on skip model")
         if self.transcriber_config.interrupt_on_blockers:
             is_interrupt_task = asyncio.create_task(
                 self.interrupt_model.is_interrupt(transcript)
@@ -145,8 +145,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 is_interrupt = await asyncio.wait_for(is_interrupt_task, timeout=1)
                 if is_interrupt:
                     return True
-            except TimeoutError:
-                pass
+            except asyncio.exceptions.TimeoutError:
+                self.logger.debug("Timeout on interrupt model")
         # if it is not time based, then return true if speech is final and there is a transcript
         if not self.transcriber_config.endpointing_config:
             return transcript and deepgram_response["speech_final"]
