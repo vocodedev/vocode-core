@@ -127,6 +127,7 @@ class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.val
 class AzureTranscriberConfig(TranscriberConfig, type=TranscriberType.AZURE.value):
     language: str = AZURE_DEFAULT_LANGUAGE
     candidate_languages: Optional[List[str]] = None
+    azure_endpointing: Optional[int] = None
 
 
 class AssemblyAITranscriberConfig(

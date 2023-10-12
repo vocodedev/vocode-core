@@ -57,6 +57,12 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
             "audio_config": config,
         }
 
+        if self.transcriber_config.azure_endpointing:
+            speech_config.set_property(
+                property_id=speechsdk.PropertyId.Speech_SegmentationSilenceTimeoutMs,
+                value=str(self.transcriber_config.azure_endpointing),
+            )
+
         if self.transcriber_config.candidate_languages:
             speech_config.set_property(
                 property_id=speechsdk.PropertyId.SpeechServiceConnection_LanguageIdMode,
@@ -73,7 +79,7 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
             ] = auto_detect_source_language_config
         else:
             speech_params["language"] = self.transcriber_config.language
-
+        logger.debug(f"Azure params: {speech_params}")
         self.speech = speechsdk.SpeechRecognizer(**speech_params)
 
         self._ended = False
