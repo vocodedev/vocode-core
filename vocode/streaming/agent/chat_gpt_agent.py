@@ -131,7 +131,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # FIXME: stardardize this
             formatted_responses = "\n".join(["BOT: " + response for response in all_responses])
             self.logger.info("Got responses from agent for dialog state extraction: %s", formatted_responses)
-            belief_state = await self.get_dialog_state(formatted_responses)
+            belief_state = await self.get_dialog_state()
 
             self.transcript.log_belief_state(belief_state)
 
@@ -168,7 +168,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # handle it better
             return {}
 
-    async def get_dialog_state(self, bot_responses: str) -> dict[str, str]:
+    async def get_dialog_state(self) -> dict[str, str]:
         """
         Extract the belief state by submitting the concatenated bot's responses to the model.
 
@@ -188,10 +188,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         chat_parameters = self.get_chat_parameters(belief_state_extract=True)
         # TODO parametrize Assisntat, User etc
+
         #TODO: refactor
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + \
                                       [{"role": "user",
-                                        "content": f"User: {self.transcript.last_user_message}\nAssistant:{bot_responses}"}]
+                                        "content": f"Assistant: {self.transcript.last_assistant}\nUser: {self.transcript.last_user_message}"}]
 
         # Call the model
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)

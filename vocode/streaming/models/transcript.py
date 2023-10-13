@@ -87,11 +87,34 @@ class Transcript(BaseModel):
         return [message for message in self.event_logs if message.sender == Sender.HUMAN]
 
     @property
+    def assistant_messages(self) -> List[Message]:
+        return [message for message in self.event_logs if message.sender == Sender.BOT]
+
+    @property
     def last_user_message(self) -> Optional[str]:
         user_messages = self.user_messages
         if len(user_messages) == 0:
             return None
         return user_messages[-1].text
+
+    @property
+    def last_assistant(self) -> Optional[str]:
+        assistant_messages = []
+        found_human = False
+
+        # Gets last sequence of Bot messages.
+        for log in reversed(self.event_logs):
+            if log.sender == Sender.BOT and not found_human:
+                assistant_messages.append(log.text)
+            elif log.sender == Sender.HUMAN:
+                found_human = True
+                if assistant_messages:
+                    break
+
+        if assistant_messages:
+            return " ".join(reversed(assistant_messages))
+
+        return None
 
     @property
     def last_summary_message_ind(self) -> Optional[int]:
