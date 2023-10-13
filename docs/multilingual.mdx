@@ -1,0 +1,41 @@
+---
+title: "[Beta] Multilingual bots"
+description: "How to make bots speak different languages"
+---
+
+Vocode bots speak English by default but they can be configured to speak and understand
+different languages. This feature is in beta and is currently being worked on. As of right now,
+this feature works best with ElevenLabs multilingual voices.
+
+# Supported Languages
+
+Right now, our supported languages include:
+
+- English
+- Spanish
+- German
+
+with plans to support more in the future. If you have any particular requests, please email support@vocode.dev.
+
+# Set agent language
+
+<CodeGroup>
+
+```python Python
+from vocode import AgentUpdateParams
+
+language = "es" # ["en", "es", "de"]
+number = vocode_client.numbers.update_number(
+    phone_number="YOUR_NUMBER", inbound_agent=AgentUpdateParams(language=language)
+)
+```
+
+```javascript TypeScript
+const language = "es"; // ["en", "es", "de"]
+const number = await vocode.numbers.updateNumber({
+  phoneNumber: "YOUR_NUMBER",
+  inboundAgent: { language: language },
+});
+```
+
+</CodeGroup>

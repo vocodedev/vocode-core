@@ -1,0 +1,194 @@
+---
+title: "Using actions"
+description: "Make agents on your phone calls take actions"
+---
+
+Agents on phone calls can take three actions:
+
+`EndConversation`: allows the agent to end the call, e.g. if the user says "Goodbye!"
+
+  <CodeGroup>
+
+```python Python
+vocode_client.actions.create_action(
+  request=CreateActionRequest(
+      type="action_end_conversation",
+  )
+)
+```
+
+```typescript TypeScript
+const number = await vocode.actions.createAction({
+  type: "action_end_conversation",
+});
+```
+
+```bash cURL
+curl --request POST \
+  --url https://api.vocode.dev/v1/actions/create \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
+  --data '{
+  "type": "action_end_conversation"
+}'
+```
+
+</CodeGroup>
+
+`DTMF`: allows the agent to hit dial tones during a call, e.g. navigating a phone tree
+
+  <CodeGroup>
+
+```python Python
+vocode_client.actions.create_action(
+  request=CreateActionRequest(
+      type="action_dtmf",
+  )
+)
+```
+
+```typescript TypeScript
+const number = await vocode.actions.createAction({
+  type: "action_dtmf",
+});
+```
+
+```bash cURL
+curl --request POST \
+  --url https://api.vocode.dev/v1/actions/create \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
+  --data '{
+  "type": "action_dtmf"
+}'
+```
+
+</CodeGroup>
+
+`TransferCall`: allows the agent to transfer the call to another phone number
+
+  <CodeGroup>
+
+```python Python
+vocode_client.actions.create_action(
+  request=CreateActionRequest(
+      type="action_transfer_call",
+      config=TransferCallActionUpdateParamsConfig(
+          phone_number="11234567890"
+      )
+  )
+)
+```
+
+```typescript TypeScript
+const number = await vocode.actions.createAction({
+  type: "action_transfer_call",
+  config: {
+    phoneNumber: "11234567890",
+  },
+});
+```
+
+```bash cURL
+curl --request POST \
+  --url https://api.vocode.dev/v1/actions/create \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
+  --data '{
+  "type": "action_transfer_call",
+  "config": {
+    "phone_number": "11234567890"
+  }
+}'
+```
+
+</CodeGroup>
+
+You can attach these as IDs to your phone number agent as follows:
+
+  <CodeGroup>
+
+```python Python
+vocode_client.numbers.update_number(
+  phone_number="11234567890",
+  inbound_agent=UpdateNumberRequestInboundAgent(
+      actions=["<ACTION UUID>"]
+  )
+)
+```
+
+```typescript TypeScript
+vocode.numbers.updateNumber({
+  phoneNumber: "11234567890",
+  inboundAgent: {
+    actions: ["<ACTION UUID>"],
+  },
+});
+```
+
+```bash cURL
+curl --request POST \
+  --url https://api.vocode.dev/v1/numbers/update?phone_number=11234567890 \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
+  --data '{
+  "inbound_agent": {
+    "actions": ["<ACTION UUID>"]
+  }
+}'
+```
+
+</CodeGroup>
+
+You can also add these as actions as raw payloads as follows:
+
+  <CodeGroup>
+
+```python Python
+vocode_client.numbers.update_number(
+  phone_number="11234567890",
+  inbound_agent=UpdateNumberRequestInboundAgent(
+      actions=[TransferCallActionUpdateParams(
+          type="action_transfer_call",
+          config=TransferCallActionUpdateParamsConfig(
+              phone_number="11234567890"
+          )
+      )]
+  )
+)
+```
+
+```typescript TypeScript
+vocode.numbers.updateNumber({
+  phoneNumber: "11234567890",
+  inboundAgent: {
+    actions: [
+      {
+        type: "action_transfer_call",
+        config: {
+          phoneNumber: "11234567890",
+        },
+      },
+    ],
+  },
+});
+```
+
+```bash cURL
+curl --request POST \
+  --url https://api.vocode.dev/v1/numbers/update?phone_number=11234567890 \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
+  --data '{
+  "inbound_agent": {
+    "actions": [{
+      "type": "action_transfer_call",
+      "config": {
+          "phone_number": "11234567890"
+      }
+    }]
+  }
+}'
+```
+
+</CodeGroup>

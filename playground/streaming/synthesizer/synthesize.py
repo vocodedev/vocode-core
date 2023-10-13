@@ -10,6 +10,7 @@ from vocode.streaming.models.synthesizer import (
     PlayHtSynthesizerConfig,
     ElevenLabsSynthesizerConfig,
     RimeSynthesizerConfig,
+    PollySynthesizerConfig,
 )
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.output_device.speaker_output import SpeakerOutput

@@ -1,0 +1,180 @@
+---
+title: "Working with phone calls"
+description: "How to use agents with inbound and outbound phone calls."
+---
+
+# Overview
+
+Vocode supports using agents with inbound and outbound phone calls. Users
+can [create their own agents](/create-your-own-agent) and use them
+to fulfill a variety of use cases like information collection, appointment scheduling,
+sales, customer support, and more.
+
+# Requirements
+
+1. [Ngrok](https://ngrok.com/) (used to host the `TelephonyServer` locally)
+2. [ffmpeg](https://ffmpeg.org/)
+   a. If you have Homebrew installed, run `brew install ffmpeg`
+3. [Redis](https://redis.com/)
+   a. If you have Homebrew installed, run `brew install redis`
+4. (optional) [Docker](https://www.docker.com/)
+
+# Environments
+
+1. Copy the `.env.template` file and fill in the values of your API keys. You'll need to get API keys for:
+
+- [Deepgram](https://deepgram.com) (for speech transcription)
+- [OpenAI](https://platform.openai.com) (for the underlying agent)
+- [Azure](https://azure.microsoft.com/en-us/products/cognitive-services/text-to-speech/) (for speech synthesis)
+- [Twilio](https://console.twilio.com/) (for telephony)
+
+```bash
+cp .env.template .env
+```
+
+2. Set up hosting so that Twilio can hit your server. An easy way to do this is `ngrok`: in our code we set it up to be running on port 3000, run:
+
+```
+ngrok http 3000
+```
+
+Copy the URL that is tunneling localhost:3000 to your `.env` without `https://`, e.g.
+
+```
+BASE_URL=asdf1234.ngrok.app
+```
+
+# Telephony Server
+
+The `TelephonyServer` is–as implied by the name–a server that is responsible for
+receiving and making phone calls.
+The server is built using FastAPI and utilizes Twilio for telephony services.
+
+Clone the Vocode repo or copy the [Telephony app](https://github.com/vocodedev/vocode-python/tree/main/apps/telephony_app) directory.
+
+## Running the server
+
+Pick one of these two ways to run the server: 1. Run everything with Docker, 2. Run Python directly
+
+### Option 1: Run everything With Docker
+
+1. Build the telephony app Docker image. From the `telephony_app` directory, run:
+
+```bash
+docker build -t vocode-telephony-app .
+```
+
+2. Run the application using `docker-compose`. From the `telephony_app` directory, run:
+
+```bash
+docker-compose up
+```
+
+### Option 2: Run Python directly
+
+Run the following steps from the `telephony_app` directory.
+
+1. Install [Poetry](https://python-poetry.org/) and install dependencies.
+
+```
+poetry install
+```
+
+2. Run Redis with the default port of 6379.
+
+For example, using Homebrew:
+
+```
+brew services start redis
+```
+
+Or if you prefer to use Docker for this part:
+
+```
+docker run -dp 6379:6379 -it redis/redis-stack:latest
+```
+
+3. Run the server with `uvicorn` (should be already installed in step 1).
+
+```
+poetry run uvicorn main:app --port 3000
+```
+
+## Setting up an inbound number
+
+1. Create a [Twilio](https://www.twilio.com/) account
+2. Once inside your dashboard, go to Phone Numbers -> Manage -> Buy a number to get a phone number.
+3. Then, go to Phone Numbers -> Manage -> Active Numbers and select the number you want to set up.
+4. Update the config to point the Webhook URL to `https://<YOUR BASE URL>/inbound_call` - if you're using `ngrok`, it looks like `https://asdf1234.ngrok.app/inbound_call`
+
+![Setup](/images/twilio_number_config.png)
+
+5. Hit **Save** and call the number!
+
+## Executing outbound calls
+
+Make sure the server we just set up is already running. Then, in `outbound_call.py`
+
+Replace the `to_phone` with the number you want to call and the `from_phone` with the number you want to call from. In order to make a call from the `from_phone`, you must have access to it via Twilio (either a number purchased via Twilio or verify the caller ID).
+
+> Note: To ensure legal compliance with robocall regulations in California, the following code snippet from the [Vocode library](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/telephony/conversation/outbound_call.py#L83-L96) utilizes Twilio Line Intelligence to check if calls are made to mobile phones: For Canadian phone numbers, the Twilio Lookup API may not return carrier data due to the Canadian Local Number Portability Consortium (CLNPC) requirements. More information on this issue can be found in the [Twilio Support Article](https://support.twilio.com/hc/en-us/articles/360004563433-Twilio-Lookup-API-is-Not-Returning-Carrier-Data-for-Canadian-Phone-Numbers).
+
+Run the script with `poetry run python outbound_call.py`.
+
+## Configuration
+
+Both the `OutboundCall` (in `outbound_call.py`) and `InboundCallConfig` (in `telephony_app.py`) classes can accept a `TranscriberConfig`, `AgentConfig`
+or `SynthesizerConfig` - the default transcriber is Deepgram and the default synthesizer is Azure.
+
+This example sets up an agent that spells every word that is sent to it - any text-in, text-out function can be turned into a voice conversation by subclassing `BaseAgent` and creating an `AgentFactory`.
+
+```
+class SpellerAgentConfig(AgentConfig, type="agent_speller"):
+    pass
+
+
+class SpellerAgent(BaseAgent):
+    def __init__(self, agent_config: SpellerAgentConfig):
+        super().__init__(agent_config=agent_config)
+
+    async def respond(
+        self,
+        human_input,
+        conversation_id: str,
+        is_interrupt: bool = False,
+    ) -> Tuple[Optional[str], bool]:
+        return "".join(c + " " for c in human_input), False
+
+
+class SpellerAgentFactory(AgentFactory):
+    def create_agent(self, agent_config: AgentConfig) -> BaseAgent:
+        return SpellerAgent(agent_config=agent_config)
+```
+
+An `AgentFactory` instance is passed into the `TelephonyServer` in `telephony_app.py`.
+
+We provide a small set of agents with already created `AgentConfig`s, including, importantly, one that sets up ChatGPT with a configured prompt: see our `Python Quickstart` for more info.
+
+### Accessing call information in your agent
+
+We store the `to` and `from` numbers in the [`ConfigManager`](https://github.com/vocodedev/vocode-python-sdk/blob/b37bf7a1172a917b641d0e70ba14756415e09b0b/apps/telephony_app/main.py#L20) - so
+if you'd like to access them in your agent, you can instantiate the manager to hook into the same Redis instance:
+
+```
+class SpellerAgent(BaseAgent):
+    def __init__(self, agent_config: SpellerAgentConfig):
+        super().__init__(agent_config=agent_config)
+        self.config_manager = RedisConfigManager()
+
+    async def respond(
+        self,
+        human_input,
+        conversation_id: str,
+        is_interrupt: bool = False,
+    ) -> Tuple[Optional[str], bool]:
+        call_config = self.config_manager.get_config(conversation_id)
+        if call_config is not None:
+            from_phone = call_config.twilio_from
+            to_phone = call_config.twilio_to
+        return "".join(c + " " for c in human_input), False
+```

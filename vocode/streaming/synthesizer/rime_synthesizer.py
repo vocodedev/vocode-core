@@ -55,6 +55,9 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
             "speaker": self.speaker,
             "samplingRate": self.sampling_rate,
         }
+        if self.synthesizer_config.speed_alpha is not None:
+            body["speedAlpha"] = self.synthesizer_config.speed_alpha
+
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.RIME.value.split('_', 1)[-1]}.create_total",
         )
@@ -77,7 +80,10 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
             audio_file = io.BytesIO(base64.b64decode(data.get("audioContent")))
 
             result = self.create_synthesis_result_from_wav(
-                file=audio_file, message=message, chunk_size=chunk_size
+                synthesizer_config=self.synthesizer_config,
+                file=audio_file,
+                message=message,
+                chunk_size=chunk_size,
             )
             convert_span.end()
             return result

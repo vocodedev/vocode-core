@@ -49,6 +49,7 @@ We're actively looking for community maintainers, so please reach out if interes
     - [gTTS](https://gtts.readthedocs.io/)
     - [StreamElements](https://streamelements.com/)
     - [Bark](https://github.com/suno-ai/bark)
+    - [AWS Polly](https://aws.amazon.com/polly/)
 
 Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)!
 
@@ -62,7 +63,7 @@ And check out our [Roadmap](https://github.com/vocodedev/vocode-python/blob/main
 
 We'd love to talk to you on [Discord](https://discord.gg/NaU4mMgcnC) about new ideas and contributing!
 
-# 🚀 Quickstart (Self-hosted)
+# 🚀 Quickstart
 
 ```bash
 pip install 'vocode'
@@ -104,6 +105,7 @@ async def main():
     ) = create_streaming_microphone_input_and_speaker_output(
         use_default_devices=False,
         logger=logger,
+        use_blocking_speaker_output=True
     )
 
     conversation = StreamingConversation(
@@ -142,8 +144,6 @@ if __name__ == "__main__":
 # 📞 Phone call quickstarts
 
 - [Telephony Server - Self-hosted](https://docs.vocode.dev/telephony)
-- [Inbound calls - Hosted](https://docs.vocode.dev/telephony#inbound-calls)
-- [Outbound calls - Hosted](https://docs.vocode.dev/telephony#outbound-calls)
 
 # 🌱 Documentation
 

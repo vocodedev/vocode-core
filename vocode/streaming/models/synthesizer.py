@@ -26,6 +26,7 @@ class SynthesizerType(str, Enum):
     COQUI = "synthesizer_coqui"
     BARK = "synthesizer_bark"
     NOPAUSE = "synthesizer_nopause"
+    POLLY = "synthesizer_polly"
 
 
 class SentimentConfig(BaseModel):
@@ -82,6 +83,7 @@ class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE.value
     voice_name: str = AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME
     pitch: int = AZURE_SYNTHESIZER_DEFAULT_PITCH
     rate: int = AZURE_SYNTHESIZER_DEFAULT_RATE
+    language_code: str = "en-US"
 
 
 DEFAULT_GOOGLE_LANGUAGE_CODE = "en-US"
@@ -143,6 +145,7 @@ class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME.value):
     speaker: str = RIME_DEFAULT_SPEAKER
     sampling_rate: int = RIME_DEFAULT_SAMPLE_RATE
     base_url: str = RIME_DEFAULT_BASE_URL
+    speed_alpha: Optional[float] = None
 
 
 COQUI_DEFAULT_SPEAKER_ID = "ebe2db86-62a6-49a1-907a-9a1360d4416e"
@@ -165,10 +168,13 @@ PLAYHT_DEFAULT_VOICE_ID = "larry"
 
 
 class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.value):
-    voice_id: str = PLAYHT_DEFAULT_VOICE_ID
+    api_key: Optional[str] = None
+    user_id: Optional[str] = None
     speed: Optional[int] = None
     seed: Optional[int] = None
     temperature: Optional[int] = None
+    voice_id: str = PLAYHT_DEFAULT_VOICE_ID
+    experimental_streaming: bool = False
 
 
 class CoquiTTSSynthesizerConfig(
@@ -207,3 +213,13 @@ class NoPauseSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.NOPAUSE.v
     model_name: str = DEFAULT_NOPAUSE_MODEL_NAME
     language: str = DEFAULT_NOPAUSE_LANGUAGE
     voice_id: str = DEFAULT_NOPAUSE_VOICE_ID
+
+DEFAULT_POLLY_LANGUAGE_CODE = "en-US"
+DEFAULT_POLLY_VOICE_ID = "Matthew"
+DEFAULT_POLLY_SAMPLING_RATE = 16000
+
+
+class PollySynthesizerConfig(SynthesizerConfig, type=SynthesizerType.POLLY.value):
+    language_code: str = DEFAULT_POLLY_LANGUAGE_CODE
+    voice_id: str = DEFAULT_POLLY_VOICE_ID
+    sampling_rate: int = DEFAULT_POLLY_SAMPLING_RATE

@@ -21,6 +21,16 @@
   },
   "anchors": [
     {
+      "name": "API Reference",
+      "icon": "rectangle-terminal",
+      "url": "api-reference"
+    },
+    {
+      "name": "Open Source",
+      "icon": "leaf",
+      "url": "open-source"
+    },
+    {
       "name": "Community",
       "icon": "discord",
       "url": "https://discord.gg/NaU4mMgcnC"
@@ -39,50 +49,142 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": [
-        "welcome"
-      ]
+      "pages": ["welcome", "hosted-quickstart", "open-source-quickstart"]
     },
     {
       "group": "Vocode 101",
-      "pages": [
-        "what-is-vocode",
-        "how-it-works",
-        "how-to-use-it"
-      ]
+      "pages": ["what-is-vocode", "how-it-works", "how-to-use-it"]
     },
     {
       "group": "Guides",
       "pages": [
-        "python-quickstart",
-        "telephony",
-        "create-your-own-agent",
-        "langchain-agent",
-        "action-agents",
-        "local-conversation",
-        "events-manager",
-        "using-synthesizers",
-        "using-transcribers",
-        "react-quickstart",
-        "playground",
-        "turn-based-conversation",
-        "language-support",
-        "tracing",
-        "agent-factory"
+        "open-source/python-quickstart",
+        "open-source/telephony",
+        "open-source/create-your-own-agent",
+        "open-source/langchain-agent",
+        "open-source/action-agents",
+        "open-source/local-conversation",
+        "open-source/events-manager",
+        "open-source/using-synthesizers",
+        "open-source/using-transcribers",
+        "open-source/react-quickstart",
+        "open-source/playground",
+        "open-source/turn-based-conversation",
+        "open-source/language-support",
+        "open-source/tracing",
+        "open-source/agent-factory"
       ]
     },
     {
       "group": "Python",
       "pages": [
-        "transcriber-reference",
-        "agent-reference",
-        "synthesizer-reference"
+        "open-source/transcriber-reference",
+        "open-source/agent-reference",
+        "open-source/synthesizer-reference"
+      ]
+    },
+    {
+      "group": "Numbers",
+      "pages": [
+        "api-reference/numbers/list-numbers",
+        "api-reference/numbers/get-number",
+        "api-reference/numbers/buy-number",
+        "api-reference/numbers/update-number",
+        "api-reference/numbers/cancel-number"
+      ]
+    },
+    {
+      "group": "Calls",
+      "pages": [
+        "api-reference/calls/list-calls",
+        "api-reference/calls/get-call",
+        "api-reference/calls/end-call",
+        "api-reference/calls/create-call",
+        "api-reference/calls/get-recording"
+      ]
+    },
+    {
+      "group": "Usage",
+      "pages": ["api-reference/usage/get-usage"]
+    },
+    {
+      "group": "Actions",
+      "pages": [
+        "api-reference/actions/get-action",
+        "api-reference/actions/list-actions",
+        "api-reference/actions/create-action",
+        "api-reference/actions/update-action"
+      ]
+    },
+    {
+      "group": "Agents",
+      "pages": [
+        "api-reference/agents/get-agent",
+        "api-reference/agents/list-agents",
+        "api-reference/agents/create-agent",
+        "api-reference/agents/update-agent"
+      ]
+    },
+    {
+      "group": "Prompts",
+      "pages": [
+        "api-reference/prompts/get-prompt",
+        "api-reference/prompts/list-prompts",
+        "api-reference/prompts/create-prompt",
+        "api-reference/prompts/update-prompt"
+      ]
+    },
+    {
+      "group": "Vector Databases",
+      "pages": [
+        "api-reference/vector_databases/get-vector-database",
+        "api-reference/vector_databases/list-vector-databases",
+        "api-reference/vector_databases/create-vector-database",
+        "api-reference/vector_databases/update-vector-database"
+      ]
+    },
+    {
+      "group": "Voices",
+      "pages": [
+        "api-reference/voices/get-voice",
+        "api-reference/voices/list-voices",
+        "api-reference/voices/create-voice",
+        "api-reference/voices/update-voice"
+      ]
+    },
+    {
+      "group": "Webhooks",
+      "pages": [
+        "api-reference/webhooks/get-webhook",
+        "api-reference/webhooks/list-webhooks",
+        "api-reference/webhooks/create-webhook",
+        "api-reference/webhooks/update-webhook"
+      ]
+    },
+    {
+      "group": "Hosted Walkthrough",
+      "pages": [
+        "getting-number",
+        "configuring-number",
+        "retrieve-call-data",
+        "setting-up-webhook",
+        "using-actions",
+        "vectordb",
+        "multilingual",
+        "injecting-context",
+        "machine-detection",
+        "ivr-navigation",
+        "hipaa-compliance"
       ]
     }
   ],
+  "api": {
+    "playground": {
+      "mode": "simple"
+    }
+  },
   "footerSocials": {
     "twitter": "https://twitter.com/vocodehq",
     "website": "https://www.vocode.dev/"
-  },
-  "backgroundImage": "images/background-image.png"
+  }
 }

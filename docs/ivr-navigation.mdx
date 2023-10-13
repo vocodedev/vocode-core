@@ -1,0 +1,66 @@
+---
+title: "[Beta] IVR Navigation"
+description: "Navigate phone trees"
+---
+
+Note: this feature is only useful on outbound calls, which are disabled by default. Please contact us through Discord or at support@vocode.dev
+to discuss enabling outbound calls for your account!
+
+The Vocode API has many tools for agents to interact with IVRs (interactive voice responses) - navigating phone trees
+is one of the primary use-cases of the API.
+
+# IVR navigation mode
+
+When starting an outbound call, set `ivr_navigation_mode` to `default` - this allows the bot to stay silent while on hold. Vocode
+bots also automatically end the call after the conversation has been idle (i.e. no words on both sides) for 30 seconds: setting `ivr_navigation_mode` to `default`
+increases this threshold to 10 minutes.
+
+```python
+vocode_client.calls.create_call(
+    from_number="<YOUR VOCODE NUMBER>",
+    to_number="15555555555",
+    agent=CreateCallAgentParams(
+        ...,
+        ivr_navigation_mode="default"
+    ),
+)
+```
+
+# DTMF action
+
+The DTMF action allows the bot to hit dial tones (e.g. to navigate phone tree nodes where an IVR says "Press 1 for ...").
+
+```python
+vocode_client.calls.create_call(
+    from_number="<YOUR VOCODE NUMBER>",
+    to_number="15555555555",
+    agent=CreateCallAgentParams(
+        actions=[DtmfActionParams(type="action_dtmf")],
+        ...
+    ),
+)
+```
+
+# Transfer call action
+
+The Transfer call action allows the bot to transfer to a human agent.
+
+```python
+vocode_client.calls.create_call(
+    from_number="<YOUR VOCODE NUMBER>",
+    to_number="15555555555",
+    agent=CreateCallAgentParams(
+        actions=[TransferCallActionParams(type="action_transfer_call", config=TransferCallConfig(
+            phone_number="11234567890"
+        ))],
+        ...
+    ),
+)
+```
+
+# On the horizon
+
+We plan to introduce more dials here, for example:
+
+- More configurability around allowed idle time of the conversation
+- Human detection - i.e. behavior when a human picks up the phone after the bot navigates the phone tree
