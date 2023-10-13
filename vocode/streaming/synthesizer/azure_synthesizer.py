@@ -237,8 +237,8 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
+        return_tuple: bool = False
     ) -> SynthesisResult:
-        # offset = int(self.OFFSET_MS * (self.synthesizer_config.sampling_rate / 1000))
         offset = 0
         self.logger.debug(f"Synthesizing message: {message}")
 
