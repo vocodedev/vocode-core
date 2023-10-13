@@ -66,8 +66,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         self.is_first_response = True
         self.last_messages_cnt = last_messages_cnt
         self.goodbye_phrase = goodbye_phrase
-        if goodbye_phrase is not None:
-            self.agent_config.end_conversation_on_goodbye = True
+        #TODO: refactor it. Should use different logic
+        # if goodbye_phrase is not None:
+        #     self.agent_config.end_conversation_on_goodbye = True
 
         if self.agent_config.vector_db_config:
             self.vector_db = vector_db_factory.create_vector_db(
