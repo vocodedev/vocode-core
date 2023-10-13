@@ -43,7 +43,7 @@ langchain = "^0.0.198"
 google-cloud-aiplatform = {version = "^1.26.0", optional = true}
 miniaudio = "^1.59"
 boto3 = "^1.28.28"
-
+urllib3 = "<2"
 
 [tool.poetry.group.lint.dependencies]
 black = "^23.1.0"
