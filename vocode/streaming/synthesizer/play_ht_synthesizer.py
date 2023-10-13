@@ -57,6 +57,7 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
             "voice": self.synthesizer_config.voice_id,
             "text": message.text,
             "sample_rate": self.synthesizer_config.sampling_rate,
+            "voice_engine": "PlayHT2.0-turbo"
         }
         if self.synthesizer_config.speed:
             body["speed"] = self.synthesizer_config.speed
