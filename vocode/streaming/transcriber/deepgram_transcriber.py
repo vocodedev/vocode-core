@@ -171,7 +171,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     self.skip_model.is_filler(transcript)
                 )
                 try:
-                    is_skip = await asyncio.wait_for(is_interrupt_task, timeout=1)
+                    is_skip = await asyncio.wait_for(is_interrupt_task, timeout=1.1)
                     if is_skip:
                         return False
                 except Exception as e:
