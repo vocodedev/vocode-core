@@ -187,7 +187,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         # Prepare the chat parameters
 
         chat_parameters = self.get_chat_parameters(belief_state_extract=True)
-        chat_parameters["messages"].append({"role": "assistant", "content": bot_responses})
+        # TODO parametrize Assisntat, User etc
+        #TODO: refactor
+        chat_parameters["messages"] = [chat_parameters["messages"][0]] + \
+                                      [{"role": "user",
+                                        "content": f"User: {self.transcript.last_user_message}\nAssistant:{bot_responses}"}]
 
         # Call the model
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
