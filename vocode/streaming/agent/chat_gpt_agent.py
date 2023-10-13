@@ -2,11 +2,10 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Type
 from typing import AsyncGenerator, Optional, Tuple
 
 import openai
-from jinja2 import Template
 
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
@@ -20,6 +19,7 @@ from vocode.streaming.agent.utils import (
 from vocode.streaming.models.actions import FunctionCall
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.model import BaseModel
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.vector_db.factory import VectorDBFactory
@@ -207,27 +207,69 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         ):
             yield message
 
-    def _get_dialog_state_prompt(self):
-        self.agent_config.prompt_preamble
-        #
-        # if isinstance(self.agent_config.belief_state_prompt, str):
-        #     return self.agent_config.prompt_preamble
-        # elif isinstance(self.agent_config.belief_state_prompt, Template):
+    @staticmethod
+    def json_dump(d: dict):
+        return json.dumps(d, indent=2, ensure_ascii=False)
 
-    def get_chat_parameters(self, messages: Optional[List] = None, belief_state_extract: bool = False):
+    def get_dialog_state_str(self, state: BaseModel):
+        data = state.dict()
+        schema = state.schema()
+        filtered = {}
+        for prop, value in data.items():
+            if not schema['properties'][prop].get('hidden', False):
+                filtered[prop] = value
+
+        return self.json_dump(filtered)
+
+    def get_dialog_state_prompt_schema(self, state_class: Type[BaseModel]):
+        data = state_class.schema()
+        filtered = {}
+        for prop, details in data['properties'].items():
+            if not details.get('hidden', False):
+                filtered[prop] = {key: details[key] for key in ('type', 'examples', 'enum') if key in details}
+
+        return self.json_dump(filtered)
+
+    def render_system_message(self, override_dialog_state: Optional[dict] = None):
+        dialog_state_dict = self.dialog_state.dict()
+        if override_dialog_state is not None:
+            dialog_state_dict.update(**override_dialog_state)
+
+        rendered_system_message = self.agent_config.prompt_preamble.render(
+            dialog_state_extraction=False,
+            dialog_state=dialog_state_dict,
+            dialog_state_str=self.get_dialog_state_str(self.dialog_state),
+            dialog_state_schema_str=self.get_dialog_state_prompt_schema(self.dialog_state.__class__),
+            dialog_state_schema=self.dialog_state.schema(),
+        )
+        return rendered_system_message
+
+    def render_extract_system_message(self, override_dialog_state: Optional[dict] = None):
+        dialog_state_dict = self.dialog_state.dict()
+        if override_dialog_state is not None:
+            dialog_state_dict.update(**override_dialog_state)
+
+        return self.agent_config.dialog_state_prompt.render(
+            dialog_state_extraction=True,
+            dialog_state=dialog_state_dict,
+            dialog_state_str=self.get_dialog_state_str(self.dialog_state),
+            dialog_state_schema_str=self.get_dialog_state_prompt_schema(self.dialog_state.__class__),
+            dialog_state_schema=self.dialog_state.schema(),
+        )
+
+    def get_chat_parameters(self, messages: Optional[List] = None,
+                            belief_state_extract: bool = False,
+                            override_dialog_state: Optional[dict] = None):
         assert self.transcript is not None
 
         if belief_state_extract:
             messages = messages or format_openai_chat_messages_from_transcript(
-                self.transcript, self.agent_config.belief_state_prompt,
+                self.transcript, self.render_system_message(override_dialog_state),
             )
         else:
-            if isinstance(self.agent_config.belief_state_prompt, str):
-                system_prompt = self.agent_config.prompt_preamble
-            elif isinstance(self.agent_config.belief_state_prompt, Template):
-                system_prompt = self.agent_config.prompt_preamble.render(self.dialog_state)
+
             messages = messages or format_openai_chat_messages_from_transcript(
-                self.transcript, system_prompt
+                self.transcript, self.render_extract_system_message(override_dialog_state)
             )
 
         # Commented for now because it will be used with belief state.

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Any
 
 from jinja2 import Template
 from langchain.prompts import PromptTemplate
@@ -89,10 +89,10 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
 
 
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
-    prompt_preamble: Union[str, Template]
-    belief_state_prompt: Optional[Union[str, Template]] = None
+    prompt_preamble: Template
+    dialog_state_prompt: Optional[Template] = None
 
-    dialog_state: Optional[BaseModel] = None
+    dialog_state: Optional[Any] = None
 
     expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME

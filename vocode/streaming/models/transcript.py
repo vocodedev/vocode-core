@@ -69,7 +69,6 @@ class Transcript(BaseModel):
 
     belief_states_history: Optional[List[BaseModel]] = None
 
-    last_belief_state: Optional[BaseModel] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -102,11 +101,10 @@ class Transcript(BaseModel):
             return None
         return self.summaries[-1]
 
-    def update_belief_state(self, new_belief_state: BaseModel):
+    def log_belief_state(self, new_belief_state: BaseModel):
         if self.belief_states_history is None:
             self.belief_states_history = []
         self.belief_states_history.append(new_belief_state)
-        self.last_belief_state = new_belief_state
 
     def summary_data(self) -> Tuple[str, Optional[str]]:
         transcript = self.to_string() if self.summaries is None else self.to_string_from(
