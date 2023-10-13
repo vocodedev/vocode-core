@@ -55,10 +55,10 @@ class Summary(BaseModel):
     def to_string(self, include_timestamp: bool = False) -> str:
         return f"{self.text}"
 
+
 class BeliefStateHistory(BaseModel):
     belief_state: BaseModel
     timestamp: float = Field(default_factory=time.time)
-
 
 
 class Transcript(BaseModel):
@@ -68,7 +68,6 @@ class Transcript(BaseModel):
     summaries: Optional[List[Summary]] = None
 
     belief_states_history: Optional[List[BaseModel]] = None
-
 
     class Config:
         arbitrary_types_allowed = True
@@ -82,6 +81,17 @@ class Transcript(BaseModel):
         if self.num_messages == 0:
             return None
         return self.event_logs[-1]
+
+    @property
+    def user_messages(self) -> List[Message]:
+        return [message for message in self.event_logs if message.sender == Sender.HUMAN]
+
+    @property
+    def last_user_message(self) -> Optional[str]:
+        user_messages = self.user_messages
+        if len(user_messages) == 0:
+            return None
+        return user_messages[-1].text
 
     @property
     def last_summary_message_ind(self) -> Optional[int]:

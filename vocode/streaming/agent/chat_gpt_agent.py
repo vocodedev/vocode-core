@@ -131,9 +131,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # FIXME: stardardize this
             formatted_responses = "\n".join(["BOT: " + response for response in all_responses])
             self.logger.info("Got responses from agent for dialog state extraction: %s", formatted_responses)
-            belief_state = await self.get_belief_state(formatted_responses)
+            belief_state = await self.get_dialog_state(formatted_responses)
 
-            self.transcript.update_belief_state(belief_state)
+            self.transcript.log_belief_state(belief_state)
 
             self.logger.info("Got belief state from agent: %s", belief_state)
             async for response in self.follow_response(formatted_responses):
@@ -168,7 +168,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # handle it better
             return {}
 
-    async def get_belief_state(self, bot_responses: str) -> dict[str, str]:
+    async def get_dialog_state(self, bot_responses: str) -> dict[str, str]:
         """
         Extract the belief state by submitting the concatenated bot's responses to the model.
 
@@ -181,25 +181,32 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         assert self.transcript is not None
 
         # Prepare the prompt with the concatenated bot responses
-        belief_state_prompt = bot_responses  # You might want to prepend/append additional text here
+        # TODO: discuss management of history with other? How many messages we want to use?
 
+        # TODO: add history here.
         # Prepare the chat parameters
+
         chat_parameters = self.get_chat_parameters(belief_state_extract=True)
-        chat_parameters["messages"].append({"role": "system", "content": belief_state_prompt})
+        chat_parameters["messages"].append({"role": "assistant", "content": bot_responses})
 
         # Call the model
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
         return self._parse_belief_state(chat_completion.choices[0].message.content)
 
-    async def follow_response(self, combined_response: str) -> AsyncGenerator:
+    async def follow_response(self, override_dialog_state: Dict[str, Any],
+                              combined_response: Optional[str] = None) -> AsyncGenerator:
         """
         Follow the response by the agent to the user's input.
         :param combined_response: The response by the agent to the user's input.
-        :return: The response by the agent to the user's input. Separated into individual senteces.
+        :param override_dialog_state: The dialog state to override the current one.
+        :return: The response by the agent to the user's input. Separated into individual sentences.
         """
-        chat_parameters = self.get_chat_parameters()
+        chat_parameters = self.get_chat_parameters(override_dialog_state=override_dialog_state)
         chat_parameters["stream"] = True
-        chat_parameters["messages"].append({"role": "assistant", "content": combined_response})
+        # FIXME: rewrite it.
+        if combined_response is not None:  # for example console app already has combined response in transcript so
+            # we don't need to add it to the prompt
+            chat_parameters["messages"].append({"role": "assistant", "content": combined_response})
 
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
         async for message in collate_response_async(
@@ -264,12 +271,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         if belief_state_extract:
             messages = messages or format_openai_chat_messages_from_transcript(
-                self.transcript, self.render_system_message(override_dialog_state),
+                self.transcript, self.render_extract_system_message(override_dialog_state),
             )
         else:
 
             messages = messages or format_openai_chat_messages_from_transcript(
-                self.transcript, self.render_extract_system_message(override_dialog_state)
+                self.transcript, self.render_system_message(override_dialog_state)
             )
 
         # Commented for now because it will be used with belief state.
