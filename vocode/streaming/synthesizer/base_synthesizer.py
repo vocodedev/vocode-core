@@ -318,6 +318,57 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         finally:
             miniaudio_worker.terminate()
 
+    async def stream_mp3_audio_from_bytes(
+        self,
+        mp3_data_bytes: bytes,
+        chunk_size: int
+    ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
+        miniaudio_worker_input_queue: asyncio.Queue[
+            Union[bytes, None]
+        ] = asyncio.Queue()
+        miniaudio_worker_output_queue: asyncio.Queue[
+            Tuple[bytes, bool]
+        ] = asyncio.Queue()
+        miniaudio_worker = MiniaudioWorker(
+            self.synthesizer_config,
+            chunk_size,
+            miniaudio_worker_input_queue,
+            miniaudio_worker_output_queue,
+        )
+        miniaudio_worker.start()
+
+        offset = 0
+        total_size = len(mp3_data_bytes)
+
+        # Create a task to send the MP3 chunks to the MiniaudioWorker's input queue in a separate loop
+        async def send_chunks():
+            nonlocal offset
+            while offset < total_size:
+                end_offset = offset + chunk_size
+                mp3_chunk = mp3_data_bytes[offset:end_offset]
+
+                miniaudio_worker.consume_nonblocking(mp3_chunk)
+
+                offset = end_offset
+
+            miniaudio_worker.consume_nonblocking(None)  # sentinel
+
+        try:
+            asyncio.create_task(send_chunks())
+
+            # Await the output queue of the MiniaudioWorker and yield SynthesisResult.ChunkResult objects
+            while True:
+                # Get the WAV chunk and the flag from the output queue of the MiniaudioWorker
+                wav_chunk, is_last = await miniaudio_worker.output_queue.get()
+                if self.synthesizer_config.should_encode_as_wav:
+                    wav_chunk = encode_as_wav(wav_chunk, self.synthesizer_config)
+
+                yield SynthesisResult.ChunkResult(wav_chunk, is_last)
+        except asyncio.CancelledError:
+            pass
+        finally:
+            miniaudio_worker.terminate()
+
     async def tear_down(self):
         if self.should_close_session_on_tear_down:
             await self.aiohttp_session.close()

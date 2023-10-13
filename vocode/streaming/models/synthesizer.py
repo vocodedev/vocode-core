@@ -10,6 +10,7 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_SAMPLING_RATE,
 )
 
+from vocode.streaming.models.index_config import IndexConfig
 from .model import BaseModel, TypedModel
 from .audio_encoding import AudioEncoding
 
@@ -120,6 +121,7 @@ class ElevenLabsSynthesizerConfig(
     stability: Optional[float]
     similarity_boost: Optional[float]
     model_id: Optional[str]
+    index_config: Optional[IndexConfig] = None
 
     @validator("voice_id")
     def set_name(cls, voice_id):

@@ -8,10 +8,11 @@ import wave
 import aiohttp
 from opentelemetry.trace import Span
 from pydub import AudioSegment
+from langchain.docstore.document import Document
 
 from vocode import getenv
 from vocode.streaming.synthesizer.base_synthesizer import (
-    BaseSynthesizer,
+    # BaseSynthesizer, # this wont reflect the changes in the base_synthesizer.py when editing
     SynthesisResult,
     FILLER_PHRASES,
     FILLER_AUDIO_PATH,
@@ -29,11 +30,14 @@ from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.utils import convert_wav
 from vocode.streaming.utils.mp3_helper import decode_mp3
 from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 
+from vocode.streaming.utils.aws_s3 import load_from_s3
 
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
 
+SIMILARITY_THRESHOLD = 0.9
 
 class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     def __init__(
@@ -57,6 +61,16 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.words_per_minute = 150
         self.experimental_streaming = synthesizer_config.experimental_streaming
         self.logger = logger or logging.getLogger(__name__)
+        self.vector_db = None
+        self.vector_db_cache = {}
+        self.bucket_name = None
+
+        if synthesizer_config.index_config:
+            from vocode.streaming.vector_db.pinecone import PineconeDB
+            self.vector_db = PineconeDB(synthesizer_config.index_config.pinecone_config)
+            self.bucket_name = synthesizer_config.index_config.bucket_name
+            # TODO: cache vector_db results
+
 
     async def get_phrase_filler_audios(self) -> Dict[str,List[FillerAudio]]:
         filler_phrase_audios = {
@@ -109,9 +123,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                             raise Exception(f"ElevenLabs API returned {response.status} status code")
 
                         audio_data = await response.read()  
-                        # offset = self.synthesizer_config.sampling_rate * self.OFFSET_MS // 1000
-                        # audio_data = audio_data[offset:]
-
                         audio_segment: AudioSegment = AudioSegment.from_mp3(
                             io.BytesIO(audio_data)  # type: ignore
                         )         
@@ -141,7 +152,66 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
-    ) -> SynthesisResult:
+        return_tuple: Optional[bool] = False
+    ) -> Union[SynthesisResult, Tuple[SynthesisResult, BaseMessage]]:
+        
+        if self.vector_db and self.bucket_name:
+            if self.vector_db_cache:
+                # TODO: search in vector_db_cache so we do not have to make api call
+                # search in vector_db_cache
+                # return result if found
+                pass
+
+            index_filter = None
+            if self.stability is not None and self.similarity_boost is not None:
+                index_filter = {
+                    "stability": self.stability,
+                    "similarity_boost": self.similarity_boost,
+                    "voice_id": self.voice_id
+                }
+            result_embeds: List[Tuple[Document, float]] = await self.vector_db.similarity_search_with_score(
+                query=message.text,
+                filter=index_filter
+                )
+            if result_embeds:
+                doc, score = result_embeds[0] # top result
+                if score > SIMILARITY_THRESHOLD:
+                    self.logger.debug(f"Found similar synthesized text in vector_db: {doc.metadata}")
+                    object_id = doc.metadata.get("object_key")
+                    text_message = doc.page_content
+                    self.logger.debug(f"Found similar synthesized text in vector_db: {text_message}")
+                    self.logger.debug(f"Original text: {message.text}")
+                    try:
+                        audio_data = load_from_s3(
+                            bucket_name=self.bucket_name, 
+                            object_key=object_id
+                        )
+                    except Exception as e:
+                        self.logger.debug(f"Error loading object from S3: {str(e)}")
+                        audio_data = None
+                    
+                    # assert audio_data is not None
+                    # assert type(audio_data) == bytes
+
+                    output_bytes_io = decode_mp3(audio_data)
+                    
+                    # If successful, return result. Otherwise, synthesize below.
+
+                    result = self.create_synthesis_result_from_wav(
+                        synthesizer_config=self.synthesizer_config,
+                        file=output_bytes_io,
+                        message=BaseMessage(text=text_message),
+                        chunk_size=chunk_size,
+                    )
+                    
+                    # TODO: cache result in self.vector_db_cache
+                    if return_tuple:
+                        return result, BaseMessage(text=text_message)
+                    else:
+                        return result
+
+        # else synthesize
+
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
@@ -173,7 +243,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         if not response.ok:
             raise Exception(f"ElevenLabs API returned {response.status} status code")
         if self.experimental_streaming:
-            return SynthesisResult(
+            result = SynthesisResult(
                 self.experimental_mp3_streaming_output_generator(
                     response, chunk_size, create_speech_span
                 ),  # should be wav
@@ -181,6 +251,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     message, seconds, self.words_per_minute
                 ),
             )
+            if return_tuple:
+                return result, message
+            else: 
+                return result
         else:
             audio_data = await response.read()
             create_speech_span.end()
@@ -196,8 +270,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 chunk_size=chunk_size,
             )
             convert_span.end()
-
-            return result
+            if return_tuple:
+                return result, message
+            else: 
+                return result
 
     def make_url(self):
         url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"

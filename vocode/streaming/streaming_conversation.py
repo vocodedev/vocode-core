@@ -253,6 +253,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
             )
+            self.use_index: bool = bool(getattr(self.conversation.synthesizer.get_synthesizer_config(),
+                                     'index_config',
+                                      None)
+                                     )
 
         def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
             assert self.conversation.filler_audio_worker is not None
@@ -317,14 +321,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                 self.conversation.logger.debug("Synthesizing speech for message")
                 self.conversation.is_synthesizing = True
-                synthesis_result = await self.conversation.synthesizer.create_speech(
+                synthesis_results = await self.conversation.synthesizer.create_speech(
                     agent_response_message.message,
                     self.chunk_size,
                     bot_sentiment=self.conversation.bot_sentiment,
+                    return_tuple=self.use_index
                 )
+                if self.use_index:
+                    synthesis_result, message = synthesis_results
+                else:
+                    synthesis_result = synthesis_results
+                    message = agent_response_message.message
                 self.conversation.is_synthesizing = False
                 self.produce_interruptible_agent_response_event_nonblocking(
-                    (agent_response_message.message, synthesis_result),
+                    (message, synthesis_result),
                     is_interruptible=item.is_interruptible,
                     agent_response_tracker=item.agent_response_tracker,
                 )
