@@ -122,7 +122,7 @@ class TranscriptEventManager(events_manager.EventsManager):
         self.output_device = output_device
         self.logger = logger or logging.getLogger(__name__)
 
-    def handle_event(self, event: Event):
+    async def handle_event(self, event: Event):
         if event.type == EventType.TRANSCRIPT:
             transcript_event = typing.cast(TranscriptEvent, event)
             self.output_device.consume_transcript(transcript_event)
