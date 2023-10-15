@@ -15,7 +15,7 @@ class BaseTelephonyClient:
         conversation_id: str,
         to_phone: str,
         from_phone: str,
-        record: bool = False,
+        record: bool = True,
         digits: Optional[str] = None,
     ) -> str:  # identifier of the call on the telephony provider
         raise NotImplementedError
