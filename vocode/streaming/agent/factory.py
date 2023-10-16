@@ -44,4 +44,6 @@ class AgentFactory:
             return ChatAnthropicAgent(agent_config=agent_config, logger=logger)
         elif isinstance(agent_config, LlamacppAgentConfig):
             return LlamacppAgent(agent_config=agent_config, logger=logger)
+        elif isinstance(agent_config, StaticAgentConfig):
+            return StaticAgent(agent_config=agent_config, logger=logger)
         raise Exception("Invalid agent config", agent_config.type)
