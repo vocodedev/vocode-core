@@ -247,7 +247,9 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
         ):
             audio_buffer = bytes(chunk_size)
-            while not audio_data_stream.can_read_data(chunk_size):
+            while (not audio_data_stream.can_read_data(chunk_size) 
+                and audio_data_stream.status != speechsdk.StreamStatus.AllData 
+                and audio_data_stream.status != speechsdk.StreamStatus.Canceled):
                 await asyncio.sleep(0)
             filled_size = audio_data_stream.read_data(audio_buffer)
             if filled_size != chunk_size:
