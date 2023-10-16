@@ -219,7 +219,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         agent_span_first = tracer.start_span(
             f"{tracer_name_start}.generate_first"  # type: ignore
         )
-        self.logger.debug(f"Generating response: {transcription}")
         responses = self.generate_response(
             transcription.message,
             is_interrupt=transcription.is_interrupt,
@@ -237,8 +236,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 is_first_response = False
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
-                is_interruptible=self.agent_config.allow_agent_to_be_cut_off
-                                 and is_interruptible,
+                is_interruptible=self.agent_config.allow_agent_to_be_cut_off and is_interruptible,
                 agent_response_tracker=agent_input.agent_response_tracker,
             )
         # TODO: implement should_stop for generate_responses

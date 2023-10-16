@@ -143,7 +143,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             cut_off_response = self.get_cut_off_response()
             yield cut_off_response, False
             return
-
+        self.logger.debug(f"confidence: {str(confidence)}")
         if confidence < self.agent_config.transcriber_low_confidence_threshold and \
                 self.agent_config.low_confidence_response:
             low_confidence_response = self.get_low_confidence_response()
@@ -181,7 +181,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         else:
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
-        self.logger.debug(f"messages are :{chat_parameters['messages']}")
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
         async for message in collate_response_async(
                 openai_get_tokens(stream), get_functions=True
