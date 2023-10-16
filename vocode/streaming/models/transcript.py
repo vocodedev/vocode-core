@@ -316,7 +316,7 @@ class Transcript(BaseModel):
                 current_index = self.event_logs.index(log)
 
                 # Check if this log index is the start of a new belief state range
-                if current_index == self.current_start_index and current_index > last_end_index:
+                if current_index == self.current_start_index and current_index > last_end_index and self.current_dialog_state is not None:
                     conversation_str += f"Now using new belief state:\n{self.current_dialog_state.dict()}\n"
                     last_end_index = current_index  # Update last_end_index to avoid repeating prints
 
