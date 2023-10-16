@@ -452,3 +452,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         Tuple[Union[str, FunctionCall], bool], None
     ]:  # tuple of the content and whether it is interruptible
         raise NotImplementedError
+
+    def generate_low(self):
+        raise NotImplementedError
