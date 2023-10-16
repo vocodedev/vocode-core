@@ -219,10 +219,12 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         agent_span_first = tracer.start_span(
             f"{tracer_name_start}.generate_first"  # type: ignore
         )
+        self.logger.debug(f"Generating response: {transcription}")
         responses = self.generate_response(
             transcription.message,
             is_interrupt=transcription.is_interrupt,
             conversation_id=conversation_id,
+            confidence=transcription.confidence,
         )
         is_first_response = True
         function_call = None
