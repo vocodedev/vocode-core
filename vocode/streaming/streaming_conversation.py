@@ -593,7 +593,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     def mark_last_action_timestamp(self):
         self.last_action_timestamp = time.time()
-
+    # more investigations here
     def broadcast_interrupt(self):
         """Stops all inflight events and cancels all workers that are sending output
 
