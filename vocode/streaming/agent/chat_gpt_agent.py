@@ -143,7 +143,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             cut_off_response = self.get_cut_off_response()
             yield cut_off_response, False
             return
-        self.logger.debug(f"confidence: {str(confidence)}")
+        self.logger.debug(
+            f"confidence: {confidence}, threshold: {self.agent_config.transcriber_low_confidence_threshold}, resp: {self.agent_config.low_confidence_response}")
         if confidence < self.agent_config.transcriber_low_confidence_threshold and \
                 self.agent_config.low_confidence_response:
             low_confidence_response = self.get_low_confidence_response()

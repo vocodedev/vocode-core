@@ -134,7 +134,7 @@ class AbstractAgent(Generic[AgentConfigType]):
     def get_low_confidence_response(self) -> str:
         assert isinstance(self.agent_config, LLMAgentConfig) or isinstance(
             self.agent_config, ChatGPTAgentConfig
-        ), "Set cutoff response is only implemented in LLMAgent and ChatGPTAgent"
+        ), "Set low confidence response is only implemented in LLMAgent and ChatGPTAgent"
         assert self.agent_config.low_confidence_response is not None
         on_low_confidence_messages = self.agent_config.low_confidence_response.messages
         assert len(on_low_confidence_messages) > 0
