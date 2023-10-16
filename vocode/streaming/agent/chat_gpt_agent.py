@@ -136,11 +136,20 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             human_input: str,
             conversation_id: str,
             is_interrupt: bool = False,
+            confidence: float = 1,
     ) -> AsyncGenerator[Tuple[Union[str, FunctionCall], bool], None]:
+
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
             yield cut_off_response, False
             return
+
+        if confidence < self.agent_config.transcriber_low_confidence_threshold and \
+                self.agent_config.low_confidence_response:
+            low_confidence_response = self.get_low_confidence_response()
+            yield low_confidence_response, False
+            return
+
         assert self.transcript is not None
 
         chat_parameters = {}

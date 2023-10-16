@@ -91,6 +91,7 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
+        confidence: float = 1,
     ) -> AsyncGenerator[Tuple[str, bool], None]:
         self.memory.chat_memory.messages.append(HumanMessage(content=human_input))
 

@@ -17,6 +17,7 @@ class EchoAgent(RespondAgent[EchoAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
+        confidence: float = 1,
     ) -> AsyncGenerator[Tuple[str, bool], None]:
         yield human_input, True
 

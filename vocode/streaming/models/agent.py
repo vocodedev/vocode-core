@@ -72,10 +72,15 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
     actions: Optional[List[ActionConfig]] = None
+    transcriber_low_confidence_threshold: float = 0
 
 
 class CutOffResponse(BaseModel):
     messages: List[BaseMessage] = [BaseMessage(text="Sorry?")]
+
+
+class LowConfidenceResponse(BaseModel):
+    messages: List[BaseMessage] = [BaseMessage(text="Sorry, i didn't get that")]
 
 
 class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
@@ -94,6 +99,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     cut_off_response: Optional[CutOffResponse] = None
+    low_confidence_response: Optional[LowConfidenceResponse] = None
     azure_params: Optional[AzureOpenAIConfig] = None
     vector_db_config: Optional[VectorDBConfig] = None
 

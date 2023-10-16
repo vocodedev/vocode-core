@@ -135,6 +135,7 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
         human_input: str,
         conversation_id: str,
         is_interrupt: bool = False,
+        confidence: float = 1,
     ) -> AsyncGenerator[Tuple[str, bool], None]:
         asyncio.get_event_loop().run_in_executor(
             self.thread_pool_executor,
