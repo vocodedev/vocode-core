@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import time
 from typing import Any, Dict, List, Union, Type
 from typing import AsyncGenerator, Optional, Tuple
@@ -66,7 +67,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         self.is_first_response = True
         self.last_messages_cnt = last_messages_cnt
         self.goodbye_phrase = goodbye_phrase
-        #TODO: refactor it. Should use different logic
+        # TODO: refactor it. Should use different logic
         # if goodbye_phrase is not None:
         #     self.agent_config.end_conversation_on_goodbye = True
 
@@ -79,7 +80,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     @property
     def extract_belief_state(self):
-        return self.agent_config.belief_state_prompt is not None
+        return self.agent_config.dialog_state_prompt is not None
 
     async def is_goodbye(self, message: str):
         return self.goodbye_phrase.lower() in message.lower()
@@ -134,7 +135,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             self.logger.info("Got responses from agent for dialog state extraction: %s", formatted_responses)
             belief_state = await self.get_dialog_state()
 
-            self.transcript.log_belief_state(belief_state)
+            self.transcript.update_dialog_state(belief_state)
 
             self.logger.info("Got belief state from agent: %s", belief_state)
             async for response in self.follow_response(formatted_responses):
@@ -157,9 +158,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         :return: The belief state extracted from the response.
         """
 
-        # FIXME: is this needed?
-        if 'DIALOG_STATE_UPDATE:' in belief_state:
-            belief_state = belief_state.split('DIALOG_STATE_UPDATE:')[1].strip()
+
 
         try:
             # Data must be in JSON format
@@ -181,23 +180,27 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         """
         assert self.transcript is not None
 
-        # Prepare the prompt with the concatenated bot responses
-        # TODO: discuss management of history with other? How many messages we want to use?
-
-        # TODO: add history here.
-        # Prepare the chat parameters
 
         chat_parameters = self.get_chat_parameters(belief_state_extract=True)
-        # TODO parametrize Assisntat, User etc
+        functions = self.parse_state_schema()
 
-        #TODO: refactor
+
+        #TODO: parametrize
+        chat_parameters["api_base"] = os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
+        chat_parameters["api_key"] = os.getenv("AZURE_OPENAI_API_KEY_SUMMARY")
+        chat_parameters["api_version"] = "2023-07-01-preview"
+        chat_parameters["temperature"] = 0.2
+        chat_parameters["n"] = 3
+        chat_parameters["functions"] = [functions]
+        chat_parameters["function_call"] = {"name": functions["name"]}
+
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + \
                                       [{"role": "user",
                                         "content": f"Assistant: {self.transcript.last_assistant}\nUser: {self.transcript.last_user_message}"}]
 
         # Call the model
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
-        return self._parse_belief_state(chat_completion.choices[0].message.content)
+        return self._parse_belief_state(chat_completion.choices[0].message.function_call.arguments)
 
     async def follow_response(self, override_dialog_state: Dict[str, Any],
                               combined_response: Optional[str] = None) -> AsyncGenerator:
@@ -224,15 +227,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def json_dump(d: dict):
         return json.dumps(d, indent=2, ensure_ascii=False)
 
-    def get_dialog_state_str(self, state: BaseModel):
-        data = state.dict()
-        schema = state.schema()
-        filtered = {}
-        for prop, value in data.items():
-            if not schema['properties'][prop].get('hidden', False):
-                filtered[prop] = value
-
-        return self.json_dump(filtered)
 
     def get_dialog_state_prompt_schema(self, state_class: Type[BaseModel]):
         data = state_class.schema()
@@ -252,7 +246,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             dialog_state_extraction=False,
             dialog_state=dialog_state_dict,
             dialog_state_str=self.get_dialog_state_str(self.dialog_state),
-            dialog_state_schema_str=self.get_dialog_state_prompt_schema(self.dialog_state.__class__),
+            dialog_state_schema_str=self.parse_state_schema(),
             dialog_state_schema=self.dialog_state.schema(),
         )
         return rendered_system_message
@@ -266,7 +260,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             dialog_state_extraction=True,
             dialog_state=dialog_state_dict,
             dialog_state_str=self.get_dialog_state_str(self.dialog_state),
-            dialog_state_schema_str=self.get_dialog_state_prompt_schema(self.dialog_state.__class__),
             dialog_state_schema=self.dialog_state.schema(),
         )
 
@@ -423,3 +416,34 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 openai_get_tokens(stream), get_functions=True
         ):
             yield message
+
+    def parse_state_schema(self, include_descriptions: bool = False) -> dict:
+        data = self.dialog_state.schema()
+        schema = {
+            "name": "get_argument_values",
+            "description": "Get values for arguments mentioned in the current turn.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            }
+        }
+        keys = ['type', 'enum', 'examples']
+        if include_descriptions:
+            keys.append('description')
+        for prop, details in data['properties'].items():
+            if prop != "script_location" and not details.get('hidden', False):
+                schema["parameters"]["properties"][prop] = {
+                    key: details[key] for key in keys if key in details
+                }
+        return schema
+
+    def get_dialog_state_str(self, state: BaseModel):
+        data = state.dict()
+        schema = state.schema()
+        filtered = {}
+        for prop, value in data.items():
+            if not schema['properties'][prop].get('hidden', False):
+                filtered[prop] = value
+
+        return self.json_dump(filtered)
