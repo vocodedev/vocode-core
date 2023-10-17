@@ -86,11 +86,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 self.agent_config.vector_db_config
             )
 
-        self.dialog_state = self.agent_config.dialog_state  # FIXME: ugly flow refactor it.
+        self.call_script = self.agent_config.call_script  # FIXME: ugly flow refactor it.
 
     @property
     def extract_belief_state(self):
-        return self.agent_config.dialog_state_prompt is not None
+        return self.agent_config.call_script.dialog_state_prompt is not None
 
     async def is_goodbye(self, message: str):
         return self.goodbye_phrase.lower() in message.lower()
@@ -146,7 +146,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             dialog_state_update = await self.get_dialog_state_update()
             self.logger.info("Got dialog state update from agent: %s", dialog_state_update)
             chat_response = ConsoleChatResponse(formatted_responses, dialog_state_update, raw_text=formatted_responses)
-            decision = self.dialog_state.decision_callback(chat_response)
+            decision = self.call_script.decision_callback(chat_response)
             # FIXME: DISCUSS HOW TO BETTER HANDLE RETRY
             if decision.say_now_script_location:
                 async for response in self.follow_response(override_dialog_state=dict(
@@ -156,7 +156,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                         is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
                     )
 
-            # self.transcript.update_dialog_state(dialog_state)
+            self.transcript.log_dialog_state(self.call_script.dialog_state, decision)
             #
             # self.logger.info("Got dialog state from agent: %s", dialog_state)
             # async for response in self.follow_response(formatted_responses):
@@ -172,7 +172,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         return False
 
-    def _parse_belief_state(self, belief_state: str) -> dict[str, str]:
+    def _parse_dialog_state(self, belief_state: str) -> dict[str, str]:
         """
         Parse the belief state from the response.
         :param belief_state: The response from the model which must contain JSON parsable belief state.
@@ -199,8 +199,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         """
         assert self.transcript is not None
 
-        chat_parameters = self.get_chat_parameters(belief_state_extract=True)
-        functions = self.parse_state_schema()
+        chat_parameters = self.get_chat_parameters(dialog_state_extract=True)
+        functions = self.call_script.get_functions()
 
         # TODO: parametrize
         chat_parameters["api_base"] = os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
@@ -219,7 +219,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         # Call the model
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
-        return self._parse_belief_state(chat_completion.choices[0].message.function_call.arguments)
+        return self._parse_dialog_state(chat_completion.choices[0].message.function_call.arguments)
 
     async def follow_response(self, override_dialog_state: Dict[str, Any],
                               combined_response: Optional[str] = None) -> AsyncGenerator:
@@ -259,55 +259,22 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def json_dump(d: dict):
         return json.dumps(d, indent=2, ensure_ascii=False)
 
-    def get_dialog_state_prompt_schema(self, state_class: Type[BaseModel]):
-        data = state_class.schema()
-        filtered = {}
-        for prop, details in data['properties'].items():
-            if not details.get('hidden', False):
-                filtered[prop] = {key: details[key] for key in ('type', 'examples', 'enum') if key in details}
-
-        return self.json_dump(filtered)
-
-    def render_system_message(self, override_dialog_state: Optional[dict] = None):
-        dialog_state_dict = self.dialog_state.dict()
-        if override_dialog_state is not None:
-            dialog_state_dict.update(**override_dialog_state)
-
-        rendered_system_message = self.agent_config.prompt_preamble.render(
-            dialog_state_extraction=False,
-            dialog_state=dialog_state_dict,
-            dialog_state_str=self.get_dialog_state_str(self.dialog_state),
-            dialog_state_schema_str=self.parse_state_schema(),
-            dialog_state_schema=self.dialog_state.schema(),
-        )
-        return rendered_system_message
-
-    def render_extract_system_message(self, override_dialog_state: Optional[dict] = None):
-        dialog_state_dict = self.dialog_state.dict()
-        if override_dialog_state is not None:
-            dialog_state_dict.update(**override_dialog_state)
-
-        return self.agent_config.dialog_state_prompt.render(
-            dialog_state_extraction=True,
-            dialog_state=dialog_state_dict,
-            dialog_state_str=self.get_dialog_state_str(self.dialog_state),
-            dialog_state_schema=self.dialog_state.schema(),
-        )
-
     def get_chat_parameters(self, messages: Optional[List] = None,
-                            belief_state_extract: bool = False,
+                            dialog_state_extract: bool = False,
                             override_dialog_state: Optional[dict] = None):
         assert self.transcript is not None
 
-        if belief_state_extract:
+        if dialog_state_extract:
             messages = messages or format_openai_chat_messages_from_transcript(
-                self.transcript, self.render_extract_system_message(override_dialog_state),
+                self.transcript, self.agent_config.call_script.render_dialog_state_prompt(
+                    override_dialog_state=override_dialog_state,
+                )
             )
         else:
-
             messages = messages or format_openai_chat_messages_from_transcript(
-                self.transcript, self.render_system_message(override_dialog_state)
-            )
+                self.transcript, self.agent_config.call_script.render_text_prompt(
+                    override_dialog_state=override_dialog_state
+                ))
 
         # select last 4 messages, always keep first message, make sure first message is not duplicated
         if len(messages) <= 5:
@@ -417,7 +384,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 )
                 vector_db_result = f"Found {len(docs_with_scores)} similar documents:\n{docs_with_scores_str}"
                 messages = format_openai_chat_messages_from_transcript(
-                    self.transcript, self.agent_config.prompt_preamble
+                    self.transcript, self.agent_config.call_script.prompt_preamble
                 )
                 messages.insert(
                     -1, vector_db_result_to_openai_chat_message(vector_db_result)
@@ -470,7 +437,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             yield message
 
     def parse_state_schema(self, include_descriptions: bool = False) -> dict:
-        data = self.dialog_state.schema()
+        data = self.call_script.dialog_state.schema()
         schema = {
             "name": "get_argument_values",
             "description": "Get values for arguments mentioned in the current turn.",
@@ -489,17 +456,3 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     key: details[key] for key in keys if key in details
                 }
         return schema
-
-    def get_dialog_state_str(self, state: BaseModel):
-        data = state.dict()
-        schema = state.schema()
-        filtered = {}
-        for prop, value in data.items():
-            if not schema['properties'][prop].get('hidden', False):
-                if isinstance(value, datetime.date):
-                    value = value.isoformat()
-                elif isinstance(value, datetime.time):
-                    value = value.isoformat(timespec="minutes")
-                filtered[prop] = value
-
-        return self.json_dump(filtered)
