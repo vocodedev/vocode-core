@@ -4,10 +4,12 @@ import logging
 import os
 import re
 import time
+from dataclasses import dataclass
 from typing import Any, Dict, List, Union, Type
 from typing import AsyncGenerator, Optional, Tuple
 
 import openai
+
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent, AgentInput, AgentResponseMessage
@@ -24,6 +26,14 @@ from vocode.streaming.models.model import BaseModel
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.vector_db.factory import VectorDBFactory
+
+
+# TODO: MOVE IT SOMEWHERE ELSE
+@dataclass
+class ConsoleChatResponse:
+    message: str
+    dialog_state_update: Optional[dict]
+    raw_text: str
 
 
 def messages_from_transcript(transcript: Transcript, system_prompt: str):
@@ -133,17 +143,30 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # FIXME: stardardize this
             formatted_responses = "\n".join(["BOT: " + response for response in all_responses])
             self.logger.info("Got responses from agent for dialog state extraction: %s", formatted_responses)
-            belief_state = await self.get_dialog_state_update()
+            dialog_state_update = await self.get_dialog_state_update()
+            self.logger.info("Got dialog state update from agent: %s", dialog_state_update)
+            chat_response = ConsoleChatResponse(formatted_responses, dialog_state_update, raw_text=formatted_responses)
+            decision = self.dialog_state.decision_callback(chat_response)
+            # FIXME: DISCUSS HOW TO BETTER HANDLE RETRY
+            if decision.say_now_script_location:
+                async for response in self.follow_response(override_dialog_state=dict(
+                        script_location=decision.say_now_script_location),combined_response=formatted_responses):
+                    self.produce_interruptible_agent_response_event_nonblocking(
+                            AgentResponseMessage(message=BaseMessage(text=response)),
+                            is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+                        )
 
-            self.transcript.update_dialog_state(belief_state)
 
-            self.logger.info("Got belief state from agent: %s", belief_state)
-            async for response in self.follow_response(formatted_responses):
-                self.logger.info("Got follow up response from agent: `%s`", response)
-                self.produce_interruptible_agent_response_event_nonblocking(
-                    AgentResponseMessage(message=BaseMessage(text=response)),
-                    is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
-                )
+
+            # self.transcript.update_dialog_state(dialog_state)
+            #
+            # self.logger.info("Got dialog state from agent: %s", dialog_state)
+            # async for response in self.follow_response(formatted_responses):
+            #     self.logger.info("Got follow up response from agent: `%s`", response)
+            #     self.produce_interruptible_agent_response_event_nonblocking(
+            #         AgentResponseMessage(message=BaseMessage(text=response)),
+            #         is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+            #     )
 
         # TODO: implement should_stop for generate_responses
         if function_call and self.agent_config.actions is not None:
@@ -207,19 +230,19 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         :return: The response by the agent to the user's input. Separated into individual sentences.
         """
         chat_parameters = self.get_chat_parameters(override_dialog_state=override_dialog_state)
-        chat_parameters["messages"][0]["content"] = re.sub(r'(\n\s*){2,}\n', '\n\n', chat_parameters["messages"][0]["content"]).strip()
+        chat_parameters["messages"][0]["content"] = re.sub(r'(\n\s*){2,}\n', '\n\n',
+                                                           chat_parameters["messages"][0]["content"]).strip()
         chat_parameters["stream"] = True
         # FIXME: move to config
         chat_parameters["top_p"] = 0.95
         # prevent repeating previous messages
         chat_parameters["presence_penalty"] = 0.3
         chat_parameters["frequency_penalty"] = 0.3
-        chat_parameters["api_base"]=  os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
+        chat_parameters["api_base"] = os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
         chat_parameters["api_version"] = "2023-03-15-preview"
         chat_parameters["api_key"] = os.getenv("AZURE_OPENAI_API_KEY_SUMMARY")
         chat_parameters["temperature"] = 0.2
         chat_parameters["engine"] = "gpt-35-turbo"
-
 
         # FIXME: rewrite it.
         if combined_response is not None:  # for example console app already has combined response in transcript so
@@ -285,6 +308,15 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             messages = messages or format_openai_chat_messages_from_transcript(
                 self.transcript, self.render_system_message(override_dialog_state)
             )
+
+        # select last 4 messages, always keep first message, make sure first message is not duplicated
+        if len(messages) <= 5:
+            # If we have 4 or fewer messages, just use the original list.
+            messages = messages
+        else:
+            # If we have more than 4 messages, include the first one and the last four.
+            # This won't duplicate the first message because we're skipping the first part of the list.
+            messages = messages[:1] + messages[-5:]
 
         # Commented for now because it will be used with belief state.
         # last_summary = self.transcript.last_summary
@@ -427,7 +459,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         # prevent repeating previous messages
         chat_parameters["presence_penalty"] = 0.3
         chat_parameters["frequency_penalty"] = 0.3
-        chat_parameters["api_base"]=  os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
+        chat_parameters["api_base"] = os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
         chat_parameters["api_version"] = "2023-03-15-preview"
         chat_parameters["api_key"] = os.getenv("AZURE_OPENAI_API_KEY_SUMMARY")
         chat_parameters["temperature"] = 0.2

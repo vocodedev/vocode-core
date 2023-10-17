@@ -56,20 +56,20 @@ def get_scalevoice_conversation_config(logger: Logger,
     AZURE_TEXT_ANALYTICS_ENDPOINT = os.environ['AZURE_TEXT_ANALYTICS_ENDPOINT']
 
     return dict(
-        summarizer=ChatGPTSummaryAgent(logger=logger,
-                                       # TODO: refactor it. RN there is a problem with standard openai auth because we have
-                                       # to use uk endpoint but our 3.5 runs in western europe.
-                                       key=AZURE_OPENAI_API_KEY_SUMMARY,
-                                       base=AZURE_OPENAI_API_BASE_SUMMARY,
-                                       agent_config=ChatGPTAgentConfig(
-
-                                           prompt_preamble=summarizer_prompt_preamble,
-                                           azure_params=AzureOpenAIConfig(
-                                               api_type="azure",
-                                               api_version="2023-03-15-preview",
-                                               engine="gpt4"  # always use gpt4
-                                           ),
-                                       )) if AZURE_OPENAI_API_BASE_SUMMARY is not None else None,
+        # summarizer=ChatGPTSummaryAgent(logger=logger,
+        #                                # TODO: refactor it. RN there is a problem with standard openai auth because we have
+        #                                # to use uk endpoint but our 3.5 runs in western europe.
+        #                                key=AZURE_OPENAI_API_KEY_SUMMARY,
+        #                                base=AZURE_OPENAI_API_BASE_SUMMARY,
+        #                                agent_config=ChatGPTAgentConfig(
+        #
+        #                                    prompt_preamble=summarizer_prompt_preamble,
+        #                                    azure_params=AzureOpenAIConfig(
+        #                                        api_type="azure",
+        #                                        api_version="2023-03-15-preview",
+        #                                        engine="gpt4"  # always use gpt4
+        #                                    ),
+        #                                )) if AZURE_OPENAI_API_BASE_SUMMARY is not None else None,
         over_talking_filler_detector=OpenAIEmbeddingOverTalkingFillerDetector(logger=logger),
         openai_embeddings_response_classifier=OpenaiEmbeddingsResponseClassifier(),
         text_analysis_client=TextAnalyticsClient(endpoint=AZURE_TEXT_ANALYTICS_ENDPOINT,
