@@ -1,7 +1,8 @@
 import time
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any
 
 from pydantic import BaseModel, Field
+
 from vocode.streaming.models.actions import ActionInput, ActionOutput
 from vocode.streaming.models.events import ActionEvent, Sender, Event, EventType
 from vocode.streaming.utils.events_manager import EventsManager
@@ -55,18 +56,84 @@ class Summary(BaseModel):
         return f"{self.text}"
 
 
+class BeliefStateEntry(BaseModel):
+    belief_state: Any
+    start_message_index: int
+    end_message_index: int
+
+    timestamp: float = Field(default_factory=time.time)
+
+
 class Transcript(BaseModel):
     event_logs: List[EventLog] = []
     start_time: float = Field(default_factory=time.time)
     events_manager: Optional[EventsManager] = None
     summaries: Optional[List[Summary]] = None
 
+    dialog_states_history: List[BeliefStateEntry] = []
+    current_dialog_state: Optional[Any] = None
+    current_start_index: int = 0
+
     class Config:
         arbitrary_types_allowed = True
+
+    def update_dialog_state(self, new_dialog_state: Any):
+        if self.current_dialog_state is not None:
+            # Push the current belief state to the history before updating it
+            self.dialog_states_history.append(
+                BeliefStateEntry(
+                    belief_state=self.current_dialog_state,
+                    start_message_index=self.current_start_index,
+                    end_message_index=len(self.event_logs) - 1,  # Index of the last message
+                )
+            )
+        # Update current belief state and start index
+        self.current_dialog_state = new_dialog_state
+        self.current_start_index = len(self.event_logs)  # Next message starts a new range
 
     @property
     def num_messages(self):
         return len(self.event_logs)
+
+    @property
+    def last_message(self) -> Optional[EventLog]:
+        if self.num_messages == 0:
+            return None
+        return self.event_logs[-1]
+
+    @property
+    def user_messages(self) -> List[Message]:
+        return [message for message in self.event_logs if message.sender == Sender.HUMAN]
+
+    @property
+    def assistant_messages(self) -> List[Message]:
+        return [message for message in self.event_logs if message.sender == Sender.BOT]
+
+    @property
+    def last_user_message(self) -> Optional[str]:
+        user_messages = self.user_messages
+        if len(user_messages) == 0:
+            return None
+        return user_messages[-1].text
+
+    @property
+    def last_assistant(self) -> Optional[str]:
+        assistant_messages = []
+        found_human = False
+
+        # Gets last sequence of Bot messages.
+        for log in reversed(self.event_logs):
+            if log.sender == Sender.BOT and not found_human:
+                assistant_messages.append(log.text)
+            elif log.sender == Sender.HUMAN:
+                found_human = True
+                if assistant_messages:
+                    break
+
+        if assistant_messages:
+            return " ".join(reversed(assistant_messages))
+
+        return None
 
     @property
     def last_summary_message_ind(self) -> Optional[int]:
@@ -236,6 +303,29 @@ class Transcript(BaseModel):
             if isinstance(event_log, Message) and event_log.sender == Sender.BOT:
                 event_log.text = text
                 break
+
+    def render_conversation(self, include_belief_state: bool = False) -> str:
+        # TODO: this is duplicate with to_string but kept for compatibility with vocode. Later only one should stay.
+        conversation_str = ""
+        print(include_belief_state, len(self.dialog_states_history))
+        last_end_index = -1  # So we know when a new belief state range starts
+
+        for log in self.event_logs:
+            conversation_str += f"{log.timestamp} {log.sender}: {log.text}\n"
+            if include_belief_state:
+                current_index = self.event_logs.index(log)
+
+                # Check if this log index is the start of a new belief state range
+                if current_index == self.current_start_index and current_index > last_end_index and self.current_dialog_state is not None:
+                    conversation_str += f"Now using new belief state:\n{self.current_dialog_state.dict()}\n"
+                    last_end_index = current_index  # Update last_end_index to avoid repeating prints
+
+                for entry in self.dialog_states_history:
+                    if entry.start_message_index == current_index and current_index > last_end_index:
+                        conversation_str += f"Now using new belief state:\n{entry.belief_state.dict()}\n"
+                        last_end_index = current_index  # Update last_end_index to avoid repeating prints
+
+        return conversation_str
 
 
 class TranscriptEvent(Event, type=EventType.TRANSCRIPT):

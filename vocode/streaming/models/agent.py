@@ -1,10 +1,11 @@
-from typing import List, Optional, Union
 from enum import Enum
+from typing import List, Optional, Union, Any
+
+from jinja2 import Template
 from langchain.prompts import PromptTemplate
-
 from pydantic import validator
-from vocode.streaming.models.actions import ActionConfig
 
+from vocode.streaming.models.actions import ActionConfig
 from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
 from .vector_db import VectorDBConfig
@@ -88,7 +89,11 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
 
 
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
-    prompt_preamble: str
+    prompt_preamble: Template
+    dialog_state_prompt: Optional[Template] = None
+
+    dialog_state: Optional[Any] = None
+
     expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
@@ -96,6 +101,9 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     cut_off_response: Optional[CutOffResponse] = None
     azure_params: Optional[AzureOpenAIConfig] = None
     vector_db_config: Optional[VectorDBConfig] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):
