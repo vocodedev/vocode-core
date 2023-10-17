@@ -171,6 +171,7 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.va
     speed: Optional[int] = None
     seed: Optional[int] = None
     temperature: Optional[int] = None
+    voice_engine_id: Optional[str] = None
     voice_id: str = PLAYHT_DEFAULT_VOICE_ID
     experimental_streaming: bool = False
 
