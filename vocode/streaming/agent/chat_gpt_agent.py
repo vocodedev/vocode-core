@@ -2,12 +2,12 @@ import asyncio
 import json
 import logging
 import os
+import re
 import time
 from typing import Any, Dict, List, Union, Type
 from typing import AsyncGenerator, Optional, Tuple
 
 import openai
-
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent, AgentInput, AgentResponseMessage
@@ -158,8 +158,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         :return: The belief state extracted from the response.
         """
 
-
-
         try:
             # Data must be in JSON format
             return json.loads(belief_state)
@@ -180,12 +178,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         """
         assert self.transcript is not None
 
-
         chat_parameters = self.get_chat_parameters(belief_state_extract=True)
         functions = self.parse_state_schema()
 
-
-        #TODO: parametrize
+        # TODO: parametrize
         chat_parameters["api_base"] = os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
         chat_parameters["api_key"] = os.getenv("AZURE_OPENAI_API_KEY_SUMMARY")
         chat_parameters["api_version"] = "2023-07-01-preview"
@@ -211,7 +207,20 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         :return: The response by the agent to the user's input. Separated into individual sentences.
         """
         chat_parameters = self.get_chat_parameters(override_dialog_state=override_dialog_state)
+        chat_parameters["messages"][0]["content"] = re.sub(r'(\n\s*){2,}\n', '\n\n', chat_parameters["messages"][0]["content"]).strip()
         chat_parameters["stream"] = True
+        # FIXME: move to config
+        chat_parameters["top_p"] = 0.95
+        # prevent repeating previous messages
+        chat_parameters["presence_penalty"] = 0.3
+        chat_parameters["frequency_penalty"] = 0.3
+        chat_parameters["api_base"]=  os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
+        chat_parameters["api_version"] = "2023-03-15-preview"
+        chat_parameters["api_key"] = os.getenv("AZURE_OPENAI_API_KEY_SUMMARY")
+        chat_parameters["temperature"] = 0.2
+        chat_parameters["engine"] = "gpt-35-turbo"
+
+
         # FIXME: rewrite it.
         if combined_response is not None:  # for example console app already has combined response in transcript so
             # we don't need to add it to the prompt
@@ -226,7 +235,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     @staticmethod
     def json_dump(d: dict):
         return json.dumps(d, indent=2, ensure_ascii=False)
-
 
     def get_dialog_state_prompt_schema(self, state_class: Type[BaseModel]):
         data = state_class.schema()
@@ -412,6 +420,18 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         # )
 
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
+        # FIXME: move to config
+        chat_parameters["top_p"] = 0.95
+        chat_parameters["messages"][0]["content"] = re.sub(r'(\n\s*){2,}\n', '\n\n',
+                                                           chat_parameters["messages"][0]["content"]).strip()
+        # prevent repeating previous messages
+        chat_parameters["presence_penalty"] = 0.3
+        chat_parameters["frequency_penalty"] = 0.3
+        chat_parameters["api_base"]=  os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
+        chat_parameters["api_version"] = "2023-03-15-preview"
+        chat_parameters["api_key"] = os.getenv("AZURE_OPENAI_API_KEY_SUMMARY")
+        chat_parameters["temperature"] = 0.2
+        chat_parameters["engine"] = "gpt-35-turbo"
         async for message in collate_response_async(
                 openai_get_tokens(stream), get_functions=True
         ):
