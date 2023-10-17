@@ -344,7 +344,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             parameters["engine"] = self.agent_config.azure_params.engine
         else:
             parameters["model"] = self.agent_config.model_name
-
+        #
         if self.functions:
             parameters["functions"] = self.functions
 
