@@ -177,7 +177,7 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
         super().__init__(input_queue, output_queue)
         self.input_queue = input_queue
         self.max_concurrency = max_concurrency
-        self.interruptible_event_factory = interruptible_event_factory
+        self.interruptable_event_factory = interruptible_event_factory
         self.current_task = None
         self.interruptible_event = None
 
@@ -185,7 +185,7 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
         self, item: Any, is_interruptible: bool = True
     ):
         interruptible_event = (
-            self.interruptible_event_factory.create_interruptible_event(
+            self.interruptable_event_factory.create_interruptible_event(
                 item, is_interruptible=is_interruptible
             )
         )
@@ -198,7 +198,7 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
         agent_response_tracker: Optional[asyncio.Event] = None,
     ):
         interruptible_utterance_event = (
-            self.interruptible_event_factory.create_interruptible_agent_response_event(
+            self.interruptable_event_factory.create_interruptible_agent_response_event(
                 item,
                 is_interruptible=is_interruptible,
                 agent_response_tracker=agent_response_tracker or asyncio.Event(),

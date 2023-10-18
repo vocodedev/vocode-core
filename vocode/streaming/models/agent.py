@@ -38,7 +38,7 @@ class AgentType(str, Enum):
     ACTION = "agent_action"
 
 
-class FillerAudioConfig(BaseModel):
+class RandomResponseAudioConfig(BaseModel):
     silence_threshold_seconds: float = FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
     use_phrases: bool = True
     use_typing_noise: bool = False
@@ -50,6 +50,14 @@ class FillerAudioConfig(BaseModel):
         if not v and not values.get("use_phrases"):
             raise ValueError("must use either typing noise or phrases for filler audio")
         return v
+
+
+class FillerAudioConfig(RandomResponseAudioConfig):
+    pass
+
+
+class BackTrackingConfig(RandomResponseAudioConfig):
+    pass
 
 
 class WebhookConfig(BaseModel):
@@ -69,6 +77,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     allow_agent_to_be_cut_off: bool = True
     end_conversation_on_goodbye: bool = False
     send_filler_audio: Union[bool, FillerAudioConfig] = False
+    send_back_tracking_audio: Union[bool, FillerAudioConfig] = False
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
     actions: Optional[List[ActionConfig]] = None
