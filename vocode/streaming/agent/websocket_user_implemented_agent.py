@@ -5,7 +5,7 @@ from typing import Dict
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils.worker import (
     InterruptableAgentResponseEvent,
-    InterruptibleEvent,
+    InterruptableEvent,
 )
 import websockets
 from websockets.client import (
@@ -35,7 +35,7 @@ NUM_RESTARTS = 5
 
 
 class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfig]):
-    input_queue: asyncio.Queue[InterruptibleEvent[AgentInput]]
+    input_queue: asyncio.Queue[InterruptableEvent[AgentInput]]
     output_queue: asyncio.Queue[InterruptableAgentResponseEvent[AgentResponse]]
 
     def __init__(

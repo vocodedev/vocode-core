@@ -108,20 +108,20 @@ class AsyncQueueWorker(AsyncWorker):
 Payload = TypeVar("Payload")
 
 
-class InterruptibleEvent(Generic[Payload]):
+class InterruptableEvent(Generic[Payload]):
     def __init__(
         self,
         payload: Payload,
-        is_interruptible: bool = True,
+        is_interruptable: bool = True,
         interruption_event: Optional[threading.Event] = None,
     ):
         self.interruption_event = interruption_event or threading.Event()
-        self.is_interruptable = is_interruptible
+        self.is_interruptable = is_interruptable
         self.payload = payload
 
     def interrupt(self) -> bool:
         """
-        Returns True if the event was interruptible and is now interrupted.
+        Returns True if the event was interruptable and is now interrupted.
         """
         if not self.is_interruptable:
             return False
@@ -132,38 +132,38 @@ class InterruptibleEvent(Generic[Payload]):
         return self.is_interruptable and self.interruption_event.is_set()
 
 
-class InterruptableAgentResponseEvent(InterruptibleEvent[Payload]):
+class InterruptableAgentResponseEvent(InterruptableEvent[Payload]):
     def __init__(
         self,
         payload: Payload,
         agent_response_tracker: asyncio.Event,
-        is_interruptible: bool = True,
+        is_interruptable: bool = True,
         interruption_event: Optional[threading.Event] = None,
     ):
-        super().__init__(payload, is_interruptible, interruption_event)
+        super().__init__(payload, is_interruptable, interruption_event)
         self.agent_response_tracker = agent_response_tracker
 
 
 class InterruptableEventFactory:
     def create_interruptable_event(
         self, payload: Any, is_interruptable: bool = True
-    ) -> InterruptibleEvent:
-        return InterruptibleEvent(payload, is_interruptible=is_interruptable)
+    ) -> InterruptableEvent:
+        return InterruptableEvent(payload, is_interruptable=is_interruptable)
 
     def create_interruptable_agent_response_event(
         self,
         payload: Any,
-        is_interruptible: bool = True,
+        is_interruptable: bool = True,
         agent_response_tracker: Optional[asyncio.Event] = None,
     ) -> InterruptableAgentResponseEvent:
         return InterruptableAgentResponseEvent(
             payload,
-            is_interruptible=is_interruptible,
+            is_interruptable=is_interruptable,
             agent_response_tracker=agent_response_tracker or asyncio.Event(),
         )
 
 
-InterruptibleEventType = TypeVar("InterruptibleEventType", bound=InterruptibleEvent)
+InterruptibleEventType = TypeVar("InterruptibleEventType", bound=InterruptableEvent)
 
 
 class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
@@ -200,7 +200,7 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
         interruptable_utterance_event = (
             self.interruptable_event_factory.create_interruptable_agent_response_event(
                 item,
-                is_interruptible=is_interruptable,
+                is_interruptable=is_interruptable,
                 agent_response_tracker=agent_response_tracker or asyncio.Event(),
             )
         )

@@ -1,7 +1,8 @@
 import asyncio
 import logging
 import time
-from typing import Any, AsyncGenerator, Optional, Tuple, Union, List
+from collections import defaultdict
+from typing import Any, AsyncGenerator, Optional, Tuple, Union, List, Dict
 import wave
 import aiohttp
 from opentelemetry.trace import Span
@@ -16,7 +17,7 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     FILLER_PHRASES,
     FILLER_AUDIO_PATH,
     FillerAudio,
-    encode_as_wav
+    encode_as_wav, BACK_TRACKING_PHRASES
 )
 from vocode.streaming.models.synthesizer import (
     ElevenLabsSynthesizerConfig,
@@ -171,90 +172,12 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
             return result
 
-    async def get_phrase_filler_audios(self) -> List[FillerAudio]:
-        # filler_phrase_audios = []
-        filler_phrase_audios = {'question': [], 'confirm': [], 'yep': []}
+    async def get_phrase_filler_audios(self) -> Dict[str, List[FillerAudio]]:
+        filler_phrase_audios = defaultdict(list)
+        for key, filler_phrase in FILLER_PHRASES:
+            filler_audio_path = await self.get_audio_data_from_cache_or_download(filler_phrase)
 
-        key_map = {"Um...": 'question',
-                   "Uh...": 'question',
-                   "Uhm": 'question',
-                   "Uhmm": 'question',
-                   "Hmm...": 'question',
-                   #    "uhmm yeah" : 'confirm',
-
-                   "Okay...": 'confirm',
-                   "right...": 'confirm',
-                   "Alright...": 'confirm',
-                   "Yeah...": 'confirm',
-                   "o...ok": 'confirm',
-                   "well...": 'confirm',
-                   "I mean": 'confirm',
-
-                   "Let me see...": 'question',
-
-                   "Yep": 'yep',
-                   "Yeah go on": 'yep',
-                   "um...": 'yep',
-
-                   }
-
-        for filler_phrase in FILLER_PHRASES:
-            cache_key = "-".join(
-                (
-                    str(filler_phrase.text),
-                    str(self.synthesizer_config.type),
-                    str(self.synthesizer_config.audio_encoding),
-                    str(self.synthesizer_config.sampling_rate),
-                    str(self.voice_id),
-                    str(self.synthesizer_config.similarity_boost),
-                    str(self.synthesizer_config.stability),
-                    str(self.model_id),
-                )
-            )
-
-            filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.wav")
-            if os.path.exists(filler_audio_path):
-                audio_data = open(filler_audio_path, "rb").read()
-            else:
-                self.logger.debug(f"Generating filler audio for {filler_phrase.text}")
-                voice = self.elevenlabs.Voice(voice_id=self.voice_id)
-
-                if self.stability is not None and self.similarity_boost is not None:
-                    voice.settings = self.elevenlabs.VoiceSettings(
-                        stability=self.stability, similarity_boost=self.similarity_boost
-                    )
-                url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
-                if self.optimize_streaming_latency:
-                    url += f"?optimize_streaming_latency={self.optimize_streaming_latency}"
-                    headers = {"xi-api-key": self.api_key}
-                    body = {
-                        "text": filler_phrase.text,
-                        "voice_settings": voice.settings.dict() if voice.settings else None,
-                    }
-                if self.model_id:
-                    body["model_id"] = self.model_id
-
-                async with aiohttp.ClientSession() as session:
-                    async with session.request(
-                            "POST",
-                            url,
-                            json=body,
-                            headers=headers,
-                            timeout=aiohttp.ClientTimeout(total=15),
-                    ) as response:
-                        if not response.ok:
-                            raise Exception(
-                                f"ElevenLabs API returned {response.status} status code"
-                            )
-                        audio_data = await response.read()
-
-                        audio_segment: AudioSegment = AudioSegment.from_mp3(
-                            io.BytesIO(audio_data)  # type: ignore
-                        )
-
-                        audio_segment.export(filler_audio_path, format="wav")
-
-            filler_phrase_audios[key_map[filler_phrase.text]].append(
+            filler_phrase_audios[key].append(
 
                 FillerAudio(
                     filler_phrase,
@@ -264,13 +187,93 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                         output_encoding=self.synthesizer_config.audio_encoding,
                     ),
                     synthesizer_config=self.synthesizer_config,
-                    is_interruptible=True,
+                    is_interruptable=True,
                     seconds_per_chunk=2,
                 )
             )
         return filler_phrase_audios
 
-    def save_as_wav(sef, data, filename, sample_rate=44100, sample_width=1, channels=1):
+    async def get_phrase_back_tracking_audios(self) -> List[FillerAudio]:
+        filler_phrase_audios = []
+        for back_tracking_phrase in BACK_TRACKING_PHRASES:
+            filler_audio_path = await self.get_audio_data_from_cache_or_download(back_tracking_phrase)
+
+            filler_phrase_audios.append(
+
+                FillerAudio(
+                    back_tracking_phrase,
+                    audio_data=convert_wav(
+                        filler_audio_path,
+                        output_sample_rate=self.synthesizer_config.sampling_rate,
+                        output_encoding=self.synthesizer_config.audio_encoding,
+                    ),
+                    synthesizer_config=self.synthesizer_config,
+                    is_interruptable=True,
+                    seconds_per_chunk=2,
+                )
+            )
+        return filler_phrase_audios
+
+    async def get_audio_data_from_cache_or_download(self, back_tracking_phrase):
+        cache_key = "-".join(
+            (
+                str(back_tracking_phrase.text),
+                str(self.synthesizer_config.type),
+                str(self.synthesizer_config.audio_encoding),
+                str(self.synthesizer_config.sampling_rate),
+                str(self.voice_id),
+                str(self.synthesizer_config.similarity_boost),
+                str(self.synthesizer_config.stability),
+                str(self.model_id),
+            )
+        )
+        filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.wav")
+        audio_data = None
+        if not os.path.exists(filler_audio_path):
+            self.logger.debug(f"Generating filler audio for {back_tracking_phrase.text}")
+            audio_data = await self.download_filler_audio_data(audio_data, back_tracking_phrase)
+
+            audio_segment: AudioSegment = AudioSegment.from_mp3(
+                io.BytesIO(audio_data)  # type: ignore
+            )
+            audio_segment.export(filler_audio_path, format="wav")
+        return filler_audio_path
+
+    async def download_filler_audio_data(self, audio_data, back_tracking_phrase):
+        voice = self.elevenlabs.Voice(voice_id=self.voice_id)
+        if self.stability is not None and self.similarity_boost is not None:
+            voice.settings = self.elevenlabs.VoiceSettings(
+                stability=self.stability, similarity_boost=self.similarity_boost
+            )
+        url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
+        body = {}
+        headers = {}
+        if self.optimize_streaming_latency:
+            url += f"?optimize_streaming_latency={self.optimize_streaming_latency}"
+            headers = {"xi-api-key": self.api_key}
+            body = {
+                "text": back_tracking_phrase.text,
+                "voice_settings": voice.settings.dict() if voice.settings else None,
+            }
+        if self.model_id:
+            body["model_id"] = self.model_id
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                    "POST",
+                    url,
+                    json=body,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=15),
+            ) as response:
+                if not response.ok:
+                    raise Exception(
+                        f"ElevenLabs API returned {response.status} status code"
+                    )
+                audio_data = await response.read()
+        return audio_data
+
+    @staticmethod
+    def save_as_wav(data, filename, sample_rate=44100, sample_width=1, channels=1):
         with wave.open(filename, 'wb') as wav_file:
             wav_file.setnchannels(channels)
             wav_file.setsampwidth(sample_width)

@@ -63,7 +63,7 @@ from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
     InterruptableAgentResponseWorker,
-    InterruptibleEvent,
+    InterruptableEvent,
     InterruptableEventFactory,
     InterruptableAgentResponseEvent,
     InterruptibleWorker,
@@ -82,8 +82,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         def create_interruptable_event(
                 self, payload: Any, is_interruptable: bool = True
-        ) -> InterruptibleEvent[Any]:
-            interruptable_event: InterruptibleEvent = (
+        ) -> InterruptableEvent[Any]:
+            interruptable_event: InterruptableEvent = (
                 super().create_interruptable_event(payload, is_interruptable)
             )
             self.conversation.interruptable_events.put_nowait(interruptable_event)
@@ -97,7 +97,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         ) -> InterruptableAgentResponseEvent:
             interruptable_event = super().create_interruptable_agent_response_event(
                 payload,
-                is_interruptible=is_interruptable,
+                is_interruptable=is_interruptable,
                 agent_response_tracker=agent_response_tracker,
             )
             self.conversation.interruptable_events.put_nowait(interruptable_event)
@@ -110,7 +110,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         def __init__(
                 self,
                 input_queue: asyncio.Queue[Transcription],
-                output_queue: asyncio.Queue[InterruptibleEvent[AgentInput]],
+                output_queue: asyncio.Queue[InterruptableEvent[AgentInput]],
                 conversation: "StreamingConversation",
                 interruptable_event_factory: InterruptableEventFactory,
         ):
@@ -277,6 +277,27 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
             )
 
+        def send_back_tracking_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+            assert self.conversation.back_tracking_worker is not None
+            self.conversation.logger.debug("Sending back tracking audio")
+            if self.conversation.synthesizer.back_tracking_audios:
+                back_tracking_audio = random.choice(
+                    self.conversation.synthesizer.back_tracking_audios
+                )
+                self.conversation.logger.debug("Chose back tracking type")
+                back_tracking_synthesis_result = back_tracking_audio.create_synthesis_result()
+                self.conversation.logger.debug(f"Sending {self.name} to output")
+                self.filler_audio_started_event = threading.Event()
+                self.conversation.send_speech_to_output(
+                    back_tracking_audio.message.text,
+                    back_tracking_synthesis_result,
+                    agent_response_tracker,
+                    back_tracking_audio.seconds_per_chunk,
+                    started_event=self.filler_audio_started_event,
+                )
+            else:
+                self.conversation.logger.debug("No back tracking audio available")
+
         def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
             assert self.conversation.filler_audio_worker is not None
             self.conversation.logger.debug("Sending filler audio")
@@ -284,22 +305,23 @@ class StreamingConversation(Generic[OutputDeviceType]):
             print(self.conversation.transcript.get_last_user_message()[8:])
             print('*' * 10 + 'Last User Message' + '*' * 10)
             if self.conversation.synthesizer.filler_audios:
+                filler_audio: Optional[FillerAudio] = None
                 if '?' in self.conversation.transcript.get_last_user_message()[-1] and \
                         not self.conversation.is_interrupted:
                     filler_audio = random.choice(
-                        self.conversation.synthesizer.filler_audios['question']
+                        self.conversation.synthesizer.filler_audios['QUESTIONS']
                     )
                     self.conversation.logger.debug("Chose question type")
 
                 elif not self.conversation.is_interrupted:
                     filler_audio = random.choice(
-                        self.conversation.synthesizer.filler_audios['confirm']
+                        self.conversation.synthesizer.filler_audios['AFFIRMATIONS']
                     )
                     self.conversation.logger.debug("Chose confirmation type")
 
                 elif self.conversation.is_interrupted:
                     filler_audio = random.choice(
-                        self.conversation.synthesizer.filler_audios['yep']
+                        self.conversation.synthesizer.filler_audios['INTERRUPTIONS']
                     )
                     self.conversation.logger.debug("Chose interjection type")
 
@@ -307,7 +329,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                 event = self.interruptable_event_factory.create_interruptable_agent_response_event(
                     filler_audio,
-                    is_interruptible=filler_audio.is_interruptable,
+                    is_interruptable=filler_audio.is_interruptable,
                     agent_response_tracker=agent_response_tracker,
                 )
                 self.conversation.filler_audio_worker.consume_nonblocking(event)
@@ -448,7 +470,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.synthesis_enabled = True
         self.is_interrupted = False
         self.noise_canceler = noise_canceler
-        self.interruptable_events: queue.Queue[InterruptibleEvent] = queue.Queue()
+        self.interruptable_events: queue.Queue[InterruptableEvent] = queue.Queue()
         self.interruptable_event_factory = self.QueueingInterruptableEventFactory(
             conversation=self
         )
@@ -493,7 +515,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
         self.back_tracking_config: Optional[BackTrackingConfig] = None
         if self.agent.get_agent_config().send_back_tracking_audio:
-            self.filler_back_tracking_worker = self.BackTrackingWorker(
+            self.back_tracking_worker = self.BackTrackingWorker(
                 input_queue=self.filler_audio_queue, conversation=self
             )
         self.events_manager = events_manager or EventsManager()
@@ -552,7 +574,18 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
             await self.synthesizer.set_filler_audios(self.filler_audio_config)
-
+        if self.agent.get_agent_config().send_back_tracking_audio:
+            if not isinstance(
+                    self.agent.get_agent_config().send_back_tracking_audio,
+                    BackTrackingConfig,
+            ):
+                self.back_tracking_config = BackTrackingConfig()
+            else:
+                self.back_tracking_config = typing.cast(
+                    BackTrackingConfig,
+                    self.agent.get_agent_config().send_back_tracking_audio,
+                )
+            await self.synthesizer.set_back_tracking_audios(self.back_tracking_config)
         self.agent.start()
         initial_message = self.agent.get_agent_config().initial_message
         if initial_message:
@@ -665,20 +698,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 output_encoding=AudioEncoding.MULAW,
             ),
             synthesizer_config=ElevenLabsSynthesizerConfig(sampling_rate=8000, audio_encoding=AudioEncoding.MULAW),
-            is_interruptible=True,
+            is_interruptable=True,
             seconds_per_chunk=2,
         )
         event = self.interruptable_event_factory.create_interruptable_agent_response_event(
             filler_audio_noise,
             is_interruptable=False,
-            agent_response_tracker=False,
         )
         self.filler_audio_worker.consume_nonblocking(event)
-        print(convert_wav(
-            './pink BL.wav',
-            output_sample_rate=8000,
-            output_encoding=AudioEncoding.MULAW,
-        ))
 
     async def send_speech_to_output(
             self,

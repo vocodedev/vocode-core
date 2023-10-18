@@ -10,7 +10,7 @@ from vocode.streaming.models.actions import (
 )
 from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
-    InterruptibleEvent,
+    InterruptableEvent,
     InterruptableEventFactory,
     InterruptibleWorker,
 )
@@ -19,8 +19,8 @@ from vocode.streaming.utils.worker import (
 class ActionsWorker(InterruptibleWorker):
     def __init__(
         self,
-        input_queue: asyncio.Queue[InterruptibleEvent[ActionInput]],
-        output_queue: asyncio.Queue[InterruptibleEvent[AgentInput]],
+        input_queue: asyncio.Queue[InterruptableEvent[ActionInput]],
+        output_queue: asyncio.Queue[InterruptableEvent[AgentInput]],
         interruptable_event_factory: InterruptableEventFactory = InterruptableEventFactory(),
         action_factory: ActionFactory = ActionFactory(),
     ):
@@ -36,7 +36,7 @@ class ActionsWorker(InterruptibleWorker):
     ):
         self.conversation_state_manager = conversation_state_manager
 
-    async def process(self, item: InterruptibleEvent[ActionInput]):
+    async def process(self, item: InterruptableEvent[ActionInput]):
         action_input = item.payload
         action = self.action_factory.create_action(action_input.action_config)
         action.attach_conversation_state_manager(self.conversation_state_manager)

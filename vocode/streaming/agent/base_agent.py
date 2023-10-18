@@ -44,7 +44,7 @@ from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.utils.worker import (
     InterruptableAgentResponseEvent,
-    InterruptibleEvent,
+    InterruptableEvent,
     InterruptableEventFactory,
     InterruptibleWorker,
 )
@@ -150,7 +150,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
             logger: Optional[logging.Logger] = None,
     ):
         self.input_queue: asyncio.Queue[
-            InterruptibleEvent[AgentInput]
+            InterruptableEvent[AgentInput]
         ] = asyncio.Queue()
         self.output_queue: asyncio.Queue[
             InterruptableAgentResponseEvent[AgentResponse]
@@ -164,7 +164,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
         )
         self.action_factory = action_factory
         self.actions_queue: asyncio.Queue[
-            InterruptibleEvent[ActionInput]
+            InterruptableEvent[ActionInput]
         ] = asyncio.Queue()
         self.logger = logger or logging.getLogger(__name__)
         self.goodbye_model = None
@@ -194,7 +194,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
 
     def get_input_queue(
             self,
-    ) -> asyncio.Queue[InterruptibleEvent[AgentInput]]:
+    ) -> asyncio.Queue[InterruptableEvent[AgentInput]]:
         return self.input_queue
 
     def get_output_queue(
@@ -270,7 +270,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             self.logger.debug("No response generated")
         return False
 
-    async def process(self, item: InterruptibleEvent[AgentInput]):
+    async def process(self, item: InterruptableEvent[AgentInput]):
         if self.is_muted:
             self.logger.debug("Agent is muted, skipping processing")
             return
