@@ -1,4 +1,5 @@
 import time
+from copy import copy
 from typing import List, Optional, Tuple, Any
 
 from pydantic import BaseModel, Field
@@ -6,6 +7,9 @@ from pydantic import BaseModel, Field
 from vocode.streaming.models.actions import ActionInput, ActionOutput
 from vocode.streaming.models.events import ActionEvent, Sender, Event, EventType
 from vocode.streaming.utils.events_manager import EventsManager
+
+
+SENDER_TO_OPENAI_ROLE = {Sender.HUMAN: 'user', Sender.BOT: 'assistant'}
 
 
 class EventLog(BaseModel):
@@ -58,6 +62,8 @@ class Summary(BaseModel):
 
 class BeliefStateEntry(BaseModel):
     belief_state: Any
+    decision: Optional[Any]
+
     start_message_index: int
     end_message_index: int
 
@@ -77,12 +83,13 @@ class Transcript(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    def update_dialog_state(self, new_dialog_state: Any):
+    def log_dialog_state(self, new_dialog_state: Any, decision: Optional[Any] = None):
         if self.current_dialog_state is not None:
             # Push the current belief state to the history before updating it
             self.dialog_states_history.append(
                 BeliefStateEntry(
-                    belief_state=self.current_dialog_state,
+                    belief_state=self.current_dialog_state.copy(),
+                    decision=copy(decision),
                     start_message_index=self.current_start_index,
                     end_message_index=len(self.event_logs) - 1,  # Index of the last message
                 )
@@ -108,6 +115,11 @@ class Transcript(BaseModel):
     @property
     def assistant_messages(self) -> List[Message]:
         return [message for message in self.event_logs if message.sender == Sender.BOT]
+
+    def get_message_history(self):
+        return [{"role": SENDER_TO_OPENAI_ROLE[log.sender], "content": log.text}
+         # all messages except for system message
+         for log in self.event_logs if log.sender in (Sender.BOT, Sender.HUMAN)]
 
     @property
     def last_user_message(self) -> Optional[str]:
