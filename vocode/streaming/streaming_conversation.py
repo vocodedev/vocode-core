@@ -284,17 +284,17 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 back_tracking_audio = random.choice(
                     self.conversation.synthesizer.back_tracking_audios
                 )
-                self.conversation.logger.debug("Chose back tracking type")
-                back_tracking_synthesis_result = back_tracking_audio.create_synthesis_result()
-                self.conversation.logger.debug(f"Sending {self.name} to output")
-                self.filler_audio_started_event = threading.Event()
-                self.conversation.send_speech_to_output(
-                    back_tracking_audio.message.text,
-                    back_tracking_synthesis_result,
-                    agent_response_tracker,
-                    back_tracking_audio.seconds_per_chunk,
-                    started_event=self.filler_audio_started_event,
+                self.conversation.logger.debug(f"Chose {back_tracking_audio.message.text} for back tracking")
+                back_tracking_audio = random.choice(
+                    self.conversation.synthesizer.back_tracking_audios
                 )
+                self.conversation.logger.debug(f"Sending back tracking audio to output")
+                event = self.interruptable_event_factory.create_interruptable_agent_response_event(
+                    back_tracking_audio,
+                    is_interruptable=back_tracking_audio.is_interruptable,
+                    agent_response_tracker=agent_response_tracker,
+                )
+                self.conversation.back_tracking_worker.consume_nonblocking(event)
             else:
                 self.conversation.logger.debug("No back tracking audio available")
 
@@ -481,6 +481,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.filler_audio_queue: asyncio.Queue[
             InterruptableAgentResponseEvent[FillerAudio]
         ] = asyncio.Queue()
+        self.back_tracking_audio_queue: asyncio.Queue[
+            InterruptableAgentResponseEvent[FillerAudio]
+        ] = asyncio.Queue()
         self.state_manager = self.create_state_manager()
         self.transcriptions_worker = self.TranscriptionsWorker(
             input_queue=self.transcriber.output_queue,
@@ -516,7 +519,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.back_tracking_config: Optional[BackTrackingConfig] = None
         if self.agent.get_agent_config().send_back_tracking_audio:
             self.back_tracking_worker = self.BackTrackingWorker(
-                input_queue=self.filler_audio_queue, conversation=self
+                input_queue=self.back_tracking_audio_queue, conversation=self
             )
         self.events_manager = events_manager or EventsManager()
         self.events_task: Optional[asyncio.Task] = None
