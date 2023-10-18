@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Union, Type
 from typing import AsyncGenerator, Optional, Tuple
 
 import openai
-
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent, AgentInput, AgentResponseMessage
@@ -212,8 +211,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters["function_call"] = {"name": functions["name"]}
 
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + \
-                                      [{"role": "assistant", "content": self.transcript.last_assistant}] + \
-                                      [{"role": "user", "content": self.transcript.last_user_message}]
+                                      [{"role": "assistant", "content": self.transcript.last_assistant}]
+
+        if self.transcript.last_user_message is not None:
+            chat_parameters["messages"] += [{"role": "user", "content": self.transcript.last_user_message}]
 
         # Call the model
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
