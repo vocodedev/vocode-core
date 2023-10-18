@@ -495,6 +495,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         filtered = {}
         for prop, value in data.items():
             if not schema['properties'][prop].get('hidden', False):
+                if isinstance(value, datetime.date):
+                    value = value.isoformat()
+                elif isinstance(value, datetime.time):
+                    value = value.isoformat(timespec="minutes")
                 filtered[prop] = value
 
         return self.json_dump(filtered)
