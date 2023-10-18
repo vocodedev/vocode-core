@@ -6,7 +6,7 @@ import os
 import re
 import time
 from dataclasses import dataclass
-import datetime
+from json import JSONDecodeError
 from typing import Any, Dict, List, Union, Type
 from typing import AsyncGenerator, Optional, Tuple
 
@@ -187,6 +187,23 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # handle it better
             return {}
 
+    async def get_normalized_values(self, content: str) -> dict[str, Any]:
+        chat_parameters = self.get_chat_parameters(normalize=True)
+
+        # TODO: parametrize
+        chat_parameters["api_base"] = os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
+        chat_parameters["api_key"] = os.getenv("AZURE_OPENAI_API_KEY_SUMMARY")
+        chat_parameters["api_version"] = "2023-07-01-preview"
+        chat_parameters["temperature"] = 0.2
+        chat_parameters["n"] = 3
+
+        chat_parameters["messages"] = [chat_parameters["messages"][0]] + [{"role": "user", "content": content}]
+        chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
+        try:
+            return json.loads(chat_completion.choices[0].message.content)
+        except JSONDecodeError:
+            return {}
+
     async def get_dialog_state_update(self) -> Dict[str, str]:
         """
         Extract the belief state by using transcript to get dialog history.
@@ -240,6 +257,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     def get_chat_parameters(self, messages: Optional[List] = None,
                             dialog_state_extract: bool = False,
+                            normalize: bool = False,
                             override_dialog_state: Optional[dict] = None):
         assert self.transcript is not None
 
@@ -249,6 +267,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     override_dialog_state=override_dialog_state,
                 )
             )
+        elif normalize:
+            prompt_preamble = self.render_normalization_system_message()
+            messages = [{"role": "system", "content": prompt_preamble}]
         else:
             messages = messages or format_openai_chat_messages_from_transcript(
                 self.transcript, self.agent_config.call_script.render_text_prompt(
