@@ -171,6 +171,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             return result
 
     async def get_phrase_filler_audios(self) -> Dict[str, List[FillerAudio]]:
+        self.logger.debug("generating filler audios")
         filler_phrase_audios = defaultdict(list)
         for emotion, filler_phrases in FILLER_PHRASES.items():
             for filler_phrase in filler_phrases:
@@ -192,12 +193,13 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         return filler_phrase_audios
 
     async def get_phrase_back_tracking_audios(self) -> List[FillerAudio]:
-        filler_phrase_audios = []
+        self.logger.debug("generating back tracking audios")
+        back_tracking_audios = []
         for back_tracking_phrase in BACK_TRACKING_PHRASES:
             filler_audio_path = await self.get_audio_data_from_cache_or_download(back_tracking_phrase,
                                                                                  self.base_back_tracking_audio_path)
 
-            filler_phrase_audios.append(
+            back_tracking_audios.append(
 
                 FillerAudio(
                     back_tracking_phrase,
@@ -211,7 +213,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     seconds_per_chunk=2,
                 )
             )
-        return filler_phrase_audios
+        return back_tracking_audios
 
     async def get_audio_data_from_cache_or_download(self, phrase: BaseMessage, base_path: str) -> str:
         cache_key = "-".join(

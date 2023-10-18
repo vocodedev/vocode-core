@@ -285,7 +285,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         try:
             agent_input = item.payload
             if isinstance(agent_input, TranscriptionAgentInput):
-                self.logger.debug("Received TranscriptionAgentInput")
                 transcription = typing.cast(
                     TranscriptionAgentInput, agent_input
                 ).transcription
@@ -295,7 +294,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     confidence=transcription.confidence,
                 )
             elif isinstance(agent_input, ActionResultAgentInput):
-                self.logger.debug("Received ActionResultAgentInput")
                 self.transcript.add_action_finish_log(
                     action_input=agent_input.action_input,
                     action_output=agent_input.action_output,
