@@ -174,7 +174,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
     async def get_phrase_filler_audios(self) -> Dict[str, List[FillerAudio]]:
         filler_phrase_audios = defaultdict(list)
-        for key, filler_phrase in FILLER_PHRASES:
+        for key, filler_phrase in FILLER_PHRASES.items():
             filler_audio_path = await self.get_audio_data_from_cache_or_download(filler_phrase)
 
             filler_phrase_audios[key].append(
