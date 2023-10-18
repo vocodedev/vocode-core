@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Union, Type
 from typing import AsyncGenerator, Optional, Tuple
 
 import openai
+
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent, AgentInput, AgentResponseMessage
@@ -200,15 +201,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         chat_parameters = self.get_chat_parameters(belief_state_extract=True)
         functions = self.parse_state_schema()
-
-        # TODO: parametrize
-        chat_parameters["api_base"] = os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
-        chat_parameters["api_key"] = os.getenv("AZURE_OPENAI_API_KEY_SUMMARY")
-        chat_parameters["api_version"] = "2023-07-01-preview"
-        chat_parameters["temperature"] = 0.2
-        chat_parameters["n"] = 3
-        chat_parameters["functions"] = [functions]
-        chat_parameters["function_call"] = {"name": functions["name"]}
+        # use base config but update it with functions config.
+        chat_parameters = {**chat_parameters, **self.agent_config.chat_gpt_functions_config.dict(),
+                           "functions": [functions], "function_call": {"name": functions["name"]}}
 
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + \
                                       [{"role": "assistant", "content": self.transcript.last_assistant}]
