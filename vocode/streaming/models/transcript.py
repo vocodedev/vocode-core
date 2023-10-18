@@ -115,22 +115,30 @@ class Transcript(BaseModel):
         if len(user_messages) == 0:
             return None
         return user_messages[-1].text
-
     @property
     def last_assistant(self) -> Optional[str]:
         assistant_messages = []
-        found_human = False
+        temp_messages = []
 
-        # Gets last sequence of Bot messages.
+        # Iterate through each event log entry, reversed
         for log in reversed(self.event_logs):
-            if log.sender == Sender.BOT and not found_human:
-                assistant_messages.append(log.text)
-            elif log.sender == Sender.HUMAN:
-                found_human = True
-                if assistant_messages:
-                    break
+            if log.sender == Sender.BOT:
+                # If the sender is the bot, append message to the temporary list
+                temp_messages.append(log.text)
+            elif log.sender == Sender.HUMAN and temp_messages:
+                # If the sender is human and there are messages in the temporary list,
+                # assign the temporary list to the main list and clear the temporary list
+                assistant_messages = temp_messages.copy()
+                temp_messages = []
+            # If there are no bot messages after a human message, just continue
+
+        # If there were no human messages after the last sequence of bot messages,
+        # assign the temp messages to assistant_messages
+        if temp_messages:
+            assistant_messages = temp_messages
 
         if assistant_messages:
+            # Join the messages into a single string, maintaining original order
             return " ".join(reversed(assistant_messages))
 
         return None

@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Union, Type
 from typing import AsyncGenerator, Optional, Tuple
 
 import openai
-
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent, AgentInput, AgentResponseMessage
@@ -150,13 +149,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # FIXME: DISCUSS HOW TO BETTER HANDLE RETRY
             if decision.say_now_script_location:
                 async for response in self.follow_response(override_dialog_state=dict(
-                        script_location=decision.say_now_script_location),combined_response=formatted_responses):
+                        script_location=decision.say_now_script_location), combined_response=formatted_responses):
                     self.produce_interruptible_agent_response_event_nonblocking(
-                            AgentResponseMessage(message=BaseMessage(text=response)),
-                            is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
-                        )
-
-
+                        AgentResponseMessage(message=BaseMessage(text=response)),
+                        is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+                    )
 
             # self.transcript.update_dialog_state(dialog_state)
             #
@@ -214,8 +211,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters["function_call"] = {"name": functions["name"]}
 
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + \
-                                      [{"role": "user",
-                                        "content": f"Assistant: {self.transcript.last_assistant}\nUser: {self.transcript.last_user_message}"}]
+                                      [{"role": "assistant", "content": self.transcript.last_assistant}]
+
+        if self.transcript.last_user_message is not None:
+            chat_parameters["messages"] += [{"role": "user", "content": self.transcript.last_user_message}]
 
         # Call the model
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
@@ -496,6 +495,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         filtered = {}
         for prop, value in data.items():
             if not schema['properties'][prop].get('hidden', False):
+                if isinstance(value, datetime.date):
+                    value = value.isoformat()
+                elif isinstance(value, datetime.time):
+                    value = value.isoformat(timespec="minutes")
                 filtered[prop] = value
 
         return self.json_dump(filtered)
