@@ -2350,6 +2350,14 @@
             "title": "Outbound Only",
             "default": false
           },
+//<<<<<<< use-context-tracker
+//=======
+          "example_context": {
+            "additionalProperties": { "type": "string" },
+            "type": "object",
+            "title": "Example Context"
+          },
+//>>>>>>> main
           "number": { "type": "string", "title": "Number" }
         },
         "type": "object",
@@ -2389,6 +2397,14 @@
             "title": "Outbound Only",
             "default": false
           },
+//<<<<<<< use-context-tracker
+//=======
+          "example_context": {
+            "additionalProperties": { "type": "string" },
+            "type": "object",
+            "title": "Example Context"
+          },
+//>>>>>>> main
           "number": { "type": "string", "title": "Number" }
         },
         "type": "object",
@@ -2504,17 +2520,16 @@
           },
           "voice_id": { "type": "string", "title": "Voice Id" },
           "api_user_id": { "type": "string", "title": "Api User Id" },
-          "api_key": { "type": "string", "title": "Api Key" }
+          "api_key": { "type": "string", "title": "Api Key" },
+          "version": {
+            "type": "string",
+            "enum": ["1", "2"],
+            "title": "Version",
+            "default": "2"
+          }
         },
         "type": "object",
-        "required": [
-          "id",
-          "user_id",
-          "type",
-          "voice_id",
-          "api_user_id",
-          "api_key"
-        ],
+        "required": ["id", "user_id", "type", "voice_id"],
         "title": "PlayHtVoice"
       },
       "PlayHtVoiceParams": {
@@ -2526,10 +2541,16 @@
           },
           "voice_id": { "type": "string", "title": "Voice Id" },
           "api_user_id": { "type": "string", "title": "Api User Id" },
-          "api_key": { "type": "string", "title": "Api Key" }
+          "api_key": { "type": "string", "title": "Api Key" },
+          "version": {
+            "type": "string",
+            "enum": ["1", "2"],
+            "title": "Version",
+            "default": "2"
+          }
         },
         "type": "object",
-        "required": ["type", "voice_id", "api_user_id", "api_key"],
+        "required": ["type", "voice_id"],
         "title": "PlayHtVoiceParams"
       },
       "PlayHtVoiceUpdateParams": {
@@ -2559,6 +2580,13 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Api Key"
+          },
+          "version": {
+            "anyOf": [
+              { "type": "string", "enum": ["1", "2"] },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Version"
           }
         },
         "type": "object",
