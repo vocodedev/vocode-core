@@ -12,10 +12,8 @@ from vocode import getenv
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
-    encode_as_wav,
     tracer,
     FILLER_PHRASES,
-    FILLER_AUDIO_PATH,
     FillerAudio,
     encode_as_wav, BACK_TRACKING_PHRASES
 )
@@ -228,10 +226,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             )
         )
         filler_audio_path = os.path.join(base_path, f"{cache_key}.wav")
-        audio_data = None
         if not os.path.exists(filler_audio_path):
             self.logger.debug(f"Generating filler audio for {phrase.text}")
-            audio_data = await self.download_filler_audio_data(audio_data, phrase)
+            audio_data = await self.download_filler_audio_data(phrase)
 
             audio_segment: AudioSegment = AudioSegment.from_mp3(
                 io.BytesIO(audio_data)  # type: ignore
@@ -239,7 +236,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             audio_segment.export(filler_audio_path, format="wav")
         return filler_audio_path
 
-    async def download_filler_audio_data(self, audio_data, back_tracking_phrase):
+    async def download_filler_audio_data(self, back_tracking_phrase):
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
