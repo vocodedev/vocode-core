@@ -12,11 +12,11 @@ from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     InterruptableEvent,
     InterruptableEventFactory,
-    InterruptibleWorker,
+    InterruptableWorker,
 )
 
 
-class ActionsWorker(InterruptibleWorker):
+class ActionsWorker(InterruptableWorker):
     def __init__(
         self,
         input_queue: asyncio.Queue[InterruptableEvent[ActionInput]],
@@ -41,7 +41,7 @@ class ActionsWorker(InterruptibleWorker):
         action = self.action_factory.create_action(action_input.action_config)
         action.attach_conversation_state_manager(self.conversation_state_manager)
         action_output = await action.run(action_input)
-        self.produce_interruptible_event_nonblocking(
+        self.produce_interruptable_event_nonblocking(
             ActionResultAgentInput(
                 conversation_id=action_input.conversation_id,
                 action_input=action_input,

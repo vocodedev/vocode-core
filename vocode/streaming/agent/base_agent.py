@@ -46,7 +46,7 @@ from vocode.streaming.utils.worker import (
     InterruptableAgentResponseEvent,
     InterruptableEvent,
     InterruptableEventFactory,
-    InterruptibleWorker,
+    InterruptableWorker,
 )
 
 if TYPE_CHECKING:
@@ -87,6 +87,7 @@ class AgentResponseType(str, Enum):
     MESSAGE = "agent_response_message"
     STOP = "agent_response_stop"
     FILLER_AUDIO = "agent_response_filler_audio"
+    BACK_TRACKING = "agent_response_back_tracking_audio"
 
 
 class AgentResponse(TypedModel, type=AgentResponseType.BASE.value):
@@ -95,7 +96,7 @@ class AgentResponse(TypedModel, type=AgentResponseType.BASE.value):
 
 class AgentResponseMessage(AgentResponse, type=AgentResponseType.MESSAGE.value):
     message: BaseMessage
-    is_interruptible: bool = True
+    is_interruptable: bool = True
 
 
 class AgentResponseStop(AgentResponse, type=AgentResponseType.STOP.value):
@@ -104,6 +105,12 @@ class AgentResponseStop(AgentResponse, type=AgentResponseType.STOP.value):
 
 class AgentResponseFillerAudio(
     AgentResponse, type=AgentResponseType.FILLER_AUDIO.value
+):
+    pass
+
+
+class AgentResponseBackTrackingAudio(
+    AgentResponse, type=AgentResponseType.BACK_TRACKING.value
 ):
     pass
 
@@ -141,7 +148,7 @@ class AbstractAgent(Generic[AgentConfigType]):
         return random.choice(on_low_confidence_messages).text
 
 
-class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
+class BaseAgent(AbstractAgent[AgentConfigType], InterruptableWorker):
     def __init__(
             self,
             agent_config: AgentConfigType,
@@ -156,7 +163,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
             InterruptableAgentResponseEvent[AgentResponse]
         ] = asyncio.Queue()
         AbstractAgent.__init__(self, agent_config=agent_config)
-        InterruptibleWorker.__init__(
+        InterruptableWorker.__init__(
             self,
             input_queue=self.input_queue,
             output_queue=self.output_queue,

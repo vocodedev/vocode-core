@@ -47,7 +47,7 @@ from vocode.streaming.agent.base_agent import (
     AgentResponseStop,
     AgentResponseType,
     BaseAgent,
-    TranscriptionAgentInput,
+    TranscriptionAgentInput, AgentResponseBackTrackingAudio,
 )
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
@@ -66,7 +66,7 @@ from vocode.streaming.utils.worker import (
     InterruptableEvent,
     InterruptableEventFactory,
     InterruptableAgentResponseEvent,
-    InterruptibleWorker,
+    InterruptableWorker,
 )
 from vocode.streaming.utils import convert_wav
 from vocode.streaming.models.audio_encoding import AudioEncoding
@@ -185,7 +185,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     or not self.filler_audio_started_event.set()
             ):
                 self.conversation.logger.debug(
-                    "Not waiting for filler audio to finish since we didn't send any chunks"
+                    f"Not waiting for {self.name} to finish since we didn't send any chunks"
                 )
                 return
             if self.interruptible_event and isinstance(
@@ -323,7 +323,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     filler_audio = random.choice(
                         self.conversation.synthesizer.filler_audios['INTERRUPTIONS']
                     )
-                    self.conversation.logger.debug("Chose interjection type")
+                    self.conversation.logger.debug("Chose interruption type")
 
                 self.conversation.logger.debug(f"Chose {filler_audio.message.text}")
 
@@ -348,6 +348,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 agent_response = item.payload
                 if isinstance(agent_response, AgentResponseFillerAudio):
                     self.send_filler_audio(item.agent_response_tracker)
+                    return
+                if isinstance(agent_response, AgentResponseBackTrackingAudio):
+                    self.send_back_tracking_audio(item.agent_response_tracker)
                     return
                 if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")
@@ -516,6 +519,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.filler_audio_worker = self.FillerAudioWorker(
                 input_queue=self.filler_audio_queue, conversation=self
             )
+        self.back_tracking_worker = None
         self.back_tracking_config: Optional[BackTrackingConfig] = None
         if self.agent.get_agent_config().send_back_tracking_audio:
             self.back_tracking_worker = self.BackTrackingWorker(
@@ -560,8 +564,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
         self.output_device.start()
+
         if self.filler_audio_worker is not None:
             self.filler_audio_worker.start()
+        if self.back_tracking_worker is not None:
+            self.back_tracking_worker.start()
         if self.actions_worker is not None:
             self.actions_worker.start()
         is_ready = await self.transcriber.ready()
@@ -676,9 +683,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         num_interrupts = 0
         while True:
             try:
-                interruptible_event = self.interruptable_events.get_nowait()
-                if not interruptible_event.is_interrupted():
-                    if interruptible_event.interrupt():
+                interruptable_event = self.interruptable_events.get_nowait()
+                if not interruptable_event.is_interrupted():
+                    if interruptable_event.interrupt():
                         self.logger.debug("Interrupting event")
                         num_interrupts += 1
             except queue.Empty:
@@ -858,6 +865,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.filler_audio_worker is not None:
             self.logger.debug("Terminating filler audio worker")
             self.filler_audio_worker.terminate()
+        if self.back_tracking_config is not None:
+            self.logger.debug("Terminating back tracking worker")
+            self.back_tracking_worker.terminate()
         if self.actions_worker is not None:
             self.logger.debug("Terminating actions worker")
             self.actions_worker.terminate()

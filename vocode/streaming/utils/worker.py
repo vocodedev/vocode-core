@@ -163,13 +163,13 @@ class InterruptableEventFactory:
         )
 
 
-InterruptibleEventType = TypeVar("InterruptibleEventType", bound=InterruptableEvent)
+InterruptableEventType = TypeVar("InterruptibleEventType", bound=InterruptableEvent)
 
 
-class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
+class InterruptableWorker(AsyncWorker[InterruptableEventType]):
     def __init__(
         self,
-        input_queue: asyncio.Queue[InterruptibleEventType],
+        input_queue: asyncio.Queue[InterruptableEventType],
         output_queue: asyncio.Queue = asyncio.Queue(),
         interruptable_event_factory: InterruptableEventFactory = InterruptableEventFactory(),
         max_concurrency=2,
@@ -181,15 +181,15 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
         self.current_task = None
         self.interruptible_event = None
 
-    def produce_interruptible_event_nonblocking(
-        self, item: Any, is_interruptible: bool = True
+    def produce_interruptable_event_nonblocking(
+        self, item: Any, is_interruptable: bool = True
     ):
-        interruptible_event = (
+        interruptable_event = (
             self.interruptable_event_factory.create_interruptable_event(
-                item, is_interruptable=is_interruptible
+                item, is_interruptable=is_interruptable
             )
         )
-        return super().produce_nonblocking(interruptible_event)
+        return super().produce_nonblocking(interruptable_event)
 
     def produce_interruptable_agent_response_event_nonblocking(
         self,
@@ -223,7 +223,7 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
             self.interruptible_event.is_interruptable = False
             self.current_task = None
 
-    async def process(self, item: InterruptibleEventType):
+    async def process(self, item: InterruptableEventType):
         """
         Publish results onto output queue.
         Calls to async function / task should be able to handle asyncio.CancelledError gracefully:
@@ -247,6 +247,6 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
 
 
 class InterruptableAgentResponseWorker(
-    InterruptibleWorker[InterruptableAgentResponseEvent]
+    InterruptableWorker[InterruptableAgentResponseEvent]
 ):
     pass
