@@ -11,7 +11,7 @@ from vocode.streaming.models.actions import (
 from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     InterruptibleEvent,
-    InterruptibleEventFactory,
+    InterruptableEventFactory,
     InterruptibleWorker,
 )
 
@@ -21,13 +21,13 @@ class ActionsWorker(InterruptibleWorker):
         self,
         input_queue: asyncio.Queue[InterruptibleEvent[ActionInput]],
         output_queue: asyncio.Queue[InterruptibleEvent[AgentInput]],
-        interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
+        interruptable_event_factory: InterruptableEventFactory = InterruptableEventFactory(),
         action_factory: ActionFactory = ActionFactory(),
     ):
         super().__init__(
             input_queue=input_queue,
             output_queue=output_queue,
-            interruptible_event_factory=interruptible_event_factory,
+            interruptable_event_factory=interruptable_event_factory,
         )
         self.action_factory = action_factory
 

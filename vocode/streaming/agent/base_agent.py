@@ -43,9 +43,9 @@ from vocode.streaming.utils import remove_non_letters_digits
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.utils.worker import (
-    InterruptibleAgentResponseEvent,
+    InterruptableAgentResponseEvent,
     InterruptibleEvent,
-    InterruptibleEventFactory,
+    InterruptableEventFactory,
     InterruptibleWorker,
 )
 
@@ -146,21 +146,21 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
             self,
             agent_config: AgentConfigType,
             action_factory: ActionFactory = ActionFactory(),
-            interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
+            interruptable_event_factory: InterruptableEventFactory = InterruptableEventFactory(),
             logger: Optional[logging.Logger] = None,
     ):
         self.input_queue: asyncio.Queue[
             InterruptibleEvent[AgentInput]
         ] = asyncio.Queue()
         self.output_queue: asyncio.Queue[
-            InterruptibleAgentResponseEvent[AgentResponse]
+            InterruptableAgentResponseEvent[AgentResponse]
         ] = asyncio.Queue()
         AbstractAgent.__init__(self, agent_config=agent_config)
         InterruptibleWorker.__init__(
             self,
             input_queue=self.input_queue,
             output_queue=self.output_queue,
-            interruptible_event_factory=interruptible_event_factory,
+            interruptable_event_factory=interruptable_event_factory,
         )
         self.action_factory = action_factory
         self.actions_queue: asyncio.Queue[
@@ -189,7 +189,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
     ):
         self.conversation_state_manager = conversation_state_manager
 
-    def set_interruptible_event_factory(self, factory: InterruptibleEventFactory):
+    def set_interruptible_event_factory(self, factory: InterruptableEventFactory):
         self.interruptible_event_factory = factory
 
     def get_input_queue(
@@ -199,7 +199,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
 
     def get_output_queue(
             self,
-    ) -> asyncio.Queue[InterruptibleAgentResponseEvent[AgentResponse]]:
+    ) -> asyncio.Queue[InterruptableAgentResponseEvent[AgentResponse]]:
         return self.output_queue
 
     def create_goodbye_detection_task(self, message: str) -> asyncio.Task:
@@ -234,9 +234,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             if is_first_response:
                 agent_span_first.end()
                 is_first_response = False
-            self.produce_interruptible_agent_response_event_nonblocking(
+            self.produce_interruptable_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
-                is_interruptible=self.agent_config.allow_agent_to_be_cut_off and is_interruptible,
+                is_interruptable=self.agent_config.allow_agent_to_be_cut_off and is_interruptible,
                 agent_response_tracker=agent_input.agent_response_tracker,
             )
         # TODO: implement should_stop for generate_responses
@@ -261,9 +261,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             response = None
             return True
         if response:
-            self.produce_interruptible_agent_response_event_nonblocking(
+            self.produce_interruptable_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
-                is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+                is_interruptable=self.agent_config.allow_agent_to_be_cut_off,
             )
             return should_stop
         else:
@@ -312,7 +312,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     transcription.message
                 )
             if self.agent_config.send_filler_audio:
-                self.produce_interruptible_agent_response_event_nonblocking(
+                self.produce_interruptable_agent_response_event_nonblocking(
                     AgentResponseFillerAudio()
                 )
             self.logger.debug("Responding to transcription")
@@ -328,7 +328,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
 
             if should_stop:
                 self.logger.debug("Agent requested to stop")
-                self.produce_interruptible_agent_response_event_nonblocking(
+                self.produce_interruptable_agent_response_event_nonblocking(
                     AgentResponseStop()
                 )
                 return
@@ -339,7 +339,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     )
                     if goodbye_detected:
                         self.logger.debug("Goodbye detected, ending conversation")
-                        self.produce_interruptible_agent_response_event_nonblocking(
+                        self.produce_interruptable_agent_response_event_nonblocking(
                             AgentResponseStop()
                         )
                         return
@@ -369,7 +369,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         if "user_message" in params:
             user_message = params["user_message"]
             user_message_tracker = asyncio.Event()
-            self.produce_interruptible_agent_response_event_nonblocking(
+            self.produce_interruptable_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=user_message)),
                 agent_response_tracker=user_message_tracker,
             )
@@ -400,8 +400,8 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 params,
                 user_message_tracker,
             )
-        event = self.interruptible_event_factory.create_interruptible_event(
-            action_input, is_interruptible=action.is_interruptible
+        event = self.interruptible_event_factory.create_interruptable_event(
+            action_input, is_interruptable=action.is_interruptible
         )
         assert self.transcript is not None
         self.transcript.add_action_start_log(
