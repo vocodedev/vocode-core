@@ -43,6 +43,8 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
     audio_encoding: AudioEncoding
     should_encode_as_wav: bool = False
     sentiment_config: Optional[SentimentConfig] = None
+    base_filler_audio_path: str = None,
+    base_back_tracking_audio_path: str = None,
 
     class Config:
         arbitrary_types_allowed = True
@@ -128,7 +130,7 @@ class ElevenLabsSynthesizerConfig(
     @validator("optimize_streaming_latency")
     def optimize_streaming_latency_check(cls, optimize_streaming_latency):
         if optimize_streaming_latency is not None and not (
-            0 <= optimize_streaming_latency <= 4
+                0 <= optimize_streaming_latency <= 4
         ):
             raise ValueError("optimize_streaming_latency must be between 0 and 4.")
         return optimize_streaming_latency

@@ -54,6 +54,7 @@ BACK_TRACKING_PHRASES = [
     BaseMessage(text="I get it..."),
 ]
 FILLER_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "filler_audio")
+BACK_TRACKING_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "back_tracking_audio")
 TYPING_NOISE_PATH = "%s/typing-noise.wav" % FILLER_AUDIO_PATH
 
 
@@ -141,6 +142,9 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
         self.synthesizer_config = synthesizer_config
+        self.base_filler_audio_path = self.synthesizer_config.base_filler_audio_path or FILLER_AUDIO_PATH
+        self.base_back_tracking_audio_path = self.synthesizer_config.base_back_tracking_audio_path \
+                                             or BACK_TRACKING_AUDIO_PATH
         if synthesizer_config.audio_encoding == AudioEncoding.MULAW:
             assert (
                     synthesizer_config.sampling_rate == 8000

@@ -176,7 +176,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         filler_phrase_audios = defaultdict(list)
         for emotion, filler_phrases in FILLER_PHRASES.items():
             for filler_phrase in filler_phrases:
-                filler_audio_path = await self.get_audio_data_from_cache_or_download(filler_phrase)
+                filler_audio_path = await self.get_audio_data_from_cache_or_download(filler_phrase,
+                                                                                     self.base_filler_audio_path)
                 filler_phrase_audios[emotion].append(
                     FillerAudio(
                         filler_phrase,
@@ -213,10 +214,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             )
         return filler_phrase_audios
 
-    async def get_audio_data_from_cache_or_download(self, back_tracking_phrase):
+    async def get_audio_data_from_cache_or_download(self, phrase: BaseMessage, base_path: str) -> str:
         cache_key = "-".join(
             (
-                str(back_tracking_phrase.text),
+                str(phrase.text),
                 str(self.synthesizer_config.type),
                 str(self.synthesizer_config.audio_encoding),
                 str(self.synthesizer_config.sampling_rate),
@@ -226,11 +227,11 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 str(self.model_id),
             )
         )
-        filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.wav")
+        filler_audio_path = os.path.join(base_path, f"{cache_key}.wav")
         audio_data = None
         if not os.path.exists(filler_audio_path):
-            self.logger.debug(f"Generating filler audio for {back_tracking_phrase.text}")
-            audio_data = await self.download_filler_audio_data(audio_data, back_tracking_phrase)
+            self.logger.debug(f"Generating filler audio for {phrase.text}")
+            audio_data = await self.download_filler_audio_data(audio_data, phrase)
 
             audio_segment: AudioSegment = AudioSegment.from_mp3(
                 io.BytesIO(audio_data)  # type: ignore
