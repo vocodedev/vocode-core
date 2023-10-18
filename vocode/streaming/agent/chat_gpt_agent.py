@@ -51,8 +51,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             logger: Optional[logging.Logger] = None,
             openai_api_key: Optional[str] = None,
             vector_db_factory=VectorDBFactory(),
-            goodbye_phrase: Optional[str] = "STOP CALL",
-            last_messages_cnt: int = 10
+            goodbye_phrase: Optional[str] = "STOP CALL"
 
     ):
         super().__init__(
@@ -76,7 +75,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             else None
         )
         self.is_first_response = True
-        self.last_messages_cnt = last_messages_cnt
         self.goodbye_phrase = goodbye_phrase
         # TODO: refactor it. Should use different logic
         # if goodbye_phrase is not None:
@@ -291,13 +289,13 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             )
 
         # select last 4 messages, always keep first message, make sure first message is not duplicated
-        if len(messages) <= 5:
+        if len(messages) <= self.agent_config.last_messages_cnt:
             # If we have 4 or fewer messages, just use the original list.
             messages = messages
         else:
             # If we have more than 4 messages, include the first one and the last four.
             # This won't duplicate the first message because we're skipping the first part of the list.
-            messages = messages[:1] + messages[-5:]
+            messages = messages[:1] + messages[-self.agent_config.last_messages_cnt:]
 
         # Commented for now because it will be used with belief state.
         # last_summary = self.transcript.last_summary

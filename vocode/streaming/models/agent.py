@@ -111,6 +111,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     frequency_penalty: float = 0.3
     temperature: float = 0.2
     top_p: float = 0.95
+    last_messages_cnt: int = 8
 
     class Config:
         arbitrary_types_allowed = True
