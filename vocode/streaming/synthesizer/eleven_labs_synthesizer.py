@@ -174,23 +174,22 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
     async def get_phrase_filler_audios(self) -> Dict[str, List[FillerAudio]]:
         filler_phrase_audios = defaultdict(list)
-        for key, filler_phrase in FILLER_PHRASES.items():
-            filler_audio_path = await self.get_audio_data_from_cache_or_download(filler_phrase)
-
-            filler_phrase_audios[key].append(
-
-                FillerAudio(
-                    filler_phrase,
-                    audio_data=convert_wav(
-                        filler_audio_path,
-                        output_sample_rate=self.synthesizer_config.sampling_rate,
-                        output_encoding=self.synthesizer_config.audio_encoding,
-                    ),
-                    synthesizer_config=self.synthesizer_config,
-                    is_interruptable=True,
-                    seconds_per_chunk=2,
+        for emotion, filler_phrases in FILLER_PHRASES.items():
+            for filler_phrase in filler_phrases:
+                filler_audio_path = await self.get_audio_data_from_cache_or_download(filler_phrase)
+                filler_phrase_audios[emotion].append(
+                    FillerAudio(
+                        filler_phrase,
+                        audio_data=convert_wav(
+                            filler_audio_path,
+                            output_sample_rate=self.synthesizer_config.sampling_rate,
+                            output_encoding=self.synthesizer_config.audio_encoding,
+                        ),
+                        synthesizer_config=self.synthesizer_config,
+                        is_interruptable=True,
+                        seconds_per_chunk=2,
+                    )
                 )
-            )
         return filler_phrase_audios
 
     async def get_phrase_back_tracking_audios(self) -> List[FillerAudio]:
