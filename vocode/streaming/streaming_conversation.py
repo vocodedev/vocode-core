@@ -585,12 +585,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
             await self.synthesizer.set_filler_audios(self.filler_audio_config)
         if self.agent.get_agent_config().send_back_tracking_audio:
+            self.logger.debug("Setting back tracking audio 1")
             if not isinstance(
                     self.agent.get_agent_config().send_back_tracking_audio,
                     BackTrackingConfig,
             ):
+                self.logger.debug("Setting back tracking audio 2")
                 self.back_tracking_config = BackTrackingConfig()
             else:
+                self.logger.debug("Setting back tracking audio 3")
                 self.back_tracking_config = typing.cast(
                     BackTrackingConfig,
                     self.agent.get_agent_config().send_back_tracking_audio,
