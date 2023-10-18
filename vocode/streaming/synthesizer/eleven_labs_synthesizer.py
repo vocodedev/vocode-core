@@ -194,7 +194,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     async def get_phrase_back_tracking_audios(self) -> List[FillerAudio]:
         filler_phrase_audios = []
         for back_tracking_phrase in BACK_TRACKING_PHRASES:
-            filler_audio_path = await self.get_audio_data_from_cache_or_download(back_tracking_phrase)
+            filler_audio_path = await self.get_audio_data_from_cache_or_download(back_tracking_phrase,
+                                                                                 self.base_back_tracking_audio_path)
 
             filler_phrase_audios.append(
 
@@ -227,7 +228,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         )
         filler_audio_path = os.path.join(base_path, f"{cache_key}.wav")
         if not os.path.exists(filler_audio_path):
-            self.logger.debug(f"Generating filler audio for {phrase.text}")
+            self.logger.debug(f"Generating cached audio for {phrase.text}")
             audio_data = await self.download_filler_audio_data(phrase)
 
             audio_segment: AudioSegment = AudioSegment.from_mp3(
