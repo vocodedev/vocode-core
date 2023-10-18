@@ -5,6 +5,7 @@ import os
 import re
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Dict, List, Union, Type
 from typing import AsyncGenerator, Optional, Tuple
 
@@ -172,7 +173,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         return False
 
-    def _parse_belief_state(self, belief_state: str) -> dict[str, str]:
+    def _parse_belief_state(self, belief_state: str) -> Dict[str, str]:
         """
         Parse the belief state from the response.
         :param belief_state: The response from the model which must contain JSON parsable belief state.
@@ -187,15 +188,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # handle it better
             return {}
 
-    async def get_dialog_state_update(self) -> dict[str, str]:
+    async def get_dialog_state_update(self) -> Dict[str, str]:
         """
-        Extract the belief state by submitting the concatenated bot's responses to the model.
-
-        Args:
-        bot_responses (str): The concatenated responses from the bot.
-
-        Returns:
-        str: The belief state extracted by the model.
+        Extract the belief state by using transcript to get dialog history.
+        :return: The belief state updated extracted from the response.
         """
         assert self.transcript is not None
 
@@ -224,19 +220,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         :return: The response by the agent to the user's input. Separated into individual sentences.
         """
         chat_parameters = self.get_chat_parameters(override_dialog_state=override_dialog_state)
+        # FIXME: solve it somewhere else.
         chat_parameters["messages"][0]["content"] = re.sub(r'(\n\s*){2,}\n', '\n\n',
                                                            chat_parameters["messages"][0]["content"]).strip()
         chat_parameters["stream"] = True
-        # FIXME: move to config
-        chat_parameters["top_p"] = 0.95
-        # prevent repeating previous messages
-        chat_parameters["presence_penalty"] = 0.3
-        chat_parameters["frequency_penalty"] = 0.3
-        chat_parameters["api_base"] = os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
-        chat_parameters["api_version"] = "2023-03-15-preview"
-        chat_parameters["api_key"] = os.getenv("AZURE_OPENAI_API_KEY_SUMMARY")
-        chat_parameters["temperature"] = 0.2
-        chat_parameters["engine"] = "gpt-35-turbo"
 
         # FIXME: rewrite it.
         if combined_response is not None:  # for example console app already has combined response in transcript so
@@ -446,18 +433,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         # )
 
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
-        # FIXME: move to config
-        chat_parameters["top_p"] = 0.95
         chat_parameters["messages"][0]["content"] = re.sub(r'(\n\s*){2,}\n', '\n\n',
                                                            chat_parameters["messages"][0]["content"]).strip()
-        # prevent repeating previous messages
-        chat_parameters["presence_penalty"] = 0.3
-        chat_parameters["frequency_penalty"] = 0.3
-        chat_parameters["api_base"] = os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
-        chat_parameters["api_version"] = "2023-03-15-preview"
-        chat_parameters["api_key"] = os.getenv("AZURE_OPENAI_API_KEY_SUMMARY")
-        chat_parameters["temperature"] = 0.2
-        chat_parameters["engine"] = "gpt-35-turbo"
         async for message in collate_response_async(
                 openai_get_tokens(stream), get_functions=True
         ):
