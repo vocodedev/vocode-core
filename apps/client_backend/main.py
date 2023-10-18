@@ -53,5 +53,5 @@ app.include_router(conversation_router.get_router())
 
 
 @app.get("/health")
-def read_health():
-    return Response("Healthy", status_code=200)
+def health_check():
+    return {"status": "healthy"}
