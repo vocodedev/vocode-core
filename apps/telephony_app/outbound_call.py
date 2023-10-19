@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from vocode import getenv
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
-from vocode.streaming.models.telephony import TwilioConfig
+from vocode.streaming.models.telephony import TwilioConfig, VonageConfig
 from vocode.streaming.models.transcriber import DeepgramTranscriberConfig, PunctuationEndpointingConfig
 from vocode.streaming.telephony.noise_canceler import WebRTCNoiseCancelingConfig
 
@@ -48,10 +48,17 @@ async def main():
         config_manager=config_manager,
         transcriber_config=transcriber_config,
         mobile_only=False,
-        twilio_config=TwilioConfig(
-            account_sid=getenv("TWILIO_ACCOUNT_SID"),
-            auth_token=getenv("TWILIO_AUTH_TOKEN"),
-            noise_canceling_config=WebRTCNoiseCancelingConfig(),
+        # twilio_config=TwilioConfig(
+        #     account_sid=getenv("TWILIO_ACCOUNT_SID"),
+        #     auth_token=getenv("TWILIO_AUTH_TOKEN"),
+        #     noise_canceling_config=WebRTCNoiseCancelingConfig(),
+        # ),
+        vonage_config=VonageConfig(
+            api_key=os.getenv("VONAGE_API_KEY"),
+            api_secret=os.getenv("VONAGE_API_SECRET"),
+            application_id=os.getenv("VONAGE_APPLICATION_ID"),
+            private_key="private_key_address",
+            record=False
         ),
         agent_config=SpellerAgentConfig(generate_responses=False),
     )

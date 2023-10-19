@@ -1,0 +1,32 @@
+Metadata-Version: 2.1
+Name: types-regex
+Version: 2023.10.3.0
+Summary: Typing stubs for regex
+Home-page: https://github.com/python/typeshed
+License: Apache-2.0 license
+Project-URL: GitHub, https://github.com/python/typeshed
+Project-URL: Changes, https://github.com/typeshed-internal/stub_uploader/blob/main/data/changelogs/regex.md
+Project-URL: Issue tracker, https://github.com/python/typeshed/issues
+Project-URL: Chat, https://gitter.im/python/typing
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Typing :: Stubs Only
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+
+## Typing stubs for regex
+
+This is a PEP 561 type stub package for the `regex` package. It
+can be used by type-checking tools like
+[mypy](https://github.com/python/mypy/),
+[pyright](https://github.com/microsoft/pyright),
+[pytype](https://github.com/google/pytype/),
+PyCharm, etc. to check code that uses
+`regex`. The source for this package can be found at
+https://github.com/python/typeshed/tree/main/stubs/regex. All fixes for
+types and metadata should be contributed there.
+
+See https://github.com/python/typeshed/blob/main/README.md for more details.
+This package was generated from typeshed commit `d60e66712a55df1fda94daf511c9c764d112e1ff` and was tested
+with mypy 1.5.1, pyright 1.1.328, and
+pytype 2023.8.31.

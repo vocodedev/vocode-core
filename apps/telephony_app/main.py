@@ -13,7 +13,7 @@ from vocode.streaming.telephony.server.base import (
     TelephonyServer,
 )
 
-from speller_agent import SpellerAgentFactory
+from apps.telephony_app.speller_agent import SpellerAgentFactory
 import sys
 
 # if running from python, this will load the local .env

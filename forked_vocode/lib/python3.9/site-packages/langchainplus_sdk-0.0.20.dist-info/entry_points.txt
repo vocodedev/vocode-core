@@ -1,0 +1,3 @@
+[console_scripts]
+langchain=langchainplus_sdk.cli.main:main
+
