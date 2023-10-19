@@ -320,6 +320,10 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 self.produce_interruptable_agent_response_event_nonblocking(
                     AgentResponseFillerAudio()
                 )
+            if self.agent_config.send_back_tracking_audio:
+                self.produce_interruptable_agent_response_event_nonblocking(
+                    AgentResponseBackTrackingAudio()
+                )
             self.logger.debug("Responding to transcription")
             should_stop = False
             if self.agent_config.generate_responses:

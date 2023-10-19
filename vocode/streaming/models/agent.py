@@ -10,6 +10,7 @@ from .model import TypedModel, BaseModel
 from .vector_db import VectorDBConfig
 
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
+BACK_TRACKING_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
 LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
 LLM_AGENT_DEFAULT_MAX_TOKENS = 256
 LLM_AGENT_DEFAULT_MODEL_NAME = "text-curie-001"
@@ -39,7 +40,6 @@ class AgentType(str, Enum):
 
 
 class RandomResponseAudioConfig(BaseModel):
-    silence_threshold_seconds: float = FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
     use_phrases: bool = True
     use_typing_noise: bool = False
 
@@ -53,11 +53,11 @@ class RandomResponseAudioConfig(BaseModel):
 
 
 class FillerAudioConfig(RandomResponseAudioConfig):
-    pass
+    silence_threshold_seconds: float = FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
 
 
 class BackTrackingConfig(RandomResponseAudioConfig):
-    pass
+    silence_threshold_seconds: float = BACK_TRACKING_DEFAULT_SILENCE_THRESHOLD_SECONDS
 
 
 class WebhookConfig(BaseModel):
