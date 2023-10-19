@@ -359,7 +359,7 @@ class Transcript(BaseModel):
 
                 # If the current log index is the start for the next belief state, print this belief state
                 if log_index >= current_entry.start_message_index:
-                    conversation_str += f"Now using new belief state:\n{json.dumps(current_entry.belief_state.dict(), indent=4, sort_keys=True)}\n"
+                    conversation_str += f"Now using new belief state:\n{current_entry.belief_state.json(indent=4)}\n"
 
                     if current_entry.decision:
                         conversation_str += f"Decision made based on the belief state:\n{current_entry.decision}\n"
