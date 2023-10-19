@@ -268,7 +268,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 )
             )
         elif normalize:
-            prompt_preamble = self.render_normalization_system_message()
+            prompt_preamble = self.agent_config.call_script.render_normalization_prompt()
             messages = [{"role": "system", "content": prompt_preamble}]
         else:
             messages = messages or format_openai_chat_messages_from_transcript(
