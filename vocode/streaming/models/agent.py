@@ -96,9 +96,7 @@ class ChatGPTFunctionsConfig(BaseModel):
 
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     prompt_preamble: Template
-    dialog_state_prompt: Optional[Template] = None
-
-    dialog_state: Optional[Any] = None
+    call_script: Optional[Any] = None
 
     expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
