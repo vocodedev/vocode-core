@@ -1,6 +1,7 @@
 import json
 import time
 from copy import copy
+from copy import deepcopy
 from typing import List, Optional, Tuple, Any, Dict
 
 from pydantic import BaseModel, Field
@@ -65,7 +66,7 @@ class BeliefStateEntry(BaseModel):
     decision: Optional[Any]
 
     start_message_index: int
-    end_message_index: int
+    end_message_index: Optional[int] = None
 
     timestamp: float = Field(default_factory=time.time)
 
@@ -336,43 +337,37 @@ class Transcript(BaseModel):
 
     def render_conversation(self, include_belief_state: bool = False) -> str:
         conversation_str = ""
+        extended_dialog_states = deepcopy(self.dialog_states_history)  # to avoid adding to the history.
+
+        # Append the current dialog state to the history if it's not None
+        if self.current_dialog_state is not None:
+            extended_dialog_states.append(
+                BeliefStateEntry(
+                    belief_state=self.current_dialog_state,
+                    start_message_index=self.current_start_index,
+                    # We don't have an end index for the current state, so we use the length of the messages
+                    end_message_index=len(self.event_logs)
+                )
+            )
+
         current_entry_index = 0
 
-        # Initial belief state before any messages if it's available and included
-        if include_belief_state and self.dialog_states_history:
-            first_entry = self.dialog_states_history[0]
-            conversation_str += f"Initial belief state:\n{json.dumps(first_entry.belief_state.dict(), indent=4, sort_keys=True)}\n"
-            if first_entry.decision:
-                conversation_str += f"Initial decision made:\n{first_entry.decision}\n"
-
         for log_index, log in enumerate(self.event_logs):
-            print(log_index, current_entry_index)
-            if include_belief_state:
-                if current_entry_index < len(self.dialog_states_history):
-                    print("IN", current_entry_index)
-                    current_entry = self.dialog_states_history[current_entry_index]
+            # Before printing the log, check if a new belief state should start with this index
+            if include_belief_state and current_entry_index < len(extended_dialog_states):
+                current_entry = extended_dialog_states[current_entry_index]
 
-                    if log_index > current_entry.end_message_index:
-                        print("Log ingex", log_index, "current entry", current_entry.end_message_index)
-                        current_entry_index += 1
-                        if current_entry_index < len(self.dialog_states_history):
-                            next_entry = self.dialog_states_history[current_entry_index]
+                # If the current log index is the start for the next belief state, print this belief state
+                if log_index >= current_entry.start_message_index:
+                    conversation_str += f"Now using new belief state:\n{json.dumps(current_entry.belief_state.dict(), indent=4, sort_keys=True)}\n"
 
-                            conversation_str += f"Now using new belief state:\n{json.dumps(next_entry.belief_state.dict(), indent=4, sort_keys=True)}\n"
-                            if next_entry.decision:
-                                conversation_str += f"Decision made:\n{next_entry.decision}\n"
+                    if current_entry.decision:
+                        conversation_str += f"Decision made based on the belief state:\n{current_entry.decision}\n"
 
-                            diff = self._calculate_diff(current_entry.belief_state, next_entry.belief_state)
-                            if diff:
-                                conversation_str += f"Differences with previous state:\n{json.dumps(diff, indent=4, sort_keys=True)}\n"
+                    # Move to the next entry in the dialog state history
+                    current_entry_index += 1
 
-                elif self.current_dialog_state is not None and (
-                        not self.dialog_states_history or log_index > self.dialog_states_history[-1].end_message_index):
-                    print(self.dialog_states_history[-1].end_message_index, log_index)
-                    conversation_str += f"Now using new belief state:\n{json.dumps(self.current_dialog_state.dict(), indent=4, sort_keys=True)}\n"
-                    if hasattr(self.current_dialog_state, 'decision') and self.current_dialog_state.decision:
-                        conversation_str += f"Current decision made:\n{self.current_dialog_state.decision}\n"
-
+            # Now, print the log message
             conversation_str += f"{log.timestamp} {log.sender}: {log.text}\n"
 
         return conversation_str
