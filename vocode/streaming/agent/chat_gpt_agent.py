@@ -240,10 +240,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                                            chat_parameters["messages"][0]["content"]).strip()
         chat_parameters["stream"] = True
 
-        # FIXME: rewrite it.
-        if combined_response is not None:  # for example console app already has combined response in transcript so
-            # we don't need to add it to the prompt
-            chat_parameters["messages"].append({"role": "assistant", "content": combined_response})
+        # Keeping only system prompt, because the model should only focus on rendering exactly the specified text and not anything else.
+        # It would be nice to have flexiblity to connect more to previous context also with `combined_response`, but here we prefer to reset the state instead for now.
+        chat_parameters["messages"] = [chat_parameters["messages"][0]]
 
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
         async for message in collate_response_async(
