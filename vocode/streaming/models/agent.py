@@ -88,17 +88,28 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
     cut_off_response: Optional[CutOffResponse] = None
 
 
+class ChatGPTFunctionsConfig(BaseModel):
+    temperature: float = 0.2
+    api_version: str = "2023-07-01-preview"
+    n: int = 3
+
+
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     prompt_preamble: Template
     call_script: Optional[Any] = None
 
     expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
-    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
-    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
+    max_tokens: int = 500
     cut_off_response: Optional[CutOffResponse] = None
     azure_params: Optional[AzureOpenAIConfig] = None
+    chat_gpt_functions_config: ChatGPTFunctionsConfig = ChatGPTFunctionsConfig()
     vector_db_config: Optional[VectorDBConfig] = None
+    presence_penalty: float = 0.3
+    frequency_penalty: float = 0.3
+    temperature: float = 0.2
+    top_p: float = 0.95
+    last_messages_cnt: int = 8
 
     class Config:
         arbitrary_types_allowed = True
