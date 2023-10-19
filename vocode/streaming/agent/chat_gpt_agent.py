@@ -189,12 +189,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     async def get_normalized_values(self, content: str) -> dict[str, Any]:
         chat_parameters = self.get_chat_parameters(normalize=True)
-
-        # TODO: parametrize
-        chat_parameters["api_base"] = os.getenv("AZURE_OPENAI_API_BASE_SUMMARY")
-        chat_parameters["api_key"] = os.getenv("AZURE_OPENAI_API_KEY_SUMMARY")
+        # TODO: discuss configs.
         chat_parameters["api_version"] = "2023-07-01-preview"
-        chat_parameters["temperature"] = 0.2
         chat_parameters["n"] = 3
 
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + [{"role": "user", "content": content}]
