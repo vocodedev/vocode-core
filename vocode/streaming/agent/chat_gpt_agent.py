@@ -29,12 +29,32 @@ from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.vector_db.factory import VectorDBFactory
 
 
-# TODO: MOVE IT SOMEWHERE ELSE
 @dataclass
 class ConsoleChatResponse:
     message: str
     dialog_state_update: Optional[dict]
     raw_text: str
+    values_to_normalize: Optional[dict] = None
+
+    @property
+    def values_to_prompt_format(self) -> str:
+        """Values to normalize in GPT functions friendly format
+        :return: str with values to normalize
+        """
+        content = ""
+        for key, value in self.values_to_normalize.items():
+            if value is None:
+                value = "null"
+            content += f'{key}: {value}\n'
+        return content
+
+
+class ConsoleChatDecision(BaseModel):
+    response: ConsoleChatResponse
+    say_now_raw_text: Optional[str] = None
+    say_now_script_location: Optional[str] = None
+    retry: bool = None
+    normalize: bool = False
 
 
 def messages_from_transcript(transcript: Transcript, system_prompt: str):
@@ -173,7 +193,13 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # Conditionally normalize the dialog state.
             chat_response, decision = await self._handle_initial_decision(chat_response, decision)
 
-            if decision.say_now_script_location:
+            if decision.say_now_raw_text:
+                self.produce_interruptible_agent_response_event_nonblocking(
+                    AgentResponseMessage(message=BaseMessage(text=decision.say_now_raw_text)),
+                    is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+                )
+
+            elif decision.say_now_script_location:
                 async for response in self.follow_response(override_dialog_state=dict(
                         script_location=decision.say_now_script_location), combined_response=formatted_responses):
                     self.produce_interruptible_agent_response_event_nonblocking(
