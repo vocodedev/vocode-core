@@ -459,23 +459,3 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         ):
             yield message
 
-    def parse_state_schema(self, include_descriptions: bool = False) -> dict:
-        data = self.call_script.dialog_state.schema()
-        schema = {
-            "name": "get_argument_values",
-            "description": "Get values for arguments mentioned in the current turn.",
-            "parameters": {
-                "type": "object",
-                "properties": {},
-                "required": [],
-            }
-        }
-        keys = ['type', 'enum', 'examples']
-        if include_descriptions:
-            keys.append('description')
-        for prop, details in data['properties'].items():
-            if prop != "script_location" and not details.get('hidden', False):
-                schema["parameters"]["properties"][prop] = {
-                    key: details[key] for key in keys if key in details
-                }
-        return schema
