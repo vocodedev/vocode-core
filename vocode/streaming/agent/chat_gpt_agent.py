@@ -180,7 +180,13 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # Conditionally normalize the dialog state.
             chat_response, decision = await self._handle_initial_decision(chat_response, decision)
 
-            if decision.say_now_script_location:
+            if decision.say_now_raw_text:
+                self.produce_interruptible_agent_response_event_nonblocking(
+                    AgentResponseMessage(message=BaseMessage(text=decision.say_now_raw_text)),
+                    is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
+                )
+
+            elif decision.say_now_script_location:
                 async for response in self.follow_response(override_dialog_state=dict(
                         script_location=decision.say_now_script_location), combined_response=formatted_responses):
                     self.produce_interruptible_agent_response_event_nonblocking(
