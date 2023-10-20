@@ -13,6 +13,7 @@ import openai
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent, AgentInput, AgentResponseMessage
+from vocode.streaming.agent.response_validator import DefaultResponseValidator
 from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
     collate_response_async,
@@ -86,6 +87,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         self.call_script = self.agent_config.call_script  # FIXME: ugly flow refactor it.
 
+        self.response_validator = DefaultResponseValidator(max_length=self.agent_config.max_chars_check,
+                                                           )
+
     @property
     def extract_belief_state(self):
         return self.agent_config.call_script.dialog_state_prompt is not None
@@ -116,6 +120,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             decision = self.call_script.decision_callback(chat_response, normalize=False)
         return chat_response, decision
 
+    def check_response(self, response: str):
+        passed, reason = self.response_validator.validate(response)
+        if reason is not None:
+            self.logger.warning("Response failed validation: %s", reason)
+        return passed
+
     async def handle_generate_response(
             self, transcription: Transcription, agent_input: AgentInput
     ) -> bool:
@@ -133,10 +143,13 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         async for response in responses:
             self.logger.debug("Got response from agent `%s`", response
                               )
+
             if isinstance(response, FunctionCall):
                 function_call = response
                 continue
             if isinstance(response, str):
+                if not self.check_response(response):
+                    continue  # drop response.
                 all_responses.append(response)
 
             if is_first_response:
