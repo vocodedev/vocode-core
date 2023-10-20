@@ -1,13 +1,11 @@
 import asyncio
-import datetime
 import json
 import logging
-import os
 import re
 import time
 from dataclasses import dataclass
 from json import JSONDecodeError
-from typing import Any, Dict, List, Union, Type
+from typing import Any, Dict, List, Union
 from typing import AsyncGenerator, Optional, Tuple
 
 import openai
@@ -107,6 +105,17 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             for action_config in self.agent_config.actions
         ]
 
+    async def _handle_initial_decision(self, chat_response: ConsoleChatResponse, decision: BaseModel):
+        if decision.normalize:
+            self.logger.warning("Normalizing dialog state")
+            normalized_dialog_state = await self.get_normalized_values(decision.response.values_to_prompt_format)
+            self.call_script.dialog_state.update_from_normalized(normalized_dialog_state)
+            # merge normalized values into the original dialog state.
+            chat_response.dialog_state_update = {**chat_response.dialog_state_update, **normalized_dialog_state}
+            # Call decision callback again with normalized values
+            decision = self.call_script.decision_callback(chat_response, normalize=False)
+        return chat_response, decision
+
     async def handle_generate_response(
             self, transcription: Transcription, agent_input: AgentInput
     ) -> bool:
@@ -147,7 +156,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             self.logger.info("Got dialog state update from agent: %s", dialog_state_update)
             chat_response = ConsoleChatResponse(formatted_responses, dialog_state_update, raw_text=formatted_responses)
             decision = self.call_script.decision_callback(chat_response)
-            # FIXME: DISCUSS HOW TO BETTER HANDLE RETRY
+
+            # Conditionally normalize the dialog state.
+            chat_response, decision = await self._handle_initial_decision(chat_response, decision)
+
             if decision.say_now_script_location:
                 async for response in self.follow_response(override_dialog_state=dict(
                         script_location=decision.say_now_script_location), combined_response=formatted_responses):
