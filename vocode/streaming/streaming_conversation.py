@@ -447,7 +447,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             transcriber: BaseTranscriber[TranscriberConfig],
             agent: BaseAgent,
             synthesizer: BaseSynthesizer,
-            noise_canceler: BaseNoiseCanceler,
+            noise_canceler: Optional[BaseNoiseCanceler] = None,
             conversation_id: Optional[str] = None,
             per_chunk_allowance_seconds: float = PER_CHUNK_ALLOWANCE_SECONDS,
             events_manager: Optional[EventsManager] = None,
@@ -727,7 +727,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async for chunk_result in synthesis_result.chunk_generator:
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
-                len(chunk_result.chunk) / chunk_size
+                    len(chunk_result.chunk) / chunk_size
             )
             seconds_spoken = chunk_idx * seconds_per_chunk
             if stop_event.is_set():

@@ -77,7 +77,6 @@ class ConversationRouter(BaseRouter):
             transcriber=transcriber,
             agent=self.agent_thunk(),
             synthesizer=synthesizer,
-            noise_canceler=None,
             conversation_id=start_message.conversation_id,
             events_manager=TranscriptEventManager(output_device, self.logger)
             if start_message.subscribe_transcript
