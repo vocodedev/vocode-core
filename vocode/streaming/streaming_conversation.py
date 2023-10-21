@@ -188,13 +188,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     f"Not waiting for {self.name} to finish since we didn't send any chunks"
                 )
                 return
-            if self.interruptible_event and isinstance(
-                    self.interruptible_event, InterruptableAgentResponseEvent
+            if self.interruptable_event and isinstance(
+                    self.interruptable_event, InterruptableAgentResponseEvent
             ):
-                await self.interruptible_event.agent_response_tracker.wait()
+                await self.interruptable_event.agent_response_tracker.wait()
 
         def interrupt_current_filler_audio(self):
-            return self.interruptible_event and self.interruptible_event.interrupt()
+            return self.interruptable_event and self.interruptable_event.interrupt()
 
         async def process(self, item: InterruptableAgentResponseEvent[FillerAudio]):
             try:
