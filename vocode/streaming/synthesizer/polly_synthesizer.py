@@ -21,12 +21,12 @@ import boto3
 
 class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
     def __init__(
-        self,
-        synthesizer_config: PollySynthesizerConfig,
-        logger: Optional[logging.Logger] = None,
-        aiohttp_session: Optional[aiohttp.ClientSession] = None,
+            self,
+            synthesizer_config: PollySynthesizerConfig,
+            logger: Optional[logging.Logger] = None,
+            aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config, aiohttp_session)
+        super().__init__(synthesizer_config, logger, aiohttp_session)
 
         client = boto3.client("polly")
 
@@ -68,10 +68,10 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
 
     # given the number of seconds the message was allowed to go until, where did we get in the message?
     def get_message_up_to(
-        self,
-        message: str,
-        seconds: float,
-        word_events,
+            self,
+            message: str,
+            seconds: float,
+            word_events,
     ) -> str:
         for event in word_events:
             # time field is in ms
@@ -80,10 +80,10 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
         return message
 
     async def create_speech(
-        self,
-        message: BaseMessage,
-        chunk_size: int,
-        bot_sentiment: Optional[BotSentiment] = None,
+            self,
+            message: BaseMessage,
+            chunk_size: int,
+            bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.POLLY.value.split('_', 1)[-1]}.create_total",

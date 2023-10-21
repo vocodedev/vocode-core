@@ -224,11 +224,3 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     )
                 audio_data = await response.read()
         return audio_data
-
-    @staticmethod
-    def save_as_wav(data, filename, sample_rate=44100, sample_width=1, channels=1):
-        with wave.open(filename, 'wb') as wav_file:
-            wav_file.setnchannels(channels)
-            wav_file.setsampwidth(sample_width)
-            wav_file.setframerate(sample_rate)
-            wav_file.writeframes(data)

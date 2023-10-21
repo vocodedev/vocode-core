@@ -23,27 +23,28 @@ from vocode.streaming.models.synthesizer import RimeSynthesizerConfig, Synthesiz
 
 from opentelemetry.context.context import Context
 
+
 # https://rime.ai/docs/quickstart
 
 
 class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
     def __init__(
-        self,
-        synthesizer_config: RimeSynthesizerConfig,
-        logger: Optional[logging.Logger] = None,
-        aiohttp_session: Optional[aiohttp.ClientSession] = None,
+            self,
+            synthesizer_config: RimeSynthesizerConfig,
+            logger: Optional[logging.Logger] = None,
+            aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config, aiohttp_session)
+        super().__init__(synthesizer_config, logger, aiohttp_session)
         self.api_key = getenv("RIME_API_KEY")
         self.speaker = synthesizer_config.speaker
         self.sampling_rate = synthesizer_config.sampling_rate
         self.base_url = synthesizer_config.base_url
 
     async def create_speech(
-        self,
-        message: BaseMessage,
-        chunk_size: int,
-        bot_sentiment: Optional[BotSentiment] = None,
+            self,
+            message: BaseMessage,
+            chunk_size: int,
+            bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -62,10 +63,10 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
             f"synthesizer.{SynthesizerType.RIME.value.split('_', 1)[-1]}.create_total",
         )
         async with self.aiohttp_session.post(
-            self.base_url,
-            headers=headers,
-            json=body,
-            timeout=aiohttp.ClientTimeout(total=15),
+                self.base_url,
+                headers=headers,
+                json=body,
+                timeout=aiohttp.ClientTimeout(total=15),
         ) as response:
             if not response.ok:
                 raise Exception(

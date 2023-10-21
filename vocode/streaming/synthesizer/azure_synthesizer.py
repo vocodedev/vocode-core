@@ -26,7 +26,6 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 
 import azure.cognitiveservices.speech as speechsdk
 
-
 NAMESPACES = {
     "mstts": "https://www.w3.org/2001/mstts",
     "": "https://www.w3.org/2001/10/synthesis",
@@ -58,14 +57,14 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
     OFFSET_MS = 100
 
     def __init__(
-        self,
-        synthesizer_config: AzureSynthesizerConfig,
-        logger: Optional[logging.Logger] = None,
-        azure_speech_key: Optional[str] = None,
-        azure_speech_region: Optional[str] = None,
-        aiohttp_session: Optional[aiohttp.ClientSession] = None,
+            self,
+            synthesizer_config: AzureSynthesizerConfig,
+            logger: Optional[logging.Logger] = None,
+            azure_speech_key: Optional[str] = None,
+            azure_speech_region: Optional[str] = None,
+            aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config, aiohttp_session)
+        super().__init__(synthesizer_config, logger, aiohttp_session)
         # Instantiates a client
         azure_speech_key = azure_speech_key or getenv("AZURE_SPEECH_KEY")
         azure_speech_region = azure_speech_region or getenv("AZURE_SPEECH_REGION")
@@ -167,7 +166,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         pool.add(evt)
 
     def create_ssml(
-        self, message: str, bot_sentiment: Optional[BotSentiment] = None
+            self, message: str, bot_sentiment: Optional[BotSentiment] = None
     ) -> str:
         voice_language_code = self.synthesizer_config.voice_name[:5]
         ssml_root = ElementTree.fromstring(
@@ -216,11 +215,11 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
 
     # given the number of seconds the message was allowed to go until, where did we get in the message?
     def get_message_up_to(
-        self,
-        message: str,
-        ssml: str,
-        seconds: float,
-        word_boundary_event_pool: WordBoundaryEventPool,
+            self,
+            message: str,
+            ssml: str,
+            seconds: float,
+            word_boundary_event_pool: WordBoundaryEventPool,
     ) -> str:
         events = word_boundary_event_pool.get_events_sorted()
         for event in events:
@@ -231,10 +230,10 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         return message
 
     async def create_speech(
-        self,
-        message: BaseMessage,
-        chunk_size: int,
-        bot_sentiment: Optional[BotSentiment] = None,
+            self,
+            message: BaseMessage,
+            chunk_size: int,
+            bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         # offset = int(self.OFFSET_MS * (self.synthesizer_config.sampling_rate / 1000))
         offset = 0
@@ -250,7 +249,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             )
 
         async def chunk_generator(
-            audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
+                audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
         ):
             audio_buffer = bytes(chunk_size)
             filled_size = await asyncio.get_event_loop().run_in_executor(

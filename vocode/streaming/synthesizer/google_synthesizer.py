@@ -26,12 +26,12 @@ from opentelemetry.context.context import Context
 
 class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
     def __init__(
-        self,
-        synthesizer_config: GoogleSynthesizerConfig,
-        logger: Optional[logging.Logger] = None,
-        aiohttp_session: Optional[aiohttp.ClientSession] = None,
+            self,
+            synthesizer_config: GoogleSynthesizerConfig,
+            logger: Optional[logging.Logger] = None,
+            aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config, aiohttp_session)
+        super().__init__(synthesizer_config, logger, aiohttp_session)
 
         from google.cloud import texttospeech_v1beta1 as tts
         import google.auth
@@ -78,10 +78,10 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
 
     # TODO: make this nonblocking, see speech.TextToSpeechAsyncClient
     async def create_speech(
-        self,
-        message: BaseMessage,
-        chunk_size: int,
-        bot_sentiment: Optional[BotSentiment] = None,
+            self,
+            message: BaseMessage,
+            chunk_size: int,
+            bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.GOOGLE.value.split('_', 1)[-1]}.create_total",

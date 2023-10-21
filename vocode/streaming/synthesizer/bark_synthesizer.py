@@ -23,7 +23,7 @@ class BarkSynthesizer(BaseSynthesizer[BarkSynthesizerConfig]):
         synthesizer_config: BarkSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
     ) -> None:
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, logger=logger)
 
         from bark import SAMPLE_RATE, generate_audio, preload_models
 

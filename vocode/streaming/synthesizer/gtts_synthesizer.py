@@ -19,12 +19,12 @@ from opentelemetry.context.context import Context
 
 class GTTSSynthesizer(BaseSynthesizer):
     def __init__(
-        self,
-        synthesizer_config: GTTSSynthesizerConfig,
-        logger: Optional[logging.Logger] = None,
-        aiohttp_session: Optional[aiohttp.ClientSession] = None,
+            self,
+            synthesizer_config: GTTSSynthesizerConfig,
+            logger: Optional[logging.Logger] = None,
+            aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config, aiohttp_session)
+        super().__init__(synthesizer_config, logger, aiohttp_session)
 
         from gtts import gTTS
 
@@ -32,10 +32,10 @@ class GTTSSynthesizer(BaseSynthesizer):
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
     async def create_speech(
-        self,
-        message: BaseMessage,
-        chunk_size: int,
-        bot_sentiment: Optional[BotSentiment] = None,
+            self,
+            message: BaseMessage,
+            chunk_size: int,
+            bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         audio_file = BytesIO()
 

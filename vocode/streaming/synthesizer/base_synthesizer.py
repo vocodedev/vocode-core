@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 from typing import (
     Any,
@@ -139,8 +140,10 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
     def __init__(
             self,
             synthesizer_config: SynthesizerConfigType,
+            logger: Optional[logging.Logger] = None,
             aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
+        self.logger = logger or logging.getLogger(__name__)
         self.synthesizer_config = synthesizer_config
         self.base_filler_audio_path = self.synthesizer_config.base_filler_audio_path or FILLER_AUDIO_PATH
         self.base_back_tracking_audio_path = self.synthesizer_config.base_back_tracking_audio_path or BACK_TRACKING_AUDIO_PATH
@@ -191,10 +194,10 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             self.filler_audios = [self.get_typing_noise_filler_audio()]
 
     async def get_phrase_filler_audios(self) -> Dict[str, List[FillerAudio]]:
-        raise NotImplementedError
+        return {}
 
     async def get_phrase_back_tracking_audios(self) -> List[FillerAudio]:
-        raise NotImplementedError
+        return []
 
     def ready_synthesizer(self):
         pass

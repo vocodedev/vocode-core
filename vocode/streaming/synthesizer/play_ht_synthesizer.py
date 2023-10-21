@@ -19,18 +19,17 @@ from vocode.streaming.synthesizer.base_synthesizer import (
 )
 from vocode.streaming.utils.mp3_helper import decode_mp3
 
-
 TTS_ENDPOINT = "https://play.ht/api/v2/tts/stream"
 
 
 class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
     def __init__(
-        self,
-        synthesizer_config: PlayHtSynthesizerConfig,
-        logger: Optional[logging.Logger] = None,
-        aiohttp_session: Optional[ClientSession] = None,
+            self,
+            synthesizer_config: PlayHtSynthesizerConfig,
+            logger: Optional[logging.Logger] = None,
+            aiohttp_session: Optional[ClientSession] = None,
     ):
-        super().__init__(synthesizer_config, aiohttp_session)
+        super().__init__(synthesizer_config, logger, aiohttp_session)
         self.synthesizer_config = synthesizer_config
         self.api_key = synthesizer_config.api_key or getenv("PLAY_HT_API_KEY")
         self.user_id = synthesizer_config.user_id or getenv("PLAY_HT_USER_ID")
@@ -42,10 +41,10 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
         self.experimental_streaming = synthesizer_config.experimental_streaming
 
     async def create_speech(
-        self,
-        message: BaseMessage,
-        chunk_size: int,
-        bot_sentiment: Optional[BotSentiment] = None,
+            self,
+            message: BaseMessage,
+            chunk_size: int,
+            bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         headers = {
             "Authorization": f"Bearer {self.api_key}",

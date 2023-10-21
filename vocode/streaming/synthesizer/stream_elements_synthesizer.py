@@ -24,19 +24,19 @@ class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]
     TTS_ENDPOINT = "https://api.streamelements.com/kappa/v2/speech"
 
     def __init__(
-        self,
-        synthesizer_config: StreamElementsSynthesizerConfig,
-        logger: Optional[logging.Logger] = None,
-        aiohttp_session: Optional[aiohttp.ClientSession] = None,
+            self,
+            synthesizer_config: StreamElementsSynthesizerConfig,
+            logger: Optional[logging.Logger] = None,
+            aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config, aiohttp_session)
+        super().__init__(synthesizer_config, logger, aiohttp_session)
         self.voice = synthesizer_config.voice
 
     async def create_speech(
-        self,
-        message: BaseMessage,
-        chunk_size: int,
-        bot_sentiment: Optional[BotSentiment] = None,
+            self,
+            message: BaseMessage,
+            chunk_size: int,
+            bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         url_params = {
             "voice": self.voice,
@@ -46,9 +46,9 @@ class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]
             f"synthesizer.{SynthesizerType.STREAM_ELEMENTS.value.split('_', 1)[-1]}.create_total",
         )
         async with self.aiohttp_session.get(
-            self.TTS_ENDPOINT,
-            params=url_params,
-            timeout=aiohttp.ClientTimeout(total=15),
+                self.TTS_ENDPOINT,
+                params=url_params,
+                timeout=aiohttp.ClientTimeout(total=15),
         ) as response:
             read_response = await response.read()
             create_speech_span.end()
