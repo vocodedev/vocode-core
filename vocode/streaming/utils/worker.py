@@ -163,7 +163,7 @@ class InterruptableEventFactory:
         )
 
 
-InterruptableEventType = TypeVar("InterruptibleEventType", bound=InterruptableEvent)
+InterruptableEventType = TypeVar("InterruptableEventType", bound=InterruptableEvent)
 
 
 class InterruptableWorker(AsyncWorker[InterruptableEventType]):
@@ -179,7 +179,7 @@ class InterruptableWorker(AsyncWorker[InterruptableEventType]):
         self.max_concurrency = max_concurrency
         self.interruptable_event_factory = interruptable_event_factory
         self.current_task = None
-        self.interruptible_event = None
+        self.interruptable_event = None
 
     def produce_interruptable_event_nonblocking(
         self, item: Any, is_interruptable: bool = True
@@ -212,7 +212,7 @@ class InterruptableWorker(AsyncWorker[InterruptableEventType]):
             item = await self.input_queue.get()
             if item.is_interrupted():
                 continue
-            self.interruptible_event = item
+            self.interruptable_event = item
             self.current_task = asyncio.create_task(self.process(item))
             try:
                 await self.current_task
@@ -220,7 +220,7 @@ class InterruptableWorker(AsyncWorker[InterruptableEventType]):
                 return
             except Exception as e:
                 logger.exception("InterruptableWorker", exc_info=True)
-            self.interruptible_event.is_interruptable = False
+            self.interruptable_event.is_interruptable = False
             self.current_task = None
 
     async def process(self, item: InterruptableEventType):
@@ -239,7 +239,7 @@ class InterruptableWorker(AsyncWorker[InterruptableEventType]):
         if (
             self.current_task
             and not self.current_task.done()
-            and self.interruptible_event.is_interruptable
+            and self.interruptable_event.is_interruptable
         ):
             return self.current_task.cancel()
 

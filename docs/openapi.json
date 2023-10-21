@@ -2350,14 +2350,11 @@
             "title": "Outbound Only",
             "default": false
           },
-//<<<<<<< use-context-tracker
-//=======
           "example_context": {
             "additionalProperties": { "type": "string" },
             "type": "object",
             "title": "Example Context"
           },
-//>>>>>>> main
           "number": { "type": "string", "title": "Number" }
         },
         "type": "object",
@@ -2397,14 +2394,11 @@
             "title": "Outbound Only",
             "default": false
           },
-//<<<<<<< use-context-tracker
-//=======
           "example_context": {
             "additionalProperties": { "type": "string" },
             "type": "object",
             "title": "Example Context"
           },
-//>>>>>>> main
           "number": { "type": "string", "title": "Number" }
         },
         "type": "object",

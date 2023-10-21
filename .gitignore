@@ -10,5 +10,4 @@ credentials.json
 benchmark_results/
 private.key
 dump.rdb
-.idea
-./apps/telephony_app/custom_outbound_call.py
+.idea/

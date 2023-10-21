@@ -554,7 +554,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         return ConversationStateManager(conversation=self)
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
-        # await self.send_noise()
         self.transcriber.start()
         self.transcriptions_worker.start()
         self.agent_responses_worker.start()
@@ -580,14 +579,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
             await self.synthesizer.set_filler_audios(self.filler_audio_config)
-        self.logger.debug(f"agent config is {self.agent.get_agent_config()}")
         if self.agent.get_agent_config().send_back_tracking_audio:
-            self.logger.debug("Setting back tracking audio 1")
             if not isinstance(
                     self.agent.get_agent_config().send_back_tracking_audio,
                     BackTrackingConfig,
             ):
-                self.logger.debug("Setting back tracking audio 2")
                 self.back_tracking_config = BackTrackingConfig()
             else:
                 self.logger.debug("Setting back tracking audio 3")
@@ -699,24 +695,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.transcriber.get_transcriber_config().min_interrupt_confidence or 0
         )
 
-    async def send_noise(self):
-        filler_audio_noise = FillerAudio(
-            BaseMessage(text="Noise"),
-            audio_data=convert_wav(
-                './pink BL.wav',
-                output_sample_rate=8000,
-                output_encoding=AudioEncoding.MULAW,
-            ),
-            synthesizer_config=ElevenLabsSynthesizerConfig(sampling_rate=8000, audio_encoding=AudioEncoding.MULAW),
-            is_interruptable=True,
-            seconds_per_chunk=2,
-        )
-        event = self.interruptable_event_factory.create_interruptable_agent_response_event(
-            filler_audio_noise,
-            is_interruptable=False,
-        )
-        self.filler_audio_worker.consume_nonblocking(event)
-
     async def send_speech_to_output(
             self,
             message: str,
@@ -747,18 +725,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.synthesizer.get_synthesizer_config().audio_encoding,
             self.synthesizer.get_synthesizer_config().sampling_rate,
         )
-
-        # print('*'*20 + 'chunk_size_streaming')
-        # print(chunk_size)
-        # print('*'*20 + 'chunk_size_streaming')
-
         chunk_idx = 0
         seconds_spoken = 0
-        self.is_interrupted = False
         async for chunk_result in synthesis_result.chunk_generator:
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
-                    len(chunk_result.chunk) / chunk_size
+                len(chunk_result.chunk) / chunk_size
             )
             seconds_spoken = chunk_idx * seconds_per_chunk
             if stop_event.is_set():
@@ -769,28 +741,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 message_sent = f"{synthesis_result.get_message_up_to(seconds_spoken)}-"
                 cut_off = True
-                self.is_interrupted = True
-
-                # ### filler audio after interjection ###
-                # filler_audio = random.choice(
-                #         self.synthesizer.filler_audios['yep']
-                #     )
-                # self.logger.debug("Chose interjection type")
-
-                # self.logger.debug(f"Chose {filler_audio.message.text}")
-
-                # event = self.interruptable_event_factory.create_interruptable_agent_response_event(
-                #     filler_audio,
-                #     is_interruptable=False,
-                #     agent_response_tracker=stop_event,
-                # )
-                # self.filler_audio_worker.consume_nonblocking(event)
-                # self.output_device.consume_nonblocking(chunk_result.chunk)
-                self.logger.debug("*" * 10)
-                self.logger.debug("Interrupted!!!!")
-                self.logger.debug("*" * 10)
                 break
-
             if chunk_idx == 0:
                 if started_event:
                     started_event.set()
