@@ -18,6 +18,7 @@ class EventLog(BaseModel):
 
 class Message(EventLog):
     text: str
+    confidence: float = 1.0
 
     def to_string(self, include_timestamp: bool = False) -> str:
         if include_timestamp:
@@ -65,7 +66,7 @@ class Transcript(BaseModel):
         )
 
     def maybe_publish_transcript_event_from_message(
-        self, message: Message, conversation_id: str
+            self, message: Message, conversation_id: str
     ):
         if self.events_manager is not None:
             self.events_manager.publish_event(
@@ -78,14 +79,15 @@ class Transcript(BaseModel):
             )
 
     def add_message_from_props(
-        self,
-        text: str,
-        sender: Sender,
-        conversation_id: str,
-        publish_to_events_manager: bool = True,
+            self,
+            text: str,
+            sender: Sender,
+            conversation_id: str,
+            publish_to_events_manager: bool = True,
+            confidence: float = 1
     ):
         timestamp = time.time()
-        message = Message(text=text, sender=sender, timestamp=timestamp)
+        message = Message(text=text, sender=sender, timestamp=timestamp, confidence=confidence)
         self.event_logs.append(message)
         if publish_to_events_manager:
             self.maybe_publish_transcript_event_from_message(
@@ -93,10 +95,10 @@ class Transcript(BaseModel):
             )
 
     def add_message(
-        self,
-        message: Message,
-        conversation_id: str,
-        publish_to_events_manager: bool = True,
+            self,
+            message: Message,
+            conversation_id: str,
+            publish_to_events_manager: bool = True,
     ):
         self.event_logs.append(message)
         if publish_to_events_manager:
@@ -104,11 +106,12 @@ class Transcript(BaseModel):
                 message=message, conversation_id=conversation_id
             )
 
-    def add_human_message(self, text: str, conversation_id: str):
+    def add_human_message(self, text: str, conversation_id: str, confidence: float = 1):
         self.add_message_from_props(
             text=text,
             sender=Sender.HUMAN,
             conversation_id=conversation_id,
+            confidence=confidence,
         )
 
     def add_bot_message(self, text: str, conversation_id: str):
@@ -141,10 +144,10 @@ class Transcript(BaseModel):
             )
 
     def add_action_finish_log(
-        self,
-        action_input: ActionInput,
-        action_output: ActionOutput,
-        conversation_id: str,
+            self,
+            action_input: ActionInput,
+            action_output: ActionOutput,
+            conversation_id: str,
     ):
         timestamp = time.time()
         self.event_logs.append(

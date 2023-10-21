@@ -12,6 +12,7 @@ from vocode.streaming.telephony.constants import (
 )
 from .audio_encoding import AudioEncoding
 from .model import TypedModel
+from vocode.utils.context_tracker import BaseContextTrackerConfig
 
 AZURE_DEFAULT_LANGUAGE = "en-US"
 
@@ -55,6 +56,9 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     downsampling: Optional[int] = None
     min_interrupt_confidence: Optional[float] = None
     mute_during_speech: bool = False
+    context_tracker_config: BaseContextTrackerConfig = None
+    interrupt_on_blockers: bool = False
+    skip_on_filler_audio: bool = False
 
     @validator("min_interrupt_confidence")
     def min_interrupt_confidence_must_be_between_0_and_1(cls, v):
@@ -64,10 +68,10 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
 
     @classmethod
     def from_input_device(
-        cls,
-        input_device: BaseInputDevice,
-        endpointing_config: Optional[EndpointingConfig] = None,
-        **kwargs,
+            cls,
+            input_device: BaseInputDevice,
+            endpointing_config: Optional[EndpointingConfig] = None,
+            **kwargs,
     ):
         return cls(
             sampling_rate=input_device.sampling_rate,
@@ -80,9 +84,9 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     # TODO(EPD-186): switch to from_twilio_input_device and from_vonage_input_device
     @classmethod
     def from_telephone_input_device(
-        cls,
-        endpointing_config: Optional[EndpointingConfig] = None,
-        **kwargs,
+            cls,
+            endpointing_config: Optional[EndpointingConfig] = None,
+            **kwargs,
     ):
         return cls(
             sampling_rate=DEFAULT_SAMPLING_RATE,

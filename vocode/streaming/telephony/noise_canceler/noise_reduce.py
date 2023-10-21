@@ -1,7 +1,6 @@
 import logging
 from typing import Optional
 
-import noisereduce as nr
 import numpy as np
 
 from vocode.streaming.telephony.noise_canceler.base_noise_canceler import BaseNoiseCanceler
@@ -18,6 +17,7 @@ class NoiseReduceNoiseCanceler(BaseNoiseCanceler[NoiseReduceNoiseCancelingConfig
         super().__init__(noise_canceling_config, logger)
 
     def cancel_noise(self, audio: bytes) -> bytes:
+        import noisereduce as nr
         data = np.frombuffer(audio, dtype=np.int8)
         reduced_noise = nr.reduce_noise(y=data, sr=8000, use_torch=self.noise_canceling_config.use_torch)
         return np.array(reduced_noise, dtype=np.int8).tobytes()

@@ -10,24 +10,24 @@ from vocode.streaming.models.actions import (
 )
 from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
-    InterruptibleEvent,
-    InterruptibleEventFactory,
-    InterruptibleWorker,
+    InterruptableEvent,
+    InterruptableEventFactory,
+    InterruptableWorker,
 )
 
 
-class ActionsWorker(InterruptibleWorker):
+class ActionsWorker(InterruptableWorker):
     def __init__(
         self,
-        input_queue: asyncio.Queue[InterruptibleEvent[ActionInput]],
-        output_queue: asyncio.Queue[InterruptibleEvent[AgentInput]],
-        interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
+        input_queue: asyncio.Queue[InterruptableEvent[ActionInput]],
+        output_queue: asyncio.Queue[InterruptableEvent[AgentInput]],
+        interruptable_event_factory: InterruptableEventFactory = InterruptableEventFactory(),
         action_factory: ActionFactory = ActionFactory(),
     ):
         super().__init__(
             input_queue=input_queue,
             output_queue=output_queue,
-            interruptible_event_factory=interruptible_event_factory,
+            interruptable_event_factory=interruptable_event_factory,
         )
         self.action_factory = action_factory
 
@@ -36,12 +36,12 @@ class ActionsWorker(InterruptibleWorker):
     ):
         self.conversation_state_manager = conversation_state_manager
 
-    async def process(self, item: InterruptibleEvent[ActionInput]):
+    async def process(self, item: InterruptableEvent[ActionInput]):
         action_input = item.payload
         action = self.action_factory.create_action(action_input.action_config)
         action.attach_conversation_state_manager(self.conversation_state_manager)
         action_output = await action.run(action_input)
-        self.produce_interruptible_event_nonblocking(
+        self.produce_interruptable_event_nonblocking(
             ActionResultAgentInput(
                 conversation_id=action_input.conversation_id,
                 action_input=action_input,

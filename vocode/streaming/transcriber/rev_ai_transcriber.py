@@ -32,7 +32,7 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
         api_key: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(transcriber_config)
+        super().__init__(transcriber_config, logger)
         self.api_key = api_key or getenv("REV_AI_API_KEY")
         if not self.api_key:
             raise Exception(
@@ -40,7 +40,6 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
             )
         self.closed = False
         self.is_ready = True
-        self.logger = logger or logging.getLogger(__name__)
         self.last_signal_seconds = 0
 
     async def ready(self):

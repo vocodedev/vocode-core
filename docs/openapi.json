@@ -94,12 +94,27 @@
         "tags": ["numbers"],
         "summary": "Buy Number",
         "operationId": "buy_number",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BuyPhoneNumberRequest" }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/PhoneNumber" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
               }
             }
           }
@@ -341,7 +356,7 @@
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
+            "content": { "audio/mpeg": {} }
           },
           "422": {
             "description": "Validation Error",
@@ -1439,6 +1454,11 @@
             "enum": ["default", "off"],
             "title": "Ivr Navigation Mode",
             "default": "off"
+          },
+          "conversation_speed": {
+            "type": "number",
+            "title": "Conversation Speed",
+            "default": 1.0
           }
         },
         "type": "object",
@@ -1542,6 +1562,11 @@
             "enum": ["default", "off"],
             "title": "Ivr Navigation Mode",
             "default": "off"
+          },
+          "conversation_speed": {
+            "type": "number",
+            "title": "Conversation Speed",
+            "default": 1.0
           }
         },
         "type": "object",
@@ -1668,6 +1693,13 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Ivr Navigation Mode"
+          },
+          "conversation_speed": {
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Conversation Speed"
           }
         },
         "type": "object",
@@ -1738,6 +1770,13 @@
         "required": ["type"],
         "title": "AzureVoiceUpdateParams"
       },
+      "BuyPhoneNumberRequest": {
+        "properties": {
+          "area_code": { "type": "string", "title": "Area Code" }
+        },
+        "type": "object",
+        "title": "BuyPhoneNumberRequest"
+      },
       "Call": {
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
@@ -1753,10 +1792,10 @@
             "default": false
           },
           "transcript": { "type": "string", "title": "Transcript" },
-          "machine_detection_result": {
+          "human_detection_result": {
             "type": "string",
-            "enum": ["human", "machine"],
-            "title": "Machine Detection Result"
+            "enum": ["human", "no_human"],
+            "title": "Human Detection Result"
           },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
@@ -1779,6 +1818,11 @@
             "type": "boolean",
             "title": "Hipaa Compliant",
             "default": false
+          },
+          "on_no_human_answer": {
+            "type": "string",
+            "enum": ["continue", "hangup"],
+            "title": "On No Human Answer"
           }
         },
         "type": "object",
@@ -1910,6 +1954,11 @@
             "enum": ["default", "off"],
             "title": "Ivr Navigation Mode",
             "default": "off"
+          },
+          "conversation_speed": {
+            "type": "number",
+            "title": "Conversation Speed",
+            "default": 1.0
           }
         },
         "type": "object",
@@ -1927,16 +1976,21 @@
             ],
             "title": "Agent"
           },
-          "on_machine_answer": {
+          "on_no_human_answer": {
             "type": "string",
             "enum": ["continue", "hangup"],
-            "title": "On Machine Answer",
+            "title": "On No Human Answer",
             "default": "continue"
           },
           "hipaa_compliant": {
             "type": "boolean",
             "title": "Hipaa Compliant",
             "default": false
+          },
+          "context": {
+            "additionalProperties": { "type": "string" },
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",
@@ -2125,7 +2179,7 @@
           "event_phone_call_ended",
           "event_transcript",
           "event_recording",
-          "event_machine_detection"
+          "event_human_detection"
         ],
         "title": "EventType",
         "description": "An enumeration."
@@ -2210,6 +2264,11 @@
             "enum": ["default", "off"],
             "title": "Ivr Navigation Mode",
             "default": "off"
+          },
+          "conversation_speed": {
+            "type": "number",
+            "title": "Conversation Speed",
+            "default": 1.0
           }
         },
         "type": "object",
@@ -2231,10 +2290,10 @@
             "default": false
           },
           "transcript": { "type": "string", "title": "Transcript" },
-          "machine_detection_result": {
+          "human_detection_result": {
             "type": "string",
-            "enum": ["human", "machine"],
-            "title": "Machine Detection Result"
+            "enum": ["human", "no_human"],
+            "title": "Human Detection Result"
           },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
@@ -2257,6 +2316,11 @@
             "type": "boolean",
             "title": "Hipaa Compliant",
             "default": false
+          },
+          "on_no_human_answer": {
+            "type": "string",
+            "enum": ["continue", "hangup"],
+            "title": "On No Human Answer"
           }
         },
         "type": "object",
@@ -2281,11 +2345,45 @@
             "format": "uuid",
             "title": "Inbound Agent"
           },
+          "outbound_only": {
+            "type": "boolean",
+            "title": "Outbound Only",
+            "default": false
+          },
+//<<<<<<< use-context-tracker
+//=======
+          "example_context": {
+            "additionalProperties": { "type": "string" },
+            "type": "object",
+            "title": "Example Context"
+          },
+//>>>>>>> main
           "number": { "type": "string", "title": "Number" }
         },
         "type": "object",
         "required": ["id", "user_id", "inbound_agent", "number"],
         "title": "NormalizedPhoneNumber"
+      },
+      "NormalizedPrompt": {
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "title": "Id" },
+          "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
+          "content": { "type": "string", "title": "Content", "default": "" },
+          "collect_fields": {
+            "items": { "$ref": "#/components/schemas/CollectField" },
+            "type": "array",
+            "title": "Collect Fields"
+          },
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "prompt_template": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Prompt Template"
+          }
+        },
+        "type": "object",
+        "required": ["id", "user_id"],
+        "title": "NormalizedPrompt"
       },
       "PhoneNumber": {
         "properties": {
@@ -2294,6 +2392,19 @@
           "active": { "type": "boolean", "title": "Active", "default": true },
           "label": { "type": "string", "title": "Label", "default": "" },
           "inbound_agent": { "$ref": "#/components/schemas/Agent" },
+          "outbound_only": {
+            "type": "boolean",
+            "title": "Outbound Only",
+            "default": false
+          },
+//<<<<<<< use-context-tracker
+//=======
+          "example_context": {
+            "additionalProperties": { "type": "string" },
+            "type": "object",
+            "title": "Example Context"
+          },
+//>>>>>>> main
           "number": { "type": "string", "title": "Number" }
         },
         "type": "object",
@@ -2389,7 +2500,12 @@
       },
       "PlanType": {
         "type": "string",
-        "enum": ["plan_free", "plan_developer", "plan_enterprise"],
+        "enum": [
+          "plan_free",
+          "plan_developer",
+          "plan_enterprise",
+          "plan_unlimited"
+        ],
         "title": "PlanType",
         "description": "An enumeration."
       },
@@ -2404,17 +2520,16 @@
           },
           "voice_id": { "type": "string", "title": "Voice Id" },
           "api_user_id": { "type": "string", "title": "Api User Id" },
-          "api_key": { "type": "string", "title": "Api Key" }
+          "api_key": { "type": "string", "title": "Api Key" },
+          "version": {
+            "type": "string",
+            "enum": ["1", "2"],
+            "title": "Version",
+            "default": "2"
+          }
         },
         "type": "object",
-        "required": [
-          "id",
-          "user_id",
-          "type",
-          "voice_id",
-          "api_user_id",
-          "api_key"
-        ],
+        "required": ["id", "user_id", "type", "voice_id"],
         "title": "PlayHtVoice"
       },
       "PlayHtVoiceParams": {
@@ -2426,10 +2541,16 @@
           },
           "voice_id": { "type": "string", "title": "Voice Id" },
           "api_user_id": { "type": "string", "title": "Api User Id" },
-          "api_key": { "type": "string", "title": "Api Key" }
+          "api_key": { "type": "string", "title": "Api Key" },
+          "version": {
+            "type": "string",
+            "enum": ["1", "2"],
+            "title": "Version",
+            "default": "2"
+          }
         },
         "type": "object",
-        "required": ["type", "voice_id", "api_user_id", "api_key"],
+        "required": ["type", "voice_id"],
         "title": "PlayHtVoiceParams"
       },
       "PlayHtVoiceUpdateParams": {
@@ -2459,6 +2580,13 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Api Key"
+          },
+          "version": {
+            "anyOf": [
+              { "type": "string", "enum": ["1", "2"] },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Version"
           }
         },
         "type": "object",
@@ -2469,22 +2597,23 @@
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
-          "content": { "type": "string", "title": "Content" },
+          "content": { "type": "string", "title": "Content", "default": "" },
           "collect_fields": {
             "items": { "$ref": "#/components/schemas/CollectField" },
             "type": "array",
             "title": "Collect Fields"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "prompt_template": { "$ref": "#/components/schemas/PromptTemplate" }
         },
         "type": "object",
-        "required": ["id", "user_id", "content"],
+        "required": ["id", "user_id"],
         "title": "Prompt"
       },
       "PromptPage": {
         "properties": {
           "items": {
-            "items": { "$ref": "#/components/schemas/Prompt" },
+            "items": { "$ref": "#/components/schemas/NormalizedPrompt" },
             "type": "array",
             "title": "Items"
           },
@@ -2498,17 +2627,38 @@
       },
       "PromptParams": {
         "properties": {
-          "content": { "type": "string", "title": "Content" },
+          "content": { "type": "string", "title": "Content", "default": "" },
           "collect_fields": {
             "items": { "$ref": "#/components/schemas/CollectField" },
             "type": "array",
             "title": "Collect Fields"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" }
+          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "prompt_template": {
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/PromptTemplate" }
+            ],
+            "title": "Prompt Template"
+          }
         },
         "type": "object",
-        "required": ["content"],
         "title": "PromptParams"
+      },
+      "PromptTemplate": {
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "title": "Id" },
+          "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
+          "label": { "type": "string", "title": "Label", "default": "" },
+          "required_context_keys": {
+            "items": { "type": "string" },
+            "type": "array",
+            "title": "Required Context Keys"
+          }
+        },
+        "type": "object",
+        "required": ["id", "user_id", "required_context_keys"],
+        "title": "PromptTemplate"
       },
       "PromptUpdateParams": {
         "properties": {
@@ -2535,6 +2685,14 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Context Endpoint"
+          },
+          "prompt_template": {
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/PromptTemplate" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Prompt Template"
           }
         },
         "type": "object",
@@ -2675,12 +2833,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "user_id",
-          "plan_type",
-          "monthly_usage_minutes",
-          "monthly_usage_limit_minutes"
-        ],
+        "required": ["user_id", "plan_type", "monthly_usage_minutes"],
         "title": "Usage"
       },
       "ValidationError": {

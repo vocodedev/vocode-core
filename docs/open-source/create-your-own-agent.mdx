@@ -22,7 +22,7 @@ class BrokenRecordAgent(RespondAgent[BrokenRecordAgentConfig]):
 
     async def generate_response(
         self, human_input, is_interrupt: bool = False
-    ) -> AsyncGenerator[Tuple[str, bool], None]: # message and whether or not the message is interruptible
+    ) -> AsyncGenerator[Tuple[str, bool], None]: # message and whether or not the message is interruptable
         """Returns a generator that yields the agent's response one sentence at a time."""
         yield self.agent_config.message, False
 ```

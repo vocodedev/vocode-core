@@ -10,6 +10,7 @@ from .model import TypedModel, BaseModel
 from .vector_db import VectorDBConfig
 
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
+BACK_TRACKING_DEFAULT_SILENCE_THRESHOLD_SECONDS = 5
 LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
 LLM_AGENT_DEFAULT_MAX_TOKENS = 256
 LLM_AGENT_DEFAULT_MODEL_NAME = "text-curie-001"
@@ -38,8 +39,7 @@ class AgentType(str, Enum):
     ACTION = "agent_action"
 
 
-class FillerAudioConfig(BaseModel):
-    silence_threshold_seconds: float = FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
+class RandomResponseAudioConfig(BaseModel):
     use_phrases: bool = True
     use_typing_noise: bool = False
 
@@ -50,6 +50,14 @@ class FillerAudioConfig(BaseModel):
         if not v and not values.get("use_phrases"):
             raise ValueError("must use either typing noise or phrases for filler audio")
         return v
+
+
+class FillerAudioConfig(RandomResponseAudioConfig):
+    silence_threshold_seconds: float = FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
+
+
+class BackTrackingConfig(RandomResponseAudioConfig):
+    silence_threshold_seconds: float = BACK_TRACKING_DEFAULT_SILENCE_THRESHOLD_SECONDS
 
 
 class WebhookConfig(BaseModel):
@@ -69,13 +77,19 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     allow_agent_to_be_cut_off: bool = True
     end_conversation_on_goodbye: bool = False
     send_filler_audio: Union[bool, FillerAudioConfig] = False
+    send_back_tracking_audio: Union[bool, BackTrackingConfig] = False
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
     actions: Optional[List[ActionConfig]] = None
+    transcriber_low_confidence_threshold: float = 0
 
 
 class CutOffResponse(BaseModel):
     messages: List[BaseMessage] = [BaseMessage(text="Sorry?")]
+
+
+class LowConfidenceResponse(BaseModel):
+    messages: List[BaseMessage] = [BaseMessage(text="Sorry, i didn't get that")]
 
 
 class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
@@ -94,6 +108,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     cut_off_response: Optional[CutOffResponse] = None
+    low_confidence_response: Optional[LowConfidenceResponse] = None
     azure_params: Optional[AzureOpenAIConfig] = None
     vector_db_config: Optional[VectorDBConfig] = None
 

@@ -1,0 +1,39 @@
+Metadata-Version: 2.1
+Name: types-redis
+Version: 4.6.0.7
+Summary: Typing stubs for redis
+Home-page: https://github.com/python/typeshed
+License: Apache-2.0 license
+Project-URL: GitHub, https://github.com/python/typeshed
+Project-URL: Changes, https://github.com/typeshed-internal/stub_uploader/blob/main/data/changelogs/redis.md
+Project-URL: Issue tracker, https://github.com/python/typeshed/issues
+Project-URL: Chat, https://gitter.im/python/typing
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Typing :: Stubs Only
+Description-Content-Type: text/markdown
+Requires-Dist: types-pyOpenSSL
+Requires-Dist: cryptography >=35.0.0
+
+## Typing stubs for redis
+
+This is a PEP 561 type stub package for the `redis` package. It
+can be used by type-checking tools like
+[mypy](https://github.com/python/mypy/),
+[pyright](https://github.com/microsoft/pyright),
+[pytype](https://github.com/google/pytype/),
+PyCharm, etc. to check code that uses
+`redis`. The source for this package can be found at
+https://github.com/python/typeshed/tree/main/stubs/redis. All fixes for
+types and metadata should be contributed there.
+
+Note: Redis-py 5.0.0 added a py.typed file, but the inline annotations are incomplete. Continuing to use `types-redis` for the time being may lead to superior results.
+
+This stub package is marked as [partial](https://peps.python.org/pep-0561/#partial-stub-packages).
+If you find that annotations are missing, feel free to contribute and help complete them.
+
+
+See https://github.com/python/typeshed/blob/main/README.md for more details.
+This package was generated from typeshed commit `6ca7505af71322818ff07c9d56c4376fd84450fb` and was tested
+with mypy 1.5.1, pyright 1.1.328, and
+pytype 2023.8.31.

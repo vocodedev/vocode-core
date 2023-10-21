@@ -28,7 +28,7 @@ class GladiaTranscriber(BaseAsyncTranscriber[GladiaTranscriberConfig]):
         api_key: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(transcriber_config)
+        super().__init__(transcriber_config, logger)
         self.api_key = api_key or getenv("GLADIA_API_KEY")
         if not self.api_key:
             raise Exception(

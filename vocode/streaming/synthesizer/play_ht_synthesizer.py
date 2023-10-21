@@ -160,7 +160,7 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
                         output_encoding=self.synthesizer_config.audio_encoding,
                     ),
                     synthesizer_config=self.synthesizer_config,
-                    is_interruptible=True,
+                    is_interruptable=True,
                     seconds_per_chunk=2,
                 )
             )

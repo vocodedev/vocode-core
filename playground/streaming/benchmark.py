@@ -62,7 +62,7 @@ from vocode.streaming.synthesizer import (
 from vocode.streaming.transcriber import DeepgramTranscriber, AssemblyAITranscriber
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import get_chunk_size_per_second, remove_non_letters_digits
-from vocode.streaming.utils.worker import InterruptibleEvent
+from vocode.streaming.utils.worker import InterruptableEvent
 from playground.streaming.tracing_utils import get_final_metrics
 
 logger = logging.getLogger(__name__)
@@ -342,7 +342,7 @@ async def run_agents():
                 conversation_id=0,
             )
             agent.consume_nonblocking(
-                agent.interruptible_event_factory.create_interruptible_event(message)
+                agent.interruptible_event_factory.create_interruptable_event(message)
             )
 
             while True:

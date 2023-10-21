@@ -123,6 +123,7 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
+        confidence: float = 1,
     ) -> AsyncGenerator[Tuple[str, bool], None]:
         self.logger.debug("LLM generating response to human input")
         if is_interrupt and self.agent_config.cut_off_response:
