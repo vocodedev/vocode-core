@@ -39,7 +39,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             aiohttp_session: Optional[aiohttp.ClientSession] = None,
 
     ):
-        super().__init__(synthesizer_config, aiohttp_session)
+        super().__init__(synthesizer_config, logger, aiohttp_session)
 
         import elevenlabs
 

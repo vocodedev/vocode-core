@@ -13,11 +13,10 @@ from vocode.streaming.telephony.noise_canceler.web_rtc import WebRTCNoiseCancele
 class NoiseCancelerFactory:
     def create_noise_canceler(
             self,
-            config: NoiseCancelingConfig,
+            config: Optional[NoiseCancelingConfig],
             logger: Optional[logging.Logger] = None,
     ):
         if isinstance(config, WebRTCNoiseCancelingConfig):
-            logger.debug("using WebRTC noise canceler")
             return WebRTCNoiseCanceler(config, logger=logger)
         if isinstance(config, RRNWrapperNoiseCancelingConfig):
             return RRNWrapperNoiseCanceler(config, logger=logger)

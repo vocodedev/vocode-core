@@ -52,6 +52,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
             events_manager: Optional[EventsManager] = None,
             logger: Optional[logging.Logger] = None,
     ):
+        noise_canceling_config = twilio_config.noise_canceling_config if twilio_config else None
         super().__init__(
             from_phone,
             to_phone,
@@ -67,7 +68,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
             logger=logger,
-            noise_canceling_config=twilio_config.noise_canceling_config,
+            noise_canceling_config=noise_canceling_config,
         )
         self.base_url = base_url
         self.config_manager = config_manager

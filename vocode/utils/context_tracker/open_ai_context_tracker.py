@@ -13,7 +13,7 @@ class OpenAIContextTrackerConfig(BaseContextTrackerConfig, type=ContextTrackerTy
     api_key: str = getenv("OPENAI_API_KEY")
     model: str = "gpt-3.5-turbo"
     prompt: str = ""
-    azure_config: AzureOpenAIConfig = None
+    azure_config: Optional[AzureOpenAIConfig] = None
 
 
 class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
@@ -39,7 +39,7 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
 
         self.messages = [{"role": "system", "content": self.config.prompt}]
 
-    def is_part_of_context(self, user_message: str) -> bool:
+    async def is_part_of_context(self, user_message: str) -> bool:
         parameters = self._generate_parameters(user_message)
 
         response = openai.ChatCompletion.create(**parameters)

@@ -19,7 +19,7 @@ ContextTrackerConfigType = TypeVar("ContextTrackerConfigType", bound=BaseContext
 
 class BaseContextTracker(Generic[ContextTrackerConfigType]):
     def __init__(self, config: ContextTrackerConfigType, logger: Optional[logging.Logger] = None):
-        self.logger = logger
+        self.logger: logging.Logger = logger or logging.getLogger(__name__)
         self.config = config
 
     async def is_part_of_context(self, user_message: str) -> bool:

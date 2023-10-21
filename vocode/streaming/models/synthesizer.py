@@ -43,8 +43,8 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
     audio_encoding: AudioEncoding
     should_encode_as_wav: bool = False
     sentiment_config: Optional[SentimentConfig] = None
-    base_filler_audio_path: str = None,
-    base_back_tracking_audio_path: str = None,
+    base_filler_audio_path: Optional[str] = None,
+    base_back_tracking_audio_path: Optional[str] = None,
 
     class Config:
         arbitrary_types_allowed = True

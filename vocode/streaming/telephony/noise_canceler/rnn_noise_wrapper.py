@@ -6,7 +6,7 @@ from vocode.streaming.telephony.noise_canceler.noise_canceling import NoiseCance
 
 
 class RRNWrapperNoiseCancelingConfig(NoiseCancelingConfig, type=NoiseCancelingType.RRN_WRAPPER.value):
-    sample_rate: str = 8000
+    sample_rate: int = 8000
     library_name: str = "librnnoise_default.so.0.4.1"
 
 

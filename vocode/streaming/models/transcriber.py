@@ -56,7 +56,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     downsampling: Optional[int] = None
     min_interrupt_confidence: Optional[float] = None
     mute_during_speech: bool = False
-    context_tracker_config: BaseContextTrackerConfig = None
+    context_tracker_config: Optional[BaseContextTrackerConfig] = None
     interrupt_on_blockers: bool = False
     skip_on_back_track_audio: bool = False
 

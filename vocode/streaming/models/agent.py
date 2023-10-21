@@ -99,6 +99,7 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     cut_off_response: Optional[CutOffResponse] = None
+    low_confidence_response: Optional[LowConfidenceResponse] = None
 
 
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):

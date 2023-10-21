@@ -1,9 +1,10 @@
 import asyncio
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 import re
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Dict
 from xml.etree import ElementTree
 import aiohttp
 from vocode import getenv
@@ -114,40 +115,41 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
         self.logger = logger or logging.getLogger(__name__)
 
-    async def get_phrase_filler_audios(self) -> List[FillerAudio]:
-        filler_phrase_audios = []
-        for filler_phrase in FILLER_PHRASES:
-            cache_key = "-".join(
-                (
-                    str(filler_phrase.text),
-                    str(self.synthesizer_config.type),
-                    str(self.synthesizer_config.audio_encoding),
-                    str(self.synthesizer_config.sampling_rate),
-                    str(self.voice_name),
-                    str(self.pitch),
-                    str(self.rate),
+    async def get_phrase_filler_audios(self) -> Dict[str, List[FillerAudio]]:
+        filler_phrase_audios = defaultdict(list)
+        for emotion, phrases in FILLER_PHRASES.items():
+            for phrase in phrases:
+                cache_key = "-".join(
+                    (
+                        str(phrase.text),
+                        str(self.synthesizer_config.type),
+                        str(self.synthesizer_config.audio_encoding),
+                        str(self.synthesizer_config.sampling_rate),
+                        str(self.voice_name),
+                        str(self.pitch),
+                        str(self.rate),
+                    )
                 )
-            )
-            filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.bytes")
-            if os.path.exists(filler_audio_path):
-                audio_data = open(filler_audio_path, "rb").read()
-            else:
-                self.logger.debug(f"Generating filler audio for {filler_phrase.text}")
-                ssml = self.create_ssml(filler_phrase.text)
-                result = await asyncio.get_event_loop().run_in_executor(
-                    self.thread_pool_executor, self.synthesizer.speak_ssml, ssml
+                filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.bytes")
+                if os.path.exists(filler_audio_path):
+                    audio_data = open(filler_audio_path, "rb").read()
+                else:
+                    self.logger.debug(f"Generating filler audio for {phrase.text}")
+                    ssml = self.create_ssml(phrase.text)
+                    result = await asyncio.get_event_loop().run_in_executor(
+                        self.thread_pool_executor, self.synthesizer.speak_ssml, ssml
+                    )
+                    offset = self.synthesizer_config.sampling_rate * self.OFFSET_MS // 1000
+                    audio_data = result.audio_data[offset:]
+                    with open(filler_audio_path, "wb") as f:
+                        f.write(audio_data)
+                filler_phrase_audios[emotion].append(
+                    FillerAudio(
+                        phrase,
+                        audio_data,
+                        self.synthesizer_config,
+                    )
                 )
-                offset = self.synthesizer_config.sampling_rate * self.OFFSET_MS // 1000
-                audio_data = result.audio_data[offset:]
-                with open(filler_audio_path, "wb") as f:
-                    f.write(audio_data)
-            filler_phrase_audios.append(
-                FillerAudio(
-                    filler_phrase,
-                    audio_data,
-                    self.synthesizer_config,
-                )
-            )
         return filler_phrase_audios
 
     def add_marks(self, message: str, index=0) -> str:
