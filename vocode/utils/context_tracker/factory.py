@@ -10,6 +10,6 @@ class ContextTrackerFactory:
     def create_context_tracker(
             transcriber_config: BaseContextTrackerConfig,
             logger: Optional[logging.Logger] = None,
-    ) -> Optional[BaseContextTracker]:
+    ):
         if isinstance(transcriber_config, OpenAIContextTrackerConfig):
             return OpenAIContextTracker(transcriber_config, logger=logger)

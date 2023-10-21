@@ -71,7 +71,7 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
         AsyncWorker.__init__(self, self.input_queue, self.output_queue)
         AbstractTranscriber.__init__(self, transcriber_config)
         if self.transcriber_config.skip_on_back_track_audio:
-            self.skip_model: BackTrackingModel = BackTrackingModel(logger=self.logger)
+            self.skip_model = BackTrackingModel(logger=self.logger)
             self.interrupt_model_initialize_task = asyncio.create_task(
                 self.skip_model.initialize_embeddings()
             )

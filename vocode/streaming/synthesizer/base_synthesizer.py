@@ -145,8 +145,8 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
     ):
         self.logger = logger or logging.getLogger(__name__)
         self.synthesizer_config = synthesizer_config
-        self.base_filler_audio_path = self.synthesizer_config.base_filler_audio_path or FILLER_AUDIO_PATH
-        self.base_back_tracking_audio_path = self.synthesizer_config.base_back_tracking_audio_path or BACK_TRACKING_AUDIO_PATH
+        self.base_filler_audio_path = self.synthesizer_config.base_filler_audio_path
+        self.base_back_tracking_audio_path = self.synthesizer_config.base_back_tracking_audio_path
         if synthesizer_config.audio_encoding == AudioEncoding.MULAW:
             assert (
                     synthesizer_config.sampling_rate == 8000
@@ -184,7 +184,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         if filler_audio_config.use_phrases:
             self.filler_audios = await self.get_phrase_filler_audios()
         elif filler_audio_config.use_typing_noise:
-            self.filler_audios = {"TYPING": self.get_typing_noise_filler_audio()}
+            self.filler_audios = {"TYPING": [self.get_typing_noise_filler_audio()]}
 
     async def set_back_tracking_audios(self, filler_audio_config: BackTrackingConfig):
         print("setting back tracking audios")
