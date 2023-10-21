@@ -36,25 +36,25 @@ BASE_CONVERSATION_ENDPOINT = "/conversation"
 
 class ConversationRouter(BaseRouter):
     def __init__(
-        self,
-        agent_thunk: Callable[[], BaseAgent],
-        transcriber_thunk: Callable[
-            [InputAudioConfig], BaseTranscriber
-        ] = lambda input_audio_config: DeepgramTranscriber(
-            DeepgramTranscriberConfig.from_input_audio_config(
-                input_audio_config=input_audio_config,
-                endpointing_config=PunctuationEndpointingConfig(),
-            )
-        ),
-        synthesizer_thunk: Callable[
-            [OutputAudioConfig], BaseSynthesizer
-        ] = lambda output_audio_config: AzureSynthesizer(
-            AzureSynthesizerConfig.from_output_audio_config(
-                output_audio_config=output_audio_config
-            )
-        ),
-        logger: Optional[logging.Logger] = None,
-        conversation_endpoint: str = BASE_CONVERSATION_ENDPOINT,
+            self,
+            agent_thunk: Callable[[], BaseAgent],
+            transcriber_thunk: Callable[
+                [InputAudioConfig], BaseTranscriber
+            ] = lambda input_audio_config: DeepgramTranscriber(
+                DeepgramTranscriberConfig.from_input_audio_config(
+                    input_audio_config=input_audio_config,
+                    endpointing_config=PunctuationEndpointingConfig(),
+                )
+            ),
+            synthesizer_thunk: Callable[
+                [OutputAudioConfig], BaseSynthesizer
+            ] = lambda output_audio_config: AzureSynthesizer(
+                AzureSynthesizerConfig.from_output_audio_config(
+                    output_audio_config=output_audio_config
+                )
+            ),
+            logger: Optional[logging.Logger] = None,
+            conversation_endpoint: str = BASE_CONVERSATION_ENDPOINT,
     ):
         super().__init__()
         self.transcriber_thunk = transcriber_thunk
@@ -65,9 +65,9 @@ class ConversationRouter(BaseRouter):
         self.router.websocket(conversation_endpoint)(self.conversation)
 
     def get_conversation(
-        self,
-        output_device: WebsocketOutputDevice,
-        start_message: AudioConfigStartMessage,
+            self,
+            output_device: WebsocketOutputDevice,
+            start_message: AudioConfigStartMessage,
     ) -> StreamingConversation:
         transcriber = self.transcriber_thunk(start_message.input_audio_config)
         synthesizer = self.synthesizer_thunk(start_message.output_audio_config)
@@ -77,6 +77,7 @@ class ConversationRouter(BaseRouter):
             transcriber=transcriber,
             agent=self.agent_thunk(),
             synthesizer=synthesizer,
+            noise_canceler=None,
             conversation_id=start_message.conversation_id,
             events_manager=TranscriptEventManager(output_device, self.logger)
             if start_message.subscribe_transcript
@@ -114,9 +115,9 @@ class ConversationRouter(BaseRouter):
 
 class TranscriptEventManager(events_manager.EventsManager):
     def __init__(
-        self,
-        output_device: WebsocketOutputDevice,
-        logger: Optional[logging.Logger] = None,
+            self,
+            output_device: WebsocketOutputDevice,
+            logger: Optional[logging.Logger] = None,
     ):
         super().__init__(subscriptions=[EventType.TRANSCRIPT])
         self.output_device = output_device
