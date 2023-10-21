@@ -285,10 +285,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.synthesizer.back_tracking_audios
                 )
                 self.conversation.logger.debug(f"Chose {back_tracking_audio.message.text} for back tracking")
-                back_tracking_audio = random.choice(
-                    self.conversation.synthesizer.back_tracking_audios
-                )
-                self.conversation.logger.debug(f"Sending back tracking audio to output")
                 event = self.interruptable_event_factory.create_interruptable_agent_response_event(
                     back_tracking_audio,
                     is_interruptable=back_tracking_audio.is_interruptable,
