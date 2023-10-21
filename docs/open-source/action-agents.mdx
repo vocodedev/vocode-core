@@ -37,7 +37,7 @@ class AgentConfig(AgentConfig, type=AgentType.Base.value):
 
 ## `ActionsWorker`: how actions are executed and consumed
 
-The `ActionsWorker` class plays a crucial role in the async processing of actions within the system. It's a specialized form of the `InterruptibleWorker` class,
+The `ActionsWorker` class plays a crucial role in the async processing of actions within the system. It's a specialized form of the `InterruptableWorker` class,
 designed to handle the execution of actions and passing results back to the agent.
 
 The `ActionsWorker` is initialized with an input queue and an output queue. It uses an `ActionFactory` instance to create and execute actions based on the inputs it receives.

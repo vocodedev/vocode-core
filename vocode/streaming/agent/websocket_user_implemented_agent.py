@@ -77,7 +77,7 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
         else:
             raise Exception("Unknown Socket message type")
 
-        self.logger.info("Putting interruptible agent response event in output queue")
+        self.logger.info("Putting interruptable agent response event in output queue")
         self.produce_interruptable_agent_response_event_nonblocking(
             agent_response, self.get_agent_config().allow_agent_to_be_cut_off
         )

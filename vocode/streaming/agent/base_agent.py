@@ -196,8 +196,8 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptableWorker):
     ):
         self.conversation_state_manager = conversation_state_manager
 
-    def set_interruptible_event_factory(self, factory: InterruptableEventFactory):
-        self.interruptible_event_factory = factory
+    def set_interruptable_event_factory(self, factory: InterruptableEventFactory):
+        self.interruptable_event_factory = factory
 
     def get_input_queue(
             self,
@@ -234,7 +234,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         )
         is_first_response = True
         function_call = None
-        async for response, is_interruptible in responses:
+        async for response, is_interruptable in responses:
             if isinstance(response, FunctionCall):
                 function_call = response
                 continue
@@ -243,7 +243,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 is_first_response = False
             self.produce_interruptable_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
-                is_interruptable=self.agent_config.allow_agent_to_be_cut_off and is_interruptible,
+                is_interruptable=self.agent_config.allow_agent_to_be_cut_off and is_interruptable,
                 agent_response_tracker=agent_input.agent_response_tracker,
             )
         # TODO: implement should_stop for generate_responses
@@ -409,8 +409,8 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 params,
                 user_message_tracker,
             )
-        event = self.interruptible_event_factory.create_interruptable_event(
-            action_input, is_interruptable=action.is_interruptible
+        event = self.interruptable_event_factory.create_interruptable_event(
+            action_input, is_interruptable=action.is_interruptable
         )
         assert self.transcript is not None
         self.transcript.add_action_start_log(
@@ -459,7 +459,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             confidence: float = 1,
     ) -> AsyncGenerator[
         Tuple[Union[str, FunctionCall], bool], None
-    ]:  # tuple of the content and whether it is interruptible
+    ]:  # tuple of the content and whether it is interruptable
         raise NotImplementedError
 
     def generate_low(self):

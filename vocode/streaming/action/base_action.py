@@ -24,12 +24,12 @@ class BaseAction(Generic[ActionConfigType, ParametersType, ResponseType]):
         action_config: ActionConfigType,
         should_respond: bool = False,
         quiet: bool = False,
-        is_interruptible: bool = True,
+        is_interruptable: bool = True,
     ):
         self.action_config = action_config
         self.should_respond = should_respond
         self.quiet = quiet
-        self.is_interruptible = is_interruptible
+        self.is_interruptable = is_interruptable
 
     def attach_conversation_state_manager(
         self, conversation_state_manager: "ConversationStateManager"

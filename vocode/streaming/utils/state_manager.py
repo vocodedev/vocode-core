@@ -46,7 +46,7 @@ class ConversationStateManager:
         self._conversation.agent.produce_interruptable_agent_response_event_nonblocking(
             item=AgentResponseMessage(
                 message=message,
-                is_interruptible=False,
+                is_interruptable=False,
             ),
             is_interruptable=False,
             agent_response_tracker=agent_response_tracker,

@@ -1,2 +1,0 @@
-openapi_schema_pydantic
-tests

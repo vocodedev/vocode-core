@@ -473,7 +473,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.interruptable_event_factory = self.QueueingInterruptableEventFactory(
             conversation=self
         )
-        self.agent.set_interruptible_event_factory(self.interruptable_event_factory)
+        self.agent.set_interruptable_event_factory(self.interruptable_event_factory)
         self.synthesis_results_queue: asyncio.Queue[
             InterruptableAgentResponseEvent[Tuple[BaseMessage, SynthesisResult]]
         ] = asyncio.Queue()
