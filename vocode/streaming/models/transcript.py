@@ -1,10 +1,16 @@
+import json
 import time
-from typing import List, Optional, Tuple
+from copy import copy
+from copy import deepcopy
+from typing import List, Optional, Tuple, Any, Dict
 
 from pydantic import BaseModel, Field
+
 from vocode.streaming.models.actions import ActionInput, ActionOutput
 from vocode.streaming.models.events import ActionEvent, Sender, Event, EventType
 from vocode.streaming.utils.events_manager import EventsManager
+
+SENDER_TO_OPENAI_ROLE = {Sender.HUMAN: 'user', Sender.BOT: 'assistant'}
 
 
 class EventLog(BaseModel):
@@ -55,18 +61,110 @@ class Summary(BaseModel):
         return f"{self.text}"
 
 
+class BeliefStateEntry(BaseModel):
+    belief_state: Any
+    decision: Optional[Any]
+
+    start_message_index: int
+    end_message_index: Optional[int] = None
+
+    timestamp: float = Field(default_factory=time.time)
+
+
 class Transcript(BaseModel):
     event_logs: List[EventLog] = []
     start_time: float = Field(default_factory=time.time)
     events_manager: Optional[EventsManager] = None
     summaries: Optional[List[Summary]] = None
 
+    dialog_states_history: List[BeliefStateEntry] = []
+    current_dialog_state: Optional[Any] = None
+    current_start_index: int = -1
+
     class Config:
         arbitrary_types_allowed = True
+
+    def log_dialog_state(self, new_dialog_state: Any, decision: Optional[Any] = None):
+        if self.current_dialog_state is not None:
+            # Push the current belief state to the history before updating it
+            self.dialog_states_history.append(
+                BeliefStateEntry(
+                    belief_state=self.current_dialog_state.copy(),
+                    decision=copy(decision),
+                    start_message_index=self.current_start_index,
+                    end_message_index=len(self.event_logs) - 1,  # Index of the last message before the new state
+                )
+            )
+        # Update current belief state and start index
+        self.current_dialog_state = new_dialog_state.copy()
+        self.current_start_index = len(self.event_logs)  # Next message starts a new range
+
+    def _calculate_diff(self, previous_state: Any, new_state: Any) -> Dict:
+        diff = {}
+        previous_state_dict = previous_state.dict()
+        new_state_dict = new_state.dict()
+        for key, value in new_state_dict.items():
+            if key not in previous_state_dict or previous_state_dict[key] != value:
+                diff[key] = value
+        return diff
 
     @property
     def num_messages(self):
         return len(self.event_logs)
+
+    @property
+    def last_message(self) -> Optional[EventLog]:
+        if self.num_messages == 0:
+            return None
+        return self.event_logs[-1]
+
+    @property
+    def user_messages(self) -> List[Message]:
+        return [message for message in self.event_logs if message.sender == Sender.HUMAN]
+
+    @property
+    def assistant_messages(self) -> List[Message]:
+        return [message for message in self.event_logs if message.sender == Sender.BOT]
+
+    def get_message_history(self):
+        return [{"role": SENDER_TO_OPENAI_ROLE[log.sender], "content": log.text}
+                # all messages except for system message
+                for log in self.event_logs if log.sender in (Sender.BOT, Sender.HUMAN)]
+
+    @property
+    def last_user_message(self) -> Optional[str]:
+        user_messages = self.user_messages
+        if len(user_messages) == 0:
+            return None
+        return user_messages[-1].text
+
+    @property
+    def last_assistant(self) -> Optional[str]:
+        assistant_messages = []
+        temp_messages = []
+
+        # Iterate through each event log entry, reversed
+        for log in reversed(self.event_logs):
+            if log.sender == Sender.BOT:
+                # If the sender is the bot, append message to the temporary list
+                temp_messages.append(log.text)
+            elif log.sender == Sender.HUMAN and temp_messages:
+                # If the sender is human and there are messages in the temporary list,
+                # assign the temporary list to the main list and clear the temporary list
+                assistant_messages = temp_messages.copy()
+                temp_messages = []
+            # If there are no bot messages after a human message, just continue
+
+        # If there were no human messages after the last sequence of bot messages,
+        # assign the temp messages to assistant_messages
+        if temp_messages:
+            assistant_messages = temp_messages
+
+        if assistant_messages:
+            # Join the messages into a single string, maintaining original order
+            return " ".join(reversed(assistant_messages))
+
+        return None
 
     @property
     def last_summary_message_ind(self) -> Optional[int]:
@@ -236,6 +334,43 @@ class Transcript(BaseModel):
             if isinstance(event_log, Message) and event_log.sender == Sender.BOT:
                 event_log.text = text
                 break
+
+    def render_conversation(self, include_belief_state: bool = False) -> str:
+        conversation_str = ""
+        extended_dialog_states = deepcopy(self.dialog_states_history)  # to avoid adding to the history.
+
+        # Append the current dialog state to the history if it's not None
+        if self.current_dialog_state is not None:
+            extended_dialog_states.append(
+                BeliefStateEntry(
+                    belief_state=self.current_dialog_state,
+                    start_message_index=self.current_start_index,
+                    # We don't have an end index for the current state, so we use the length of the messages
+                    end_message_index=len(self.event_logs)
+                )
+            )
+
+        current_entry_index = 0
+
+        for log_index, log in enumerate(self.event_logs):
+            # Before printing the log, check if a new belief state should start with this index
+            if include_belief_state and current_entry_index < len(extended_dialog_states):
+                current_entry = extended_dialog_states[current_entry_index]
+
+                # If the current log index is the start for the next belief state, print this belief state
+                if log_index >= current_entry.start_message_index:
+                    conversation_str += f"Now using new belief state:\n{current_entry.belief_state.json(indent=4)}\n"
+
+                    if current_entry.decision:
+                        conversation_str += f"Decision made based on the belief state:\n{current_entry.decision}\n"
+
+                    # Move to the next entry in the dialog state history
+                    current_entry_index += 1
+
+            # Now, print the log message
+            conversation_str += f"{log.timestamp} {log.sender}: {log.text}\n"
+
+        return conversation_str
 
 
 class TranscriptEvent(Event, type=EventType.TRANSCRIPT):

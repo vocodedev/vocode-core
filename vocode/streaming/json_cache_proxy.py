@@ -1,3 +1,5 @@
+from threading import Lock
+
 import json
 import os
 from typing import Union, Callable
@@ -26,6 +28,7 @@ def json_file_to_dict(file_path: str):
 class JsonCacheProxy:
 
     DEFAULT_CACHE_STORAGE_PATH = os.path.dirname(os.path.abspath(__file__)) + '/cache/'
+    LOCK = Lock()
 
     def __init__(self, name: str, func: Callable, postprocess_func: Callable = lambda x: x,
                  cache_storage_path=DEFAULT_CACHE_STORAGE_PATH):
@@ -45,10 +48,11 @@ class JsonCacheProxy:
         return self.get(key)
 
     def get(self, key):
-        value = self.cache.get(key, None)
-        if value is None:
-            value = self.func(key)
-            self.set(key, value)
+        with self.LOCK:
+            value = self.cache.get(key, None)
+            if value is None:
+                value = self.func(key)
+                self.set(key, value)
 
         return self.postprocess_func(value)
 
@@ -57,9 +61,10 @@ class JsonCacheProxy:
         dict_to_json_file(self.cache, self.filepath)
 
     def remove(self, key):
-        if key in self.cache:
-            del self.cache[key]
-            dict_to_json_file(self.cache, self.filepath)
+        with self.LOCK:
+            if key in self.cache:
+                del self.cache[key]
+                dict_to_json_file(self.cache, self.filepath)
 
     def dump_to_file(self):
         dict_to_json_file(self.cache, self.filepath)

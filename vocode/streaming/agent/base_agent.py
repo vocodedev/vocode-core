@@ -225,6 +225,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
+
             self.logger.debug("Produced response `%s`", response)
         # TODO: implement should_stop for generate_responses
         agent_span.end()
