@@ -35,7 +35,6 @@ class GladiaTranscriber(BaseAsyncTranscriber[GladiaTranscriberConfig]):
                 "Please set GLADIA_API_KEY environment variable or pass it as a parameter"
             )
         self._ended = False
-        self.logger = logger or logging.getLogger(__name__)
         if self.transcriber_config.endpointing_config:
             raise Exception("Gladia endpointing config not supported yet")
 

@@ -19,8 +19,8 @@ class NoiseCancelerFactory:
         if isinstance(config, WebRTCNoiseCancelingConfig):
             logger.debug("using WebRTC noise canceler")
             return WebRTCNoiseCanceler(config, logger=logger)
-        # if isinstance(config, RRNWrapperNoiseCancelingConfig):
-        #     return RRNWrapperNoiseCanceler(config, logger=logger)
+        if isinstance(config, RRNWrapperNoiseCancelingConfig):
+            return RRNWrapperNoiseCanceler(config, logger=logger)
         if isinstance(config, NoiseReduceNoiseCancelingConfig):
             return NoiseReduceNoiseCanceler(config, logger=logger)
         if isinstance(config, PicoVoiceNoiseCancelingConfig):

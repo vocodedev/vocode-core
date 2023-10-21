@@ -1,26 +1,26 @@
 import asyncio
+import audioop
 import json
 import logging
 from typing import Optional
+from urllib.parse import urlencode
+
 import websockets
 from websockets.client import WebSocketClientProtocol
-import audioop
-from urllib.parse import urlencode
-from vocode import getenv
 
+from vocode import getenv
+from vocode.streaming.models.audio_encoding import AudioEncoding
+from vocode.streaming.models.transcriber import (
+    DeepgramTranscriberConfig,
+    EndpointingType,
+    PunctuationEndpointingConfig,
+    TimeEndpointingConfig,
+)
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
     Transcription,
     meter,
 )
-from vocode.streaming.models.transcriber import (
-    DeepgramTranscriberConfig,
-    EndpointingConfig,
-    EndpointingType,
-    PunctuationEndpointingConfig,
-    TimeEndpointingConfig,
-)
-from vocode.streaming.models.audio_encoding import AudioEncoding
 
 PUNCTUATION_TERMINATORS = [".", "!", "?"]
 NUM_RESTARTS = 5
@@ -166,7 +166,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                                   and (time_silent + deepgram_response["duration"])
                                   > self.transcriber_config.endpointing_config.time_cutoff_seconds
                           )
-            if is_finished and self.transcriber_config.skip_on_filler_audio:
+            if is_finished and self.transcriber_config.skip_on_back_track_audio:
                 is_interrupt_task = asyncio.create_task(
                     self.skip_model.is_filler(transcript)
                 )
@@ -223,6 +223,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         self.logger.debug(f"Got error {e} in Deepgram receiver")
                         break
                     data = json.loads(msg)
+                    self.logger.debug(f"Received data from Deepgram {data}")
                     if not "is_final" in data:  # means we've finished receiving transcriptions
                         break
                     cur_max_latency = self.audio_cursor - transcript_cursor

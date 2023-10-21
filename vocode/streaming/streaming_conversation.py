@@ -297,9 +297,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
             assert self.conversation.filler_audio_worker is not None
             self.conversation.logger.debug("Sending filler audio")
-            print('*' * 10 + 'Last User Message' + '*' * 10)
-            print(self.conversation.transcript.get_last_user_message()[8:])
-            print('*' * 10 + 'Last User Message' + '*' * 10)
             if self.conversation.synthesizer.filler_audios:
                 filler_audio: Optional[FillerAudio] = None
                 if '?' in self.conversation.transcript.get_last_user_message()[-1] and \

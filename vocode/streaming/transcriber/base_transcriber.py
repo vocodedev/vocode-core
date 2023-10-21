@@ -64,10 +64,13 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
             logger: Optional[logging.Logger] = None,
 
     ):
-        self.transcriber_config = transcriber_config
         self.logger = logger or logging.getLogger(__name__)
 
-        if self.transcriber_config.skip_on_filler_audio:
+        self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
+        self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
+        AsyncWorker.__init__(self, self.input_queue, self.output_queue)
+        AbstractTranscriber.__init__(self, transcriber_config)
+        if self.transcriber_config.skip_on_back_track_audio:
             self.skip_model: BackTrackingModel = BackTrackingModel(logger=self.logger)
             self.interrupt_model_initialize_task = asyncio.create_task(
                 self.skip_model.initialize_embeddings()
@@ -78,14 +81,9 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
             self.interrupt_model_initialize_task = asyncio.create_task(
                 self.interrupt_model.initialize_embeddings()
             )
-
-        self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
-        self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
         context_tracker_factory = ContextTrackerFactory()
         self.context_tracker = context_tracker_factory.create_context_tracker(
             transcriber_config.context_tracker_config, logger)
-        AsyncWorker.__init__(self, self.input_queue, self.output_queue)
-        AbstractTranscriber.__init__(self, transcriber_config)
 
     async def _run_loop(self):
         raise NotImplementedError
