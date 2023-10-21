@@ -10,7 +10,7 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.model import BaseModel
 
 from vocode.streaming.models.transcriber import TranscriberConfig
-from vocode.streaming.utils.FillerModel import FillerModel
+from vocode.streaming.utils.back_tracking_model import BackTrackingModel
 from vocode.streaming.utils.interrupt_model import InterruptModel
 from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
 from vocode.utils.context_tracker.factory import ContextTrackerFactory
@@ -68,7 +68,7 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
         self.logger = logger or logging.getLogger(__name__)
 
         if self.transcriber_config.skip_on_filler_audio:
-            self.skip_model: FillerModel = FillerModel(logger=self.logger)
+            self.skip_model: BackTrackingModel = BackTrackingModel(logger=self.logger)
             self.interrupt_model_initialize_task = asyncio.create_task(
                 self.skip_model.initialize_embeddings()
             )
