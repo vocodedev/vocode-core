@@ -223,7 +223,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         self.logger.debug(f"Got error {e} in Deepgram receiver")
                         break
                     data = json.loads(msg)
-                    self.logger.debug(f"Deepgram response: {data}")
                     if not "is_final" in data:  # means we've finished receiving transcriptions
                         break
                     cur_max_latency = self.audio_cursor - transcript_cursor
@@ -241,7 +240,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
                     is_final = data["is_final"]
                     speech_final = await self.is_speech_final(buffer, data, time_silent)
-                    self.logger.debug("Deepgram is_final: {}, buffer: {}".format(is_final, buffer))
                     top_choice = data["channel"]["alternatives"][0]
                     confidence = top_choice["confidence"]
 
@@ -255,8 +253,9 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                                                             + confidence / (num_buffer_utterances)
                                                     ) * (num_buffer_utterances / (num_buffer_utterances + 1))
                         num_buffer_utterances += 1
-                    self.logger.debug(f"before speech_final")
                     if speech_final:
+                        self.logger.debug(f"context tracker: {self.context_tracker}")
+                        self.logger.debug(f"is part of context: {self.context_tracker.is_part_of_context(buffer)}")
                         # if (self.context_tracker is None) or self.context_tracker.is_part_of_context(buffer):
                         self.output_queue.put_nowait(
                             Transcription(
