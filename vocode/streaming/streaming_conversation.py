@@ -208,7 +208,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def process(self, item: InterruptableAgentResponseEvent[FillerAudio]):
             try:
-                self.conversation.logger.debug(f"Waiting for {self.name} to start")
+                self.conversation.logger.debug(f"Waiting for {self.name} to start, config is: {self.config}")
                 filler_audio = item.payload
                 assert self.config is not None
                 filler_synthesis_result = filler_audio.create_synthesis_result()
@@ -509,7 +509,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.back_tracking_config: Optional[BackTrackingConfig] = None
         if self.agent.get_agent_config().send_back_tracking_audio:
             self.back_tracking_worker = self.BackTrackingWorker(
-                input_queue=self.back_tracking_audio_queue, conversation=self
+                input_queue=self.back_tracking_audio_queue, conversation=self,
             )
         self.events_manager = events_manager or EventsManager()
         self.events_task: Optional[asyncio.Task] = None
