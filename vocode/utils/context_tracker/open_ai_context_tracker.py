@@ -39,7 +39,7 @@ class OpenAIContextTracker(BaseContextTracker[OpenAIContextTrackerConfig]):
 
         self.messages = [{"role": "system", "content": self.config.prompt}]
 
-    async def is_part_of_context(self, user_message: str) -> bool:
+    def is_part_of_context(self, user_message: str) -> bool:
         parameters = self._generate_parameters(user_message)
 
         response = openai.ChatCompletion.create(**parameters)

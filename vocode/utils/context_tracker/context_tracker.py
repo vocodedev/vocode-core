@@ -22,7 +22,7 @@ class BaseContextTracker(Generic[ContextTrackerConfigType]):
         self.logger: logging.Logger = logger or logging.getLogger(__name__)
         self.config = config
 
-    async def is_part_of_context(self, user_message: str) -> bool:
+    def is_part_of_context(self, user_message: str) -> bool:
         raise NotImplementedError
 
     def get_context_tracker_config(self) -> BaseContextTrackerConfig:
