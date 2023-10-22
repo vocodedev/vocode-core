@@ -240,6 +240,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
                     is_final = data["is_final"]
                     speech_final = await self.is_speech_final(buffer, data, time_silent)
+                    self.logger.debug("Deepgram is_final: {}, buffer: {}".format(is_final, buffer))
                     top_choice = data["channel"]["alternatives"][0]
                     confidence = top_choice["confidence"]
 

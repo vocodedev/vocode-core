@@ -573,7 +573,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             ):
                 self.back_tracking_config = BackTrackingConfig()
             else:
-                self.logger.debug("Setting back tracking audio 3")
                 self.back_tracking_config = typing.cast(
                     BackTrackingConfig,
                     self.agent.get_agent_config().send_back_tracking_audio,
