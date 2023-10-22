@@ -208,6 +208,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def process(self, item: InterruptableAgentResponseEvent[FillerAudio]):
             try:
+                self.conversation.logger.debug(f"Waiting for {self.name} to start")
                 filler_audio = item.payload
                 assert self.config is not None
                 filler_synthesis_result = filler_audio.create_synthesis_result()
@@ -216,6 +217,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.config.silence_threshold_seconds
                 )
                 await asyncio.sleep(silence_threshold)
+                self.conversation.logger.debug(f"Finished waiting for {self.name} to start")
                 self.conversation.logger.debug(f"Sending {self.name} to output")
                 self.filler_audio_started_event = threading.Event()
                 await self.conversation.send_speech_to_output(

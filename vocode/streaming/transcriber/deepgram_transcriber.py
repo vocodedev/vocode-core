@@ -250,7 +250,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         else:
                             buffer_avg_confidence = (
                                                             buffer_avg_confidence
-                                                            + confidence / (num_buffer_utterances)
+                                                            + confidence / num_buffer_utterances
                                                     ) * (num_buffer_utterances / (num_buffer_utterances + 1))
                         num_buffer_utterances += 1
                     if speech_final:
@@ -262,7 +262,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                                     is_final=True,
                                 )
                             )
-                        self.logger.debug(f"after speech final, buffer: {buffer}")
                         buffer = ""
                         buffer_avg_confidence = 0
                         num_buffer_utterances = 1
