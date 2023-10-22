@@ -216,6 +216,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 silence_threshold = (
                     self.config.silence_threshold_seconds
                 )
+                self.conversation.logger.debug(f"Waiting for {silence_threshold} seconds before sending {self.name} to output")
                 await asyncio.sleep(silence_threshold)
                 self.conversation.logger.debug(f"Finished waiting for {self.name} to start")
                 self.conversation.logger.debug(f"Sending {self.name} to output")
