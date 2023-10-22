@@ -150,7 +150,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.logger.debug("sending interrupt")
                 self.conversation.logger.debug("Human started speaking")
                 if self.conversation.agent.get_agent_config().send_back_tracking_audio:
-                    self.send_back_tracking_audio(None)
+                    self.send_back_tracking_audio(asyncio.Event())
 
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt

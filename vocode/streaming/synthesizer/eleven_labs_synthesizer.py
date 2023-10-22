@@ -162,7 +162,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                         output_encoding=self.synthesizer_config.audio_encoding,
                     ),
                     synthesizer_config=self.synthesizer_config,
-                    is_interruptable=True,
+                    is_interruptable=False,
                     seconds_per_chunk=2,
                 )
             )
