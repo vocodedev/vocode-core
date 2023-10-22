@@ -149,7 +149,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if self.conversation.current_transcription_is_interrupt:
                     self.conversation.logger.debug("sending interrupt")
                 self.conversation.logger.debug("Human started speaking")
-                self.send_back_tracking_audio(None)
+                if self.conversation.agent.get_agent_config().send_back_tracking_audio:
+                    self.send_back_tracking_audio(None)
 
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
