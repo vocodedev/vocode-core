@@ -13,6 +13,7 @@ from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.utils.back_tracking_model import BackTrackingModel
 from vocode.streaming.utils.interrupt_model import InterruptModel
 from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
+from vocode.utils.context_tracker import BaseContextTracker
 from vocode.utils.context_tracker.factory import ContextTrackerFactory
 
 tracer = trace.get_tracer(__name__)
@@ -82,6 +83,7 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
                 self.interrupt_model.initialize_embeddings()
             )
         context_tracker_factory = ContextTrackerFactory()
+        self.context_tracker: Optional[BaseContextTracker] = None
         if transcriber_config.context_tracker_config:
             self.context_tracker = context_tracker_factory.create_context_tracker(
                 transcriber_config.context_tracker_config, logger)
