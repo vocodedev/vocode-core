@@ -255,16 +255,17 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                                                             + confidence / (num_buffer_utterances)
                                                     ) * (num_buffer_utterances / (num_buffer_utterances + 1))
                         num_buffer_utterances += 1
-
+                    self.logger.debug(f"before speech_final")
                     if speech_final:
-                        if (self.context_tracker is None) or self.context_tracker.is_part_of_context(buffer):
-                            self.output_queue.put_nowait(
-                                Transcription(
-                                    message=buffer,
-                                    confidence=buffer_avg_confidence,
-                                    is_final=True,
-                                )
+                        # if (self.context_tracker is None) or self.context_tracker.is_part_of_context(buffer):
+                        self.output_queue.put_nowait(
+                            Transcription(
+                                message=buffer,
+                                confidence=buffer_avg_confidence,
+                                is_final=True,
                             )
+                        )
+                        self.logger.debug(f"after speech final, buffer: {buffer}")
                         buffer = ""
                         buffer_avg_confidence = 0
                         num_buffer_utterances = 1
