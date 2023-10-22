@@ -1,8 +1,9 @@
 import logging
-from typing import Optional
-
+from typing import Optional, Union
 from vocode import getenv
+
 from vocode.streaming.models.agent import AgentConfig
+from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.synthesizer import (
     SynthesizerConfig,
 )

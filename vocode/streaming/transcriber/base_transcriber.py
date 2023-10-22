@@ -82,8 +82,9 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
                 self.interrupt_model.initialize_embeddings()
             )
         context_tracker_factory = ContextTrackerFactory()
-        self.context_tracker = context_tracker_factory.create_context_tracker(
-            transcriber_config.context_tracker_config, logger)
+        if transcriber_config.context_tracker_config:
+            self.context_tracker = context_tracker_factory.create_context_tracker(
+                transcriber_config.context_tracker_config, logger)
 
     async def _run_loop(self):
         raise NotImplementedError

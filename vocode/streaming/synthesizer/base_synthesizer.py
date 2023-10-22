@@ -1,10 +1,8 @@
 import asyncio
 import logging
-import os
 from typing import (
     Any,
     AsyncGenerator,
-    Generator,
     Callable,
     Generic,
     List,
@@ -28,7 +26,7 @@ from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
 from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.models.synthesizer import SynthesizerConfig
+from vocode.streaming.models.synthesizer import SynthesizerConfig, TYPING_NOISE_PATH
 
 FILLER_PHRASES = {
     "QUESTIONS": [
@@ -54,9 +52,6 @@ BACK_TRACKING_PHRASES = [
     BaseMessage(text="I understand..."),
     BaseMessage(text="I get it..."),
 ]
-FILLER_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "filler_audio")
-BACK_TRACKING_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "back_tracking_audio")
-TYPING_NOISE_PATH = "%s/typing-noise.wav" % FILLER_AUDIO_PATH
 
 
 def encode_as_wav(chunk: bytes, synthesizer_config: SynthesizerConfig) -> bytes:

@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
@@ -11,7 +12,10 @@ from vocode.streaming.telephony.constants import (
 )
 from .model import BaseModel, TypedModel
 from .audio_encoding import AudioEncoding
-from ..synthesizer.base_synthesizer import FILLER_AUDIO_PATH, BACK_TRACKING_AUDIO_PATH
+
+FILLER_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "filler_audio")
+BACK_TRACKING_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "back_tracking_audio")
+TYPING_NOISE_PATH = "%s/typing-noise.wav" % FILLER_AUDIO_PATH
 
 
 class SynthesizerType(str, Enum):

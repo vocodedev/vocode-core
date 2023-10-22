@@ -8,7 +8,7 @@ from vocode.utils.context_tracker.open_ai_context_tracker import OpenAIContextTr
 class ContextTrackerFactory:
     @staticmethod
     def create_context_tracker(
-            transcriber_config: BaseContextTrackerConfig,
+            transcriber_config: Optional[BaseContextTrackerConfig],
             logger: Optional[logging.Logger] = None,
     ):
         if isinstance(transcriber_config, OpenAIContextTrackerConfig):

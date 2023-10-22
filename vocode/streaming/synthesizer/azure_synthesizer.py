@@ -1,31 +1,27 @@
 import asyncio
-from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 import re
-from typing import Any, List, Optional, Tuple, Dict
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Optional, Dict
 from xml.etree import ElementTree
+
 import aiohttp
+import azure.cognitiveservices.speech as speechsdk
+
 from vocode import getenv
-from opentelemetry.context.context import Context
-
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
+from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.message import BaseMessage, SSMLMessage
-
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
     FILLER_PHRASES,
-    FILLER_AUDIO_PATH,
     FillerAudio,
     encode_as_wav,
-    tracer,
 )
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig, SynthesizerType
-from vocode.streaming.models.audio_encoding import AudioEncoding
-
-import azure.cognitiveservices.speech as speechsdk
 
 NAMESPACES = {
     "mstts": "https://www.w3.org/2001/mstts",
@@ -130,7 +126,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                         str(self.rate),
                     )
                 )
-                filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.bytes")
+                filler_audio_path = os.path.join(self.base_filler_audio_path, f"{cache_key}.bytes")
                 if os.path.exists(filler_audio_path):
                     audio_data = open(filler_audio_path, "rb").read()
                 else:
