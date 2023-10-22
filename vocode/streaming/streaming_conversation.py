@@ -513,7 +513,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.filler_audio_config = typing.cast(
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
-            await self.synthesizer.set_filler_audios(self.filler_audio_config)
+
         if self.agent.get_agent_config().send_back_tracking_audio:
             if not isinstance(
                     self.agent.get_agent_config().send_back_tracking_audio,
@@ -525,7 +525,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     BackTrackingConfig,
                     self.agent.get_agent_config().send_back_tracking_audio,
                 )
-            await self.synthesizer.set_back_tracking_audios(self.back_tracking_config)
 
         self.filler_audio_worker = None
         self.back_tracking_worker = None
@@ -577,8 +576,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.output_device.start()
 
         if self.filler_audio_worker is not None:
+            await self.synthesizer.set_filler_audios(self.filler_audio_config)
             self.filler_audio_worker.start()
         if self.back_tracking_worker is not None:
+            await self.synthesizer.set_back_tracking_audios(self.back_tracking_config)
             self.back_tracking_worker.start()
         if self.actions_worker is not None:
             self.actions_worker.start()
