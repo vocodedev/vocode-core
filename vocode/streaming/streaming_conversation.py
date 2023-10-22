@@ -487,6 +487,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.actions_worker = None
         self.back_tracking_config: Optional[BackTrackingConfig] = None
         self.filler_audio_config: Optional[FillerAudioConfig] = None
+        self.filler_audio_worker = None
+        self.back_tracking_worker = None
 
         if self.agent.get_agent_config().actions:
             self.actions_worker = ActionsWorker(
@@ -509,6 +511,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.filler_audio_config = typing.cast(
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
+            self.filler_audio_worker = self.FillerAudioWorker(
+                input_queue=self.filler_audio_queue, conversation=self
+            )
 
         if self.agent.get_agent_config().send_back_tracking_audio:
             if not isinstance(
@@ -521,17 +526,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     BackTrackingConfig,
                     self.agent.get_agent_config().send_back_tracking_audio,
                 )
-
-        self.filler_audio_worker = None
-        self.back_tracking_worker = None
-        if self.agent.get_agent_config().send_filler_audio:
-            self.filler_audio_worker = self.FillerAudioWorker(
-                input_queue=self.filler_audio_queue, conversation=self
-            )
-        if self.agent.get_agent_config().send_back_tracking_audio:
             self.back_tracking_worker = self.BackTrackingWorker(
                 input_queue=self.back_tracking_audio_queue, conversation=self,
             )
+
         self.events_manager = events_manager or EventsManager()
         self.events_task: Optional[asyncio.Task] = None
         self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
@@ -571,10 +569,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.synthesis_results_worker.start()
         self.output_device.start()
 
-        if self.filler_audio_worker is not None:
+        if self.filler_audio_worker is not None and self.filler_audio_config is not None:
             await self.synthesizer.set_filler_audios(self.filler_audio_config)
             self.filler_audio_worker.start()
-        if self.back_tracking_worker is not None:
+        if self.back_tracking_worker is not None and self.back_tracking_config is not None:
             await self.synthesizer.set_back_tracking_audios(self.back_tracking_config)
             self.back_tracking_worker.start()
         if self.actions_worker is not None:
