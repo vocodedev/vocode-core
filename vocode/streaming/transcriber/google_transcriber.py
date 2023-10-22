@@ -77,11 +77,14 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
         super().terminate()
 
     def process_responses_loop(self, responses):
-        for response in responses:
-            self._on_response(response)
+        try:
+            for response in responses:
+                self._on_response(response)
 
-            if self._ended:
-                break
+                if self._ended:
+                    break
+        except Exception as exception:
+            self._run_loop()
 
     def _on_response(self, response):
         if not response.results:
