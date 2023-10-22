@@ -216,7 +216,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 silence_threshold = (
                     self.config.silence_threshold_seconds
                 )
-                self.conversation.logger.debug(f"Waiting for {silence_threshold} seconds before sending {self.name} to output")
+                self.conversation.logger.debug(
+                    f"Waiting for {silence_threshold} seconds before sending {self.name} to output")
                 await asyncio.sleep(silence_threshold)
                 self.conversation.logger.debug(f"Finished waiting for {self.name} to start")
                 self.conversation.logger.debug(f"Sending {self.name} to output")
@@ -488,6 +489,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             interruptable_event_factory=self.interruptable_event_factory,
         )
         self.actions_worker = None
+        self.back_tracking_config: Optional[BackTrackingConfig] = None
+        self.filler_audio_config: Optional[FillerAudioConfig] = None
+
         if self.agent.get_agent_config().actions:
             self.actions_worker = ActionsWorker(
                 input_queue=self.agent.actions_queue,
@@ -499,14 +503,36 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.synthesis_results_worker = self.SynthesisResultsWorker(
             input_queue=self.synthesis_results_queue, conversation=self
         )
+
+        if self.agent.get_agent_config().send_filler_audio:
+            if not isinstance(
+                    self.agent.get_agent_config().send_filler_audio, FillerAudioConfig
+            ):
+                self.filler_audio_config = FillerAudioConfig()
+            else:
+                self.filler_audio_config = typing.cast(
+                    FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
+                )
+            await self.synthesizer.set_filler_audios(self.filler_audio_config)
+        if self.agent.get_agent_config().send_back_tracking_audio:
+            if not isinstance(
+                    self.agent.get_agent_config().send_back_tracking_audio,
+                    BackTrackingConfig,
+            ):
+                self.back_tracking_config = BackTrackingConfig()
+            else:
+                self.back_tracking_config = typing.cast(
+                    BackTrackingConfig,
+                    self.agent.get_agent_config().send_back_tracking_audio,
+                )
+            await self.synthesizer.set_back_tracking_audios(self.back_tracking_config)
+
         self.filler_audio_worker = None
-        self.filler_audio_config: Optional[FillerAudioConfig] = None
+        self.back_tracking_worker = None
         if self.agent.get_agent_config().send_filler_audio:
             self.filler_audio_worker = self.FillerAudioWorker(
                 input_queue=self.filler_audio_queue, conversation=self
             )
-        self.back_tracking_worker = None
-        self.back_tracking_config: Optional[BackTrackingConfig] = None
         if self.agent.get_agent_config().send_back_tracking_audio:
             self.back_tracking_worker = self.BackTrackingWorker(
                 input_queue=self.back_tracking_audio_queue, conversation=self,
@@ -559,28 +585,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         is_ready = await self.transcriber.ready()
         if not is_ready:
             raise Exception("Transcriber startup failed")
-        if self.agent.get_agent_config().send_filler_audio:
-            if not isinstance(
-                    self.agent.get_agent_config().send_filler_audio, FillerAudioConfig
-            ):
-                self.filler_audio_config = FillerAudioConfig()
-            else:
-                self.filler_audio_config = typing.cast(
-                    FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
-                )
-            await self.synthesizer.set_filler_audios(self.filler_audio_config)
-        if self.agent.get_agent_config().send_back_tracking_audio:
-            if not isinstance(
-                    self.agent.get_agent_config().send_back_tracking_audio,
-                    BackTrackingConfig,
-            ):
-                self.back_tracking_config = BackTrackingConfig()
-            else:
-                self.back_tracking_config = typing.cast(
-                    BackTrackingConfig,
-                    self.agent.get_agent_config().send_back_tracking_audio,
-                )
-            await self.synthesizer.set_back_tracking_audios(self.back_tracking_config)
+
         self.agent.start()
         initial_message = self.agent.get_agent_config().initial_message
         if initial_message:
