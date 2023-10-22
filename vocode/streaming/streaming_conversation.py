@@ -1,64 +1,59 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import queue
 import random
 import threading
-from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, cast
-import logging
 import time
 import typing
+from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 
 from vocode.streaming.action.worker import ActionsWorker
-
-from vocode.streaming.agent.bot_sentiment_analyser import (
-    BotSentimentAnalyser,
-)
-from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.streaming.models.actions import ActionInput
-from vocode.streaming.models.events import Sender
-from vocode.streaming.models.transcript import (
-    Message,
-    Transcript,
-    TranscriptCompleteEvent,
-)
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
-from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.telephony.noise_canceler.base_noise_canceler import BaseNoiseCanceler
-from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
-from vocode.streaming.utils.events_manager import EventsManager
-from vocode.streaming.utils.goodbye_model import GoodbyeModel
-
-from vocode.streaming.models.agent import ChatGPTAgentConfig, FillerAudioConfig, BackTrackingConfig
-from vocode.streaming.models.synthesizer import (
-    SentimentConfig,
-)
-from vocode.streaming.constants import (
-    TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
-    PER_CHUNK_ALLOWANCE_SECONDS,
-    ALLOWED_IDLE_TIME,
-)
 from vocode.streaming.agent.base_agent import (
     AgentInput,
     AgentResponse,
     AgentResponseFillerAudio,
     AgentResponseMessage,
     AgentResponseStop,
-    AgentResponseType,
     BaseAgent,
     TranscriptionAgentInput, AgentResponseBackTrackingAudio,
 )
+from vocode.streaming.agent.bot_sentiment_analyser import (
+    BotSentimentAnalyser,
+)
+from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode.streaming.constants import (
+    TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
+    PER_CHUNK_ALLOWANCE_SECONDS,
+    ALLOWED_IDLE_TIME,
+)
+from vocode.streaming.models.agent import FillerAudioConfig, BackTrackingConfig
+from vocode.streaming.models.events import Sender
+from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.synthesizer import (
+    SentimentConfig,
+)
+from vocode.streaming.models.transcriber import TranscriberConfig
+from vocode.streaming.models.transcript import (
+    Message,
+    Transcript,
+    TranscriptCompleteEvent,
+)
+from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
     FillerAudio,
 )
-from vocode.streaming.utils import create_conversation_id, get_chunk_size_per_second
+from vocode.streaming.telephony.noise_canceler.base_noise_canceler import BaseNoiseCanceler
 from vocode.streaming.transcriber.base_transcriber import (
     Transcription,
     BaseTranscriber,
 )
+from vocode.streaming.utils import create_conversation_id, get_chunk_size_per_second
+from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
+from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
@@ -66,11 +61,7 @@ from vocode.streaming.utils.worker import (
     InterruptableEvent,
     InterruptableEventFactory,
     InterruptableAgentResponseEvent,
-    InterruptableWorker,
 )
-from vocode.streaming.utils import convert_wav
-from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
 
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
 
@@ -120,6 +111,23 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation = conversation
             self.interruptable_event_factory = interruptable_event_factory
 
+        def send_back_tracking_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+            assert self.conversation.back_tracking_worker is not None
+            self.conversation.logger.debug("Sending back tracking audio")
+            if self.conversation.synthesizer.back_tracking_audios:
+                back_tracking_audio = random.choice(
+                    self.conversation.synthesizer.back_tracking_audios
+                )
+                self.conversation.logger.debug(f"Chose {back_tracking_audio.message.text} for back tracking")
+                event = self.interruptable_event_factory.create_interruptable_agent_response_event(
+                    back_tracking_audio,
+                    is_interruptable=back_tracking_audio.is_interruptable,
+                    agent_response_tracker=agent_response_tracker,
+                )
+                self.conversation.back_tracking_worker.consume_nonblocking(event)
+            else:
+                self.conversation.logger.debug("No back tracking audio available")
+
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
             if transcription.message.strip() == "":
@@ -141,6 +149,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if self.conversation.current_transcription_is_interrupt:
                     self.conversation.logger.debug("sending interrupt")
                 self.conversation.logger.debug("Human started speaking")
+                self.send_back_tracking_audio(None)
 
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
@@ -277,23 +286,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
             )
 
-        def send_back_tracking_audio(self, agent_response_tracker: Optional[asyncio.Event]):
-            assert self.conversation.back_tracking_worker is not None
-            self.conversation.logger.debug("Sending back tracking audio")
-            if self.conversation.synthesizer.back_tracking_audios:
-                back_tracking_audio = random.choice(
-                    self.conversation.synthesizer.back_tracking_audios
-                )
-                self.conversation.logger.debug(f"Chose {back_tracking_audio.message.text} for back tracking")
-                event = self.interruptable_event_factory.create_interruptable_agent_response_event(
-                    back_tracking_audio,
-                    is_interruptable=back_tracking_audio.is_interruptable,
-                    agent_response_tracker=agent_response_tracker,
-                )
-                self.conversation.back_tracking_worker.consume_nonblocking(event)
-            else:
-                self.conversation.logger.debug("No back tracking audio available")
-
         def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
             assert self.conversation.filler_audio_worker is not None
             self.conversation.logger.debug("Sending filler audio")
@@ -341,9 +333,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 agent_response = item.payload
                 if isinstance(agent_response, AgentResponseFillerAudio):
                     self.send_filler_audio(item.agent_response_tracker)
-                    return
-                if isinstance(agent_response, AgentResponseBackTrackingAudio):
-                    self.send_back_tracking_audio(item.agent_response_tracker)
                     return
                 if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")

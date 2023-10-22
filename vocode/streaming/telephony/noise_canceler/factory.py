@@ -11,8 +11,8 @@ from vocode.streaming.telephony.noise_canceler.web_rtc import WebRTCNoiseCancele
 
 
 class NoiseCancelerFactory:
+    @staticmethod
     def create_noise_canceler(
-            self,
             config: Optional[NoiseCancelingConfig],
             logger: Optional[logging.Logger] = None,
     ):

@@ -181,13 +181,14 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         )
 
     async def set_filler_audios(self, filler_audio_config: FillerAudioConfig):
+        self.logger.debug(f"Setting filler audios")
         if filler_audio_config.use_phrases:
             self.filler_audios = await self.get_phrase_filler_audios()
         elif filler_audio_config.use_typing_noise:
             self.filler_audios = {"TYPING": [self.get_typing_noise_filler_audio()]}
 
     async def set_back_tracking_audios(self, filler_audio_config: BackTrackingConfig):
-        print("setting back tracking audios")
+        self.logger.debug(f"Setting back tracking audios")
         if filler_audio_config.use_phrases:
             self.back_tracking_audios = await self.get_phrase_back_tracking_audios()
         elif filler_audio_config.use_typing_noise:
