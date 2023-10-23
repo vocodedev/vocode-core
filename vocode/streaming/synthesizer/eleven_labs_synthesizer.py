@@ -182,7 +182,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     self.logger.debug(f"Found similar synthesized text in vector_db: {text_message}")
                     self.logger.debug(f"Original text: {message.text}")
                     try:
-                        audio_data = load_from_s3(
+                        audio_data = await load_from_s3(
                             bucket_name=self.bucket_name, 
                             object_key=object_id
                         )
