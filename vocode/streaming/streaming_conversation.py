@@ -457,7 +457,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     except asyncio.TimeoutError:
                         pass
                 if self.conversation.agent.get_agent_config().send_follow_up_audio:
-                    self.produce_interruptable_agent_response_event_nonblocking(
+                    self.conversation.agent_responses_worker.produce_interruptable_agent_response_event_nonblocking(
                         AgentResponseFollowUpAudio(),
                         is_interruptable=True,
                         agent_response_tracker=asyncio.Event(),
