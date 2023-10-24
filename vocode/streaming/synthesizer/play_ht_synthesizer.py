@@ -1,12 +1,7 @@
-import asyncio
-import io
 import logging
 from typing import Optional
 
 from aiohttp import ClientSession, ClientTimeout
-from pydub import AudioSegment
-import requests
-from opentelemetry.context.context import Context
 
 from vocode import getenv
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
