@@ -255,17 +255,17 @@ class RandomAudioManager:
         else:
             self.logger.debug("No follow up audio available")
 
-    def stop_filler_audio(self):
+    async def stop_filler_audio(self):
         if self.follow_up_worker:
             if self.filler_audio_worker.interrupt_current_filler_audio():
                 await self.filler_audio_worker.wait_for_random_audio_to_finish()
 
-    def stop_back_tracking_audio(self):
+    async def stop_back_tracking_audio(self):
         if self.back_tracking_worker:
             if self.back_tracking_worker.interrupt_current_filler_audio():
                 await self.back_tracking_worker.wait_for_random_audio_to_finish()
 
-    def stop_follow_up_audio(self):
+    async def stop_follow_up_audio(self):
         if self.follow_up_worker:
             if self.follow_up_worker.interrupt_current_filler_audio():
                 await self.follow_up_worker.wait_for_random_audio_to_finish()
