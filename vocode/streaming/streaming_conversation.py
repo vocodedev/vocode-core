@@ -151,9 +151,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.debug("Human started speaking")
                 if self.conversation.agent.get_agent_config().send_back_tracking_audio:
                     self.send_back_tracking_audio(asyncio.Event())
+
                 if self.conversation.agent.agent_config.send_follow_up_audio:
                     if self.conversation.filler_audio_worker.interrupt_current_filler_audio():
                         await self.conversation.filler_audio_worker.wait_for_random_audio_to_finish()
+
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
             )
@@ -301,7 +303,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 follow_up_audio = random.choice(
                     self.conversation.synthesizer.follow_up_audios
                 )
-                self.conversation.logger.debug("Chose follow up audio")
+                self.conversation.logger.debug(f"Chose follow up audio, {follow_up_audio.message.text}")
                 event = self.interruptable_event_factory.create_interruptable_agent_response_event(
                     follow_up_audio,
                     is_interruptable=follow_up_audio.is_interruptable,
@@ -321,21 +323,19 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     filler_audio = random.choice(
                         self.conversation.synthesizer.filler_audios['QUESTIONS']
                     )
-                    self.conversation.logger.debug("Chose question type")
+                    self.conversation.logger.debug(f"Chose question type, text: {filler_audio.message.text}")
 
                 elif not self.conversation.is_interrupted:
                     filler_audio = random.choice(
                         self.conversation.synthesizer.filler_audios['AFFIRMATIONS']
                     )
-                    self.conversation.logger.debug("Chose confirmation type")
+                    self.conversation.logger.debug(f"Chose confirmation type, text: {filler_audio.message.text}")
 
                 elif self.conversation.is_interrupted:
                     filler_audio = random.choice(
                         self.conversation.synthesizer.filler_audios['INTERRUPTIONS']
                     )
-                    self.conversation.logger.debug("Chose interruption type")
-
-                self.conversation.logger.debug(f"Chose {filler_audio.message.text}")
+                    self.conversation.logger.debug(f"Chose interruption type, text: {filler_audio.message.text}")
 
                 event = self.interruptable_event_factory.create_interruptable_agent_response_event(
                     filler_audio,
@@ -359,17 +359,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if isinstance(agent_response, AgentResponseFillerAudio):
                     self.send_filler_audio(item.agent_response_tracker)
                     return
+                if isinstance(agent_response, AgentResponseFollowUpAudio):
+                    self.send_follow_up_audio(item.agent_response_tracker)
+                    return
                 if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")
                     item.agent_response_tracker.set()
                     await self.conversation.terminate()
                     return
-                if isinstance(agent_response, AgentResponseFollowUpAudio):
-                    self.send_follow_up_audio(item.agent_response_tracker)
-                    return
-                agent_response_message = typing.cast(
-                    AgentResponseMessage, agent_response
-                )
 
                 if self.conversation.filler_audio_worker is not None:
                     if self.conversation.filler_audio_worker.interrupt_current_filler_audio():
@@ -377,6 +374,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if self.conversation.back_tracking_worker is not None:
                     if self.conversation.back_tracking_worker.interrupt_current_filler_audio():
                         await self.conversation.back_tracking_worker.wait_for_random_audio_to_finish()
+
+                agent_response_message = typing.cast(
+                    AgentResponseMessage, agent_response
+                )
 
                 self.conversation.logger.debug("Synthesizing speech for message")
                 synthesis_result = await self.conversation.synthesizer.create_speech(
