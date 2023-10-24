@@ -137,7 +137,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     async def _handle_initial_decision(self, chat_response: ConsoleChatResponse, decision: BaseModel):
         if decision.normalize:
             self.logger.warning("Normalizing dialog state")
-            normalized_dialog_state = await self.get_normalized_values(decision.response.values_to_prompt_format)
+            normalized_dialog_state = await self.get_normalized_values(decision.response.values_to_prompt_format, list(decision.response.values_to_normalize))
             normalized_dialog_state = {
                 k: v for k, v in normalized_dialog_state.items() if k in decision.response.dialog_state_update
             }
@@ -251,8 +251,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # handle it better
             return {}
 
-    async def get_normalized_values(self, content: str) -> dict[str, Any]:
-        chat_parameters = self.get_chat_parameters(normalize=True)
+    async def get_normalized_values(self, content: str, keys_to_normalize: List[str]) -> dict[str, Any]:
+        chat_parameters = self.get_chat_parameters(normalize=True, keys_to_normalize=keys_to_normalize)
         # TODO: discuss configs.
         chat_parameters["api_version"] = "2023-07-01-preview"
         chat_parameters["n"] = 3
@@ -317,7 +317,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def get_chat_parameters(self, messages: Optional[List] = None,
                             dialog_state_extract: bool = False,
                             normalize: bool = False,
-                            override_dialog_state: Optional[dict] = None):
+                            override_dialog_state: Optional[dict] = None,
+                            keys_to_normalize: Optional[List[str]] = None):
         assert self.transcript is not None
 
         if dialog_state_extract:
@@ -327,7 +328,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 )
             )
         elif normalize:
-            prompt_preamble = self.agent_config.call_script.render_normalization_prompt()
+            prompt_preamble = self.agent_config.call_script.render_normalization_prompt(keys_to_normalize)
             messages = [{"role": "system", "content": prompt_preamble}]
         else:
             messages = messages or format_openai_chat_messages_from_transcript(
