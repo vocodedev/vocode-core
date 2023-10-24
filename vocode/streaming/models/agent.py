@@ -41,6 +41,7 @@ class AgentType(str, Enum):
 
 
 class RandomResponseAudioConfig(BaseModel):
+    silence_threshold_seconds: float = 0
     use_phrases: bool = True
     use_typing_noise: bool = False
 

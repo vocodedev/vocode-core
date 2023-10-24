@@ -4,8 +4,8 @@ import threading
 import typing
 from typing import Optional
 
-from vocode.streaming.models.agent import FollowUpAudioConfig, FillerAudioConfig, BackTrackingConfig
-from vocode.streaming.streaming_conversation import StreamingConversation
+from vocode.streaming.models.agent import FollowUpAudioConfig, FillerAudioConfig, BackTrackingConfig, \
+    RandomResponseAudioConfig
 from vocode.streaming.synthesizer.base_synthesizer import FillerAudio
 from vocode.streaming.utils.worker import InterruptableAgentResponseWorker, InterruptableAgentResponseEvent
 
@@ -21,8 +21,8 @@ class RandomResponseAudioWorker(InterruptableAgentResponseWorker):
     def __init__(
             self,
             input_queue: asyncio.Queue[InterruptableAgentResponseEvent[FillerAudio]],
-            conversation: StreamingConversation,
-            config,
+            conversation,
+            config: RandomResponseAudioConfig,
     ):
         super().__init__(input_queue=input_queue)
         self.input_queue = input_queue
@@ -93,7 +93,7 @@ class BackTrackingWorker(RandomResponseAudioWorker):
     def __init__(
             self,
             input_queue: asyncio.Queue[InterruptableAgentResponseEvent[FillerAudio]],
-            conversation: StreamingConversation,
+            conversation,
             back_tracking_config: BackTrackingConfig,
     ):
         super().__init__(input_queue, conversation, back_tracking_config)
@@ -105,14 +105,14 @@ class FollowUpAudioWorker(RandomResponseAudioWorker):
     def __init__(
             self,
             input_queue: asyncio.Queue[InterruptableAgentResponseEvent[FillerAudio]],
-            conversation: StreamingConversation,
+            conversation,
             follow_up_audio_config: FollowUpAudioConfig,
     ):
         super().__init__(input_queue, conversation, follow_up_audio_config)
 
 
 class RandomAudioManager:
-    def __init__(self, conversation: StreamingConversation):
+    def __init__(self, conversation):
         self.conversation = conversation
         self.agent_config = self.conversation.agent.get_agent_config()
         self.logger = self.conversation.logger
