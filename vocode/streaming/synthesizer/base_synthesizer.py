@@ -151,6 +151,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         self.synthesizer_config = synthesizer_config
         self.base_filler_audio_path = self.synthesizer_config.base_filler_audio_path
         self.base_back_tracking_audio_path = self.synthesizer_config.base_back_tracking_audio_path
+        self.base_follow_up_audio_path = self.synthesizer_config.base_follow_up_audio_path
         if synthesizer_config.audio_encoding == AudioEncoding.MULAW:
             assert (
                     synthesizer_config.sampling_rate == 8000

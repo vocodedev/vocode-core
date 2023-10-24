@@ -126,25 +126,26 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.logger.debug("generating filler audios")
         filler_phrase_audios = defaultdict(list)
         for emotion, filler_phrases in FILLER_PHRASES.items():
-            audios = await self.get_audios_from_messages(filler_phrases)
+            audios = await self.get_audios_from_messages(filler_phrases, self.base_filler_audio_path)
             filler_phrase_audios[emotion] = audios
         return filler_phrase_audios
 
     async def get_phrase_back_tracking_audios(self) -> List[FillerAudio]:
         self.logger.debug("generating back tracking audios")
-        back_tracking_audios = await self.get_audios_from_messages(BACK_TRACKING_PHRASES)
+        back_tracking_audios = await self.get_audios_from_messages(BACK_TRACKING_PHRASES,
+                                                                   self.base_back_tracking_audio_path)
         return back_tracking_audios
 
     async def get_phrase_follow_up_audios(self) -> List[FillerAudio]:
         self.logger.debug("generating follow up audios")
-        follow_up_audios = await self.get_audios_from_messages(FOLLOW_UP_PHRASES)
+        follow_up_audios = await self.get_audios_from_messages(FOLLOW_UP_PHRASES, self.base_follow_up_audio_path)
         return follow_up_audios
 
-    async def get_audios_from_messages(self, phrases):
+    async def get_audios_from_messages(self, phrases: List[BaseMessage], base_path: str):
         back_tracking_audios = []
         for back_tracking_phrase in phrases:
             filler_audio_path = await self.get_audio_data_from_cache_or_download(back_tracking_phrase,
-                                                                                 self.base_back_tracking_audio_path)
+                                                                                 base_path)
 
             audio = FillerAudio(back_tracking_phrase,
                                 audio_data=convert_wav(
