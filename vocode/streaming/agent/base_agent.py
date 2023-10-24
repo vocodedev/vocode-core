@@ -251,12 +251,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 is_interruptable=self.agent_config.allow_agent_to_be_cut_off and is_interruptable,
                 agent_response_tracker=agent_input.agent_response_tracker,
             )
-        if self.agent_config.send_follow_up_audio:
-            self.produce_interruptable_agent_response_event_nonblocking(
-                AgentResponseFollowUpAudio(),
-                is_interruptable=True,
-                agent_response_tracker=agent_input.agent_response_tracker,
-            )
+
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
