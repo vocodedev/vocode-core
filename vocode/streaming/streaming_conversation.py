@@ -149,10 +149,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if self.conversation.current_transcription_is_interrupt:
                     self.conversation.logger.debug("sending interrupt")
                 self.conversation.logger.debug("Human started speaking")
+
                 if self.conversation.agent.get_agent_config().send_back_tracking_audio:
                     self.send_back_tracking_audio(asyncio.Event())
 
-                if self.conversation.agent.agent_config.send_follow_up_audio:
+                if self.conversation.follow_up_worker:
                     if self.conversation.filler_audio_worker.interrupt_current_filler_audio():
                         await self.conversation.filler_audio_worker.wait_for_random_audio_to_finish()
 
@@ -331,6 +332,23 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     "No filler audio available for synthesizer"
                 )
 
+        def send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+            assert self.conversation.follow_up_worker is not None
+            self.conversation.logger.debug("Sending follow up audio")
+            if self.conversation.synthesizer.follow_up_audios:
+                follow_up_audio = random.choice(
+                    self.conversation.synthesizer.follow_up_audios
+                )
+                self.conversation.logger.debug(f"Chose follow up audio, {follow_up_audio.message.text}")
+                event = self.interruptable_event_factory.create_interruptable_agent_response_event(
+                    follow_up_audio,
+                    is_interruptable=follow_up_audio.is_interruptable,
+                    agent_response_tracker=agent_response_tracker,
+                )
+                self.conversation.follow_up_worker.consume_nonblocking(event)
+            else:
+                self.conversation.logger.debug("No follow up audio available")
+
         async def process(self, item: InterruptableAgentResponseEvent[AgentResponse]):
             if not self.conversation.synthesis_enabled:
                 self.conversation.logger.debug(
@@ -342,6 +360,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if isinstance(agent_response, AgentResponseFillerAudio):
                     self.send_filler_audio(item.agent_response_tracker)
                     return
+                if self.conversation.back_tracking_worker is not None:
+                    if self.conversation.back_tracking_worker.interrupt_current_filler_audio():
+                        await self.conversation.back_tracking_worker.wait_for_random_audio_to_finish()
                 if isinstance(agent_response, AgentResponseFollowUpAudio):
                     self.send_follow_up_audio(item.agent_response_tracker)
                     return
@@ -717,23 +738,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.transcriber.get_transcriber_config().min_interrupt_confidence or 0
         )
 
-    def send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
-        assert self.follow_up_worker is not None
-        self.logger.debug("Sending follow up audio")
-        if self.synthesizer.follow_up_audios:
-            follow_up_audio = random.choice(
-                self.synthesizer.follow_up_audios
-            )
-            self.logger.debug(f"Chose follow up audio, {follow_up_audio.message.text}")
-            event = self.interruptable_event_factory.create_interruptable_agent_response_event(
-                follow_up_audio,
-                is_interruptable=follow_up_audio.is_interruptable,
-                agent_response_tracker=agent_response_tracker,
-            )
-            self.follow_up_worker.consume_nonblocking(event)
-        else:
-            self.logger.debug("No follow up audio available")
-
     async def send_speech_to_output(
             self,
             message: str,
@@ -804,11 +808,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 transcript_message.text = synthesis_result.get_message_up_to(
                     seconds_spoken
                 )
-        if self.back_tracking_worker is not None:
-            if self.back_tracking_worker.interrupt_current_filler_audio():
-                await self.back_tracking_worker.wait_for_random_audio_to_finish()
-        if self.follow_up_worker is not None:
-            self.send_follow_up_audio(message_sent)
+
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()
