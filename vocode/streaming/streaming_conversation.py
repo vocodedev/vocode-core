@@ -17,7 +17,7 @@ from vocode.streaming.agent.base_agent import (
     AgentResponseMessage,
     AgentResponseStop,
     BaseAgent,
-    TranscriptionAgentInput, AgentResponseBackTrackingAudio,
+    TranscriptionAgentInput, AgentResponseFollowUpAudio,
 )
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
@@ -28,7 +28,7 @@ from vocode.streaming.constants import (
     PER_CHUNK_ALLOWANCE_SECONDS,
     ALLOWED_IDLE_TIME,
 )
-from vocode.streaming.models.agent import FillerAudioConfig, BackTrackingConfig
+from vocode.streaming.models.agent import FillerAudioConfig, BackTrackingConfig, FollowUpAudioConfig
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
@@ -230,11 +230,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 pass
 
     class FillerAudioWorker(RandomResponseAudioWorker):
-        """
-        - Waits for a configured number of seconds and then sends filler audio to the output
-        - Exposes wait_for_random_audio_to_finish() which the AgentResponsesWorker waits on before
-          sending responses to the output queue
-        """
+
         name = "FillerAudio"
 
         def __init__(
@@ -245,11 +241,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             super().__init__(input_queue, conversation, conversation.filler_audio_config)
 
     class BackTrackingWorker(RandomResponseAudioWorker):
-        """
-        - Waits for a configured number of seconds when human is speaking then sends filler audio to the output
-        - Exposes wait_for_random_audio_to_finish() which the AgentResponsesWorker waits on before
-          sending responses to the output queue
-        """
+
         name = "BackTracking"
 
         def __init__(
@@ -258,6 +250,17 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 conversation: "StreamingConversation",
         ):
             super().__init__(input_queue, conversation, conversation.back_tracking_config)
+
+    class FollowUpAudioWorker(RandomResponseAudioWorker):
+
+        name = "FollowUpAudio"
+
+        def __init__(
+                self,
+                input_queue: asyncio.Queue[InterruptableAgentResponseEvent[FillerAudio]],
+                conversation: "StreamingConversation",
+        ):
+            super().__init__(input_queue, conversation, conversation.follow_up_audio_config)
 
     class AgentResponsesWorker(InterruptableAgentResponseWorker):
         """Runs Synthesizer.create_speech and sends the SynthesisResult to the output queue"""
@@ -286,6 +289,23 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                     * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
             )
+
+        def send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+            assert self.conversation.follow_up_worker is not None
+            self.conversation.logger.debug("Sending follow up audio")
+            if self.conversation.synthesizer.follow_up_audios:
+                follow_up_audio = random.choice(
+                    self.conversation.synthesizer.follow_up_audios
+                )
+                self.conversation.logger.debug("Chose follow up audio")
+                event = self.interruptable_event_factory.create_interruptable_agent_response_event(
+                    follow_up_audio,
+                    is_interruptable=follow_up_audio.is_interruptable,
+                    agent_response_tracker=agent_response_tracker,
+                )
+                self.conversation.follow_up_worker.consume_nonblocking(event)
+            else:
+                self.conversation.logger.debug("No follow up audio available")
 
         def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
             assert self.conversation.filler_audio_worker is not None
@@ -340,7 +360,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     item.agent_response_tracker.set()
                     await self.conversation.terminate()
                     return
-
+                if isinstance(agent_response, AgentResponseFollowUpAudio):
+                    self.send_follow_up_audio(item.agent_response_tracker)
+                    return
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
                 )
@@ -487,9 +509,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.actions_worker = None
         self.back_tracking_config: Optional[BackTrackingConfig] = None
         self.filler_audio_config: Optional[FillerAudioConfig] = None
+        self.follow_up_audio_config: Optional[FollowUpAudioConfig] = None
         self.filler_audio_worker = None
         self.back_tracking_worker = None
-
+        self.follow_up_worker = None
         if self.agent.get_agent_config().actions:
             self.actions_worker = ActionsWorker(
                 input_queue=self.agent.actions_queue,
@@ -527,6 +550,21 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.agent.get_agent_config().send_back_tracking_audio,
                 )
             self.back_tracking_worker = self.BackTrackingWorker(
+                input_queue=self.back_tracking_audio_queue, conversation=self,
+            )
+
+        if self.agent.get_agent_config().send_follow_up_audio:
+            if not isinstance(
+                    self.agent.get_agent_config().send_follow_up_audio,
+                    FollowUpAudioConfig,
+            ):
+                self.follow_up_audio_config = FollowUpAudioConfig()
+            else:
+                self.follow_up_audio_config = typing.cast(
+                    FollowUpAudioConfig,
+                    self.agent.get_agent_config().send_follow_up_audio,
+                )
+            self.follow_up_worker = self.FollowUpAudioWorker(
                 input_queue=self.back_tracking_audio_queue, conversation=self,
             )
 
@@ -575,6 +613,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.back_tracking_worker is not None and self.back_tracking_config is not None:
             await self.synthesizer.set_back_tracking_audios(self.back_tracking_config)
             self.back_tracking_worker.start()
+        if self.follow_up_worker is not None and self.follow_up_audio_config is not None:
+            await self.synthesizer.set_follow_up_audios(self.follow_up_audio_config)
+            self.follow_up_worker.start()
         if self.actions_worker is not None:
             self.actions_worker.start()
         is_ready = await self.transcriber.ready()
@@ -808,6 +849,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.back_tracking_config is not None:
             self.logger.debug("Terminating back tracking worker")
             self.back_tracking_worker.terminate()
+        if self.follow_up_worker is not None:
+            self.logger.debug("Terminating follow up worker")
+            self.follow_up_worker.terminate()
         if self.actions_worker is not None:
             self.logger.debug("Terminating actions worker")
             self.actions_worker.terminate()

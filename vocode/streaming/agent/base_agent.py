@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-from enum import Enum
 import json
 import logging
 import random
+import typing
+from enum import Enum
 from typing import (
     AsyncGenerator,
-    Generator,
     Generic,
     Optional,
     Tuple,
@@ -15,9 +15,9 @@ from typing import (
     Union,
     TYPE_CHECKING,
 )
-import typing
+
 from opentelemetry import trace
-from opentelemetry.trace import Span
+
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.action.phone_call_action import (
     TwilioPhoneCallAction,
@@ -28,20 +28,18 @@ from vocode.streaming.models.actions import (
     ActionInput,
     ActionOutput,
     FunctionCall,
-    FunctionFragment,
 )
-
 from vocode.streaming.models.agent import (
     AgentConfig,
     ChatGPTAgentConfig,
     LLMAgentConfig,
 )
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.model import BaseModel, TypedModel
+from vocode.streaming.models.model import TypedModel
+from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import remove_non_letters_digits
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
-from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.utils.worker import (
     InterruptableAgentResponseEvent,
     InterruptableEvent,
@@ -88,6 +86,7 @@ class AgentResponseType(str, Enum):
     STOP = "agent_response_stop"
     FILLER_AUDIO = "agent_response_filler_audio"
     BACK_TRACKING = "agent_response_back_tracking_audio"
+    FOLLOW_UP_AUDIO = "agent_response_follow_up_audio"
 
 
 class AgentResponse(TypedModel, type=AgentResponseType.BASE.value):
@@ -111,6 +110,12 @@ class AgentResponseFillerAudio(
 
 class AgentResponseBackTrackingAudio(
     AgentResponse, type=AgentResponseType.BACK_TRACKING.value
+):
+    pass
+
+
+class AgentResponseFollowUpAudio(
+    AgentResponse, type=AgentResponseType.FOLLOW_UP_AUDIO.value
 ):
     pass
 
@@ -246,6 +251,12 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 is_interruptable=self.agent_config.allow_agent_to_be_cut_off and is_interruptable,
                 agent_response_tracker=agent_input.agent_response_tracker,
             )
+        if self.agent_config.send_follow_up_audio:
+            self.produce_interruptable_agent_response_event_nonblocking(
+                AgentResponseFollowUpAudio(),
+                is_interruptable=True,
+                agent_response_tracker=agent_input.agent_response_tracker,
+            )
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
@@ -322,7 +333,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 )
 
             self.logger.debug("Responding to transcription")
-            should_stop = False
             if self.agent_config.generate_responses:
                 should_stop = await self.handle_generate_response(
                     transcription, agent_input

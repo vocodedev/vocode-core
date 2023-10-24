@@ -21,7 +21,7 @@ from opentelemetry import trace
 from opentelemetry.trace import Span
 
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
-from vocode.streaming.models.agent import FillerAudioConfig, BackTrackingConfig
+from vocode.streaming.models.agent import FillerAudioConfig, BackTrackingConfig, FollowUpAudioConfig
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
@@ -51,6 +51,15 @@ BACK_TRACKING_PHRASES = [
     BaseMessage(text="I see..."),
     BaseMessage(text="I understand..."),
     BaseMessage(text="I get it..."),
+]
+
+FOLLOW_UP_PHRASES = [
+    BaseMessage(text="You were saying..."),
+    BaseMessage(text="Go on..."),
+    BaseMessage(text="Please continue..."),
+    BaseMessage(text="I'm listening..."),
+    BaseMessage(text="I'm all ears..."),
+    BaseMessage(text="Are you there?"),
 ]
 
 
@@ -148,6 +157,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             ), "MuLaw encoding only supports 8kHz sampling rate"
         self.filler_audios: Dict[str, List[FillerAudio]] = {}
         self.back_tracking_audios: List[FillerAudio] = []
+        self.follow_up_audios: List[FillerAudio] = []
         if aiohttp_session:
             # the caller is responsible for closing the session
             self.aiohttp_session = aiohttp_session
@@ -189,10 +199,18 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         elif filler_audio_config.use_typing_noise:
             self.back_tracking_audios = [self.get_typing_noise_filler_audio()]
 
+    async def set_follow_up_audios(self, follow_up_audio_config: FollowUpAudioConfig):
+        self.logger.debug(f"Setting follow up audios")
+        if follow_up_audio_config.use_phrases:
+            self.follow_up_audios = await self.get_phrase_follow_up_audios()
+
     async def get_phrase_filler_audios(self) -> Dict[str, List[FillerAudio]]:
         return {}
 
     async def get_phrase_back_tracking_audios(self) -> List[FillerAudio]:
+        return []
+
+    async def get_phrase_follow_up_audios(self) -> List[FillerAudio]:
         return []
 
     def ready_synthesizer(self):
