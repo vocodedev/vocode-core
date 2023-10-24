@@ -141,7 +141,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             normalized_dialog_state = {
                 k: v for k, v in normalized_dialog_state.items() if k in decision.response.dialog_state_update
             }
-            self.call_script.dialog_state.update_from_normalized(normalized_dialog_state)
             # merge normalized values into the original dialog state.
             chat_response.dialog_state_update = {**chat_response.dialog_state_update, **normalized_dialog_state}
             # Call decision callback again with normalized values
