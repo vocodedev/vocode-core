@@ -81,7 +81,7 @@ class FillerAudioWorker(RandomResponseAudioWorker):
     def __init__(
             self,
             input_queue: asyncio.Queue[InterruptableAgentResponseEvent[FillerAudio]],
-            conversation: StreamingConversation,
+            conversation,
             filler_audio_config: FillerAudioConfig,
     ):
         super().__init__(input_queue, conversation, filler_audio_config)
