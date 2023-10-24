@@ -13,7 +13,7 @@ import openai
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent, AgentInput, AgentResponseMessage
-from vocode.streaming.agent.response_validator import DefaultResponseValidator
+from vocode.streaming.agent.response_validator import DefaultResponseValidator, ValidationResult
 from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
     collate_response_async,
@@ -34,8 +34,12 @@ class ConsoleChatResponse:
     message: str
     dialog_state_update: Optional[dict]
     raw_text: str
-    valid: bool = True
+    failed_validation: Optional[ValidationResult] = None
     values_to_normalize: Optional[dict] = None
+
+    @property
+    def has_failed_validation(self):
+        return self.failed_validation is not None
 
     @property
     def values_to_prompt_format(self) -> str:
@@ -144,11 +148,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             decision = self.call_script.decision_callback(chat_response, normalize=False)
         return chat_response, decision
 
-    def check_response(self, response: str):
-        passed, reason = self.response_validator.validate(response)
-        if reason is not None:
-            self.logger.warning("Response failed validation: %s", reason)
-        return passed
+    def check_response(self, response: str) -> ValidationResult:
+        validation_result = self.response_validator.validate(response)
+        if not validation_result.valid:
+            self.logger.warning("Response failed validation: %s", validation_result.reason)
+        return validation_result
 
     async def handle_generate_response(
             self, transcription: Transcription, agent_input: AgentInput
@@ -163,7 +167,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         )
         is_first_response = True
         function_call = None
-        valid = True
+        failed_validation = None
         all_responses = []
         async for response in responses:
             self.logger.debug("Got response from agent `%s`", response
@@ -172,8 +176,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 function_call = response
                 continue
             if isinstance(response, str):
-                if not self.check_response(response):
-                    valid = False
+                validation_result = self.check_response(response)
+                if not validation_result.valid:
+                    failed_validation = validation_result
                     self.logger.warning("Response failed validation: %s", response)
                     break
                 all_responses.append(response)
@@ -194,8 +199,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             dialog_state_update = await self.get_dialog_state_update()
             self.logger.info("Got dialog state update from agent: %s", dialog_state_update)
 
-            chat_response = ConsoleChatResponse(formatted_responses, dialog_state_update, raw_text=formatted_responses,
-                                                valid=valid)
+            chat_response = ConsoleChatResponse(formatted_responses, dialog_state_update,
+                                                raw_text=formatted_responses,
+                                                failed_validation=failed_validation)
             decision = self.call_script.decision_callback(chat_response)
 
             # Conditionally normalize the dialog state.
