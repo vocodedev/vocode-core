@@ -110,6 +110,8 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     top_p: float = 0.95
     last_messages_cnt: int = 8
 
+    max_chars_check: int = 500
+
     class Config:
         arbitrary_types_allowed = True
 

@@ -13,6 +13,7 @@ import openai
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent, AgentInput, AgentResponseMessage
+from vocode.streaming.agent.response_validator import DefaultResponseValidator
 from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
     collate_response_async,
@@ -33,6 +34,7 @@ class ConsoleChatResponse:
     message: str
     dialog_state_update: Optional[dict]
     raw_text: str
+    valid: bool = True
     values_to_normalize: Optional[dict] = None
 
     @property
@@ -106,6 +108,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         self.call_script = self.agent_config.call_script  # FIXME: ugly flow refactor it.
 
+        self.response_validator = DefaultResponseValidator(max_length=self.agent_config.max_chars_check,
+                                                           )
+
     @property
     def extract_belief_state(self):
         return self.agent_config.call_script.dialog_state_prompt is not None
@@ -129,12 +134,21 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         if decision.normalize:
             self.logger.warning("Normalizing dialog state")
             normalized_dialog_state = await self.get_normalized_values(decision.response.values_to_prompt_format)
+            normalized_dialog_state = {
+                k: v for k, v in normalized_dialog_state.items() if k in decision.response.dialog_state_update
+            }
             self.call_script.dialog_state.update_from_normalized(normalized_dialog_state)
             # merge normalized values into the original dialog state.
             chat_response.dialog_state_update = {**chat_response.dialog_state_update, **normalized_dialog_state}
             # Call decision callback again with normalized values
             decision = self.call_script.decision_callback(chat_response, normalize=False)
         return chat_response, decision
+
+    def check_response(self, response: str):
+        passed, reason = self.response_validator.validate(response)
+        if reason is not None:
+            self.logger.warning("Response failed validation: %s", reason)
+        return passed
 
     async def handle_generate_response(
             self, transcription: Transcription, agent_input: AgentInput
@@ -149,6 +163,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         )
         is_first_response = True
         function_call = None
+        valid = True
         all_responses = []
         async for response in responses:
             self.logger.debug("Got response from agent `%s`", response
@@ -157,6 +172,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 function_call = response
                 continue
             if isinstance(response, str):
+                if not self.check_response(response):
+                    valid = False
+                    self.logger.warning("Response failed validation: %s", response)
+                    break
                 all_responses.append(response)
 
             if is_first_response:
@@ -168,13 +187,15 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             )
             self.logger.debug("Produced response `%s`", response)
 
-        if len(all_responses) > 0 and self.extract_belief_state:
+        if self.extract_belief_state:
             # FIXME: stardardize this
             formatted_responses = "\n".join(["BOT: " + response for response in all_responses])
             self.logger.info("Got responses from agent for dialog state extraction: %s", formatted_responses)
             dialog_state_update = await self.get_dialog_state_update()
             self.logger.info("Got dialog state update from agent: %s", dialog_state_update)
-            chat_response = ConsoleChatResponse(formatted_responses, dialog_state_update, raw_text=formatted_responses)
+
+            chat_response = ConsoleChatResponse(formatted_responses, dialog_state_update, raw_text=formatted_responses,
+                                                valid=valid)
             decision = self.call_script.decision_callback(chat_response)
 
             # Conditionally normalize the dialog state.
@@ -458,24 +479,3 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 openai_get_tokens(stream), get_functions=True
         ):
             yield message
-
-    def parse_state_schema(self, include_descriptions: bool = False) -> dict:
-        data = self.call_script.dialog_state.schema()
-        schema = {
-            "name": "get_argument_values",
-            "description": "Get values for arguments mentioned in the current turn.",
-            "parameters": {
-                "type": "object",
-                "properties": {},
-                "required": [],
-            }
-        }
-        keys = ['type', 'enum', 'examples']
-        if include_descriptions:
-            keys.append('description')
-        for prop, details in data['properties'].items():
-            if prop != "script_location" and not details.get('hidden', False):
-                schema["parameters"]["properties"][prop] = {
-                    key: details[key] for key in keys if key in details
-                }
-        return schema
