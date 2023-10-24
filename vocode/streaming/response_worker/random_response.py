@@ -187,8 +187,8 @@ class RandomAudioManager:
             self.follow_up_worker.start()
 
     def send_back_tracking_audio(self, agent_response_tracker: Optional[asyncio.Event]):
-        assert self.back_tracking_worker is not None
         self.logger.debug("Sending back tracking audio")
+        assert self.back_tracking_worker is not None
         if self.conversation.synthesizer.back_tracking_audios:
             back_tracking_audio = random.choice(
                 self.conversation.synthesizer.back_tracking_audios
@@ -204,8 +204,8 @@ class RandomAudioManager:
             self.logger.debug("No back tracking audio available")
 
     def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
-        assert self.filler_audio_worker is not None
         self.logger.debug("Sending filler audio")
+        assert self.filler_audio_worker is not None
         if self.conversation.synthesizer.filler_audios:
             filler_audio: Optional[FillerAudio] = None
             if '?' in self.conversation.transcript.get_last_user_message()[-1] and \
@@ -239,8 +239,8 @@ class RandomAudioManager:
             )
 
     def send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
-        assert self.follow_up_worker is not None
         self.logger.debug("Sending follow up audio")
+        assert self.follow_up_worker is not None
         if self.conversation.synthesizer.follow_up_audios:
             follow_up_audio = random.choice(
                 self.conversation.synthesizer.follow_up_audios

@@ -285,7 +285,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             await self.conversation.terminate()
                     except asyncio.TimeoutError:
                         pass
+                self.conversation.logger.debug("Synthesis complete")
                 if self.conversation.agent.get_agent_config().send_follow_up_audio:
+                    self.conversation.logger.debug("Sending follow up audio with config")
                     self.conversation.agent_responses_worker.produce_interruptable_agent_response_event_nonblocking(
                         AgentResponseFollowUpAudio(),
                         agent_response_tracker=item.agent_response_tracker,
