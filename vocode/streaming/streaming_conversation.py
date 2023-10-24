@@ -134,8 +134,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if self.conversation.agent.get_agent_config().send_back_tracking_audio:
                     self.conversation.random_audio_manager.send_back_tracking_audio(asyncio.Event())
 
-                self.conversation.random_audio_manager.stop_filler_audio()
-                self.conversation.random_audio_manager.stop_follow_up_audio()
+                await self.conversation.random_audio_manager.stop_filler_audio()
+                await self.conversation.random_audio_manager.stop_follow_up_audio()
 
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
@@ -201,8 +201,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     item.agent_response_tracker.set()
                     await self.conversation.terminate()
                     return
-                self.conversation.random_audio_manager.stop_back_tracking_audio()
-                self.conversation.random_audio_manager.stop_follow_up_audio()
+                await self.conversation.random_audio_manager.stop_back_tracking_audio()
+                await self.conversation.random_audio_manager.stop_follow_up_audio()
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
                 )
@@ -213,7 +213,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.chunk_size,
                     bot_sentiment=self.conversation.bot_sentiment,
                 )
-                self.conversation.random_audio_manager.stop_filler_audio()
+                await self.conversation.random_audio_manager.stop_filler_audio()
                 self.produce_interruptable_agent_response_event_nonblocking(
                     (agent_response_message.message, synthesis_result),
                     is_interruptable=item.is_interruptable,
