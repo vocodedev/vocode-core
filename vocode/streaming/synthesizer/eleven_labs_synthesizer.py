@@ -142,21 +142,21 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         return follow_up_audios
 
     async def get_audios_from_messages(self, phrases: List[BaseMessage], base_path: str):
-        back_tracking_audios = []
-        for back_tracking_phrase in phrases:
-            filler_audio_path = await self.get_audio_data_from_cache_or_download(back_tracking_phrase,
-                                                                                 base_path)
+        audios = []
+        for phrase in phrases:
+            audio_path = await self.get_audio_data_from_cache_or_download(phrase,
+                                                                          base_path)
 
-            audio = FillerAudio(back_tracking_phrase,
+            audio = FillerAudio(phrase,
                                 audio_data=convert_wav(
-                                    filler_audio_path,
+                                    audio_path,
                                     output_sample_rate=self.synthesizer_config.sampling_rate,
                                     output_encoding=self.synthesizer_config.audio_encoding, ),
                                 synthesizer_config=self.synthesizer_config,
                                 is_interruptable=True,
                                 seconds_per_chunk=2, )
-            back_tracking_audios.append(audio)
-        return back_tracking_audios
+            audios.append(audio)
+        return audios
 
     async def get_audio_data_from_cache_or_download(self, phrase: BaseMessage, base_path: str) -> str:
         cache_key = "-".join(

@@ -151,7 +151,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.debug("Human started speaking")
                 if self.conversation.agent.get_agent_config().send_back_tracking_audio:
                     self.send_back_tracking_audio(asyncio.Event())
-
+                if self.conversation.agent.agent_config.send_follow_up_audio:
+                    if self.conversation.filler_audio_worker.interrupt_current_filler_audio():
+                        await self.conversation.filler_audio_worker.wait_for_random_audio_to_finish()
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
             )
@@ -368,10 +370,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
 
                 if self.conversation.filler_audio_worker is not None:
-                    if (
-                            self.conversation.filler_audio_worker.interrupt_current_filler_audio()
-                    ):
+                    if self.conversation.filler_audio_worker.interrupt_current_filler_audio():
                         await self.conversation.filler_audio_worker.wait_for_random_audio_to_finish()
+                if self.conversation.back_tracking_worker is not None:
+                    if self.conversation.back_tracking_worker.interrupt_current_filler_audio():
+                        await self.conversation.back_tracking_worker.wait_for_random_audio_to_finish()
 
                 self.conversation.logger.debug("Synthesizing speech for message")
                 synthesis_result = await self.conversation.synthesizer.create_speech(
