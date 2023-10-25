@@ -89,7 +89,7 @@ class CutOffResponse(BaseModel):
 
 
 class LowConfidenceResponse(BaseModel):
-    messages: List[BaseMessage] = [BaseMessage(text="Sorry, i didn't get that")]
+    messages: List[BaseMessage] = [BaseMessage(text="Sorry, I didn't get that")]
 
 
 class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):

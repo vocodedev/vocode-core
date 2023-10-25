@@ -1,0 +1,21 @@
+Metadata-Version: 2.1
+Name: elevenlabs
+Version: 0.2.24
+Summary: The official elevenlabs python package.
+Home-page: https://github.com/elevenlabs/elevenlabs-python
+Author: Elevenlabs
+Keywords: artificial intelligence,deep learning
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic <2.0,>=1.10
+Requires-Dist: ipython >=7.0
+Requires-Dist: requests >=2.20
+Requires-Dist: websockets >=11.0
+

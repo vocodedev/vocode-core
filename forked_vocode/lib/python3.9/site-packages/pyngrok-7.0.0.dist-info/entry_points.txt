@@ -1,0 +1,3 @@
+[console_scripts]
+ngrok = pyngrok.ngrok:main
+pyngrok = pyngrok.ngrok:main

@@ -183,6 +183,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         )
         filler_audio_path = os.path.join(base_path, f"{cache_key}.wav")
         if not os.path.exists(filler_audio_path):
+            print('$#@$!#@$!@#'*10)
+            print(filler_audio_path)
+            print('$#@$!#@$!@#'*10)       
             self.logger.debug(f"Generating cached audio for {phrase.text}")
             audio_data = await self.download_filler_audio_data(phrase)
 
@@ -190,9 +193,11 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 io.BytesIO(audio_data)  # type: ignore
             )
             audio_segment.export(filler_audio_path, format="wav")
+
         return filler_audio_path
 
     async def download_filler_audio_data(self, back_tracking_phrase):
+
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
@@ -222,5 +227,5 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     raise Exception(
                         f"ElevenLabs API returned {response.status} status code"
                     )
-                audio_data = await response.read()
+                audio_data = await response.read() 
         return audio_data

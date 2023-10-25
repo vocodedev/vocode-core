@@ -156,7 +156,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         elif isinstance(
                 self.transcriber_config.endpointing_config, PunctuationEndpointingConfig
         ):
-            is_finished = (
+
+            is_finished = ((
                                   transcript
                                   and deepgram_response["speech_final"]
                                   and transcript.strip()[-1] in PUNCTUATION_TERMINATORS
@@ -165,7 +166,20 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                                   and current_buffer
                                   and (time_silent + deepgram_response["duration"])
                                   > self.transcriber_config.endpointing_config.time_cutoff_seconds
-                          )
+                          )) and deepgram_response["duration"] > self.transcriber_config.minimum_speaking_duration_to_interupt
+            
+
+
+            # print('_silece_'*5)
+            # print(time_silent)
+            # print('_silece_'*5)
+
+            
+            if is_finished:
+                print("Transcriber Duration"*3)
+                print(deepgram_response["duration"])
+                print("Transcriber Duration"*3)
+
             if is_finished and self.transcriber_config.skip_on_back_track_audio:
                 is_interrupt_task = asyncio.create_task(
                     self.skip_model.is_filler(transcript)
