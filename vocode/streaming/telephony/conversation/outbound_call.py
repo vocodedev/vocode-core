@@ -149,4 +149,4 @@ class OutboundCall:
         await self.config_manager.save_config(self.conversation_id, call_config)
 
     async def end(self):
-        return await self.telephony_client.end_call(self.telephony_id), self.telephony_id
+        return await self.telephony_client.end_call(self.telephony_id)
