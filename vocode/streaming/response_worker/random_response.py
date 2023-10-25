@@ -185,7 +185,7 @@ class RandomAudioManager:
             await self.conversation.synthesizer.set_follow_up_audios(self.follow_up_audio_config)
             self.follow_up_worker.start()
 
-    def send_back_tracking_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+    async def send_back_tracking_audio(self, agent_response_tracker: Optional[asyncio.Event]):
         await self.stop_all_audios()
         if not self.conversation.agent.get_agent_config().send_back_tracking_audio:
             return
@@ -205,7 +205,7 @@ class RandomAudioManager:
         else:
             self.logger.debug("No back tracking audio available")
 
-    def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+    async def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
         await self.stop_all_audios()
         self.logger.debug("Sending filler audio")
         assert self.filler_audio_worker is not None
@@ -241,7 +241,7 @@ class RandomAudioManager:
                 "No filler audio available for synthesizer"
             )
 
-    def send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+    async def send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
         await self.stop_all_audios()
         if not self.conversation.agent.get_agent_config().send_follow_up_audio:
             return
