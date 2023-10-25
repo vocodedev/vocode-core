@@ -241,6 +241,8 @@ class RandomAudioManager:
             )
 
     def send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+        if not self.conversation.agent.get_agent_config().send_follow_up_audio:
+            return
         self.logger.debug("Sending follow up audio")
         assert self.follow_up_worker is not None
         if self.conversation.synthesizer.follow_up_audios:
