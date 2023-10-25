@@ -48,7 +48,7 @@ class RandomResponseAudioWorker(InterruptableAgentResponseWorker):
             await self.interruptable_event.agent_response_tracker.wait()
 
     def interrupt_current_filler_audio(self):
-        self.logger.debug(f"Interrupting {self.name}, first: {self.interruptable_event}, ")
+        self.logger.debug(f"Interrupting {self.name}")
         return self.interruptable_event and self.interruptable_event.interrupt()
 
     async def process(self, item: InterruptableAgentResponseEvent[FillerAudio]):
@@ -61,7 +61,6 @@ class RandomResponseAudioWorker(InterruptableAgentResponseWorker):
                 self.config.silence_threshold_seconds
             )
             await asyncio.sleep(silence_threshold)
-            self.logger.debug(f"Sending {self.name} to output after {silence_threshold} seconds")
             self.filler_audio_started_event = threading.Event()
             await self.conversation.send_speech_to_output(
                 filler_audio.message.text,
@@ -187,6 +186,7 @@ class RandomAudioManager:
             self.follow_up_worker.start()
 
     def send_back_tracking_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+        await self.stop_all_audios()
         if not self.conversation.agent.get_agent_config().send_back_tracking_audio:
             return
         self.logger.debug("Sending back tracking audio")
@@ -206,6 +206,7 @@ class RandomAudioManager:
             self.logger.debug("No back tracking audio available")
 
     def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+        await self.stop_all_audios()
         self.logger.debug("Sending filler audio")
         assert self.filler_audio_worker is not None
         if self.conversation.synthesizer.filler_audios:
@@ -241,6 +242,7 @@ class RandomAudioManager:
             )
 
     def send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+        await self.stop_all_audios()
         if not self.conversation.agent.get_agent_config().send_follow_up_audio:
             return
         self.logger.debug("Sending follow up audio")
@@ -284,3 +286,8 @@ class RandomAudioManager:
         if self.follow_up_worker is not None:
             self.logger.debug("Terminating follow up worker")
             self.follow_up_worker.terminate()
+
+    async def stop_all_audios(self):
+        await self.stop_follow_up_audio()
+        await self.stop_back_tracking_audio()
+        await self.stop_filler_audio()

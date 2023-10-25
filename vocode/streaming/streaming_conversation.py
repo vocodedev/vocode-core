@@ -133,9 +133,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                 self.conversation.random_audio_manager.send_back_tracking_audio(asyncio.Event())
 
-                await self.conversation.random_audio_manager.stop_filler_audio()
-                await self.conversation.random_audio_manager.stop_follow_up_audio()
-
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
             )
@@ -201,9 +198,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     item.agent_response_tracker.set()
                     await self.conversation.terminate()
                     return
-                await self.conversation.random_audio_manager.stop_back_tracking_audio()
-                await self.conversation.random_audio_manager.stop_follow_up_audio()
-                await self.conversation.random_audio_manager.stop_filler_audio()
+                await self.conversation.random_audio_manager.stop_all_audios()
 
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
@@ -248,7 +243,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     text="",
                     sender=Sender.BOT,
                 )
-                await self.conversation.random_audio_manager.stop_follow_up_audio()
+                await self.conversation.random_audio_manager.stop_all_audios()
                 self.conversation.transcript.add_message(
                     message=transcript_message,
                     conversation_id=self.conversation.id,
