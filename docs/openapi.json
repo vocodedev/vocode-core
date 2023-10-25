@@ -1797,6 +1797,10 @@
             "enum": ["human", "no_human"],
             "title": "Human Detection Result"
           },
+          "do_not_call_result": {
+            "type": "boolean",
+            "title": "Do Not Call Result"
+          },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "$ref": "#/components/schemas/Agent" },
@@ -1823,6 +1827,15 @@
             "type": "string",
             "enum": ["continue", "hangup"],
             "title": "On No Human Answer"
+          },
+          "context": {
+            "additionalProperties": { "type": "string" },
+            "type": "object",
+            "title": "Context"
+          },
+          "run_do_not_call_detection": {
+            "type": "boolean",
+            "title": "Run Do Not Call Detection"
           }
         },
         "type": "object",
@@ -1981,6 +1994,11 @@
             "enum": ["continue", "hangup"],
             "title": "On No Human Answer",
             "default": "continue"
+          },
+          "run_do_not_call_detection": {
+            "type": "boolean",
+            "title": "Run Do Not Call Detection",
+            "default": false
           },
           "hipaa_compliant": {
             "type": "boolean",
@@ -2295,6 +2313,10 @@
             "enum": ["human", "no_human"],
             "title": "Human Detection Result"
           },
+          "do_not_call_result": {
+            "type": "boolean",
+            "title": "Do Not Call Result"
+          },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "type": "string", "format": "uuid", "title": "Agent" },
@@ -2321,6 +2343,15 @@
             "type": "string",
             "enum": ["continue", "hangup"],
             "title": "On No Human Answer"
+          },
+          "context": {
+            "additionalProperties": { "type": "string" },
+            "type": "object",
+            "title": "Context"
+          },
+          "run_do_not_call_detection": {
+            "type": "boolean",
+            "title": "Run Do Not Call Detection"
           }
         },
         "type": "object",
@@ -2520,7 +2551,8 @@
             "enum": ["1", "2"],
             "title": "Version",
             "default": "2"
-          }
+          },
+          "speed": { "type": "number", "title": "Speed" }
         },
         "type": "object",
         "required": ["id", "user_id", "type", "voice_id"],
@@ -2541,7 +2573,8 @@
             "enum": ["1", "2"],
             "title": "Version",
             "default": "2"
-          }
+          },
+          "speed": { "type": "number", "title": "Speed" }
         },
         "type": "object",
         "required": ["type", "voice_id"],
@@ -2581,6 +2614,13 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Version"
+          },
+          "speed": {
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Speed"
           }
         },
         "type": "object",
