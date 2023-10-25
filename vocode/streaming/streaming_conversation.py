@@ -206,14 +206,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
                 )
-
+                await self.conversation.random_audio_manager.stop_filler_audio()
                 self.conversation.logger.debug("Synthesizing speech for message")
                 synthesis_result = await self.conversation.synthesizer.create_speech(
                     agent_response_message.message,
                     self.chunk_size,
                     bot_sentiment=self.conversation.bot_sentiment,
                 )
-                await self.conversation.random_audio_manager.stop_filler_audio()
+
                 self.produce_interruptable_agent_response_event_nonblocking(
                     (agent_response_message.message, synthesis_result),
                     is_interruptable=item.is_interruptable,

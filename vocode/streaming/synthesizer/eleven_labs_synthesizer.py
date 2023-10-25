@@ -144,9 +144,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     async def get_audios_from_messages(self, phrases: List[BaseMessage], base_path: str):
         audios = []
         for phrase in phrases:
-            audio_path = await self.get_audio_data_from_cache_or_download(phrase,
-                                                                          base_path)
+            if not os.path.exists(base_path):
+                os.makedirs(base_path)
 
+            audio_path = await self.get_audio_data_from_cache_or_download(phrase, base_path)
             audio = FillerAudio(phrase,
                                 audio_data=convert_wav(
                                     audio_path,
