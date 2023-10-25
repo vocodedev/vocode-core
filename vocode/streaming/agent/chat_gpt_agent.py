@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Union
 from typing import AsyncGenerator, Optional, Tuple
 
 import openai
+import tiktoken
 
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
@@ -115,12 +116,45 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         self.response_validator = DefaultResponseValidator(max_length=self.agent_config.max_chars_check,
                                                            )
 
+        self.tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo")  # FIXME: parametrize
+
     @property
     def extract_belief_state(self):
         return self.agent_config.call_script.dialog_state_prompt is not None
 
     async def is_goodbye(self, message: str):
         return self.goodbye_phrase.lower() in message.lower()
+
+    def count_tokens(self, text: str) -> int:
+        """
+        Count the number of tokens in a text string using tiktoken.
+        """
+        return len(self.tokenizer.encode(text))
+
+    def trim_messages_to_fit(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        """
+        Ensure that total tokens (messages + expected response) don't exceed max_tokens.
+        Remove messages from the start (excluding the system prompt) if they do.
+        """
+        # Count tokens for each message once and store in a list
+        token_counts = [self.count_tokens(message['content']) for message in messages]
+
+        total_tokens = sum(token_counts)
+        self.logger.debug("Total tokens: %s", total_tokens)
+
+        # Calculate total tokens considering max response tokens
+        total_tokens += self.agent_config.max_tokens
+        self.logger.debug("Total tokens with max response tokens: %s", total_tokens)
+
+        while total_tokens > self.agent_config.max_total_tokens and len(messages) > 1:
+            # Remove the message from the front (excluding system prompt)
+            removed_message = messages.pop(1)
+            removed_token_count = token_counts.pop(1)
+
+            self.logger.warning("Trimming messages to fit max_tokens. Message dropped: %s", removed_message["content"])
+            total_tokens -= removed_token_count
+
+        return messages
 
     def create_goodbye_detection_task(self, message: str):
         return asyncio.create_task(self.is_goodbye(message))
@@ -256,6 +290,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters["n"] = 3
 
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + [{"role": "user", "content": content}]
+        chat_parameters["messages"] = self.trim_messages_to_fit(chat_parameters["messages"])
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
         try:
             return json.loads(chat_completion.choices[0].message.content)
@@ -280,6 +315,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         if self.transcript.last_user_message is not None:
             chat_parameters["messages"] += [{"role": "user", "content": self.transcript.last_user_message}]
 
+        chat_parameters["messages"] = self.trim_messages_to_fit(chat_parameters["messages"])
         # Call the model
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
         return self._parse_dialog_state(chat_completion.choices[0].message.function_call.arguments)
@@ -474,10 +510,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         # self.logger.info(
         #     f"Total number of tokens: {total_tokens}, gpt approx:{total_tokens * 4 / 3}"
         # )
-
-        stream = await openai.ChatCompletion.acreate(**chat_parameters)
         chat_parameters["messages"][0]["content"] = re.sub(r'(\n\s*){2,}\n', '\n\n',
                                                            chat_parameters["messages"][0]["content"]).strip()
+        chat_parameters["messages"] = self.trim_messages_to_fit(chat_parameters["messages"])
+        stream = await openai.ChatCompletion.acreate(**chat_parameters)
+
         async for message in collate_response_async(
                 openai_get_tokens(stream), get_functions=True
         ):
