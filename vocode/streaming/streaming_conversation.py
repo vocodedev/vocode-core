@@ -188,6 +188,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             try:
                 agent_response = item.payload
+                self.conversation.logger.debug("Got agent response: {}".format(agent_response))
                 if isinstance(agent_response, AgentResponseFillerAudio):
                     self.conversation.random_audio_manager.send_filler_audio(item.agent_response_tracker)
                     return
