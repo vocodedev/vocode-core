@@ -118,9 +118,9 @@ class RandomAudioManager:
         self.back_tracking_config: Optional[BackTrackingConfig] = None
         self.filler_audio_config: Optional[FillerAudioConfig] = None
         self.follow_up_audio_config: Optional[FollowUpAudioConfig] = None
-        self.filler_audio_worker = None
-        self.back_tracking_worker = None
-        self.follow_up_worker = None
+        self.filler_audio_worker: Optional[FillerAudioWorker] = None
+        self.back_tracking_worker: Optional[BackTrackingWorker] = None
+        self.follow_up_worker: Optional[FollowUpAudioWorker] = None
 
         self.filler_audio_queue: asyncio.Queue[InterruptableAgentResponseEvent[FillerAudio]] = asyncio.Queue()
         self.back_tracking_audio_queue: asyncio.Queue[InterruptableAgentResponseEvent[FillerAudio]] = asyncio.Queue()
@@ -212,7 +212,6 @@ class RandomAudioManager:
         self.logger.debug("Sending filler audio")
         assert self.filler_audio_worker is not None
         if self.conversation.synthesizer.filler_audios:
-            filler_audio: Optional[FillerAudio] = None
             if '?' in self.conversation.transcript.get_last_user_message()[-1] and \
                     not self.conversation.is_interrupted:
                 filler_audio = random.choice(
