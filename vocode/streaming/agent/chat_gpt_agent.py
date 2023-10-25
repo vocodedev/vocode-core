@@ -306,10 +306,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         """
         assert self.transcript is not None
         chat_parameters = self.get_chat_parameters(dialog_state_extract=True)
-        functions = self.call_script.get_functions()
         # use base config but update it with functions config.
-        chat_parameters = {**chat_parameters, **self.agent_config.chat_gpt_functions_config.dict(),
-                           "functions": [functions], "function_call": {"name": functions["name"]}}
+        chat_parameters = {**chat_parameters, **self.agent_config.chat_gpt_functions_config.dict()}
 
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + \
                                       [{"role": "assistant", "content": self.transcript.last_assistant}]
@@ -357,12 +355,20 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                             keys_to_normalize: Optional[List[str]] = None):
         assert self.transcript is not None
 
+        parameters: Dict[str, Any] = {
+            "max_tokens": self.agent_config.max_tokens,
+            "temperature": self.agent_config.temperature,
+        }
+
         if dialog_state_extract:
-            messages = messages or format_openai_chat_messages_from_transcript(
-                self.transcript, self.agent_config.call_script.render_dialog_state_prompt(
-                    override_dialog_state=override_dialog_state,
-                )
+            dialog_state_prompt, function = self.agent_config.call_script.render_dialog_state_prompt_and_function(
+                override_dialog_state=override_dialog_state,
             )
+            messages = messages or format_openai_chat_messages_from_transcript(
+                self.transcript, dialog_state_prompt
+            )
+            parameters.update({"functions": [function], "function_call": {"name": function["name"]}})
+
         elif normalize:
             prompt_preamble = self.agent_config.call_script.render_normalization_prompt(keys_to_normalize)
             messages = [{"role": "system", "content": prompt_preamble}]
@@ -397,19 +403,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         #         else:
         #             self.logger.error('First message is not system message, not inserting summary. Something is wrong.')
 
-        parameters: Dict[str, Any] = {
-            "messages": messages,
-            "max_tokens": self.agent_config.max_tokens,
-            "temperature": self.agent_config.temperature,
-        }
+        parameters.update(messages=messages)
 
         if self.agent_config.azure_params is not None:
             parameters["engine"] = self.agent_config.azure_params.engine
         else:
             parameters["model"] = self.agent_config.model_name
-        #
-        if self.functions:
-            parameters["functions"] = self.functions
 
         return parameters
 
