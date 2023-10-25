@@ -306,10 +306,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         """
         assert self.transcript is not None
         chat_parameters = self.get_chat_parameters(dialog_state_extract=True)
-        functions = self.call_script.get_functions()
         # use base config but update it with functions config.
-        chat_parameters = {**chat_parameters, **self.agent_config.chat_gpt_functions_config.dict(),
-                           "functions": [functions], "function_call": {"name": functions["name"]}}
+        chat_parameters = {**chat_parameters, **self.agent_config.chat_gpt_functions_config.dict()}
 
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + \
                                       [{"role": "assistant", "content": self.transcript.last_assistant}]
@@ -407,9 +405,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             parameters["engine"] = self.agent_config.azure_params.engine
         else:
             parameters["model"] = self.agent_config.model_name
-        #
-        if self.functions:
-            parameters["functions"] = self.functions
+
+        if dialog_state_extract:
+            functions = self.call_script.get_functions()
+            parameters.update({"functions": [functions], "function_call": {"name": functions["name"]}})
 
         return parameters
 
