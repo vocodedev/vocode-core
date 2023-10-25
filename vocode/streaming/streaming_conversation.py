@@ -290,7 +290,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.logger.debug("Sending follow up audio with config")
                     self.conversation.agent_responses_worker.produce_interruptable_agent_response_event_nonblocking(
                         AgentResponseFollowUpAudio(),
-                        agent_response_tracker=item.agent_response_tracker,
                     )
 
             except asyncio.CancelledError:
