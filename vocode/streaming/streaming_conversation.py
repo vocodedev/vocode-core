@@ -131,8 +131,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.logger.debug("sending interrupt")
                 self.conversation.logger.debug("Human started speaking")
 
-                if self.conversation.agent.get_agent_config().send_back_tracking_audio:
-                    self.conversation.random_audio_manager.send_back_tracking_audio(asyncio.Event())
+                self.conversation.random_audio_manager.send_back_tracking_audio(asyncio.Event())
 
                 await self.conversation.random_audio_manager.stop_filler_audio()
                 await self.conversation.random_audio_manager.stop_follow_up_audio()
@@ -203,10 +202,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     return
                 await self.conversation.random_audio_manager.stop_back_tracking_audio()
                 await self.conversation.random_audio_manager.stop_follow_up_audio()
+                await self.conversation.random_audio_manager.stop_filler_audio()
+
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
                 )
-                await self.conversation.random_audio_manager.stop_filler_audio()
                 self.conversation.logger.debug("Synthesizing speech for message")
                 synthesis_result = await self.conversation.synthesizer.create_speech(
                     agent_response_message.message,
