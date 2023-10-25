@@ -322,6 +322,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 goodbye_detected_task = self.create_goodbye_detection_task(
                     transcription.message
                 )
+            self.logger.debug(f"filler audio config is {self.agent_config.send_filler_audio}")
             if self.agent_config.send_filler_audio:
                 self.produce_interruptable_agent_response_event_nonblocking(
                     AgentResponseFillerAudio()
