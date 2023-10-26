@@ -186,7 +186,7 @@ class RandomAudioManager:
             self.follow_up_worker.start()
 
     async def send_back_tracking_audio(self, agent_response_tracker: Optional[asyncio.Event]):
-        await self.stop_all_audios()
+        self.stop_all_audios()
         if self.back_tracking_worker is None:
             return
         self.logger.debug("Sending back tracking audio")
@@ -206,7 +206,7 @@ class RandomAudioManager:
             self.logger.debug("No back tracking audio available")
 
     async def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
-        await self.stop_all_audios()
+        self.stop_all_audios()
         if self.filler_audio_worker is None:
             return
         self.logger.debug("Sending filler audio")
@@ -243,7 +243,7 @@ class RandomAudioManager:
             )
 
     async def send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
-        await self.stop_all_audios()
+        self.stop_all_audios()
         if self.follow_up_worker is None:
             return
         self.logger.debug("Sending follow up audio")
@@ -288,7 +288,8 @@ class RandomAudioManager:
             self.logger.debug("Terminating follow up worker")
             self.follow_up_worker.terminate()
 
-    async def stop_all_audios(self):
-        await self.stop_follow_up_audio()
-        await self.stop_back_tracking_audio()
-        await self.stop_filler_audio()
+    def stop_all_audios(self):
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.stop_follow_up_audio())
+        loop.create_task(self.stop_back_tracking_audio())
+        loop.create_task(self.stop_filler_audio())

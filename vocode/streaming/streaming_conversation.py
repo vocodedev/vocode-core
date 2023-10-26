@@ -195,7 +195,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     item.agent_response_tracker.set()
                     await self.conversation.terminate()
                     return
-                await self.conversation.random_audio_manager.stop_all_audios()
+                self.conversation.random_audio_manager.stop_all_audios()
 
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
@@ -240,7 +240,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     text="",
                     sender=Sender.BOT,
                 )
-                await self.conversation.random_audio_manager.stop_all_audios()
+                self.conversation.random_audio_manager.stop_all_audios()
                 self.conversation.transcript.add_message(
                     message=transcript_message,
                     conversation_id=self.conversation.id,
@@ -280,6 +280,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     except asyncio.TimeoutError:
                         pass
                 self.conversation.logger.debug("Synthesis complete")
+
                 await self.conversation.random_audio_manager.send_follow_up_audio(item.agent_response_tracker)
 
             except asyncio.CancelledError:
