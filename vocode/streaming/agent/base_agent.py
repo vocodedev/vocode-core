@@ -240,8 +240,8 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         )
         is_first_response = True
         function_call = None
+        start_time = time.time()
         async for response, is_interruptable in responses:
-            start_time = time.time()
             if isinstance(response, FunctionCall):
                 function_call = response
                 continue
@@ -254,7 +254,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 agent_response_tracker=agent_input.agent_response_tracker,
             )
             self.logger.debug(f"generating response took: {time.time() - start_time} seconds")
-
+            start_time = time.time()
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
