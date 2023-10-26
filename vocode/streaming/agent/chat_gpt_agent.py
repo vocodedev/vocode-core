@@ -9,11 +9,12 @@ from typing import Any, Dict, List, Union
 from typing import AsyncGenerator, Optional, Tuple
 
 import openai
+import tiktoken
 
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent, AgentInput, AgentResponseMessage
-from vocode.streaming.agent.response_validator import DefaultResponseValidator
+from vocode.streaming.agent.response_validator import DefaultResponseValidator, ValidationResult
 from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
     collate_response_async,
@@ -34,8 +35,12 @@ class ConsoleChatResponse:
     message: str
     dialog_state_update: Optional[dict]
     raw_text: str
-    valid: bool = True
+    failed_validation: Optional[ValidationResult] = None
     values_to_normalize: Optional[dict] = None
+
+    @property
+    def has_failed_validation(self):
+        return self.failed_validation is not None
 
     @property
     def values_to_prompt_format(self) -> str:
@@ -111,12 +116,45 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         self.response_validator = DefaultResponseValidator(max_length=self.agent_config.max_chars_check,
                                                            )
 
+        self.tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo")  # FIXME: parametrize
+
     @property
     def extract_belief_state(self):
         return self.agent_config.call_script.dialog_state_prompt is not None
 
     async def is_goodbye(self, message: str):
         return self.goodbye_phrase.lower() in message.lower()
+
+    def count_tokens(self, text: str) -> int:
+        """
+        Count the number of tokens in a text string using tiktoken.
+        """
+        return len(self.tokenizer.encode(text))
+
+    def trim_messages_to_fit(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        """
+        Ensure that total tokens (messages + expected response) don't exceed max_tokens.
+        Remove messages from the start (excluding the system prompt) if they do.
+        """
+        # Count tokens for each message once and store in a list
+        token_counts = [self.count_tokens(message['content']) for message in messages]
+
+        total_tokens = sum(token_counts)
+        self.logger.debug("Total tokens: %s", total_tokens)
+
+        # Calculate total tokens considering max response tokens
+        total_tokens += self.agent_config.max_tokens
+        self.logger.debug("Total tokens with max response tokens: %s", total_tokens)
+
+        while total_tokens > self.agent_config.max_total_tokens and len(messages) > 1:
+            # Remove the message from the front (excluding system prompt)
+            removed_message = messages.pop(1)
+            removed_token_count = token_counts.pop(1)
+
+            self.logger.warning("Trimming messages to fit max_tokens. Message dropped: %s", removed_message["content"])
+            total_tokens -= removed_token_count
+
+        return messages
 
     def create_goodbye_detection_task(self, message: str):
         return asyncio.create_task(self.is_goodbye(message))
@@ -133,22 +171,21 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     async def _handle_initial_decision(self, chat_response: ConsoleChatResponse, decision: BaseModel):
         if decision.normalize:
             self.logger.warning("Normalizing dialog state")
-            normalized_dialog_state = await self.get_normalized_values(decision.response.values_to_prompt_format)
+            normalized_dialog_state = await self.get_normalized_values(decision.response.values_to_prompt_format, list(decision.response.values_to_normalize))
             normalized_dialog_state = {
                 k: v for k, v in normalized_dialog_state.items() if k in decision.response.dialog_state_update
             }
-            self.call_script.dialog_state.update_from_normalized(normalized_dialog_state)
             # merge normalized values into the original dialog state.
             chat_response.dialog_state_update = {**chat_response.dialog_state_update, **normalized_dialog_state}
             # Call decision callback again with normalized values
             decision = self.call_script.decision_callback(chat_response, normalize=False)
         return chat_response, decision
 
-    def check_response(self, response: str):
-        passed, reason = self.response_validator.validate(response)
-        if reason is not None:
-            self.logger.warning("Response failed validation: %s", reason)
-        return passed
+    def check_response(self, response: str) -> ValidationResult:
+        validation_result = self.response_validator.validate(response)
+        if not validation_result.valid:
+            self.logger.warning("Response failed validation: %s", validation_result.reason)
+        return validation_result
 
     async def handle_generate_response(
             self, transcription: Transcription, agent_input: AgentInput
@@ -163,7 +200,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         )
         is_first_response = True
         function_call = None
-        valid = True
+        failed_validation = None
         all_responses = []
         async for response in responses:
             self.logger.debug("Got response from agent `%s`", response
@@ -172,8 +209,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 function_call = response
                 continue
             if isinstance(response, str):
-                if not self.check_response(response):
-                    valid = False
+                validation_result = self.check_response(response)
+                if not validation_result.valid:
+                    failed_validation = validation_result
                     self.logger.warning("Response failed validation: %s", response)
                     break
                 all_responses.append(response)
@@ -194,8 +232,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             dialog_state_update = await self.get_dialog_state_update()
             self.logger.info("Got dialog state update from agent: %s", dialog_state_update)
 
-            chat_response = ConsoleChatResponse(formatted_responses, dialog_state_update, raw_text=formatted_responses,
-                                                valid=valid)
+            chat_response = ConsoleChatResponse(formatted_responses, dialog_state_update,
+                                                raw_text=formatted_responses,
+                                                failed_validation=failed_validation)
             decision = self.call_script.decision_callback(chat_response)
 
             # Conditionally normalize the dialog state.
@@ -246,13 +285,14 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # handle it better
             return {}
 
-    async def get_normalized_values(self, content: str) -> dict[str, Any]:
-        chat_parameters = self.get_chat_parameters(normalize=True)
+    async def get_normalized_values(self, content: str, keys_to_normalize: List[str]) -> dict[str, Any]:
+        chat_parameters = self.get_chat_parameters(normalize=True, keys_to_normalize=keys_to_normalize)
         # TODO: discuss configs.
         chat_parameters["api_version"] = "2023-07-01-preview"
         chat_parameters["n"] = 3
 
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + [{"role": "user", "content": content}]
+        chat_parameters["messages"] = self.trim_messages_to_fit(chat_parameters["messages"])
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
         try:
             return json.loads(chat_completion.choices[0].message.content)
@@ -266,10 +306,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         """
         assert self.transcript is not None
         chat_parameters = self.get_chat_parameters(dialog_state_extract=True)
-        functions = self.call_script.get_functions()
         # use base config but update it with functions config.
-        chat_parameters = {**chat_parameters, **self.agent_config.chat_gpt_functions_config.dict(),
-                           "functions": [functions], "function_call": {"name": functions["name"]}}
+        chat_parameters = {**chat_parameters, **self.agent_config.chat_gpt_functions_config.dict()}
 
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + \
                                       [{"role": "assistant", "content": self.transcript.last_assistant}]
@@ -277,6 +315,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         if self.transcript.last_user_message is not None:
             chat_parameters["messages"] += [{"role": "user", "content": self.transcript.last_user_message}]
 
+        chat_parameters["messages"] = self.trim_messages_to_fit(chat_parameters["messages"])
         # Call the model
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
         return self._parse_dialog_state(chat_completion.choices[0].message.function_call.arguments)
@@ -312,17 +351,26 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def get_chat_parameters(self, messages: Optional[List] = None,
                             dialog_state_extract: bool = False,
                             normalize: bool = False,
-                            override_dialog_state: Optional[dict] = None):
+                            override_dialog_state: Optional[dict] = None,
+                            keys_to_normalize: Optional[List[str]] = None):
         assert self.transcript is not None
 
+        parameters: Dict[str, Any] = {
+            "max_tokens": self.agent_config.max_tokens,
+            "temperature": self.agent_config.temperature,
+        }
+
         if dialog_state_extract:
-            messages = messages or format_openai_chat_messages_from_transcript(
-                self.transcript, self.agent_config.call_script.render_dialog_state_prompt(
-                    override_dialog_state=override_dialog_state,
-                )
+            dialog_state_prompt, function = self.agent_config.call_script.render_dialog_state_prompt_and_function(
+                override_dialog_state=override_dialog_state,
             )
+            messages = messages or format_openai_chat_messages_from_transcript(
+                self.transcript, dialog_state_prompt
+            )
+            parameters.update({"functions": [function], "function_call": {"name": function["name"]}})
+
         elif normalize:
-            prompt_preamble = self.agent_config.call_script.render_normalization_prompt()
+            prompt_preamble = self.agent_config.call_script.render_normalization_prompt(keys_to_normalize)
             messages = [{"role": "system", "content": prompt_preamble}]
         else:
             messages = messages or format_openai_chat_messages_from_transcript(
@@ -355,19 +403,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         #         else:
         #             self.logger.error('First message is not system message, not inserting summary. Something is wrong.')
 
-        parameters: Dict[str, Any] = {
-            "messages": messages,
-            "max_tokens": self.agent_config.max_tokens,
-            "temperature": self.agent_config.temperature,
-        }
+        parameters.update(messages=messages)
 
         if self.agent_config.azure_params is not None:
             parameters["engine"] = self.agent_config.azure_params.engine
         else:
             parameters["model"] = self.agent_config.model_name
-        #
-        if self.functions:
-            parameters["functions"] = self.functions
 
         return parameters
 
@@ -471,10 +512,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         # self.logger.info(
         #     f"Total number of tokens: {total_tokens}, gpt approx:{total_tokens * 4 / 3}"
         # )
-
-        stream = await openai.ChatCompletion.acreate(**chat_parameters)
         chat_parameters["messages"][0]["content"] = re.sub(r'(\n\s*){2,}\n', '\n\n',
                                                            chat_parameters["messages"][0]["content"]).strip()
+        chat_parameters["messages"] = self.trim_messages_to_fit(chat_parameters["messages"])
+        stream = await openai.ChatCompletion.acreate(**chat_parameters)
+
         async for message in collate_response_async(
                 openai_get_tokens(stream), get_functions=True
         ):

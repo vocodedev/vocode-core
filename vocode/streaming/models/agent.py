@@ -100,6 +100,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
     max_tokens: int = 500
+    max_total_tokens: int = 4096  # limit for 4k model.
     cut_off_response: Optional[CutOffResponse] = None
     azure_params: Optional[AzureOpenAIConfig] = None
     chat_gpt_functions_config: ChatGPTFunctionsConfig = ChatGPTFunctionsConfig()
@@ -110,7 +111,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     top_p: float = 0.95
     last_messages_cnt: int = 8
 
-    max_chars_check: int = 500
+    max_chars_check: int = 600
 
     class Config:
         arbitrary_types_allowed = True
