@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import random
+import time
 import typing
 from enum import Enum
 from typing import (
@@ -231,12 +232,14 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         agent_span_first = tracer.start_span(
             f"{tracer_name_start}.generate_first"  # type: ignore
         )
+        start_time = time.time()
         responses = self.generate_response(
             transcription.message,
             is_interrupt=transcription.is_interrupt,
             conversation_id=conversation_id,
             confidence=transcription.confidence,
         )
+        self.logger.debug(f"generating response took {time.time() - start_time}")
         is_first_response = True
         function_call = None
         async for response, is_interruptable in responses:
