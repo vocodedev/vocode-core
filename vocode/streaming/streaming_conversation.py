@@ -131,7 +131,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.logger.debug("sending interrupt")
                 self.conversation.logger.debug("Human started speaking")
 
-                await self.conversation.random_audio_manager.send_back_tracking_audio(asyncio.Event())
+                self.conversation.random_audio_manager.sync_send_back_tracking_audio(asyncio.Event())
 
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
@@ -187,7 +187,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 agent_response = item.payload
                 self.conversation.logger.debug("Got agent response: {}".format(agent_response))
                 if isinstance(agent_response, AgentResponseFillerAudio):
-                    await self.conversation.random_audio_manager.send_filler_audio(item.agent_response_tracker)
+                    await self.conversation.random_audio_manager.sync_send_filler_audio(item.agent_response_tracker)
                     return
 
                 if isinstance(agent_response, AgentResponseStop):
@@ -281,7 +281,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         pass
                 self.conversation.logger.debug("Synthesis complete")
 
-                await self.conversation.random_audio_manager.send_follow_up_audio(item.agent_response_tracker)
+                await self.conversation.random_audio_manager.sync_send_follow_up_audio(item.agent_response_tracker)
 
             except asyncio.CancelledError:
                 pass

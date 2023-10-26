@@ -296,3 +296,15 @@ class RandomAudioManager:
             loop.create_task(self.stop_filler_audio())
         except Exception as e:
             self.logger.debug(f"Exception while stopping all audios: {repr(e)}")
+
+    def sync_send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.send_filler_audio(agent_response_tracker))
+
+    def sync_send_back_tracking_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.send_back_tracking_audio(agent_response_tracker))
+
+    def sync_send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.send_follow_up_audio(agent_response_tracker))
