@@ -239,7 +239,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             conversation_id=conversation_id,
             confidence=transcription.confidence,
         )
-        self.logger.debug(f"generating response took {time.time() - start_time}")
         is_first_response = True
         function_call = None
         async for response, is_interruptable in responses:
@@ -254,6 +253,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 is_interruptable=self.agent_config.allow_agent_to_be_cut_off and is_interruptable,
                 agent_response_tracker=agent_input.agent_response_tracker,
             )
+        self.logger.debug(f"generating response took {time.time() - start_time}")
 
         # TODO: implement should_stop for generate_responses
         agent_span.end()
