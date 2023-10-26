@@ -289,7 +289,10 @@ class RandomAudioManager:
             self.follow_up_worker.terminate()
 
     def stop_all_audios(self):
-        loop = asyncio.get_event_loop()
-        loop.create_task(self.stop_follow_up_audio())
-        loop.create_task(self.stop_back_tracking_audio())
-        loop.create_task(self.stop_filler_audio())
+        try:
+            loop = asyncio.get_event_loop()
+            loop.create_task(self.stop_follow_up_audio())
+            loop.create_task(self.stop_back_tracking_audio())
+            loop.create_task(self.stop_filler_audio())
+        except Exception as e:
+            self.logger.debug(f"Exception while stopping all audios: {repr(e)}")
