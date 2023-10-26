@@ -22,6 +22,7 @@ from vocode.streaming.synthesizer.base_synthesizer import (
 )
 from vocode.streaming.models.synthesizer import NoPauseSynthesizerConfig, SynthesizerType
 from vocode.streaming.models.audio_encoding import AudioEncoding
+from vocode.streaming.utils import convert_linear_audio
 
 
 class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
@@ -34,15 +35,29 @@ class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
         super().__init__(synthesizer_config, aiohttp_session)
 
         import nopause
+        from nopause import AudioConfig
 
         self.sdk = nopause
         self.logger = logger or logging.getLogger(__name__)
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
+        self.synthesizer = self.sdk.Synthesis(
+            voice_id=self.synthesizer_config.voice_id,
+            model_name=self.synthesizer_config.model_name,
+            language=self.synthesizer_config.language,
+            audio_config=AudioConfig(sample_rate=self.synthesizer_config.sampling_rate),
+            api_key=self.synthesizer_config.api_key,
+            api_base=self.synthesizer_config.api_base,
+            api_version=self.synthesizer_config.api_version,
+        )
+
         self.dual_stream = True
         self.text_queue = None
         self.text_generator = None
         self.audio_chunks = None
+
+    async def ready(self):
+        await self.synthesizer.aconnect()
 
     async def create_text_generator(self):
         first_receive = False
@@ -69,14 +84,20 @@ class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
         try:
             async for chunk in audio_chunks:
                 self.logger.debug(f'Stream audio chunk: {chunk.chunk_id}')
-                yield SynthesisResult.ChunkResult(chunk.data, False)
+                data = convert_linear_audio(
+                    chunk.data,
+                    input_sample_rate=chunk.sample_rate,
+                    output_sample_rate=self.synthesizer_config.sampling_rate,
+                    output_encoding=self.synthesizer_config.audio_encoding
+                    )
+                yield SynthesisResult.ChunkResult(data, False)
             yield SynthesisResult.ChunkResult(b'\x00'*2, True)
         except asyncio.CancelledError:
             self.logger.warn('Canceled: create_response_generator')
-            await self.interrupt()
+            await self.cancel()
         except self.sdk.sdk.error.InvalidRequestError as e:
             self.logger.warn(f'Nopause InvalidRequestError: {str(e)}')
-            await self.interrupt()
+            await self.cancel()
         self.audio_chunks = None
             
     async def create_speech_stream(self, text: str, is_end: bool = False):
@@ -84,15 +105,7 @@ class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
         if self.text_queue is None:
             self.text_queue = asyncio.Queue()
             self.text_generator = self.create_text_generator()
-            audio_chunks = await self.sdk.Synthesis.astream(
-                self.text_generator,
-                voice_id=self.synthesizer_config.voice_id,
-                model_name=self.synthesizer_config.model_name,
-                language=self.synthesizer_config.language,
-                api_key=self.synthesizer_config.api_key,
-                api_base=self.synthesizer_config.api_base,
-                api_version=self.synthesizer_config.api_version,
-            )
+            audio_chunks = await self.synthesizer.astream(self.text_generator)
             self.audio_chunks = audio_chunks
             synthesis_result = SynthesisResult(
                 chunk_generator=self.create_response_generator(audio_chunks),
@@ -106,9 +119,9 @@ class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
     
     async def tear_down(self):
         await super().tear_down()
-        await self.interrupt()
+        await self.cancel()
 
-    async def interrupt(self):
+    async def cancel(self):
         if self.text_queue is not None:
             await self.text_queue.put(None)
         if self.audio_chunks is not None:
@@ -117,6 +130,10 @@ class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
             # make sure the text_generator exited
             async for x in self.text_generator:
                 pass
+
+    async def interrupt(self):
+        await self.cancel()
+        await self.synthesizer.aconnect()
 
     async def create_speech(
         self,

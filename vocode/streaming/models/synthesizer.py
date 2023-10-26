@@ -205,6 +205,7 @@ class BarkSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.BARK.value):
 DEFAULT_NOPAUSE_MODEL_NAME = 'nopause-en-beta'
 DEFAULT_NOPAUSE_LANGUAGE = "en"
 DEFAULT_NOPAUSE_VOICE_ID = "Zoe"
+DEFAULT_NOPAUSE_SAMPLING_RATE = 24000
 
 class NoPauseSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.NOPAUSE.value):
     api_key: Optional[str] = None
@@ -213,6 +214,7 @@ class NoPauseSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.NOPAUSE.v
     model_name: str = DEFAULT_NOPAUSE_MODEL_NAME
     language: str = DEFAULT_NOPAUSE_LANGUAGE
     voice_id: str = DEFAULT_NOPAUSE_VOICE_ID
+    sampling_rate: int = DEFAULT_NOPAUSE_SAMPLING_RATE
 
 DEFAULT_POLLY_LANGUAGE_CODE = "en-US"
 DEFAULT_POLLY_VOICE_ID = "Matthew"

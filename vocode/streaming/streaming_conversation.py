@@ -483,6 +483,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
         self.output_device.start()
+        if getattr(self.synthesizer, 'dual_stream', False):
+            await self.synthesizer.ready()
         if self.filler_audio_worker is not None:
             self.filler_audio_worker.start()
         if self.actions_worker is not None:

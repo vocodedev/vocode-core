@@ -12,6 +12,7 @@ from vocode.streaming.models.synthesizer import (
     PlayHtSynthesizerConfig,
     RimeSynthesizerConfig,
     PollySynthesizerConfig,
+    NoPauseSynthesizerConfig,
     StreamElementsSynthesizerConfig,
     SynthesizerConfig,
     SynthesizerType,
@@ -23,6 +24,7 @@ from vocode.streaming.synthesizer.gtts_synthesizer import GTTSSynthesizer
 from vocode.streaming.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
 from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
 from vocode.streaming.synthesizer.polly_synthesizer import PollySynthesizer
+from vocode.streaming.synthesizer.nopause_synthesizer import NoPauseSynthesizer
 from vocode.streaming.synthesizer.stream_elements_synthesizer import (
     StreamElementsSynthesizer,
 )
@@ -70,6 +72,10 @@ class SynthesizerFactory:
             )
         elif isinstance(synthesizer_config, PollySynthesizerConfig):
             return PollySynthesizer(
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
+            )
+        elif isinstance(synthesizer_config, NoPauseSynthesizerConfig):
+            return NoPauseSynthesizer(
                 synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
             )
         else:
