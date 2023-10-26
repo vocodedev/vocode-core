@@ -253,7 +253,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 is_interruptable=self.agent_config.allow_agent_to_be_cut_off and is_interruptable,
                 agent_response_tracker=agent_input.agent_response_tracker,
             )
-            self.logger.debug(f"generating response took {time.time() - start_time}")
+            self.logger.debug(f"generating response took: {time.time() - start_time} seconds")
 
         # TODO: implement should_stop for generate_responses
         agent_span.end()
