@@ -59,6 +59,7 @@ class ConsoleChatDecision(BaseModel):
     response: ConsoleChatResponse
     say_now_raw_text: Optional[str] = None
     say_now_script_location: Optional[str] = None
+    follow_up_response_raw_text: Optional[str] = None
     retry: bool = None
     normalize: bool = False
 
@@ -231,16 +232,19 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             self.logger.info("Got responses from agent for dialog state extraction: %s", formatted_responses)
             dialog_state_update = await self.get_dialog_state_update()
             self.logger.info("Got dialog state update from agent: %s", dialog_state_update)
-
-            chat_response = ConsoleChatResponse(formatted_responses, dialog_state_update,
-                                                raw_text=formatted_responses,
+            full_response_text_only = ' '.join(all_responses)
+            chat_response = ConsoleChatResponse(full_response_text_only,
+                                                dialog_state_update,
+                                                raw_text=full_response_text_only,
                                                 failed_validation=failed_validation)
-            decision = self.call_script.decision_callback(chat_response)
+            decision: ConsoleChatDecision = self.call_script.decision_callback(chat_response)
 
             # Conditionally normalize the dialog state.
             chat_response, decision = await self._handle_initial_decision(chat_response, decision)
 
+            all_follow_up_responses = []
             if decision.say_now_raw_text:
+                all_follow_up_responses.append(decision.say_now_raw_text)
                 self.produce_interruptible_agent_response_event_nonblocking(
                     AgentResponseMessage(message=BaseMessage(text=decision.say_now_raw_text)),
                     is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
@@ -249,11 +253,13 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             elif decision.say_now_script_location:
                 async for response in self.follow_response(override_dialog_state=dict(
                         script_location=decision.say_now_script_location), combined_response=formatted_responses):
+                    all_follow_up_responses.append(response)
                     self.produce_interruptible_agent_response_event_nonblocking(
                         AgentResponseMessage(message=BaseMessage(text=response)),
                         is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
                     )
 
+            decision.follow_up_response_raw_text = ' '.join(all_follow_up_responses)
             self.transcript.log_dialog_state(self.call_script.dialog_state, decision)
             #
             # self.logger.info("Got dialog state from agent: %s", dialog_state)
