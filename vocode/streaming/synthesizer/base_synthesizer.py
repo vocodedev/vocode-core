@@ -27,6 +27,7 @@ from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.synthesizer import SynthesizerConfig, TYPING_NOISE_PATH
+from vocode.streaming.models.synthesizer import UpdatedPlayHtSynthesizerConfig
 
 FILLER_PHRASES = {
     "QUESTIONS": [
@@ -288,7 +289,12 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             miniaudio_worker_output_queue,
         )
         miniaudio_worker.start()
-        # stream_reader = response.content
+
+        # print('$@#$'*5)
+        # print(stream_reader.iter_any())
+        # print(type(stream_reader.iter_any()))
+
+        # print('$@#$'*5)
 
         # Create a task to send the mp3 chunks to the MiniaudioWorker's input queue in a separate loop
         # async def send_chunks():
@@ -296,10 +302,32 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         #         miniaudio_worker.consume_nonblocking(chunk)
         #     miniaudio_worker.consume_nonblocking(None)  # sentinel
 
-        async def send_chunks():
-            for chunk in response:
-                miniaudio_worker.consume_nonblocking(chunk)
-            miniaudio_worker.consume_nonblocking(None)  # sentinel
+
+        if isinstance(self.synthesizer_config, UpdatedPlayHtSynthesizerConfig): 
+            async def async_response(response):
+                for i in response:
+                    yield i
+
+            async def send_chunks():
+                while True:
+                    try:
+                        stream = async_response(response)
+                        chunk = await anext(stream)
+                        # print(chunk)
+                        miniaudio_worker.consume_nonblocking(chunk)
+                    except StopAsyncIteration:
+                        miniaudio_worker.consume_nonblocking(None)
+                        break
+        else:
+            stream_reader = response.content
+            async def send_chunks():
+                async for chunk in stream_reader.iter_any():
+                    miniaudio_worker.consume_nonblocking(chunk)
+                miniaudio_worker.consume_nonblocking(None)  # sentinel
+
+
+
+
 
 
         try:
