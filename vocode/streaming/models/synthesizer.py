@@ -25,6 +25,7 @@ class SynthesizerType(str, Enum):
     ELEVEN_LABS = "synthesizer_eleven_labs"
     RIME = "synthesizer_rime"
     PLAY_HT = "synthesizer_play_ht"
+    Updated_PLAY_HT = "updated_synthesizer_play_ht"
     GTTS = "synthesizer_gtts"
     STREAM_ELEMENTS = "synthesizer_stream_elements"
     COQUI_TTS = "synthesizer_coqui_tts"
@@ -179,6 +180,16 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.va
     seed: Optional[int] = None
     temperature: Optional[int] = None
     voice_id: str = PLAYHT_DEFAULT_VOICE_ID
+    experimental_streaming: bool = False
+
+
+class UpdatedPlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.Updated_PLAY_HT.value):
+    api_key: Optional[str] = None
+    user_id: Optional[str] = None
+    speed: Optional[int] = None
+    seed: Optional[int] = None
+    temperature: Optional[int] = None
+    voice_id: str = 's3://voice-cloning-zero-shot/d9ff78ba-d016-47f6-b0ef-dd630f59414e/female-cs/manifest.json'
     experimental_streaming: bool = False
 
 

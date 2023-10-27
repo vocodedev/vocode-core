@@ -288,13 +288,19 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             miniaudio_worker_output_queue,
         )
         miniaudio_worker.start()
-        stream_reader = response.content
+        # stream_reader = response.content
 
         # Create a task to send the mp3 chunks to the MiniaudioWorker's input queue in a separate loop
+        # async def send_chunks():
+        #     async for chunk in stream_reader.iter_any():
+        #         miniaudio_worker.consume_nonblocking(chunk)
+        #     miniaudio_worker.consume_nonblocking(None)  # sentinel
+
         async def send_chunks():
-            async for chunk in stream_reader.iter_any():
+            for chunk in response:
                 miniaudio_worker.consume_nonblocking(chunk)
             miniaudio_worker.consume_nonblocking(None)  # sentinel
+
 
         try:
             asyncio.create_task(send_chunks())

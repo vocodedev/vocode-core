@@ -11,4 +11,4 @@ benchmark_results/
 private.key
 dump.rdb
 .idea/
-**/outbound_call.py
+**/apps/telephony_app/outbound_call.py

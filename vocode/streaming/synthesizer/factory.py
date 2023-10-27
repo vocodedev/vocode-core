@@ -10,6 +10,7 @@ from vocode.streaming.models.synthesizer import (
     GTTSSynthesizerConfig,
     GoogleSynthesizerConfig,
     PlayHtSynthesizerConfig,
+    UpdatedPlayHtSynthesizerConfig,
     RimeSynthesizerConfig,
     PollySynthesizerConfig,
     StreamElementsSynthesizerConfig,
@@ -21,6 +22,7 @@ from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynth
 from vocode.streaming.synthesizer.google_synthesizer import GoogleSynthesizer
 from vocode.streaming.synthesizer.gtts_synthesizer import GTTSSynthesizer
 from vocode.streaming.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
+from vocode.streaming.synthesizer.updated_play_ht_synthesizer import UpdatedPlayHtSynthesizer
 from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
 from vocode.streaming.synthesizer.polly_synthesizer import PollySynthesizer
 from vocode.streaming.synthesizer.stream_elements_synthesizer import (
@@ -50,6 +52,10 @@ class SynthesizerFactory:
             )
         elif isinstance(synthesizer_config, PlayHtSynthesizerConfig):
             return PlayHtSynthesizer(
+                synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
+            )
+        elif isinstance(synthesizer_config, UpdatedPlayHtSynthesizerConfig):
+            return UpdatedPlayHtSynthesizer(
                 synthesizer_config, logger=logger, aiohttp_session=aiohttp_session
             )
         elif isinstance(synthesizer_config, RimeSynthesizerConfig):
