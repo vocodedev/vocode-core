@@ -10,7 +10,7 @@ from typing import (
     Optional,
     Tuple,
     TypeVar,
-    Union,
+    Union, AsyncIterator,
 )
 import math
 import io
@@ -28,6 +28,7 @@ from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.synthesizer import SynthesizerConfig
+from vocode.streaming.utils.mp3_helper import decode_mp3
 
 FILLER_PHRASES = [
     BaseMessage(text="Um..."),
@@ -241,6 +242,62 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
                 synthesizer_config, message, seconds, len(output_bytes)
             ),
         )
+
+    async def wav_generator(self, mp3Stream: AsyncIterator[bytes], message: BaseMessage, chunk_size: int):
+        async for mp3chunk in mp3Stream:
+            output_bytes_io = decode_mp3(mp3chunk)
+            result = self.create_synthesis_result_from_wav(
+                synthesizer_config=self.synthesizer_config,
+                file=output_bytes_io,
+                message=message,
+                chunk_size=chunk_size,
+            )
+
+    async def mp3_streaming_output_generator(
+        self,
+        mp3Stream: AsyncIterator[bytes],
+        chunk_size: int,
+        create_speech_span: Optional[Span],
+    ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
+        miniaudio_worker_input_queue: asyncio.Queue[
+            Union[bytes, None]
+        ] = asyncio.Queue()
+        miniaudio_worker_output_queue: asyncio.Queue[
+            Tuple[bytes, bool]
+        ] = asyncio.Queue()
+        miniaudio_worker = MiniaudioWorker(
+            self.synthesizer_config,
+            chunk_size,
+            miniaudio_worker_input_queue,
+            miniaudio_worker_output_queue,
+        )
+        miniaudio_worker.start()
+
+        # Create a task to send the mp3 chunks to the MiniaudioWorker's input queue in a separate loop
+        async def send_chunks():
+            async for chunk in mp3Stream:
+                miniaudio_worker.consume_nonblocking(chunk)
+            miniaudio_worker.consume_nonblocking(None)  # sentinel
+
+        try:
+            asyncio.create_task(send_chunks())
+
+            # Await the output queue of the MiniaudioWorker and yield the wav chunks in another loop
+            while True:
+                # Get the wav chunk and the flag from the output queue of the MiniaudioWorker
+                wav_chunk, is_last = await miniaudio_worker.output_queue.get()
+                if self.synthesizer_config.should_encode_as_wav:
+                    wav_chunk = encode_as_wav(wav_chunk, self.synthesizer_config)
+
+                yield SynthesisResult.ChunkResult(wav_chunk, is_last)
+                # If this is the last chunk, break the loop
+                if is_last and create_speech_span is not None:
+                    create_speech_span.end()
+                    break
+        except asyncio.CancelledError:
+            pass
+        finally:
+            miniaudio_worker.terminate()
 
     async def experimental_mp3_streaming_output_generator(
         self,
