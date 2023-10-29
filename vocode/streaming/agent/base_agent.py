@@ -243,15 +243,15 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         function_call = None
         start_time = time.time()
         async for response, is_interruptable in responses:
+            if isinstance(response, FunctionCall):
+                function_call = response
+                continue
             for sentence in sent_tokenize(response):
-                if isinstance(response, FunctionCall):
-                    function_call = response
-                    continue
                 if is_first_response:
                     agent_span_first.end()
                     is_first_response = False
                 self.produce_interruptable_agent_response_event_nonblocking(
-                    AgentResponseMessage(message=BaseMessage(text=response)),
+                    AgentResponseMessage(message=BaseMessage(text=sentence)),
                     is_interruptable=self.agent_config.allow_agent_to_be_cut_off and is_interruptable,
                     agent_response_tracker=agent_input.agent_response_tracker,
                 )
