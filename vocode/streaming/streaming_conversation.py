@@ -187,9 +187,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 agent_response = item.payload
                 self.conversation.logger.debug("Got agent response: {}".format(agent_response))
                 if isinstance(agent_response, AgentResponseFillerAudio):
-                    await self.conversation.random_audio_manager.sync_send_filler_audio(item.agent_response_tracker)
+                    self.conversation.random_audio_manager.sync_send_filler_audio(item.agent_response_tracker)
                     return
-
+                if isinstance(agent_response, AgentResponseFollowUpAudio):
+                    self.conversation.random_audio_manager.sync_send_follow_up_audio(item.agent_response_tracker)
+                    return
                 if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")
                     item.agent_response_tracker.set()
