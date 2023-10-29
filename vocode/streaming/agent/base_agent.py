@@ -17,6 +17,7 @@ from typing import (
     TYPE_CHECKING,
 )
 
+from nltk import sent_tokenize
 from opentelemetry import trace
 
 from vocode.streaming.action.factory import ActionFactory
@@ -242,19 +243,20 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         function_call = None
         start_time = time.time()
         async for response, is_interruptable in responses:
-            if isinstance(response, FunctionCall):
-                function_call = response
-                continue
-            if is_first_response:
-                agent_span_first.end()
-                is_first_response = False
-            self.produce_interruptable_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=response)),
-                is_interruptable=self.agent_config.allow_agent_to_be_cut_off and is_interruptable,
-                agent_response_tracker=agent_input.agent_response_tracker,
-            )
-            self.logger.debug(f"generating response took: {time.time() - start_time} seconds")
-            start_time = time.time()
+            for sentence in sent_tokenize(response):
+                if isinstance(response, FunctionCall):
+                    function_call = response
+                    continue
+                if is_first_response:
+                    agent_span_first.end()
+                    is_first_response = False
+                self.produce_interruptable_agent_response_event_nonblocking(
+                    AgentResponseMessage(message=BaseMessage(text=response)),
+                    is_interruptable=self.agent_config.allow_agent_to_be_cut_off and is_interruptable,
+                    agent_response_tracker=agent_input.agent_response_tracker,
+                )
+                self.logger.debug(f"generating response took: {time.time() - start_time} seconds")
+                start_time = time.time()
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
