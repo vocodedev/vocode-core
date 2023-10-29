@@ -243,15 +243,6 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             ),
         )
 
-    async def wav_generator(self, mp3Stream: AsyncIterator[bytes], message: BaseMessage, chunk_size: int):
-        async for mp3chunk in mp3Stream:
-            output_bytes_io = decode_mp3(mp3chunk)
-            result = self.create_synthesis_result_from_wav(
-                synthesizer_config=self.synthesizer_config,
-                file=output_bytes_io,
-                message=message,
-                chunk_size=chunk_size,
-            )
 
     async def mp3_streaming_output_generator(
         self,

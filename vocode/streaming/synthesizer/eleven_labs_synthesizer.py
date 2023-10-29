@@ -33,7 +33,7 @@ ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
 
 
-async def text_chunker(chunks: AsyncGenerator):
+async def text_chunker(chunks: AsyncGenerator[str, None]):
         """Split text into chunks, ensuring to not break sentences."""
         splitters = (".", ",", "?", "!", ";", ":", "—", "-", "(", ")", "[", "]", "}", " ")
         buffer = ""
@@ -68,7 +68,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.text_queue = None
         self.text_generator = None
         self.dual_stream = True
-        self.audio_chunks = None
+        self.audio_chunks: AsyncGenerator[bytes, None] = None
 
         self.api_key = synthesizer_config.api_key or getenv("ELEVEN_LABS_API_KEY")
         self.voice_id = synthesizer_config.voice_id or ADAM_VOICE_ID
@@ -79,7 +79,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.words_per_minute = 150
         self.experimental_streaming = synthesizer_config.experimental_streaming
         self.uri = f"wss://api.elevenlabs.io/v1/text-to-speech/{self.voice_id}/stream-input?model_id=eleven_monolingual_v1"
-        self.ws = None
 
     async def create_text_generator(self):
         # yield "Hi. How are you doing."
@@ -104,66 +103,80 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.text_queue = None
         self.text_generator = None
 
+    async def generate_speech_output_chunks(self):
+        async with websockets.connect(self.uri) as ws:
+            await ws.send(json.dumps({
+                "text": " ",
+                "voice_settings": {"stability": 0.5, "similarity_boost": True},
+                "xi_api_key": self.api_key,
+            }))
+            async for text in text_chunker(self.text_generator):
+                    self.logger.debug(f"sending text over socket: {text}")
+                    await ws.send(json.dumps({"text": text, "try_trigger_generation": True}))
+            await ws.send(json.dumps({"text": ""}))
+            """Listen to the websocket for audio data and stream it."""
+            while True:
+                try:
+                    msg = await ws.recv()
+                    data = json.loads(msg)
+                    if data.get("audio"):
+                        yield base64.b64decode(data["audio"])
+                    elif data.get('isFinal'):
+                        break
+                except websockets.ConnectionClosed:
+                    print("Connection closed")
+                    break
+            self.logger.debug(f"socket may get closed now")
+
+
+
     async def create_speech_stream(self, text: str, is_end: bool = False):
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_total",
+        )
         synthesis_result = None
         if self.text_queue is None:
             self.text_queue = asyncio.Queue()
             self.text_generator = self.create_text_generator()
-            async for text in text_chunker(self.text_generator):
-                await self.ws.send(json.dumps({"text": text, "try_trigger_generation": True}))
-            async def listen():
-                """Listen to the websocket for audio data and stream it."""
-                while True:
-                    try:
-                        message = await self.ws.recv()
-                        data = json.loads(message)
-                        if data.get("audio"):
-                            yield base64.b64decode(data["audio"])
-                        elif data.get('isFinal'):
-                            break
-                    except websockets.ConnectionClosed:
-                        print("Connection closed")
-                        break
-
+            audio_chunks = self.generate_speech_output_chunks()
+            self.audio_chunks = audio_chunks
             message = BaseMessage(text=text, is_end=is_end)
             chunk_size = get_chunk_size_per_second(
                     self.get_synthesizer_config().audio_encoding,
                     self.get_synthesizer_config().sampling_rate,
                 ) * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
-            await self.ws.send(json.dumps({"text": ""}))
             synthesis_result = SynthesisResult(
-                chunk_generator=self.mp3_streaming_output_generator(listen(), chunk_size, None),
+                chunk_generator=self.mp3_streaming_output_generator(audio_chunks, chunk_size, create_speech_span),
                 get_message_up_to=lambda seconds: self.get_message_cutoff_from_voice_speed(
                     message, seconds, self.words_per_minute
                 ),
             )
-        # if text != "":
-        #     await self.text_queue.put(text)
-        # if is_end:
-        #     await self.text_queue.put(None)
+        if text != "":
+            await self.text_queue.put(text)
+        if is_end:
+            await self.text_queue.put(None)
         return synthesis_result
 
     async def ready(self):
-        self.ws = await websockets.connect(self.uri)
-        await self.ws.send(json.dumps({
-            "text": " ",
-            "voice_settings": {"stability": 0.5, "similarity_boost": True},
-            "xi_api_key": self.api_key,
-        }))
+        self.logger.debug(f"Readying...")
 
     async def tear_down(self):
         await super().tear_down()
         await self.cancel()
 
     async def cancel(self):
+        self.logger.debug(f"Cancelling...")
         if self.text_queue is not None:
             await self.text_queue.put(None)
+        if self.audio_chunks is not None:
+            await self.audio_chunks.aclose()
         if self.text_generator is not None:
             # make sure the text_generator exited
             async for x in self.text_generator:
                 pass
 
     async def interrupt(self):
+        self.logger.debug(f"Interrupting...")
         await self.cancel()
         await self.ready()
 
