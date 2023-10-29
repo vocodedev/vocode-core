@@ -78,7 +78,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             logger: Optional[logging.Logger] = None,
             openai_api_key: Optional[str] = None,
             vector_db_factory=VectorDBFactory(),
-            goodbye_phrase: Optional[str] = "STOP CALL"
+            goodbye_phrase: Optional[str] = "STOP CALL",
+            call_script: Optional[Any] = None,
 
     ):
         super().__init__(
@@ -112,7 +113,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 self.agent_config.vector_db_config
             )
 
-        self.call_script = self.agent_config.call_script  # FIXME: ugly flow refactor it.
+        if call_script is not None:
+            self.call_script = call_script
+        elif self.agent_config.call_script is not None:
+            self.call_script = self.agent_config.call_script
+        else:
+            raise ValueError("call_script must be passed in or set in agent_config")
 
         self.response_validator = DefaultResponseValidator(max_length=self.agent_config.max_chars_check,
                                                            )
@@ -121,7 +127,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     @property
     def extract_belief_state(self):
-        return self.agent_config.call_script.dialog_state_prompt is not None
+        return self.call_script.dialog_state_prompt is not None
 
     async def is_goodbye(self, message: str):
         return self.goodbye_phrase.lower() in message.lower()
@@ -172,7 +178,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     async def _handle_initial_decision(self, chat_response: ConsoleChatResponse, decision: BaseModel):
         if decision.normalize:
             self.logger.warning("Normalizing dialog state")
-            normalized_dialog_state = await self.get_normalized_values(decision.response.values_to_prompt_format, list(decision.response.values_to_normalize))
+            normalized_dialog_state = await self.get_normalized_values(decision.response.values_to_prompt_format,
+                                                                       list(decision.response.values_to_normalize))
             normalized_dialog_state = {
                 k: v for k, v in normalized_dialog_state.items() if k in decision.response.dialog_state_update
             }
@@ -232,19 +239,16 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             self.logger.info("Got responses from agent for dialog state extraction: %s", formatted_responses)
             dialog_state_update = await self.get_dialog_state_update()
             self.logger.info("Got dialog state update from agent: %s", dialog_state_update)
-            full_response_text_only = ' '.join(all_responses)
-            chat_response = ConsoleChatResponse(full_response_text_only,
-                                                dialog_state_update,
-                                                raw_text=full_response_text_only,
+
+            chat_response = ConsoleChatResponse(formatted_responses, dialog_state_update,
+                                                raw_text=formatted_responses,
                                                 failed_validation=failed_validation)
-            decision: ConsoleChatDecision = self.call_script.decision_callback(chat_response)
+            decision = self.call_script.decision_callback(chat_response)
 
             # Conditionally normalize the dialog state.
             chat_response, decision = await self._handle_initial_decision(chat_response, decision)
 
-            all_follow_up_responses = []
             if decision.say_now_raw_text:
-                all_follow_up_responses.append(decision.say_now_raw_text)
                 self.produce_interruptible_agent_response_event_nonblocking(
                     AgentResponseMessage(message=BaseMessage(text=decision.say_now_raw_text)),
                     is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
@@ -253,13 +257,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             elif decision.say_now_script_location:
                 async for response in self.follow_response(override_dialog_state=dict(
                         script_location=decision.say_now_script_location), combined_response=formatted_responses):
-                    all_follow_up_responses.append(response)
                     self.produce_interruptible_agent_response_event_nonblocking(
                         AgentResponseMessage(message=BaseMessage(text=response)),
                         is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
                     )
 
-            decision.follow_up_response_raw_text = ' '.join(all_follow_up_responses)
             self.transcript.log_dialog_state(self.call_script.dialog_state, decision)
             #
             # self.logger.info("Got dialog state from agent: %s", dialog_state)
@@ -367,7 +369,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         }
 
         if dialog_state_extract:
-            dialog_state_prompt, function = self.agent_config.call_script.render_dialog_state_prompt_and_function(
+            dialog_state_prompt, function = self.call_script.render_dialog_state_prompt_and_function(
                 override_dialog_state=override_dialog_state,
             )
             messages = messages or format_openai_chat_messages_from_transcript(
@@ -376,11 +378,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             parameters.update({"functions": [function], "function_call": {"name": function["name"]}})
 
         elif normalize:
-            prompt_preamble = self.agent_config.call_script.render_normalization_prompt(keys_to_normalize)
+            prompt_preamble = self.call_script.render_normalization_prompt(keys_to_normalize)
             messages = [{"role": "system", "content": prompt_preamble}]
         else:
             messages = messages or format_openai_chat_messages_from_transcript(
-                self.transcript, self.agent_config.call_script.render_text_prompt(
+                self.transcript, self.call_script.render_text_prompt(
                     override_dialog_state=override_dialog_state
                 ))
 
@@ -485,7 +487,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 )
                 vector_db_result = f"Found {len(docs_with_scores)} similar documents:\n{docs_with_scores_str}"
                 messages = format_openai_chat_messages_from_transcript(
-                    self.transcript, self.agent_config.call_script.prompt_preamble
+                    self.transcript, self.call_script.text_template
                 )
                 messages.insert(
                     -1, vector_db_result_to_openai_chat_message(vector_db_result)
