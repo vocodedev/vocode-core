@@ -93,7 +93,8 @@ class AgentResponseType(str, Enum):
 
 class AgentResponse(TypedModel, type=AgentResponseType.BASE.value):
     pass
-
+    def __str__(self):
+        return json.dumps(self.dict())
 
 class AgentResponseMessage(AgentResponse, type=AgentResponseType.MESSAGE.value):
     message: BaseMessage
