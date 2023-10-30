@@ -249,19 +249,16 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             if isinstance(response, FunctionCall):
                 function_call = response
                 continue
-            sentences = sent_tokenize(response)
-            self.logger.debug(f"number of sentences: {len(sentences)}")
-            for sentence in sentences:
-                if is_first_response:
-                    agent_span_first.end()
-                    is_first_response = False
-                self.produce_interruptable_agent_response_event_nonblocking(
-                    AgentResponseMessage(message=BaseMessage(text=sentence)),
-                    is_interruptable=self.agent_config.allow_agent_to_be_cut_off and is_interruptable,
-                    agent_response_tracker=agent_input.agent_response_tracker,
-                )
-                self.logger.debug(f"generating response took: {time.time() - start_time} seconds")
-                start_time = time.time()
+            if is_first_response:
+                agent_span_first.end()
+                is_first_response = False
+            self.produce_interruptable_agent_response_event_nonblocking(
+                AgentResponseMessage(message=BaseMessage(text=response)),
+                is_interruptable=self.agent_config.allow_agent_to_be_cut_off and is_interruptable,
+                agent_response_tracker=agent_input.agent_response_tracker,
+            )
+            self.logger.debug(f"generating response took: {time.time() - start_time} seconds")
+            start_time = time.time()
         # TODO: implement should_stop for generate_responses
         if self.agent_config.send_follow_up_audio:
             self.produce_interruptable_agent_response_event_nonblocking(

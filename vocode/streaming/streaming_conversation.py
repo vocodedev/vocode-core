@@ -282,13 +282,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     except asyncio.TimeoutError:
                         pass
                 self.conversation.logger.debug("Synthesis complete")
-                # try:
-                #     self.conversation.agent.produce_interruptable_agent_response_event_nonblocking(
-                #         AgentResponseFollowUpAudio)
-                #
-                # except:
-                #     self.conversation.logger.debug("Synthesis complete, could not create")
-                # self.conversation.random_audio_manager.sync_send_follow_up_audio(item.agent_response_tracker)
+                try:
+                    self.conversation.agent.produce_interruptable_agent_response_event_nonblocking(
+                        AgentResponseFollowUpAudio)
+
+                except Exception as e:
+                    self.conversation.logger.debug(f"Synthesis complete, could not create, {repr(e)}")
+                self.conversation.random_audio_manager.sync_send_follow_up_audio(item.agent_response_tracker)
 
             except asyncio.CancelledError:
                 pass
