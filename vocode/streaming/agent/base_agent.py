@@ -93,8 +93,10 @@ class AgentResponseType(str, Enum):
 
 class AgentResponse(TypedModel, type=AgentResponseType.BASE.value):
     pass
+
     def __str__(self):
         return json.dumps(self.dict())
+
 
 class AgentResponseMessage(AgentResponse, type=AgentResponseType.MESSAGE.value):
     message: BaseMessage
@@ -247,7 +249,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             if isinstance(response, FunctionCall):
                 function_call = response
                 continue
-            for sentence in sent_tokenize(response):
+            sentences = sent_tokenize(response)
+            self.logger.debug(f"len of response: {len(response)}")
+            for sentence in sentences:
                 if is_first_response:
                     agent_span_first.end()
                     is_first_response = False
@@ -259,6 +263,10 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 self.logger.debug(f"generating response took: {time.time() - start_time} seconds")
                 start_time = time.time()
         # TODO: implement should_stop for generate_responses
+        if self.agent_config.send_follow_up_audio:
+            self.produce_interruptable_agent_response_event_nonblocking(
+                AgentResponseFollowUpAudio()
+            )
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
             await self.call_function(function_call, agent_input)
@@ -349,10 +357,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     AgentResponseStop()
                 )
                 return
-            if self.agent_config.send_follow_up_audio:
-                self.produce_interruptable_agent_response_event_nonblocking(
-                    AgentResponseFollowUpAudio()
-                )
+
             if goodbye_detected_task:
                 try:
                     goodbye_detected = await asyncio.wait_for(
