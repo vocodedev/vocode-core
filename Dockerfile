@@ -8,16 +8,18 @@ RUN apt-get -y upgrade
 RUN apt-get install -y ffmpeg
 
 WORKDIR /code
-# COPY /apps/client_backend/pyproject.toml pyproject.toml
 COPY pyproject.toml pyproject.toml
-COPY /apps/client_backend/poetry.lock poetry.lock
+COPY /apps/client_backend/ apps/client_backend/
+COPY /vocode/ vocode/
+COPY README.md README.md
+
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir --upgrade poetry
 RUN poetry config virtualenvs.create false
-RUN poetry install --no-dev --no-interaction --no-ansi
-COPY /apps/client_backend/main.py main.py
-COPY /vocode/ vocode/
-COPY /README.md README.md
-RUN pip install -e .
+RUN poetry install --only main --no-interaction --no-ansi
+
+WORKDIR /code/apps/client_backend
+RUN poetry install --only main --no-interaction --no-ansi
 
 # Charlie added
 # COPY ../../vocode/requirements.txt /vocode/requirements.txt
