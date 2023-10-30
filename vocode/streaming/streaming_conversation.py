@@ -190,8 +190,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.random_audio_manager.sync_send_filler_audio(item.agent_response_tracker)
                     return
                 if isinstance(agent_response, AgentResponseFollowUpAudio):
-                    self.conversation.random_audio_manager.sync_send_follow_up_audio(agent_response.seconds_spoken,
-                                                                                     item.agent_response_tracker)
+                    self.conversation.random_audio_manager.sync_send_follow_up_audio(item.agent_response_tracker)
                     return
                 if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")
@@ -285,7 +284,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.debug("Synthesis complete")
                 if self.input_queue.empty() and self.conversation.agent.get_agent_config().send_follow_up_audio:
                     self.conversation.agent.produce_interruptable_agent_response_event_nonblocking(
-                        AgentResponseFollowUpAudio(seconds_spoken=0))
+                        AgentResponseFollowUpAudio())
 
             except asyncio.CancelledError:
                 pass

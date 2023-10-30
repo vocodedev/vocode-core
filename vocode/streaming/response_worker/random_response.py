@@ -59,7 +59,7 @@ class RandomResponseAudioWorker(InterruptableAgentResponseWorker):
             filler_synthesis_result = filler_audio.create_synthesis_result()
             self.current_filler_seconds_per_chunk = filler_audio.seconds_per_chunk
             silence_threshold = (
-                    self.config.silence_threshold_seconds + filler_audio.extra_wait_seconds
+                self.config.silence_threshold_seconds
             )
             await asyncio.sleep(silence_threshold)
             self.filler_audio_started_event = threading.Event()
@@ -243,7 +243,7 @@ class RandomAudioManager:
                 "No filler audio available for synthesizer"
             )
 
-    async def send_follow_up_audio(self, extra_wait_seconds: float, agent_response_tracker: Optional[asyncio.Event]):
+    async def send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
         self.stop_all_audios()
         if self.follow_up_worker is None:
             return
@@ -251,11 +251,7 @@ class RandomAudioManager:
         assert self.follow_up_worker is not None
         if self.conversation.synthesizer.follow_up_audios:
             follow_up_audio = deepcopy(random.choice(self.conversation.synthesizer.follow_up_audios))
-            follow_up_audio.extra_wait_seconds = extra_wait_seconds
-            self.logger.debug(
-                f"Chose follow up audio, {follow_up_audio.message.text},"
-                f" with extra wait seconds: {follow_up_audio.extra_wait_seconds}"
-            )
+            self.logger.debug(f"Chose follow up audio, {follow_up_audio.message.text}")
             event = self.conversation.interruptable_event_factory.create_interruptable_agent_response_event(
                 follow_up_audio,
                 is_interruptable=follow_up_audio.is_interruptable,
@@ -308,6 +304,6 @@ class RandomAudioManager:
         loop = asyncio.get_event_loop()
         loop.create_task(self.send_back_tracking_audio(agent_response_tracker))
 
-    def sync_send_follow_up_audio(self, extra_wait_seconds: float, agent_response_tracker: Optional[asyncio.Event]):
+    def sync_send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
         loop = asyncio.get_event_loop()
-        loop.create_task(self.send_follow_up_audio(extra_wait_seconds, agent_response_tracker))
+        loop.create_task(self.send_follow_up_audio(agent_response_tracker))
