@@ -283,9 +283,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     except asyncio.TimeoutError:
                         pass
                 self.conversation.logger.debug("Synthesis complete")
-                if self.conversation.agent.get_agent_config().send_follow_up_audio:
+                if self.input_queue.empty() and self.conversation.agent.get_agent_config().send_follow_up_audio:
                     self.conversation.agent.produce_interruptable_agent_response_event_nonblocking(
-                        AgentResponseFollowUpAudio(seconds_spoken=seconds_spoken))
+                        AgentResponseFollowUpAudio(seconds_spoken=0))
 
             except asyncio.CancelledError:
                 pass
