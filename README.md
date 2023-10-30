@@ -1,3 +1,24 @@
+# SpeakSage set up
+
+Set up a virtual env
+
+```
+pyenv activate vocodeenv
+pyenv deactivate
+```
+
+Copy the `.env.template` and add in your own API keys for Deepgram and Eleven Labs
+Make sure this new `.env` file is in `apps/client_backend/.env`
+
+Run the backend
+
+```
+cd apps/client_backend
+poetry run uvicorn main:app --host 0.0.0.0 --port 8080
+```
+
+<break>
+
 <div align="center">
 
 ![Hero](https://user-images.githubusercontent.com/6234599/228337850-e32bb01d-3701-47ef-a433-3221c9e0e56e.png)

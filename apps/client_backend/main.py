@@ -43,7 +43,7 @@ conversation_router = ConversationRouter(
     ),
     synthesizer_thunk=lambda output_audio_config: ElevenLabsSynthesizer(
         ElevenLabsSynthesizerConfig.from_output_audio_config(
-            output_audio_config, voice_id="EXAVITQu4vr4xnSDxMaL"
+            output_audio_config, voice_id="EXAVITQu4vr4xnSDxMaL", logger=logger
         )
     ),
     logger=logger,
