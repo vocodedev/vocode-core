@@ -260,10 +260,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             self.logger.debug(f"generating response took: {time.time() - start_time} seconds")
             start_time = time.time()
         # TODO: implement should_stop for generate_responses
-        if self.agent_config.send_follow_up_audio:
-            self.produce_interruptable_agent_response_event_nonblocking(
-                AgentResponseFollowUpAudio()
-            )
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
             await self.call_function(function_call, agent_input)
