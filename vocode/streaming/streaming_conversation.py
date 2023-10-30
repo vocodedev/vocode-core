@@ -514,6 +514,25 @@ class StreamingConversation(Generic[OutputDeviceType]):
     def create_state_manager(self) -> ConversationStateManager:
         return ConversationStateManager(conversation=self)
 
+    def reconstruct_synthesis_result(self, filepath, message, chunk_size):
+        # You would probably need to convert this raw data back to a file-like object or the expected 'Any' type
+        return self.synthesizer.create_synthesis_result_from_wav(filepath, message, chunk_size)
+
+    async def handle_initial_audio(self, initial_audio_path: str, initial_message: BaseMessage):
+        # load audio
+        self.logger.info(f"Loading initial audio from {initial_audio_path}")
+        synth_result = self.reconstruct_synthesis_result(initial_audio_path, initial_message,
+                                                         self.agent_responses_worker.chunk_size)
+        self.transcriber.mute()
+        initial_message_tracker = asyncio.Event()
+        self.agent_responses_worker.produce_interruptible_agent_response_event_nonblocking(
+            (initial_message, synth_result),
+            is_interruptible=False,
+            agent_response_tracker=initial_message_tracker,
+        )
+        await initial_message_tracker.wait()
+        self.transcriber.unmute()
+
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
         self.transcriptions_worker.start()
@@ -540,8 +559,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         self.agent.start()
         initial_message = self.agent.get_agent_config().initial_message
+        initial_audio_path = self.agent.get_agent_config().initial_audio_path
         self.agent.attach_transcript(self.transcript)
-        if initial_message:
+
+        if initial_audio_path and initial_message:
+            asyncio.create_task(self.handle_initial_audio(initial_audio_path=initial_audio_path,
+                                                          initial_message=initial_message))
+        elif initial_message:
             asyncio.create_task(self.send_initial_message(initial_message))
         elif isinstance(self.agent, ChatGPTAgent):
             self.agent.first_response = self.agent.create_first_response(self.agent.agent_config.expected_first_prompt)
