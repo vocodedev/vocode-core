@@ -102,12 +102,14 @@ class FillerAudio:
             synthesizer_config: SynthesizerConfig,
             is_interruptable: bool = False,
             seconds_per_chunk: int = 1,
+            extra_wait_seconds: float = 0,
     ):
         self.message = message
         self.audio_data = audio_data
         self.synthesizer_config = synthesizer_config
         self.is_interruptable = is_interruptable
         self.seconds_per_chunk = seconds_per_chunk
+        self.extra_wait_seconds = extra_wait_seconds
 
     def create_synthesis_result(self) -> SynthesisResult:
         chunk_size = (

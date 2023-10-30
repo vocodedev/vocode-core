@@ -190,7 +190,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.random_audio_manager.sync_send_filler_audio(item.agent_response_tracker)
                     return
                 if isinstance(agent_response, AgentResponseFollowUpAudio):
-                    self.conversation.random_audio_manager.sync_send_follow_up_audio(item.agent_response_tracker)
+                    self.conversation.random_audio_manager.sync_send_follow_up_audio(agent_response.seconds_spoken,
+                                                                                     item.agent_response_tracker)
                     return
                 if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")
@@ -249,7 +250,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     publish_to_events_manager=False,
                 )
 
-                message_sent, cut_off = await self.conversation.send_speech_to_output(
+                message_sent, cut_off, seconds_spoken = await self.conversation.send_speech_to_output(
                     message.text,
                     synthesis_result,
                     item.interruption_event,
@@ -282,13 +283,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     except asyncio.TimeoutError:
                         pass
                 self.conversation.logger.debug("Synthesis complete")
-                try:
+                if self.conversation.agent.get_agent_config().send_follow_up_audio:
                     self.conversation.agent.produce_interruptable_agent_response_event_nonblocking(
-                        AgentResponseFollowUpAudio)
-
-                except Exception as e:
-                    self.conversation.logger.debug(f"Synthesis complete, could not create, {repr(e)}")
-                self.conversation.random_audio_manager.sync_send_follow_up_audio(item.agent_response_tracker)
+                        AgentResponseFollowUpAudio(seconds_spoken=seconds_spoken))
 
             except asyncio.CancelledError:
                 pass
@@ -578,7 +575,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.transcriber.unmute()
         if transcript_message:
             transcript_message.text = message_sent
-        return message_sent, cut_off
+        return message_sent, cut_off, seconds_spoken
 
     def mark_terminated(self):
         self.active = False

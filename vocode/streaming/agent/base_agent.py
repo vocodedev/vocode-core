@@ -122,7 +122,7 @@ class AgentResponseBackTrackingAudio(
 class AgentResponseFollowUpAudio(
     AgentResponse, type=AgentResponseType.FOLLOW_UP_AUDIO.value
 ):
-    pass
+    seconds_spoken: float = 0
 
 
 AgentConfigType = TypeVar("AgentConfigType", bound=AgentConfig)
