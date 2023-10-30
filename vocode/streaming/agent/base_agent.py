@@ -250,7 +250,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 function_call = response
                 continue
             sentences = sent_tokenize(response)
-            self.logger.debug(f"len of response: {len(response)}")
+            self.logger.debug(f"number of sentences: {len(sentences)}")
             for sentence in sentences:
                 if is_first_response:
                     agent_span_first.end()
