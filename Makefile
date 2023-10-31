@@ -6,7 +6,6 @@ deploy:
 	docker push cstigler/speaksage-vocode-backend:latest
 
 build-dev:
-	source ./dev-env/bin/activate
 	docker build -t speaksage-vocode-backend .
 
 run-dev:
