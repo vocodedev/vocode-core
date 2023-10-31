@@ -188,6 +188,7 @@ NUMBERS = {
 
 
 def number_to_tts(value: Union[int, str]) -> Optional[str]:
+    # TODO: handle different types
     if 0 <= value <= 20:
         return NUMBERS[value]
 
@@ -235,24 +236,29 @@ def number_to_tts(value: Union[int, str]) -> Optional[str]:
         result_str += f"{hundreds_str}{tens_str}{ones_str}"
 
         # Add suffix (word representation of 1000^order)
-        if order == 1:
-            if ones in [2, 3, 4] and tens == 0 and hundreds == 0:
-                result_str += "tisíce "
-            else:
+        if ones == 1 and tens == 0 and hundreds == 0:
+            # Special case for 1000 -> "tisíc", 1000000 -> "milión", etc.
+            if order == 1:
                 result_str += "tisíc "
-        elif order == 2:
-            if ones == 1 and tens == 0 and hundreds == 0:
+            if order == 2:
                 result_str += "milión "
-            elif ones in [2, 3, 4] and tens == 0 and hundreds == 0:
-                result_str += "milióny "
-            else:
-                result_str += "miliónů "
-        if order == 3:
-            if ones == 1 and tens == 0 and hundreds == 0:
+            elif order == 3:
                 result_str += "miliarda "
-            elif ones in [2, 3, 4] and tens == 0 and hundreds == 0:
+        elif ones in [2, 3, 4] and tens == 0 and hundreds == 0:
+            # Special case for 2000 -> "dva tisíce", 2000000 -> "dva milióny", etc.
+            if order == 1:
+                result_str += "tisíce "
+            elif order == 2:
+                result_str += "milióny "
+            elif order == 3:
                 result_str += "miliardy "
-            else:
+        else:
+            # General case, e.g. 12000 -> "dvanáct tisíc", 5000000 -> "pět miliónů", etc.
+            if order == 1:
+                result_str += "tisíc "
+            elif order == 2:
+                result_str += "miliónů "
+            elif order == 3:
                 result_str += "miliard "
 
     return result_str.strip()
