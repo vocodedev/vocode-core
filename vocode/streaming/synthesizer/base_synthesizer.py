@@ -149,7 +149,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
         self.logger = logger or logging.getLogger(__name__)
-        self.synthesizer_config = synthesizer_config
+        self.synthesizer_config: SynthesizerConfig = synthesizer_config
         self.base_filler_audio_path = self.synthesizer_config.base_filler_audio_path
         self.base_back_tracking_audio_path = self.synthesizer_config.base_back_tracking_audio_path
         self.base_follow_up_audio_path = self.synthesizer_config.base_follow_up_audio_path
@@ -321,8 +321,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         #         miniaudio_worker.consume_nonblocking(chunk)
         #     miniaudio_worker.consume_nonblocking(None)  # sentinel
 
-
-        if isinstance(self.synthesizer_config, UpdatedPlayHtSynthesizerConfig): 
+        if isinstance(self.synthesizer_config, UpdatedPlayHtSynthesizerConfig):
             async def async_response(response):
                 for i in response:
                     yield i
@@ -339,15 +338,11 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
                         break
         else:
             stream_reader = response.content
+
             async def send_chunks():
                 async for chunk in stream_reader.iter_any():
                     miniaudio_worker.consume_nonblocking(chunk)
                 miniaudio_worker.consume_nonblocking(None)  # sentinel
-
-
-
-
-
 
         try:
             asyncio.create_task(send_chunks())
