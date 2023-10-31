@@ -19,9 +19,6 @@ from vocode.streaming.synthesizer.base_synthesizer import (
 )
 from vocode.streaming.utils.mp3_helper import decode_mp3
 
-from pyht import Client
-from pyht.client import TTSOptions
-
 
 class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
     def __init__(
@@ -30,6 +27,9 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
             logger: Optional[logging.Logger] = None,
             aiohttp_session: Optional[ClientSession] = None,
     ):
+        from pyht import Client
+        from pyht.client import TTSOptions
+
         super().__init__(synthesizer_config, logger, aiohttp_session)
         self.synthesizer_config = synthesizer_config
         self.api_key = synthesizer_config.api_key or getenv("PLAY_HT_API_KEY")
