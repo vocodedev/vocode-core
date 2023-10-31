@@ -21,7 +21,7 @@ class RandomResponseAudioWorker(InterruptableAgentResponseWorker):
 
     def __init__(
             self,
-            input_queue: asyncio.Queue[InterruptableAgentResponseEvent[FillerAudio]],
+            input_queue: asyncio.Queue,
             conversation,
             config: RandomResponseAudioConfig,
     ):
@@ -80,7 +80,7 @@ class FillerAudioWorker(RandomResponseAudioWorker):
 
     def __init__(
             self,
-            input_queue: asyncio.Queue[InterruptableAgentResponseEvent[FillerAudio]],
+            input_queue: asyncio.Queue,
             conversation,
             filler_audio_config: FillerAudioConfig,
     ):
@@ -92,7 +92,7 @@ class BackTrackingWorker(RandomResponseAudioWorker):
 
     def __init__(
             self,
-            input_queue: asyncio.Queue[InterruptableAgentResponseEvent[FillerAudio]],
+            input_queue: asyncio.Queue,
             conversation,
             back_tracking_config: BackTrackingConfig,
     ):
@@ -104,7 +104,7 @@ class FollowUpAudioWorker(RandomResponseAudioWorker):
 
     def __init__(
             self,
-            input_queue: asyncio.Queue[InterruptableAgentResponseEvent[FillerAudio]],
+            input_queue: asyncio.Queue,
             conversation,
             follow_up_audio_config: FollowUpAudioConfig,
     ):
