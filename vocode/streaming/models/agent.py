@@ -74,6 +74,8 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     track_bot_sentiment: bool = False
     actions: Optional[List[ActionConfig]] = None
 
+    initial_audio_path: Optional[str] = None  # path to audio file.
+
 
 class CutOffResponse(BaseModel):
     messages: List[BaseMessage] = [BaseMessage(text="Sorry?")]
@@ -95,8 +97,11 @@ class ChatGPTFunctionsConfig(BaseModel):
 
 
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
-    prompt_preamble: Template
+    prompt_preamble: Union[Template, str]
     call_script: Optional[Any] = None
+    dialog_state: Optional[Any] = None  # TODO: figure out how to do better because call_script point to this too.
+    # right now it is used for twillio integration.
+
     expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
     max_tokens: int = 500

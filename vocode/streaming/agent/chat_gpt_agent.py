@@ -59,6 +59,7 @@ class ConsoleChatDecision(BaseModel):
     response: ConsoleChatResponse
     say_now_raw_text: Optional[str] = None
     say_now_script_location: Optional[str] = None
+    follow_up_response_raw_text: Optional[str] = None
     retry: bool = None
     normalize: bool = False
 
@@ -77,7 +78,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             logger: Optional[logging.Logger] = None,
             openai_api_key: Optional[str] = None,
             vector_db_factory=VectorDBFactory(),
-            goodbye_phrase: Optional[str] = "STOP CALL"
+            goodbye_phrase: Optional[str] = "STOP CALL",
+            call_script: Optional[Any] = None,
 
     ):
         super().__init__(
@@ -111,7 +113,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 self.agent_config.vector_db_config
             )
 
-        self.call_script = self.agent_config.call_script  # FIXME: ugly flow refactor it.
+        if call_script is not None:
+            self.call_script = call_script
+        elif self.agent_config.call_script is not None:
+            self.call_script = self.agent_config.call_script
+        else:
+            raise ValueError("call_script must be passed in or set in agent_config")
 
         self.response_validator = DefaultResponseValidator(max_length=self.agent_config.max_chars_check,
                                                            )
@@ -120,7 +127,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     @property
     def extract_belief_state(self):
-        return self.agent_config.call_script.dialog_state_prompt is not None
+        return self.call_script.dialog_state_prompt is not None
 
     async def is_goodbye(self, message: str):
         return self.goodbye_phrase.lower() in message.lower()
@@ -171,7 +178,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     async def _handle_initial_decision(self, chat_response: ConsoleChatResponse, decision: BaseModel):
         if decision.normalize:
             self.logger.warning("Normalizing dialog state")
-            normalized_dialog_state = await self.get_normalized_values(decision.response.values_to_prompt_format, list(decision.response.values_to_normalize))
+            normalized_dialog_state = await self.get_normalized_values(decision.response.values_to_prompt_format,
+                                                                       list(decision.response.values_to_normalize))
             normalized_dialog_state = {
                 k: v for k, v in normalized_dialog_state.items() if k in decision.response.dialog_state_update
             }
@@ -361,7 +369,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         }
 
         if dialog_state_extract:
-            dialog_state_prompt, function = self.agent_config.call_script.render_dialog_state_prompt_and_function(
+            dialog_state_prompt, function = self.call_script.render_dialog_state_prompt_and_function(
                 override_dialog_state=override_dialog_state,
             )
             messages = messages or format_openai_chat_messages_from_transcript(
@@ -370,11 +378,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             parameters.update({"functions": [function], "function_call": {"name": function["name"]}})
 
         elif normalize:
-            prompt_preamble = self.agent_config.call_script.render_normalization_prompt(keys_to_normalize)
+            prompt_preamble = self.call_script.render_normalization_prompt(keys_to_normalize)
             messages = [{"role": "system", "content": prompt_preamble}]
         else:
             messages = messages or format_openai_chat_messages_from_transcript(
-                self.transcript, self.agent_config.call_script.render_text_prompt(
+                self.transcript, self.call_script.render_text_prompt(
                     override_dialog_state=override_dialog_state
                 ))
 
@@ -479,7 +487,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 )
                 vector_db_result = f"Found {len(docs_with_scores)} similar documents:\n{docs_with_scores_str}"
                 messages = format_openai_chat_messages_from_transcript(
-                    self.transcript, self.agent_config.call_script.prompt_preamble
+                    self.transcript, self.call_script.text_template
                 )
                 messages.insert(
                     -1, vector_db_result_to_openai_chat_message(vector_db_result)
