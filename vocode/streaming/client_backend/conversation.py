@@ -2,6 +2,7 @@ import logging
 from typing import Callable, Optional
 import typing
 
+from dataclasses import dataclass
 from fastapi import APIRouter, WebSocket
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.models.audio_encoding import AudioEncoding
@@ -32,6 +33,24 @@ from vocode.streaming.models.transcript import TranscriptEvent
 from vocode.streaming.utils import events_manager
 
 BASE_CONVERSATION_ENDPOINT = "/conversation"
+
+
+@dataclass
+class ConversationParams:
+    human_name: str
+    agent_name: str
+    company_name: str
+    situation: str
+
+    @staticmethod
+    def get_conversation_params(websocket):
+        query_params = websocket.query_params
+        return ConversationParams(
+            human_name=query_params.get('humanName'),
+            agent_name=query_params.get('agentName'),
+            company_name=query_params.get('companyName'),
+            situation=query_params.get('situation')
+        )
 
 
 class ConversationRouter(BaseRouter):
@@ -66,16 +85,23 @@ class ConversationRouter(BaseRouter):
 
     def get_conversation(
         self,
+        websocket: WebSocket,
         output_device: WebsocketOutputDevice,
         start_message: AudioConfigStartMessage,
     ) -> StreamingConversation:
         transcriber = self.transcriber_thunk(start_message.input_audio_config)
         synthesizer = self.synthesizer_thunk(start_message.output_audio_config)
         synthesizer.synthesizer_config.should_encode_as_wav = True
+
+        conversation_params = ConversationParams.get_conversation_params(
+            websocket)
+
+        self.logger.debug(conversation_params)
+
         return StreamingConversation(
             output_device=output_device,
             transcriber=transcriber,
-            agent=self.agent_thunk(),
+            agent=self.agent_thunk(conversation_params),
             synthesizer=synthesizer,
             conversation_id=start_message.conversation_id,
             events_manager=TranscriptEventManager(output_device, self.logger)
@@ -95,7 +121,8 @@ class ConversationRouter(BaseRouter):
             start_message.output_audio_config.sampling_rate,
             start_message.output_audio_config.audio_encoding,
         )
-        conversation = self.get_conversation(output_device, start_message)
+        conversation = self.get_conversation(
+            websocket, output_device, start_message)
         await conversation.start(lambda: websocket.send_text(ReadyMessage().json()))
         while conversation.is_active():
             message: WebSocketMessage = WebSocketMessage.parse_obj(

@@ -17,6 +17,16 @@ cd apps/client_backend
 poetry run uvicorn main:app --host 0.0.0.0 --port 8080
 ```
 
+If you make edits to the `vocode` app outside the `client_backend` dir, then run `poetry install` to rebuild the dependency from local.
+If you get a warning that the `poetry.lock` file is not consistent with `pyproject.toml`, run
+
+```
+poetry lock --no-update
+poetry install
+```
+
+and you should see the vocode dependency getting updated.
+
 <break>
 
 <div align="center">
