@@ -1,5 +1,8 @@
 import datetime
-from typing import Optional, Union
+import re
+import string
+from dataclasses import dataclass
+from typing import List, Optional, Tuple, Union
 
 WEEKDAYS = {
     1: "v pondělí",
@@ -186,9 +189,83 @@ NUMBERS = {
     1000000000: "miliarda",
 }
 
+NUMBERS_PATTERN = re.compile(r"(\d{4}-\d{2}-\d{2}|\d{2}:\d{2}|(\d+[\s.,]?)+)")
+KW_PATTERN = re.compile(r"[kK][wW]")
+PERCENT_PATTERN = re.compile(r"%")
 
-def number_to_tts(value: Union[int, str]) -> Optional[str]:
-    # TODO: handle different types
+
+@dataclass
+class ValueToConvert:
+    value: str
+    position: Tuple[int, int]
+    value_type: str
+    tts_value: Optional[str]
+
+
+def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
+    result = []
+    for match in NUMBERS_PATTERN.finditer(text):
+        start, end = match.start(), match.end()
+        original_value = text[start:end]
+        # TODO: handle ordinal numbers
+        value = original_value.replace(" ", "").strip(string.punctuation)
+        if "-" in value:
+            value_type = "date"
+            tts_value = date_to_words(value, current_date=None)
+        elif ":" in value:
+            value_type = "time"
+            tts_value = time_to_words(value)
+        elif value.isnumeric():
+            value_type = "integer"
+            tts_value = integer_to_words(value)
+        else:
+            try:
+                float(value)
+            except ValueError:
+                continue
+            value_type = "float"
+            tts_value = float_to_words(value)
+
+        # Add trailing spaces if the original value had them
+        trailing_spaces = len(original_value) - len(original_value.rstrip())
+        tts_value += " " * trailing_spaces
+
+        result.append(ValueToConvert(original_value, (start, end), value_type, tts_value))
+
+    # Find and convert all occurrences of kilowatt abbreviations
+    for match in KW_PATTERN.finditer(text):
+        start, end = match.start(), match.end()
+        value = text[start:end]
+        result.append(ValueToConvert(value, (start, end), "power", " kilowattů"))
+
+    # Find and convert all occurrences of percent symbol
+    for match in PERCENT_PATTERN.finditer(text):
+        start, end = match.start(), match.end()
+        value = text[start:end]
+        result.append(ValueToConvert(value, (start, end), "percent", " procent"))
+
+    return result
+
+
+def float_to_words(value: str) -> Optional[str]:
+    value = float(value)
+    integral, decimal = divmod(value, 1)
+    decimal = str(round(decimal, 3))[2:]  # Avoid decimal representation errors
+    if decimal.startswith("0"):
+        decimal_str = " ".join([integer_to_words(d) for d in decimal])
+    else:
+        decimal_str = integer_to_words(decimal)
+
+    integral_str = integer_to_words(int(integral))
+    return f"{integral_str} celá {decimal_str}" if int(decimal) > 0 else integral_str
+
+
+def integer_to_words(value: Union[int, str]) -> Optional[str]:
+    try:
+        value = int(value)
+    except ValueError:
+        return "neznámé číslo"
+
     if 0 <= value <= 20:
         return NUMBERS[value]
 
@@ -264,7 +341,7 @@ def number_to_tts(value: Union[int, str]) -> Optional[str]:
     return result_str.strip()
 
 
-def date_to_tts(value: Union[str, datetime.date], current_date: Union[str, datetime.date, None]) -> str:
+def date_to_words(value: Union[str, datetime.date], current_date: Union[str, datetime.date, None]) -> str:
     if isinstance(current_date, str):
         current_date = datetime.date.fromisoformat(current_date)
     if not isinstance(value, datetime.date):
@@ -282,7 +359,7 @@ def date_to_tts(value: Union[str, datetime.date], current_date: Union[str, datet
     return f"{weekday} {day} {month}"
 
 
-def time_to_tts(value: Union[str, datetime.time]) -> str:
+def time_to_words(value: Union[str, datetime.time]) -> str:
     if not isinstance(value, datetime.time):
         try:
             value = datetime.time.fromisoformat(value)
