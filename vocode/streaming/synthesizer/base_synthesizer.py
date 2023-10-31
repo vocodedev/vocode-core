@@ -321,31 +321,8 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         #         miniaudio_worker.consume_nonblocking(chunk)
         #     miniaudio_worker.consume_nonblocking(None)  # sentinel
 
-        if isinstance(self.synthesizer_config, UpdatedPlayHtSynthesizerConfig):
-            async def async_response(response):
-                for i in response:
-                    yield i
-
-            async def send_chunks():
-                while True:
-                    try:
-                        stream = async_response(response)
-                        chunk = await anext(stream)
-                        # print(chunk)
-                        miniaudio_worker.consume_nonblocking(chunk)
-                    except StopAsyncIteration:
-                        miniaudio_worker.consume_nonblocking(None)
-                        break
-        else:
-            stream_reader = response.content
-
-            async def send_chunks():
-                async for chunk in stream_reader.iter_any():
-                    miniaudio_worker.consume_nonblocking(chunk)
-                miniaudio_worker.consume_nonblocking(None)  # sentinel
-
         try:
-            asyncio.create_task(send_chunks())
+            asyncio.create_task(self.send_chunks(response, miniaudio_worker))
 
             # Await the output queue of the MiniaudioWorker and yield the wav chunks in another loop
             while True:
@@ -367,3 +344,9 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
     async def tear_down(self):
         if self.should_close_session_on_tear_down:
             await self.aiohttp_session.close()
+
+    async def send_chunks(self, response, miniaudio_worker):
+        stream_reader = response.content
+        async for chunk in stream_reader.iter_any():
+            miniaudio_worker.consume_nonblocking(chunk)
+        miniaudio_worker.consume_nonblocking(None)  # sentinel

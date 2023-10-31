@@ -41,23 +41,17 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
         self.words_per_minute = 150
         self.experimental_streaming = synthesizer_config.experimental_streaming
 
-
-
-
         self.client = Client(
             user_id=self.user_id,
             api_key=self.api_key,
-            )
-        
+        )
+
     async def create_speech(
             self,
             message: BaseMessage,
             chunk_size: int,
             bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        
-        
-            
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.create_total",
         )
@@ -67,17 +61,15 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
         # for chunk in self.client.tts(message.text, options):
         #     print(chunk)
         # do something with the audio chunk
-            # print(type(chunk))
-            # output_bytes_io = decode_mp3(chunk)
-            # result = self.create_synthesis_result_from_wav(
-            #     synthesizer_config=self.synthesizer_config,
-            #     file=output_bytes_io,
-            #     message=message,
-            #     chunk_size=chunk_size,
-            # )
-            # return result
-
-
+        # print(type(chunk))
+        # output_bytes_io = decode_mp3(chunk)
+        # result = self.create_synthesis_result_from_wav(
+        #     synthesizer_config=self.synthesizer_config,
+        #     file=output_bytes_io,
+        #     message=message,
+        #     chunk_size=chunk_size,
+        # )
+        # return result
 
         stream = self.client.tts(message.text, options)
         return SynthesisResult(
@@ -88,8 +80,6 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
                 message, seconds, self.words_per_minute
             ),
         )
-
-
 
     #     in_stream, out_stream = self.client.get_stream_pair(options)
     #     audio_task = asyncio.create_task(self.send_message_to_output(out_stream, message, chunk_size))
@@ -102,8 +92,7 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
     #     await in_stream.done()
 
     #     await asyncio.wait_for(audio_task, 60)
-            
-        
+
     # async def send_message_to_output(self, data: AsyncGenerator[bytes, None] | AsyncIterable[bytes], message: BaseMessage, chunk_size: int):
     #     for chunk in data:
 
@@ -117,9 +106,19 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
     #         )
     #         return result
     #     await asyncio.sleep(0.1)
+    async def send_chunks(self, response, miniaudio_worker):
 
+        while True:
+            try:
+                stream = self.async_response(response)
+                chunk = await anext(stream)
+                # print(chunk)
+                miniaudio_worker.consume_nonblocking(chunk)
+            except StopAsyncIteration:
+                miniaudio_worker.consume_nonblocking(None)
+                break
 
-
-
-
-
+    @staticmethod
+    async def async_response(response):
+        for i in response:
+            yield i
