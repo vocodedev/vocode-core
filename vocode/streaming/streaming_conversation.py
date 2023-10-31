@@ -57,7 +57,7 @@ from vocode.streaming.transcriber.base_transcriber import (
 )
 from vocode.streaming.utils import create_conversation_id, get_chunk_size_per_second
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
-from vocode.streaming.utils.events_manager import EventsManager
+from vocode.streaming.utils.events_manager import EventsManager, RedisEventsManager
 from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
@@ -481,10 +481,18 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
 
         self.events_manager = events_manager or EventsManager()
+        try:
+            self.redis_event_manger = RedisEventsManager(
+                session_id=self.id)  # FIXME: this should be discussed with Kuba
+            # attach it to transript.
+        except Exception as e:
+            self.redis_event_manger = None
+            self.logger.error(f"Failed to create RedisEventsManager: {e}. Not logging events to Redis.")
         self.events_task: Optional[asyncio.Task] = None
         self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
         self.transcript = Transcript()
         self.transcript.attach_events_manager(self.events_manager)
+        self.transcript.attach_redis_events_manager(self.redis_event_manger)
         self.bot_sentiment = None
         if self.agent.get_agent_config().track_bot_sentiment:
             self.sentiment_config = (

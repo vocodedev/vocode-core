@@ -1,4 +1,3 @@
-import json
 import time
 from copy import copy
 from copy import deepcopy
@@ -8,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from vocode.streaming.models.actions import ActionInput, ActionOutput
 from vocode.streaming.models.events import ActionEvent, Sender, Event, EventType
-from vocode.streaming.utils.events_manager import EventsManager
+from vocode.streaming.utils.events_manager import EventsManager, RedisEventsManager
 
 SENDER_TO_OPENAI_ROLE = {Sender.HUMAN: 'user', Sender.BOT: 'assistant'}
 
@@ -75,6 +74,7 @@ class Transcript(BaseModel):
     event_logs: List[EventLog] = []
     start_time: float = Field(default_factory=time.time)
     events_manager: Optional[EventsManager] = None
+    redis_events_manager: Optional[RedisEventsManager] = None
     summaries: Optional[List[Summary]] = None
 
     dialog_states_history: List[BeliefStateEntry] = []
@@ -194,6 +194,9 @@ class Transcript(BaseModel):
 
     def attach_events_manager(self, events_manager: EventsManager):
         self.events_manager = events_manager
+
+    def attach_redis_events_manager(self, redis_events_manager: RedisEventsManager):
+        self.redis_events_manager = redis_events_manager
 
     def to_string(self, include_timestamps: bool = False) -> str:
         return "\n".join(
