@@ -1,7 +1,6 @@
 import io
 import logging
 import os
-import wave
 from collections import defaultdict
 from typing import List, Dict
 from typing import Optional
@@ -22,7 +21,7 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     FILLER_PHRASES,
     FillerAudio,
     BACK_TRACKING_PHRASES,
-    tracer,
+    tracer, FOLLOW_UP_PHRASES,
 )
 from vocode.streaming.utils import convert_wav
 from vocode.streaming.utils.mp3_helper import decode_mp3
@@ -127,46 +126,38 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.logger.debug("generating filler audios")
         filler_phrase_audios = defaultdict(list)
         for emotion, filler_phrases in FILLER_PHRASES.items():
-            for filler_phrase in filler_phrases:
-                filler_audio_path = await self.get_audio_data_from_cache_or_download(filler_phrase,
-                                                                                     self.base_filler_audio_path)
-                filler_phrase_audios[emotion].append(
-                    FillerAudio(
-                        filler_phrase,
-                        audio_data=convert_wav(
-                            filler_audio_path,
-                            output_sample_rate=self.synthesizer_config.sampling_rate,
-                            output_encoding=self.synthesizer_config.audio_encoding,
-                        ),
-                        synthesizer_config=self.synthesizer_config,
-                        is_interruptable=True,
-                        seconds_per_chunk=2,
-                    )
-                )
+            audios = await self.get_audios_from_messages(filler_phrases, self.base_filler_audio_path)
+            filler_phrase_audios[emotion] = audios
         return filler_phrase_audios
 
     async def get_phrase_back_tracking_audios(self) -> List[FillerAudio]:
         self.logger.debug("generating back tracking audios")
-        back_tracking_audios = []
-        for back_tracking_phrase in BACK_TRACKING_PHRASES:
-            filler_audio_path = await self.get_audio_data_from_cache_or_download(back_tracking_phrase,
-                                                                                 self.base_back_tracking_audio_path)
-
-            back_tracking_audios.append(
-
-                FillerAudio(
-                    back_tracking_phrase,
-                    audio_data=convert_wav(
-                        filler_audio_path,
-                        output_sample_rate=self.synthesizer_config.sampling_rate,
-                        output_encoding=self.synthesizer_config.audio_encoding,
-                    ),
-                    synthesizer_config=self.synthesizer_config,
-                    is_interruptable=False,
-                    seconds_per_chunk=2,
-                )
-            )
+        back_tracking_audios = await self.get_audios_from_messages(BACK_TRACKING_PHRASES,
+                                                                   self.base_back_tracking_audio_path)
         return back_tracking_audios
+
+    async def get_phrase_follow_up_audios(self) -> List[FillerAudio]:
+        self.logger.debug("generating follow up audios")
+        follow_up_audios = await self.get_audios_from_messages(FOLLOW_UP_PHRASES, self.base_follow_up_audio_path)
+        return follow_up_audios
+
+    async def get_audios_from_messages(self, phrases: List[BaseMessage], base_path: str):
+        audios = []
+        for phrase in phrases:
+            if not os.path.exists(base_path):
+                os.makedirs(base_path)
+
+            audio_path = await self.get_audio_data_from_cache_or_download(phrase, base_path)
+            audio = FillerAudio(phrase,
+                                audio_data=convert_wav(
+                                    audio_path,
+                                    output_sample_rate=self.synthesizer_config.sampling_rate,
+                                    output_encoding=self.synthesizer_config.audio_encoding, ),
+                                synthesizer_config=self.synthesizer_config,
+                                is_interruptable=True,
+                                seconds_per_chunk=2, )
+            audios.append(audio)
+        return audios
 
     async def get_audio_data_from_cache_or_download(self, phrase: BaseMessage, base_path: str) -> str:
         cache_key = "-".join(

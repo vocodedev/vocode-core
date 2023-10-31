@@ -1,12 +1,7 @@
-import asyncio
-import io
 import logging
 from typing import Optional
 
 from aiohttp import ClientSession, ClientTimeout
-from pydub import AudioSegment
-import requests
-from opentelemetry.context.context import Context
 
 from vocode import getenv
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
@@ -30,7 +25,6 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
             aiohttp_session: Optional[ClientSession] = None,
     ):
         super().__init__(synthesizer_config, logger, aiohttp_session)
-        self.synthesizer_config = synthesizer_config
         self.api_key = synthesizer_config.api_key or getenv("PLAY_HT_API_KEY")
         self.user_id = synthesizer_config.user_id or getenv("PLAY_HT_USER_ID")
         if not self.api_key or not self.user_id:

@@ -15,6 +15,7 @@ from .audio_encoding import AudioEncoding
 
 FILLER_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "filler_audio")
 BACK_TRACKING_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "back_tracking_audio")
+FOLLOW_UP_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "follow_up_audio")
 TYPING_NOISE_PATH = "%s/typing-noise.wav" % FILLER_AUDIO_PATH
 
 
@@ -51,6 +52,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
     sentiment_config: Optional[SentimentConfig] = None
     base_filler_audio_path: str = FILLER_AUDIO_PATH
     base_back_tracking_audio_path: str = BACK_TRACKING_AUDIO_PATH
+    base_follow_up_audio_path: str = FOLLOW_UP_AUDIO_PATH
 
     class Config:
         arbitrary_types_allowed = True
