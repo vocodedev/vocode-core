@@ -74,6 +74,8 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     track_bot_sentiment: bool = False
     actions: Optional[List[ActionConfig]] = None
 
+    initial_audio_path: Optional[str] = None  # path to audio file.
+
 
 class CutOffResponse(BaseModel):
     messages: List[BaseMessage] = [BaseMessage(text="Sorry?")]
