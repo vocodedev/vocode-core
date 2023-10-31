@@ -7,6 +7,7 @@ from aiohttp import ClientSession, ClientTimeout
 from pydub import AudioSegment
 import requests
 from opentelemetry.context.context import Context
+from pyht import TTSOptions
 
 from vocode import getenv
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
@@ -28,7 +29,6 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
             aiohttp_session: Optional[ClientSession] = None,
     ):
         from pyht import Client
-        from pyht.client import TTSOptions
 
         super().__init__(synthesizer_config, logger, aiohttp_session)
         self.synthesizer_config = synthesizer_config
