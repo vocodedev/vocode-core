@@ -1,13 +1,7 @@
-import asyncio
-import io
 import logging
-from typing import Optional, AsyncGenerator, AsyncIterable
+from typing import Optional
 
-from aiohttp import ClientSession, ClientTimeout
-from pydub import AudioSegment
-import requests
-from opentelemetry.context.context import Context
-from pyht import TTSOptions
+from aiohttp import ClientSession
 
 from vocode import getenv
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
@@ -18,7 +12,6 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     SynthesisResult,
     tracer,
 )
-from vocode.streaming.utils.mp3_helper import decode_mp3
 
 
 class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
@@ -28,8 +21,8 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
             logger: Optional[logging.Logger] = None,
             aiohttp_session: Optional[ClientSession] = None,
     ):
-        from pyht import Client
-
+        import pyht
+        self.pyht = pyht
         super().__init__(synthesizer_config, logger, aiohttp_session)
         self.synthesizer_config = synthesizer_config
         self.api_key = synthesizer_config.api_key or getenv("PLAY_HT_API_KEY")
@@ -41,7 +34,7 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
         self.words_per_minute = 150
         self.experimental_streaming = synthesizer_config.experimental_streaming
 
-        self.client = Client(
+        self.client = self.pyht.Client(
             user_id=self.user_id,
             api_key=self.api_key,
         )
@@ -56,7 +49,7 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
             f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.create_total",
         )
 
-        options = TTSOptions(voice=self.synthesizer_config.voice_id)
+        options = self.pyht.TTSOptions(voice=self.synthesizer_config.voice_id)
         print(message.text)
         # for chunk in self.client.tts(message.text, options):
         #     print(chunk)
