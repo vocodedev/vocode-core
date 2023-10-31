@@ -45,7 +45,7 @@ class ConsoleChatResponse:
 
     @property
     def values_to_prompt_format(self) -> str:
-        """Values to normalize in GPT functions friendly format
+        """Values to normalize in formatted as a list of key:value pairs
         :return: str with values to normalize
         """
         content = ""
