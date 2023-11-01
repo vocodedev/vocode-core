@@ -8,7 +8,7 @@ on outbound calls as to whether or not the receiving party has indicated they wo
 be placed on a Do Not Call list. Additionally, if Do Not Call analysis was run on a call,
 the result will be populated into a field on the Call object returned from the Get Call endpoint.
 
-By default, if the run_do_not_call_detection argument is not supplied, Vocode will not run
+By default, if the `run_do_not_call_detection` argument is not supplied, Vocode will not run
 Do Not Call detection.
 
 # Example 1: Run Do Not Call detection on an outbound call, and retrieve the result
@@ -27,7 +27,7 @@ vocode_client.calls.create_call(
             content="Ask Eliot if the sun is on today"
         ),
     ),
-    run_do_not_call_detection="True"
+    run_do_not_call_detection=True
 )
 ```
 
@@ -43,10 +43,10 @@ returning:
 ```json
 {
   "id": "call_id",
-  "toNumber": "123456789",
-  "fromNumber": "123456789",
+  "to_number": "123456789",
+  "from_number": "123456789",
   ...
-  "do_not_call_result": "True",
+  "do_not_call_result": true,
   ...
 }
 ```
