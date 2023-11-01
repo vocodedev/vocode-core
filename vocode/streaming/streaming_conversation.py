@@ -33,7 +33,7 @@ from vocode.streaming.constants import (
 )
 from vocode.streaming.ignored_while_talking_fillers_fork import OpenAIEmbeddingOverTalkingFillerDetector
 from vocode.streaming.models.agent import FillerAudioConfig
-from vocode.streaming.models.events import Sender
+from vocode.streaming.models.events import Sender, EventType
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
     SentimentConfig,
@@ -42,8 +42,7 @@ from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.models.transcript import (
     Message,
     Transcript,
-    TranscriptCompleteEvent,
-)
+    TranscriptCompleteEvent, )
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.response_classifier import OpenaiEmbeddingsResponseClassifier
 from vocode.streaming.synthesizer.base_synthesizer import (
@@ -57,7 +56,7 @@ from vocode.streaming.transcriber.base_transcriber import (
 )
 from vocode.streaming.utils import create_conversation_id, get_chunk_size_per_second
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
-from vocode.streaming.utils.events_manager import EventsManager
+from vocode.streaming.utils.events_manager import EventsManager, RedisEventsManager
 from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
@@ -380,6 +379,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     message=transcript_message,
                     conversation_id=self.conversation.id,
                 )
+                # redis call here
+                if self.conversation.redis_event_manger is not None:
+                    self.conversation.transcript.publish_redis_transcript_event_from_message(
+                        message=transcript_message
+                    )
                 item.agent_response_tracker.set()
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(
@@ -481,10 +485,19 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
 
         self.events_manager = events_manager or EventsManager()
+        try:
+            self.redis_event_manger = RedisEventsManager(
+                session_id=self.id, subscriptions=[EventType.TRANSCRIPT])  # FIXME: this should be discussed with Kuba
+            # attach it to transript.
+        except Exception as e:
+            self.redis_event_manger = None
+            self.logger.error(f"Failed to create RedisEventsManager: {e}. Not logging events to Redis.")
+
         self.events_task: Optional[asyncio.Task] = None
         self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
         self.transcript = Transcript()
         self.transcript.attach_events_manager(self.events_manager)
+        self.transcript.attach_redis_events_manager(self.redis_event_manger)
         self.bot_sentiment = None
         if self.agent.get_agent_config().track_bot_sentiment:
             self.sentiment_config = (
@@ -596,6 +609,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.check_for_idle_task = asyncio.create_task(self.check_for_idle())
         if len(self.events_manager.subscriptions) > 0:
             self.events_task = asyncio.create_task(self.events_manager.start())
+
+        if self.redis_event_manger is not None:
+            self.events_task = asyncio.create_task(self.redis_event_manger.start())
+
 
     async def send_initial_message(self, initial_message: BaseMessage):
         # TODO: configure if initial message is interruptible
@@ -827,6 +844,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.events_manager and self.events_task:
             self.logger.debug("Terminating events Task")
             await self.events_manager.flush()
+        if self.redis_event_manger is not None:
+            self.logger.debug("Terminating redis events Task")
+            await self.redis_event_manger.flush()
         self.logger.debug("Tearing down synthesizer")
         await self.synthesizer.tear_down()
         self.logger.debug("Terminating agent")

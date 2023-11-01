@@ -1,14 +1,12 @@
-import json
 import time
 from copy import copy
 from copy import deepcopy
 from typing import List, Optional, Tuple, Any, Dict
 
 from pydantic import BaseModel, Field
-
 from vocode.streaming.models.actions import ActionInput, ActionOutput
 from vocode.streaming.models.events import ActionEvent, Sender, Event, EventType
-from vocode.streaming.utils.events_manager import EventsManager
+from vocode.streaming.utils.events_manager import EventsManager, RedisEventsManager
 
 SENDER_TO_OPENAI_ROLE = {Sender.HUMAN: 'user', Sender.BOT: 'assistant'}
 
@@ -75,6 +73,7 @@ class Transcript(BaseModel):
     event_logs: List[EventLog] = []
     start_time: float = Field(default_factory=time.time)
     events_manager: Optional[EventsManager] = None
+    redis_events_manager: Optional[RedisEventsManager] = None
     summaries: Optional[List[Summary]] = None
 
     dialog_states_history: List[BeliefStateEntry] = []
@@ -195,6 +194,9 @@ class Transcript(BaseModel):
     def attach_events_manager(self, events_manager: EventsManager):
         self.events_manager = events_manager
 
+    def attach_redis_events_manager(self, redis_events_manager: RedisEventsManager):
+        self.redis_events_manager = redis_events_manager
+
     def to_string(self, include_timestamps: bool = False) -> str:
         return "\n".join(
             event.to_string(include_timestamp=include_timestamps)
@@ -221,6 +223,15 @@ class Transcript(BaseModel):
                 )
             )
 
+    def publish_redis_transcript_event_from_message(self, message: Message):
+        self.redis_events_manager.publish_event(
+            TranscriptEvent(
+                text=message.text,
+                sender=message.sender,
+                timestamp=message.timestamp,
+                conversation_id=self.redis_events_manager.redis_manager.session_id,
+            ))
+
     def add_message_from_props(
             self,
             text: str,
@@ -235,6 +246,8 @@ class Transcript(BaseModel):
             self.maybe_publish_transcript_event_from_message(
                 message=message, conversation_id=conversation_id
             )
+        if self.redis_events_manager is not None:
+            self.publish_redis_transcript_event_from_message(message=message)
 
     def add_message(
             self,

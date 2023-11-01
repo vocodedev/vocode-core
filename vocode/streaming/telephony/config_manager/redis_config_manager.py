@@ -1,6 +1,7 @@
 import logging
 import os
 from typing import Optional
+
 from redis.asyncio import Redis
 
 from vocode.streaming.models.telephony import BaseCallConfig
@@ -10,6 +11,7 @@ from vocode.streaming.telephony.config_manager.base_config_manager import (
 
 
 class RedisConfigManager(BaseConfigManager):
+
     def __init__(self, logger: Optional[logging.Logger] = None):
         self.redis: Redis = Redis(
             host=os.environ.get("REDISHOST", "localhost"),
@@ -18,6 +20,7 @@ class RedisConfigManager(BaseConfigManager):
             password=os.environ.get("REDISPASSWORD", None),
             db=0,
             decode_responses=True,
+            ssl=True,
         )
         self.logger = logger or logging.getLogger(__name__)
 
