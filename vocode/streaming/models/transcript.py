@@ -1,3 +1,4 @@
+import json
 import time
 from copy import copy
 from copy import deepcopy
@@ -91,7 +92,6 @@ class Transcript(BaseModel):
                 message=message,
                 conversation_id=self.redis_events_manager.redis_manager.session_id,
             ))
-
 
     def log_dialog_state(self, new_dialog_state: Any, decision: Optional[Any] = None):
         if self.current_dialog_state is not None:
@@ -416,6 +416,14 @@ class TranscriptEvent(Event, type=EventType.TRANSCRIPT):
 
 class TranscriptCompleteEvent(Event, type=EventType.TRANSCRIPT_COMPLETE):
     transcript: Transcript
+
+    def json(self, *args, **kwargs):
+        # Use the dict method to serialize the model and exclude specific fields that should not be serialized.
+        data_dict = self.transcript.dict(exclude={"events_manager", "redis_events_manager", "current_start_index","current_dialog_state"})
+        serialied_current_dialog_state = json.loads(self.transcript.current_dialog_state.json()) # serialize it using pydantic and load back to mitigate issues with datetime attributes.
+        data_dict["current_dialog_state"] = serialied_current_dialog_state
+        # Use Python's json.dumps method for JSON serialization
+        return json.dumps(data_dict, ensure_ascii=False, indent=4)
 
 
 class DialogStateEvent(Event, type=EventType.DIALOG_STATE):

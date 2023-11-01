@@ -487,9 +487,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.events_manager = events_manager or EventsManager()
         try:
             self.redis_event_manger = RedisEventsManager(
-                session_id=self.id, subscriptions=[EventType.TRANSCRIPT, EventType.DIALOG_STATE,
-                                                   EventType.FOLLOW_UP,
-                                                   EventType.GPT_RESPONSE])
+                session_id=self.id,
+                subscriptions=[EventType.TRANSCRIPT, EventType.DIALOG_STATE, EventType.TRANSCRIPT_COMPLETE,
+                               EventType.FOLLOW_UP,
+                               EventType.GPT_RESPONSE])
             # attach it to transript.
         except Exception as e:
             self.redis_event_manger = None
