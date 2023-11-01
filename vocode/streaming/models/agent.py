@@ -10,6 +10,8 @@ from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
 from .vector_db import VectorDBConfig
 
+CHAT_GPT_AGENT_LAST_USER_MESSAGE_COUNT = 4
+
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
 LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
 LLM_AGENT_DEFAULT_MAX_TOKENS = 256
@@ -114,7 +116,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     frequency_penalty: float = 0.3
     temperature: float = 0.2
     top_p: float = 0.95
-    last_messages_cnt: int = 8
+    last_messages_cnt: int = CHAT_GPT_AGENT_LAST_USER_MESSAGE_COUNT
 
     max_chars_check: int = 600
 
