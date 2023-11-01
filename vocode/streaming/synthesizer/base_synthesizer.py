@@ -10,7 +10,8 @@ from typing import (
     Optional,
     Tuple,
     TypeVar,
-    Union, AsyncIterator,
+    Union,
+    AsyncIterator,
 )
 import math
 import io
@@ -242,7 +243,6 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
                 synthesizer_config, message, seconds, len(output_bytes)
             ),
         )
-
 
     async def mp3_streaming_output_generator(
         self,

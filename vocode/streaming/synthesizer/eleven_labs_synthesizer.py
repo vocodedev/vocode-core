@@ -13,7 +13,8 @@ from vocode.streaming.constants import TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
     ElevenLabsSynthesizerConfig,
-    SynthesizerType, )
+    SynthesizerType,
+)
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
@@ -31,7 +32,8 @@ ELEVENLABS_BASE_HTTP_URL = f"https://{ELEVENLABS_BASE_URL}/"
 async def text_chunker(chunks: AsyncGenerator[str, None]):
     """Split text into chunks, ensuring to not break sentences.
     This may not work non english scripts like Hindi.
-    Copied from https://docs.elevenlabs.io/api-reference/text-to-speech-websockets#example-of-voice-streaming-using-elevenlabs-and-chatgpt"""
+    Copied from https://docs.elevenlabs.io/api-reference/text-to-speech-websockets#example-of-voice-streaming-using-elevenlabs-and-chatgpt
+    """
     splitters = (".", ",", "?", "!", ";", ":", "—", "-", "(", ")", "[", "]", "}", " ")
     buffer = ""
 
@@ -51,10 +53,10 @@ async def text_chunker(chunks: AsyncGenerator[str, None]):
 
 class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     def __init__(
-            self,
-            synthesizer_config: ElevenLabsSynthesizerConfig,
-            logger: Optional[logging.Logger] = None,
-            aiohttp_session: Optional[aiohttp.ClientSession] = None,
+        self,
+        synthesizer_config: ElevenLabsSynthesizerConfig,
+        logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
         super().__init__(synthesizer_config, aiohttp_session)
 
@@ -85,29 +87,38 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             try:
                 text = await self.text_queue.get()
                 if not first_receive:
-                    self.logger.debug('Got first stream text')
+                    self.logger.debug("Got first stream text")
                     first_receive = True
                 if text is None:
-                    self.logger.debug('Got end stream text')
+                    self.logger.debug("Got end stream text")
                     break
-                self.logger.debug(f'Stream text: {text}')
+                self.logger.debug(f"Stream text: {text}")
                 yield text
             except asyncio.CancelledError:
-                self.logger.warn('Canceled: create_text_generator')
+                self.logger.warn("Canceled: create_text_generator")
                 break
         self.text_queue = None
         self.text_generator = None
 
     async def generate_speech_output_chunks(self):
         async with websockets.connect(self.uri) as ws:
-            await ws.send(json.dumps({
-                "text": " ",
-                "voice_settings": {"stability": self.stability, "similarity_boost": self.similarity_boost},
-                "xi_api_key": self.api_key,
-            }))
+            await ws.send(
+                json.dumps(
+                    {
+                        "text": " ",
+                        "voice_settings": {
+                            "stability": self.stability,
+                            "similarity_boost": self.similarity_boost,
+                        },
+                        "xi_api_key": self.api_key,
+                    }
+                )
+            )
             async for text in text_chunker(self.text_generator):
                 self.logger.debug(f"sending text over socket: {text}")
-                await ws.send(json.dumps({"text": text, "try_trigger_generation": True}))
+                await ws.send(
+                    json.dumps({"text": text, "try_trigger_generation": True})
+                )
             await ws.send(json.dumps({"text": ""}))
             """Listen to the websocket for audio data and stream it."""
             while True:
@@ -116,7 +127,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     data = json.loads(msg)
                     if data.get("audio"):
                         yield base64.b64decode(data["audio"])
-                    elif data.get('isFinal'):
+                    elif data.get("isFinal"):
                         break
                 except websockets.ConnectionClosed:
                     print("Connection closed")
@@ -134,12 +145,17 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             audio_chunks = self.generate_speech_output_chunks()
             self.audio_chunks = audio_chunks
             message = BaseMessage(text=text, is_end=is_end)
-            chunk_size = get_chunk_size_per_second(
-                self.get_synthesizer_config().audio_encoding,
-                self.get_synthesizer_config().sampling_rate,
-            ) * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
+            chunk_size = (
+                get_chunk_size_per_second(
+                    self.get_synthesizer_config().audio_encoding,
+                    self.get_synthesizer_config().sampling_rate,
+                )
+                * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
+            )
             synthesis_result = SynthesisResult(
-                chunk_generator=self.mp3_streaming_output_generator(audio_chunks, chunk_size, create_speech_span),
+                chunk_generator=self.mp3_streaming_output_generator(
+                    audio_chunks, chunk_size, create_speech_span
+                ),
                 get_message_up_to=lambda seconds: self.get_message_cutoff_from_voice_speed(
                     message, seconds, self.words_per_minute
                 ),
