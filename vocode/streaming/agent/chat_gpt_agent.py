@@ -5,6 +5,7 @@ import re
 import time
 from dataclasses import dataclass
 from json import JSONDecodeError
+
 from typing import Any, Dict, List, Union
 from typing import AsyncGenerator, Optional, Tuple
 
@@ -62,6 +63,10 @@ class ConsoleChatDecision(BaseModel):
     follow_up_response_raw_text: Optional[str] = None
     retry: bool = None
     normalize: bool = False
+
+    chat_parameters_text: Optional[List[Dict[str, Any]]] = None
+    chat_parameters_dialog_state_update: Optional[List[Dict[str, Any]]] = None
+    chat_parameters_normalization: Optional[List[Dict[str, Any]]] = None
 
 
 def messages_from_transcript(transcript: Transcript, system_prompt: str):
@@ -124,6 +129,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                                            )
 
         self.tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo")  # FIXME: parametrize
+
+        # logging parameters to get final chat_params from response generators
+        self.last_chat_parameters_text: Optional[List[Dict[str, Any]]] = None
+        self.last_chat_parameters_dialog_state_update: Optional[List[Dict[str, Any]]] = None
+        self.last_chat_parameters_normalization: Optional[List[Dict[str, Any]]] = None
 
     @property
     def extract_belief_state(self):
@@ -266,13 +276,25 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                         is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
                     )
             decision.follow_up_response_raw_text = ' '.join(all_follow_up_responses)
-            self.transcript.log_dialog_state(self.call_script.dialog_state, decision)
+
+            self.append_chat_params_to_decision_and_log_dialog_state(decision)
 
         # TODO: implement should_stop for generate_responses
         if function_call and self.agent_config.actions is not None:
             await self.call_function(function_call, agent_input)
 
         return False
+
+    def append_chat_params_to_decision_and_log_dialog_state(self, decision: ConsoleChatDecision):
+        decision.chat_parameters_text = self.last_chat_parameters_text
+        decision.chat_parameters_dialog_state_update = self.last_chat_parameters_dialog_state_update
+        decision.chat_parameters_normalization = self.last_chat_parameters_normalization
+
+        self.last_chat_parameters_text: Optional[List[Dict[str, Any]]] = None
+        self.last_chat_parameters_dialog_state_update: Optional[List[Dict[str, Any]]] = None
+        self.last_chat_parameters_normalization: Optional[List[Dict[str, Any]]] = None
+
+        self.transcript.log_dialog_state(self.call_script.dialog_state, decision)
 
     def _parse_dialog_state(self, belief_state: str) -> dict[str, str]:
         """
@@ -298,6 +320,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + [{"role": "user", "content": content}]
         chat_parameters["messages"] = self.trim_messages_to_fit(chat_parameters["messages"])
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
+
+        self.last_chat_parameters_normalization = chat_parameters
+
         try:
             return json.loads(chat_completion.choices[0].message.content)
         except JSONDecodeError:
@@ -322,6 +347,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters["messages"] = self.trim_messages_to_fit(chat_parameters["messages"])
         # Call the model
         chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
+        self.last_chat_parameters_dialog_state_update = chat_parameters
         return self._parse_dialog_state(chat_completion.choices[0].message.function_call.arguments)
 
     async def follow_response(self, override_dialog_state: Dict[str, Any],
@@ -520,6 +546,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                                            chat_parameters["messages"][0]["content"]).strip()
         chat_parameters["messages"] = self.trim_messages_to_fit(chat_parameters["messages"])
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
+        self.last_chat_parameters_text = chat_parameters
 
         async for message in collate_response_async(
                 openai_get_tokens(stream), get_functions=True
