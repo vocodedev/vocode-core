@@ -14,7 +14,7 @@ from vocode.streaming.models.model import BaseModel
 
 class ConversationLog(BaseModel):
     conversation_id: str
-    current_timestamp: int = int(time.time())
+    current_timestamp: float = time.time()
     event: Event
 
     @property
@@ -44,8 +44,9 @@ class RedisManager:
         self.logger = logger or logging.getLogger(__name__)
 
     async def save_log(self, event: Event):
-        conversation_log = ConversationLog(conversation_id=self.session_id, event=event)
+        conversation_log = ConversationLog(conversation_id=self.session_id, event=event,current_timestamp=event.timestamp )
         await self.redis.set(conversation_log.redis_key, conversation_log.data_json)
+        print("Saved event to redis", conversation_log.redis_key)
 
 
 class EventsManager:

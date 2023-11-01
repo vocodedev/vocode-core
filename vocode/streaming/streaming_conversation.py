@@ -379,6 +379,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     message=transcript_message,
                     conversation_id=self.conversation.id,
                 )
+                # redis call here
+                if self.conversation.redis_event_manger is not None:
+                    self.conversation.transcript.publish_redis_transcript_event_from_message(
+                        message=transcript_message
+                    )
                 item.agent_response_tracker.set()
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(
