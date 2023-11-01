@@ -33,7 +33,7 @@ from vocode.streaming.constants import (
 )
 from vocode.streaming.ignored_while_talking_fillers_fork import OpenAIEmbeddingOverTalkingFillerDetector
 from vocode.streaming.models.agent import FillerAudioConfig
-from vocode.streaming.models.events import Sender
+from vocode.streaming.models.events import Sender, EventType
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
     SentimentConfig,
@@ -42,8 +42,7 @@ from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.models.transcript import (
     Message,
     Transcript,
-    TranscriptCompleteEvent,
-)
+    TranscriptCompleteEvent, )
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.response_classifier import OpenaiEmbeddingsResponseClassifier
 from vocode.streaming.synthesizer.base_synthesizer import (
@@ -483,11 +482,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.events_manager = events_manager or EventsManager()
         try:
             self.redis_event_manger = RedisEventsManager(
-                session_id=self.id)  # FIXME: this should be discussed with Kuba
+                session_id=self.id, subscriptions=[EventType.TRANSCRIPT])  # FIXME: this should be discussed with Kuba
             # attach it to transript.
         except Exception as e:
             self.redis_event_manger = None
             self.logger.error(f"Failed to create RedisEventsManager: {e}. Not logging events to Redis.")
+
         self.events_task: Optional[asyncio.Task] = None
         self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
         self.transcript = Transcript()
@@ -604,6 +604,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.check_for_idle_task = asyncio.create_task(self.check_for_idle())
         if len(self.events_manager.subscriptions) > 0:
             self.events_task = asyncio.create_task(self.events_manager.start())
+
+        if self.redis_event_manger is not None:
+            self.events_task = asyncio.create_task(self.redis_event_manger.start())
+
 
     async def send_initial_message(self, initial_message: BaseMessage):
         # TODO: configure if initial message is interruptible
@@ -835,6 +839,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.events_manager and self.events_task:
             self.logger.debug("Terminating events Task")
             await self.events_manager.flush()
+        if self.redis_event_manger is not None:
+            self.logger.debug("Terminating redis events Task")
+            await self.redis_event_manger.flush()
         self.logger.debug("Tearing down synthesizer")
         await self.synthesizer.tear_down()
         self.logger.debug("Terminating agent")

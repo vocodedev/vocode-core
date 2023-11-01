@@ -3,11 +3,31 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 from typing import List, Optional
 
-from redis import Redis
+from redis.asyncio import Redis
 
 from vocode.streaming.models.events import Event, EventType
+from vocode.streaming.models.model import BaseModel
+
+
+class ConversationLog(BaseModel):
+    conversation_id: str
+    current_timestamp: int = int(time.time())
+    event: Event
+
+    @property
+    def redis_key(self):
+        return f"conversation_log:{self.conversation_id}:{self.event.type}:{self.current_timestamp}"
+
+    @property
+    def data(self):
+        return self.event.dict()
+
+    @property
+    def data_json(self):
+        return self.event.json()
 
 
 class RedisManager:
@@ -16,7 +36,6 @@ class RedisManager:
         self.redis: Redis = Redis(
             host=os.environ['REDISHOST'],
             port=int(os.environ['REDISPORT']),
-            username=os.environ['REDISUSER'],
             password=os.environ['REDISPASSWORD'],
             ssl=True,
             db=0,
@@ -24,9 +43,9 @@ class RedisManager:
         )
         self.logger = logger or logging.getLogger(__name__)
 
-    async def save_log(self, message: str):
-        self.logger.debug(f"Saving config for session id {self.session_id}")
-        await self.redis.set(message)
+    async def save_log(self, event: Event):
+        conversation_log = ConversationLog(conversation_id=self.session_id, event=event)
+        await self.redis.set(conversation_log.redis_key, conversation_log.data_json)
 
 
 class EventsManager:
@@ -62,11 +81,26 @@ class EventsManager:
 
 
 class RedisEventsManager(EventsManager):
-    def __init__(self, session_id: str, subscriptions: List[EventType] = []):
+    def __init__(self, session_id: str, subscriptions: Optional[List[EventType]] = None):
         super().__init__(subscriptions)
+        if subscriptions is None:
+            self.subscriptions = {}
         self.redis_manager = RedisManager(session_id)
+
+    def publish_event(self, event: Event):
+        if event.type in self.subscriptions:
+            self.queue.put_nowait(event)
 
     async def handle_event(self, event: Event):
         # Log the event to Redis
-        message = f"Event: {event.type}, Data: {event.data}"  # Adjust this based on the actual Event object structure
-        await self.redis_manager.save_log(message)
+
+        await self.redis_manager.save_log(event)
+
+    async def start(self):
+        self.active = True
+        while self.active:
+            try:
+                event = await self.queue.get()
+            except asyncio.QueueEmpty:
+                await asyncio.sleep(0.1)
+            await self.handle_event(event)

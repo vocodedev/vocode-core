@@ -4,7 +4,6 @@ from copy import deepcopy
 from typing import List, Optional, Tuple, Any, Dict
 
 from pydantic import BaseModel, Field
-
 from vocode.streaming.models.actions import ActionInput, ActionOutput
 from vocode.streaming.models.events import ActionEvent, Sender, Event, EventType
 from vocode.streaming.utils.events_manager import EventsManager, RedisEventsManager
@@ -224,6 +223,15 @@ class Transcript(BaseModel):
                 )
             )
 
+    def publish_redis_transcript_event_from_message(self, message: Message):
+        self.redis_events_manager.publish_event(
+            TranscriptEvent(
+                text=message.text,
+                sender=message.sender,
+                timestamp=message.timestamp,
+                conversation_id=self.redis_events_manager.redis_manager.session_id,
+            ))
+
     def add_message_from_props(
             self,
             text: str,
@@ -238,6 +246,8 @@ class Transcript(BaseModel):
             self.maybe_publish_transcript_event_from_message(
                 message=message, conversation_id=conversation_id
             )
+        if self.redis_events_manager is not None:
+            self.publish_redis_transcript_event_from_message(message=message)
 
     def add_message(
             self,
