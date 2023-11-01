@@ -5,7 +5,7 @@ from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig, Pla
 import re
 from vocode.streaming.synthesizer.eleven_labs_synthesizer import (
     ElevenLabsSynthesizer,
-    ELEVEN_LABS_BASE_URL,
+    ELEVENLABS_BASE_HTTP_URL,
 )
 from vocode.streaming.synthesizer.play_ht_synthesizer import (
     PlayHtSynthesizer,
@@ -40,7 +40,7 @@ def create_eleven_labs_request_handler(optimize_streaming_latency=False):
 def mock_eleven_labs_api():
     with aioresponses() as m:
         pattern = re.compile(
-            rf"{re.escape(ELEVEN_LABS_BASE_URL)}text-to-speech/\w+")
+            rf"{re.escape(ELEVENLABS_BASE_HTTP_URL)}text-to-speech/\w+")
         m.post(pattern, callback=create_eleven_labs_request_handler())
         yield m
 
