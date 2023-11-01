@@ -55,14 +55,17 @@ class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
         self.text_queue = None
         self.text_generator = None
         self.audio_chunks = None
+        self.semaphore = asyncio.Semaphore(1)
+        self.interrupted = False
 
     async def ready(self):
         await self.synthesizer.aconnect()
 
     async def create_text_generator(self):
         first_receive = False
-        while True:
-            try:
+        
+        try:
+            while True:
                 text = await self.text_queue.get()
                 if not first_receive:
                     self.logger.debug('Got first stream text')
@@ -72,18 +75,19 @@ class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
                     break
                 self.logger.debug(f'Stream text: {text}')
                 yield text
-            except asyncio.CancelledError:
-                self.logger.warn('Canceled: create_text_generator')
-                break
-            except Exception as e:
-                raise e
-        self.text_queue = None
-        self.text_generator = None
+        except asyncio.CancelledError:
+            self.logger.warn('<> Canceled: text generator')
+        except Exception as e:
+            raise e
+        finally:
+            self.logger.warn('<> Done: text generator')
+            self.text_queue = None
+            self.text_generator = None
 
     async def create_response_generator(self, audio_chunks):
         try:
             async for chunk in audio_chunks:
-                self.logger.debug(f'Stream audio chunk: {chunk.chunk_id}')
+                self.logger.debug(f'<> Stream audio chunk: {chunk.chunk_id}')
                 data = convert_linear_audio(
                     chunk.data,
                     input_sample_rate=chunk.sample_rate,
@@ -92,17 +96,24 @@ class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
                     )
                 yield SynthesisResult.ChunkResult(data, False)
             yield SynthesisResult.ChunkResult(b'\x00'*2, True)
+            self.logger.warn('<> Done: response generator')
         except asyncio.CancelledError:
-            self.logger.warn('Canceled: create_response_generator')
+            self.logger.warn('<> Canceled: response generator')
             await self.cancel()
         except self.sdk.sdk.error.InvalidRequestError as e:
-            self.logger.warn(f'Nopause InvalidRequestError: {str(e)}')
+            self.logger.warn(f'<> Nopause InvalidRequestError: {str(e)}')
             await self.cancel()
         self.audio_chunks = None
             
     async def create_speech_stream(self, text: str, is_end: bool = False):
         synthesis_result = None
         if self.text_queue is None:
+            in_used = await self.synthesizer.ain_use()
+            if in_used:
+                await self.synthesizer.ainterrupt()
+            self.logger.debug(f'<> Create synthesizer stream')
+            async with self.semaphore:
+                self.interrupted = False
             self.text_queue = asyncio.Queue()
             self.text_generator = self.create_text_generator()
             audio_chunks = await self.synthesizer.astream(self.text_generator)
@@ -122,18 +133,25 @@ class NoPauseSynthesizer(BaseSynthesizer[NoPauseSynthesizerConfig]):
         await self.cancel()
 
     async def cancel(self):
+        self.logger.warn('<> Call synthesizer.cancel')
         if self.text_queue is not None:
+            self.logger.warn('<> Put none to text_queue')
             await self.text_queue.put(None)
         if self.audio_chunks is not None:
+            self.logger.warn('<> Terminate audio_chunks')
             await self.audio_chunks.aterminate()
-        if self.text_generator is not None:
-            # make sure the text_generator exited
-            async for x in self.text_generator:
-                pass
+        else:
+            self.logger.warn('<> Close synthesizer')
+            await self.synthesizer.aclose()
 
     async def interrupt(self):
-        await self.cancel()
-        await self.synthesizer.aconnect()
+        async with self.semaphore:
+            if not self.interrupted:
+                self.logger.warn('<> Call synthesizer.interrupt')
+                await self.cancel()
+                self.logger.warn('<> Reconnect synthesizer')
+                await self.synthesizer.aconnect()
+                self.interrupted = True
 
     async def create_speech(
         self,
