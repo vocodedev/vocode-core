@@ -487,7 +487,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.events_manager = events_manager or EventsManager()
         try:
             self.redis_event_manger = RedisEventsManager(
-                session_id=self.id, subscriptions=[EventType.TRANSCRIPT])  # FIXME: this should be discussed with Kuba
+                session_id=self.id, subscriptions=[EventType.TRANSCRIPT, EventType.DIALOG_STATE,
+                                                   EventType.FOLLOW_UP,
+                                                   EventType.GPT_RESPONSE])
             # attach it to transript.
         except Exception as e:
             self.redis_event_manger = None
@@ -612,7 +614,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         if self.redis_event_manger is not None:
             self.events_task = asyncio.create_task(self.redis_event_manger.start())
-
 
     async def send_initial_message(self, initial_message: BaseMessage):
         # TODO: configure if initial message is interruptible
@@ -830,6 +831,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.events_manager.publish_event(
             TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
         )
+        self.redis_event_manger.publish_event(
+            TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript))
         if self.check_for_idle_task:
             self.logger.debug("Terminating check_for_idle Task")
             self.check_for_idle_task.cancel()
