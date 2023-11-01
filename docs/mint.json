@@ -174,7 +174,8 @@
         "injecting-context",
         "machine-detection",
         "ivr-navigation",
-        "hipaa-compliance"
+        "hipaa-compliance",
+        "do-not-call-detection"
       ]
     }
   ],
