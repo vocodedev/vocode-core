@@ -10,7 +10,7 @@ from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
 from .vector_db import VectorDBConfig
 
-CHAT_GPT_AGENT_LAST_USER_MESSAGE_COUNT = 4
+CHAT_GPT_AGENT_LAST_USER_MESSAGE_COUNT = 5
 
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
 LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
