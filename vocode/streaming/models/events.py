@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Optional
+
 from vocode.streaming.models.model import TypedModel
 
 
@@ -17,6 +18,11 @@ class EventType(str, Enum):
     PHONE_CALL_ENDED = "event_phone_call_ended"
     RECORDING = "event_recording"
     ACTION = "event_action"
+
+    # custom events
+    GPT_RESPONSE = "event_gpt_response"
+    DIALOG_STATE = "event_dialog_state"
+    FOLLOW_UP = "event_follow_up"
 
 
 class Event(TypedModel):

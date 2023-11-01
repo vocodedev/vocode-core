@@ -237,6 +237,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             if is_first_response:
                 is_first_response = False
             self.logger.debug("Producing response `%s`", response)
+            self.transcript.log_gpt_message(response)
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
@@ -275,6 +276,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                         AgentResponseMessage(message=BaseMessage(text=response)),
                         is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
                     )
+
+                    self.transcript.log_gpt_message(response, message_type="follow_up")
+
+        
+
             decision.follow_up_response_raw_text = ' '.join(all_follow_up_responses)
 
             self.append_chat_params_to_decision_and_log_dialog_state(decision)
