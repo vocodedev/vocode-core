@@ -134,7 +134,7 @@ class PineconeDB(VectorDB):
         if namespace is None:
             namespace = ""
         query_obj = await self.create_openai_embedding(self._text_key)
-        print(query_obj)
+        
         docs = []
         async with self.aiohttp_session.post(
             f"{self.pinecone_url}/query",
