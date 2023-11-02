@@ -12,3 +12,6 @@ class BaseConfigManager:
 
     async def delete_config(self, conversation_id):
         raise NotImplementedError
+
+    async def get_inbound_dialog_state(self, phone: str) -> Optional[dict]:
+        raise NotImplementedError
