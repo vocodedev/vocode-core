@@ -87,11 +87,12 @@ class Transcript(BaseModel):
 
     def log_gpt_message(self, message: str, message_type="base"):
         event_class = GPTMessageEvent if message_type == "base" else GPTFollowUpEvent
-        self.redis_events_manager.publish_event(
-            event_class(
-                message=message,
-                conversation_id=self.redis_events_manager.redis_manager.session_id,
-            ))
+        if self.events_manager is not None:
+            self.redis_events_manager.publish_event(
+                event_class(
+                    message=message,
+                    conversation_id=self.redis_events_manager.redis_manager.session_id,
+                ))
 
     def log_dialog_state(self, new_dialog_state: Any, decision: Optional[Any] = None):
         if self.current_dialog_state is not None:
@@ -105,11 +106,12 @@ class Transcript(BaseModel):
             self.dialog_states_history.append(
                 belief_state_entry
             )
-            self.redis_events_manager.publish_event(
-                DialogStateEvent(
-                    dialog_state=belief_state_entry.dict(),
-                    conversation_id=self.redis_events_manager.redis_manager.session_id,
-                ))
+            if self.redis_events_manager is not None:
+                self.redis_events_manager.publish_event(
+                    DialogStateEvent(
+                        dialog_state=belief_state_entry.dict(),
+                        conversation_id=self.redis_events_manager.redis_manager.session_id,
+                    ))
 
         # Update current belief state and start index
         self.current_dialog_state = new_dialog_state.copy()
