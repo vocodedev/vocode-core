@@ -529,7 +529,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.filler_audio_config = typing.cast(
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
-            await self.synthesizer.set_filler_audios(self.filler_audio_config)
+            # await self.synthesizer.set_filler_audios(self.filler_audio_config)
+            asyncio.create_task(
+                self.synthesizer.set_filler_audios(self.filler_audio_config)
+            )
         self.transcriber.start()
         self.transcriptions_worker.start()
         self.agent_responses_worker.start()
