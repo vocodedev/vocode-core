@@ -113,3 +113,49 @@ class PineconeDB(VectorDB):
                     f"Found document with no `{self._text_key}` key. Skipping."
                 )
         return docs
+    
+    async def retrieve_k_vectors_with_filter(
+        self,
+        filters: Optional[dict] = None,
+        k: Optional[int] = 50,
+        namespace: Optional[str] = None,
+    ) -> List[Document]:
+        """Return pinecone list of documents based on filter.
+
+        Args:
+            filter: Dictionary of argument(s) to filter on metadata
+            k: Int of number of vectors to retrieve. Default is 500.
+            namespace: Namespace to search in. Default will search in '' namespace.
+
+        Returns:
+            List of Documents most similar to the query and score for each
+        """
+        # Adapted from: langchain/vectorstores/pinecone.py. Made langchain implementation async.
+        if namespace is None:
+            namespace = ""
+        query_obj = await self.create_openai_embedding(self._text_key)
+        
+        docs = []
+        async with self.aiohttp_session.post(
+            f"{self.pinecone_url}/query",
+            headers={"Api-Key": self.pinecone_api_key},
+            json={
+                "top_k": k,
+                "namespace": namespace,
+                "filter": filters,
+                "vector": query_obj,
+                "includeMetadata": True,
+            },
+        ) as response:
+            results = await response.json()
+
+        for res in results["matches"]:
+            metadata = res["metadata"]
+            if self._text_key in metadata:
+                text = metadata.pop(self._text_key)
+                docs.append(Document(page_content=text, metadata=metadata))
+            else:
+                logger.warning(
+                    f"Found document with no `{self._text_key}` key. Skipping."
+                )
+        return docs

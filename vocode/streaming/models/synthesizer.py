@@ -122,6 +122,7 @@ class ElevenLabsSynthesizerConfig(
     similarity_boost: Optional[float]
     model_id: Optional[str]
     index_config: Optional[IndexConfig] = None
+    index_cache: Optional[Dict[str, Any]] = None
 
     @validator("voice_id")
     def set_name(cls, voice_id):

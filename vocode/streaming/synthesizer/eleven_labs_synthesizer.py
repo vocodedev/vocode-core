@@ -9,6 +9,7 @@ import aiohttp
 from opentelemetry.trace import Span
 from pydub import AudioSegment
 from langchain.docstore.document import Document
+import base64
 
 from vocode import getenv
 from vocode.streaming.synthesizer.base_synthesizer import (
@@ -62,15 +63,15 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.experimental_streaming = synthesizer_config.experimental_streaming
         self.logger = logger or logging.getLogger(__name__)
         self.vector_db = None
-        self.vector_db_cache = {}
+        self.vector_db_cache = synthesizer_config.index_cache
         self.bucket_name = None
 
         if synthesizer_config.index_config:
             from vocode.streaming.vector_db.pinecone import PineconeDB
             self.vector_db = PineconeDB(synthesizer_config.index_config.pinecone_config)
             self.bucket_name = synthesizer_config.index_config.bucket_name
-            # TODO: cache vector_db results
-
+        if self.vector_db_cache:
+            self.logger.debug(f"Vector DB CACHE size: {len(self.vector_db_cache)}")
 
     async def get_phrase_filler_audios(self) -> Dict[str,List[FillerAudio]]:
         filler_phrase_audios = {
@@ -156,11 +157,25 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     ) -> Union[SynthesisResult, Tuple[SynthesisResult, BaseMessage]]:
         
         if self.vector_db and self.bucket_name:
+
+            # if we are using vector_db, check if we have a similar phrase
             if self.vector_db_cache:
-                # TODO: search in vector_db_cache so we do not have to make api call
-                # search in vector_db_cache
-                # return result if found
-                pass
+                if message.text in self.vector_db_cache:
+                    self.logger.debug(f"Retrieving text from vector_db_cache: {message.text}")
+                    audio_encoded : bytes = self.vector_db_cache[message.text]
+                    # Decode the base64-encoded audio data back to bytes
+                    audio_data = base64.b64decode(audio_encoded)
+                    output_bytes_io = decode_mp3(audio_data)
+                    result = self.create_synthesis_result_from_wav(
+                        synthesizer_config=self.synthesizer_config,
+                        file=output_bytes_io,
+                        message=BaseMessage(text=message.text),
+                        chunk_size=chunk_size,
+                    )
+                    if return_tuple:
+                        return result, BaseMessage(text=message.text)
+                    else:
+                        return result
 
             index_filter = None
             if self.stability is not None and self.similarity_boost is not None:
