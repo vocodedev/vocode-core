@@ -313,6 +313,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
                 )
+                # When we receive stop messages, message.text is "" but somehow we still reach the
+                # "Synthesizing message" line below. So we double check and exit on empty messages.
+                if not (agent_response_message.message and agent_response_message.message.text):
+                    self.conversation.logger.warning(
+                        "Ignoring empty agent response message"
+                    )
+                    return
 
                 if self.conversation.filler_audio_worker is not None:
                     if (
@@ -701,6 +708,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             if chunk_idx == 0:
                 if started_event:
                     started_event.set()
+            if not chunk_result or not chunk_result.chunk:
+                self.logger.warning("No chunk to send")
+                break
             self.output_device.consume_nonblocking(chunk_result.chunk)
             end_time = time.time()
             await asyncio.sleep(

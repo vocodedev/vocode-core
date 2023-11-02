@@ -26,7 +26,7 @@ class StaticAgent(RespondAgent[StaticAgentConfig]):
     ) -> Tuple[BaseMessage, bool]:
         response = ""
         if self.index < len(self.script):
-            response = self.agent_config.script[self.index]
+            response = self.script[self.index]
             self.index += 1
             return BaseMessage(text=response), False
         else:
