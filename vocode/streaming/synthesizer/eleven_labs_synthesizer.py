@@ -69,7 +69,41 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             from vocode.streaming.vector_db.pinecone import PineconeDB
             self.vector_db = PineconeDB(synthesizer_config.index_config.pinecone_config)
             self.bucket_name = synthesizer_config.index_config.bucket_name
-            # TODO: cache vector_db results
+
+    async def load_index_cache(self):
+        """
+        Ideal use somewhere in the beginning of the program but BEFORE any call is placed:
+
+        # load cache for eleven labs synthesizer if in use
+        from vocode.streaming.synthesizer import ElevenLabsSynthesizer
+        if isinstance(self.synthesizer, ElevenLabsSynthesizer):
+            self.logger.debug(f"Loading ElevenLabsSynthesizer cache...")
+            await self.synthesizer.load_index_cache()
+        
+        """
+        if self.vector_db:
+            preloaded_vectors = await self.vector_db.retrieve_k_vectors_with_filter(
+                    filters={
+                        "stability": self.stability,
+                        "similarity_boost": self.similarity_boost,
+                        "voice_id": self.voice_id
+                    }
+            )
+            self.logger.debug(f"Preloaded {len(preloaded_vectors)} items from index")
+            for doc in preloaded_vectors:
+                object_id = doc.metadata.get("object_key")
+                text_message = doc.page_content
+                self.logger.debug(f"Loading: {text_message} to vector_db_cache")
+                try:
+                    audio_data = await load_from_s3(
+                        bucket_name=self.bucket_name, 
+                        object_key=object_id
+                    )
+                    output_bytes_io = decode_mp3(audio_data)
+                    self.vector_db_cache[text_message] = output_bytes_io
+                    self.logger.debug(f"Loading phrase: {text_message} to vector_db_cache")
+                except Exception as e:
+                    self.logger.debug(f"Error loading object from S3: {str(e)}")
 
 
     async def get_phrase_filler_audios(self) -> Dict[str,List[FillerAudio]]:
