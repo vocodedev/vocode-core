@@ -105,6 +105,14 @@ class TelephonyServer:
                 RecordingEvent(recording_url=recording_url, conversation_id=conversation_id))
         return Response()
 
+    def get_reroute_twiml(self, number_to_dial: str):
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+    <Response>
+        <Say>Redirecting your call.</Say>
+        <Dial>{number_to_dial}</Dial>
+    </Response>"""
+        return Response(twiml, media_type="application/xml")
+
     def create_inbound_route(
             self,
             inbound_call_config: AbstractInboundCallConfig,
@@ -116,6 +124,8 @@ class TelephonyServer:
                 twilio_to: str = Form(alias="To"),
         ) -> Response:
             dialog_state = await self.config_manager.get_inbound_dialog_state(twilio_from)
+            if dialog_state is None:
+                return self.get_reroute_twiml(number_to_dial="+420778042735") #Ondra`s number, parametrize?
             inbound_call_config.agent_config.dialog_state = dialog_state
             initial_message = dialog_state.get(
                 "initial_message_NR_inbound") or inbound_call_config.agent_config.initial_message
