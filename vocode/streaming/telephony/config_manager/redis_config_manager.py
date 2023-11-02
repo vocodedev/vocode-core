@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from typing import Optional
@@ -38,3 +39,11 @@ class RedisConfigManager(BaseConfigManager):
     async def delete_config(self, conversation_id):
         self.logger.debug(f"Deleting config for {conversation_id}")
         await self.redis.delete(conversation_id)
+
+    async def get_inbound_dialog_state(self, phone: str) -> Optional[dict]:
+        self.logger.debug(f"Getting inbound dialog state for {phone}")
+        key = f"inbound_dialog_state:{phone}"
+        raw_state = await self.redis.get(key)
+        if raw_state:
+            return json.loads(raw_state)
+        return None
