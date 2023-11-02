@@ -1,9 +1,11 @@
+import json
 import time
 from copy import copy
 from copy import deepcopy
 from typing import List, Optional, Tuple, Any, Dict
 
 from pydantic import BaseModel, Field
+
 from vocode.streaming.models.actions import ActionInput, ActionOutput
 from vocode.streaming.models.events import ActionEvent, Sender, Event, EventType
 from vocode.streaming.utils.events_manager import EventsManager, RedisEventsManager
@@ -83,17 +85,32 @@ class Transcript(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    def log_gpt_message(self, message: str, message_type="base"):
+        event_class = GPTMessageEvent if message_type == "base" else GPTFollowUpEvent
+        self.redis_events_manager.publish_event(
+            event_class(
+                message=message,
+                conversation_id=self.redis_events_manager.redis_manager.session_id,
+            ))
+
     def log_dialog_state(self, new_dialog_state: Any, decision: Optional[Any] = None):
         if self.current_dialog_state is not None:
             # Push the current belief state to the history before updating it
-            self.dialog_states_history.append(
-                BeliefStateEntry(
-                    belief_state=self.current_dialog_state.copy(),
-                    decision=copy(decision),
-                    start_message_index=self.current_start_index,
-                    end_message_index=len(self.event_logs) - 1,  # Index of the last message before the new state
-                )
+            belief_state_entry = BeliefStateEntry(
+                belief_state=self.current_dialog_state.copy(),
+                decision=copy(decision),
+                start_message_index=self.current_start_index,
+                end_message_index=len(self.event_logs) - 1,  # Index of the last message before the new state
             )
+            self.dialog_states_history.append(
+                belief_state_entry
+            )
+            self.redis_events_manager.publish_event(
+                DialogStateEvent(
+                    dialog_state=belief_state_entry.dict(),
+                    conversation_id=self.redis_events_manager.redis_manager.session_id,
+                ))
+
         # Update current belief state and start index
         self.current_dialog_state = new_dialog_state.copy()
         self.current_start_index = len(self.event_logs)  # Next message starts a new range
@@ -399,3 +416,25 @@ class TranscriptEvent(Event, type=EventType.TRANSCRIPT):
 
 class TranscriptCompleteEvent(Event, type=EventType.TRANSCRIPT_COMPLETE):
     transcript: Transcript
+
+    def json(self, *args, **kwargs):
+        # Use the dict method to serialize the model and exclude specific fields that should not be serialized.
+        data_dict = self.transcript.dict(exclude={"events_manager", "redis_events_manager", "current_start_index",
+                                                  "current_dialog_state", "dialog_states_history"})
+        serialied_current_dialog_state = json.loads(
+            self.transcript.current_dialog_state.json())  # serialize it using pydantic and load back to mitigate issues with datetime attributes.
+        data_dict["current_dialog_state"] = serialied_current_dialog_state
+        # Use Python's json.dumps method for JSON serialization
+        return json.dumps(data_dict, ensure_ascii=False, indent=4)
+
+
+class DialogStateEvent(Event, type=EventType.DIALOG_STATE):
+    dialog_state: Any
+
+
+class GPTMessageEvent(Event, type=EventType.GPT_RESPONSE):
+    message: str
+
+
+class GPTFollowUpEvent(Event, type=EventType.FOLLOW_UP):
+    message: str

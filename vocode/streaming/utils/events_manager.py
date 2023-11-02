@@ -27,7 +27,7 @@ class ConversationLog(BaseModel):
 
     @property
     def data_json(self):
-        return self.event.json()
+        return self.event.json(ensure_ascii=False)
 
 
 class RedisManager:
@@ -44,9 +44,10 @@ class RedisManager:
         self.logger = logger or logging.getLogger(__name__)
 
     async def save_log(self, event: Event):
-        conversation_log = ConversationLog(conversation_id=self.session_id, event=event,current_timestamp=event.timestamp )
+        timestamp = time.time() if event.dict().get("timestamp") is None else event.dict().get("timestamp")
+        conversation_log = ConversationLog(conversation_id=self.session_id, event=event,
+                                           current_timestamp=timestamp)
         await self.redis.set(conversation_log.redis_key, conversation_log.data_json)
-        print("Saved event to redis", conversation_log.redis_key)
 
 
 class EventsManager:
