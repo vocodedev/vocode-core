@@ -42,6 +42,7 @@ class SileroVoiceActivityDetector(BaseVoiceActivityDetector[SileroVoiceActivityD
         self.vad_iterator = self.VADIterator(self.model)
 
     def is_voice_active(self, frame: bytes) -> bool:
-        speech_timestamps = self.get_speech_timestamps(frame, self.model, sampling_rate=self.config.frame_rate)
+        np_frame = np.frombuffer(frame, dtype=np.int8)
+        speech_timestamps = self.get_speech_timestamps(np_frame, self.model, sampling_rate=self.config.frame_rate)
         self.logger.debug(f"speech_timestamps = {speech_timestamps}")
         return np.mean(speech_timestamps) > self.config.threshold
