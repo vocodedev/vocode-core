@@ -423,9 +423,12 @@ class TranscriptCompleteEvent(Event, type=EventType.TRANSCRIPT_COMPLETE):
         # Use the dict method to serialize the model and exclude specific fields that should not be serialized.
         data_dict = self.transcript.dict(exclude={"events_manager", "redis_events_manager", "current_start_index",
                                                   "current_dialog_state", "dialog_states_history"})
-        serialied_current_dialog_state = json.loads(
-            self.transcript.current_dialog_state.json())  # serialize it using pydantic and load back to mitigate issues with datetime attributes.
-        data_dict["current_dialog_state"] = serialied_current_dialog_state
+        if self.transcript.current_dialog_state is not None:
+            serialied_current_dialog_state = json.loads(
+                self.transcript.current_dialog_state.json())  # serialize it using pydantic and load back to mitigate issues with datetime attributes.
+            data_dict["current_dialog_state"] = serialied_current_dialog_state
+        else:
+            data_dict["current_dialog_state"] = None
         # Use Python's json.dumps method for JSON serialization
         return json.dumps(data_dict, ensure_ascii=False, indent=4)
 
