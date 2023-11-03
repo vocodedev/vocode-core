@@ -87,7 +87,7 @@ class Transcript(BaseModel):
 
     def log_gpt_message(self, message: str, message_type="base"):
         event_class = GPTMessageEvent if message_type == "base" else GPTFollowUpEvent
-        if self.events_manager is not None:
+        if self.redis_events_manager is not None:
             self.redis_events_manager.publish_event(
                 event_class(
                     message=message,
