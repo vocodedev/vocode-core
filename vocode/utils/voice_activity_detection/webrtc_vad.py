@@ -1,8 +1,6 @@
 import logging
 from typing import Optional
 
-import numpy as np
-
 from vocode.utils.voice_activity_detection.vad import BaseVoiceActivityDetector, BaseVoiceActivityDetectorConfig, \
     VoiceActivityDetectorType
 
@@ -18,4 +16,6 @@ class WebRTCVoiceActivityDetector(BaseVoiceActivityDetector[WebRTCVoiceActivityD
         self.vad = webrtcvad.Vad(self.config.mode)
 
     def is_voice_active(self, frame: bytes) -> bool:
-        return self.vad.is_speech(frame, self.config.frame_rate)
+        frame_duration = 10  # ms
+        frame2 = b'\x00\x00' * int(self.config.frame_rate * frame_duration / 1000)
+        return self.vad.is_speech(frame2, self.config.frame_rate)
