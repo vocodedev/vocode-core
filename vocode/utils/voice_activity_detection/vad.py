@@ -23,7 +23,7 @@ class BaseVoiceActivityDetector(Generic[VoiceActivityDetectorConfigType]):
         self.logger: logging.Logger = logger or logging.getLogger(__name__)
         self.config = config
 
-    def is_voice_active(self, frame: str) -> bool:
+    def is_voice_active(self, frame: bytes) -> bool:
         raise NotImplementedError
 
     def get_config(self) -> BaseVoiceActivityDetectorConfig:

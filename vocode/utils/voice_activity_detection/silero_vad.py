@@ -14,6 +14,7 @@ class SileroVoiceActivityDetectorConfig(BaseVoiceActivityDetectorConfig, type=Vo
     force_reload: str = True
     num_threads: int = 1
     threshold: float = .05
+    model_save_path: str = "silero_vad.onnx"
 
 
 class SileroVoiceActivityDetector(BaseVoiceActivityDetector[SileroVoiceActivityDetectorConfig]):
@@ -40,7 +41,7 @@ class SileroVoiceActivityDetector(BaseVoiceActivityDetector[SileroVoiceActivityD
          _) = self.utils
         self.vad_iterator = self.VADIterator(self.model)
 
-    def is_voice_active(self, frame: str) -> bool:
+    def is_voice_active(self, frame: bytes) -> bool:
         speech_timestamps = self.get_speech_timestamps(frame, self.model, sampling_rate=self.config.frame_rate)
         self.logger.debug(f"speech_timestamps = {speech_timestamps}")
         return np.mean(speech_timestamps) > self.config.threshold
