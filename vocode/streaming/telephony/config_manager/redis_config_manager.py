@@ -47,3 +47,9 @@ class RedisConfigManager(BaseConfigManager):
         if raw_state:
             return json.loads(raw_state)
         return None
+
+    async def create_id_router(self, internal_id: str, telephony_id: str):
+        await self.redis.set(f"internal_id:{internal_id}", json.dumps({"twilio_id": telephony_id}))
+
+    async def log_call_state(self, telephony_id: str, state: str, **kwargs):
+        await self.redis.set(f"call_state:{telephony_id}:{state}", json.dumps(kwargs))

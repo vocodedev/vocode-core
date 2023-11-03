@@ -92,11 +92,26 @@ class TelephonyServer:
         self.router.add_api_route("/events", self.events, methods=["GET", "POST"])
         self.logger.info(f"Set up events endpoint at https://{self.base_url}/events")
 
+        # twilio call status endpoint
+
+        self.router.add_api_route("/call_status", self.call_status, methods=["GET", "POST"])
+        self.logger.info(f"Set up call status endpoint at https://{self.base_url}/call_status")
+
         self.router.add_api_route("/recordings/{conversation_id}", self.recordings, methods=["GET", "POST"])
         self.logger.info(f"Set up recordings endpoint at https://{self.base_url}/recordings/{{conversation_id}}")
 
     def events(self, request: Request):
         return Response()
+
+    async def call_status(self, request: Request):
+        form_data = await request.form()
+        call_status = form_data.get('CallStatus')
+        call_sid = form_data.get('CallSid')
+        from_number = form_data.get('From')
+        to_number = form_data.get('To')
+
+        await self.config_manager.log_call_state(call_sid, call_status, from_number=from_number, to_number=to_number)
+        return {"message": "Status received & logged"}
 
     async def recordings(self, request: Request, conversation_id: str):
         recording_url = (await request.json())["recording_url"]
@@ -107,10 +122,10 @@ class TelephonyServer:
 
     def get_reroute_twiml(self, number_to_dial: str):
         twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
-    <Response>
-        <Say>Redirecting your call.</Say>
-        <Dial>{number_to_dial}</Dial>
-    </Response>"""
+        <Response>
+            <Say>Redirecting your call.</Say>
+            <Dial>{number_to_dial}</Dial>
+        </Response>"""
         return Response(twiml, media_type="application/xml")
 
     def create_inbound_route(
@@ -125,7 +140,7 @@ class TelephonyServer:
         ) -> Response:
             dialog_state = await self.config_manager.get_inbound_dialog_state(twilio_from)
             if dialog_state is None:
-                return self.get_reroute_twiml(number_to_dial="+420778042735") #Ondra`s number, parametrize?
+                return self.get_reroute_twiml(number_to_dial="+420778042735")  # Ondra`s number, parametrize?
             inbound_call_config.agent_config.dialog_state = dialog_state
             initial_message = dialog_state.get(
                 "initial_message_NR_inbound") or inbound_call_config.agent_config.initial_message
