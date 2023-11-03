@@ -1,7 +1,8 @@
 from typing import Optional
+
 from twilio.rest import Client
 
-from vocode.streaming.models.telephony import BaseCallConfig, TwilioConfig
+from vocode.streaming.models.telephony import TwilioConfig
 from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
 from vocode.streaming.telephony.templater import Templater
 
@@ -25,21 +26,26 @@ class TwilioClient(BaseTelephonyClient):
         return self.twilio_config
 
     async def create_call(
-        self,
-        conversation_id: str,
-        to_phone: str,
-        from_phone: str,
-        record: bool = False,
-        digits: Optional[str] = None,
+            self,
+            conversation_id: str,
+            to_phone: str,
+            from_phone: str,
+            record: bool = False,
+            digits: Optional[str] = None,
     ) -> str:
         # TODO: Make this async. This is blocking.
         twiml = self.get_connection_twiml(conversation_id=conversation_id)
+        status_callback = f'https://{self.base_url}/call_status'
         twilio_call = self.twilio_client.calls.create(
             twiml=twiml.body.decode("utf-8"),
             to=to_phone,
             from_=from_phone,
             send_digits=digits,
             record=record,
+            status_callback=status_callback,  # Your status callback URL
+            status_callback_event=['initiated', 'ringing', 'answered', 'completed'],
+            # The events you want to be notified about
+            status_callback_method='POST',  # The method Twilio will use to make requests to the status callback URL
             **self.get_telephony_config().extra_params,
         )
         return twilio_call.sid
@@ -55,10 +61,10 @@ class TwilioClient(BaseTelephonyClient):
         return response.status == "completed"
 
     def validate_outbound_call(
-        self,
-        to_phone: str,
-        from_phone: str,
-        mobile_only: bool = True,
+            self,
+            to_phone: str,
+            from_phone: str,
+            mobile_only: bool = True,
     ):
         if len(to_phone) < 8:
             raise ValueError("Invalid 'to' phone")
@@ -71,6 +77,6 @@ class TwilioClient(BaseTelephonyClient):
             .line_type_intelligence
         )
         if not line_type_intelligence or (
-            line_type_intelligence and line_type_intelligence["type"] != "mobile"
+                line_type_intelligence and line_type_intelligence["type"] != "mobile"
         ):
             raise ValueError("Can only call mobile phones")

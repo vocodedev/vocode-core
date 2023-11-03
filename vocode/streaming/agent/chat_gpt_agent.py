@@ -28,6 +28,7 @@ from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.model import BaseModel
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.transcriber.base_transcriber import Transcription
+from vocode.streaming.utils.values_to_words import ValueToConvert
 from vocode.streaming.vector_db.factory import VectorDBFactory
 
 
@@ -45,7 +46,7 @@ class ConsoleChatResponse:
 
     @property
     def values_to_prompt_format(self) -> str:
-        """Values to normalize in GPT functions friendly format
+        """Values to normalize in formatted as a list of key:value pairs
         :return: str with values to normalize
         """
         content = ""
@@ -232,6 +233,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     failed_validation = validation_result
                     self.logger.warning("Response failed validation: %s", response)
                     break
+                # values_to_rewrite = find_values_to_rewrite(response)
+                # response = self._convert_to_tts_format(response, values_to_rewrite)
                 all_responses.append(response)
 
             if is_first_response:
@@ -301,6 +304,17 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         self.last_chat_parameters_normalization: Optional[List[Dict[str, Any]]] = None
 
         self.transcript.log_dialog_state(self.call_script.dialog_state, decision)
+
+    @staticmethod
+    def _convert_to_tts_format(response: str, values_to_rewrite: List[ValueToConvert]) -> str:
+        offset = 0
+        for value in values_to_rewrite:
+            start, end = value.position
+            start += offset
+            end += offset
+            response = response[:start] + response.tts_value + response[end:]
+            offset = len(value.tts_value) - (end - start)
+        return response
 
     def _parse_dialog_state(self, belief_state: str) -> dict[str, str]:
         """

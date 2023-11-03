@@ -12,3 +12,12 @@ class BaseConfigManager:
 
     async def delete_config(self, conversation_id):
         raise NotImplementedError
+
+    async def get_inbound_dialog_state(self, phone: str) -> Optional[dict]:
+        raise NotImplementedError
+
+    def create_id_router(self, conversation_id, internal_id):
+        pass
+
+    async def log_call_state(self, telephony_id: str, state: str, **kwargs):
+        pass
