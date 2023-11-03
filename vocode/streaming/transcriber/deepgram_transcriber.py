@@ -207,7 +207,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     try:
                         data = await asyncio.wait_for(self.input_queue.get(), 5)
                         try:
-                            self.logger.debug(f"data is {data}")
+                            self.logger.debug(f"data is {data.__class__.__name__}: {data}")
                             self.logger.debug(self.voice_activity_detector.is_voice_active(data))
                         except Exception as e:
                             self.logger.debug(f"Error in voice activity detector: {repr(e)}")
