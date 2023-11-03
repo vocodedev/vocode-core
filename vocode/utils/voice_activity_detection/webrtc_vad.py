@@ -18,5 +18,5 @@ class WebRTCVoiceActivityDetector(BaseVoiceActivityDetector[WebRTCVoiceActivityD
         self.vad = webrtcvad.Vad()
 
     def is_voice_active(self, frame: bytes) -> bool:
-        bytes_frame = np.frombuffer(frame, dtype=np.int8)
-        return self.vad.is_speech(bytes_frame, self.config.frame_rate)
+        byte_array = bytearray(frame)
+        return self.vad.is_speech(byte_array, self.config.frame_rate)
