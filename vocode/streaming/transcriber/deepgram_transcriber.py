@@ -206,6 +206,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 while not self._ended:
                     try:
                         data = await asyncio.wait_for(self.input_queue.get(), 5)
+                        self.logger.debug(f"transcriber sender got data: {data}")
                     except asyncio.exceptions.TimeoutError:
                         break
                     num_channels = 1

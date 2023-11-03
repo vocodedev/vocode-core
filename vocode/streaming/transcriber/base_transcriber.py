@@ -15,6 +15,8 @@ from vocode.streaming.utils.interrupt_model import InterruptModel
 from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
 from vocode.utils.context_tracker import BaseContextTracker
 from vocode.utils.context_tracker.factory import ContextTrackerFactory
+from vocode.utils.voice_activity_detection import BaseVoiceActivityDetector
+from vocode.utils.voice_activity_detection.factory import VoiceActivityDetectorFactory
 
 tracer = trace.get_tracer(__name__)
 meter = metrics.get_meter(__name__)
@@ -87,6 +89,11 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
         if transcriber_config.context_tracker_config:
             self.context_tracker = context_tracker_factory.create_context_tracker(
                 transcriber_config.context_tracker_config, logger)
+        vad_factory = VoiceActivityDetectorFactory()
+        self.voice_activity_detector: Optional[BaseVoiceActivityDetector] = None
+        if transcriber_config.voice_activity_detector_config:
+            self.voice_activity_detector = vad_factory.create_voice_activity_detector(
+                transcriber_config.voice_activity_detector_config, logger)
 
     async def _run_loop(self):
         raise NotImplementedError

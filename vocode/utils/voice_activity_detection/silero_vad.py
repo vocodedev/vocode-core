@@ -1,3 +1,6 @@
+import logging
+from typing import Optional
+
 import numpy as np
 
 from vocode.utils.voice_activity_detection.vad import BaseVoiceActivityDetector, BaseVoiceActivityDetectorConfig
@@ -13,10 +16,10 @@ class SileroVoiceActivityDetectorConfig(BaseVoiceActivityDetectorConfig):
 
 
 class SileroVoiceActivityDetector(BaseVoiceActivityDetector[SileroVoiceActivityDetectorConfig]):
-    def __init__(self, config: SileroVoiceActivityDetectorConfig):
+    def __init__(self, config: SileroVoiceActivityDetectorConfig, logger: Optional[logging.Logger] = None):
         import torch
 
-        super().__init__(config)
+        super().__init__(config, logger)
         if self.config.USE_ONNX:
             import onnxruntime
 
