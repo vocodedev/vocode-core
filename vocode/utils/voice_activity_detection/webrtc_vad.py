@@ -1,10 +1,11 @@
 import logging
 from typing import Optional
 
-from vocode.utils.voice_activity_detection.vad import BaseVoiceActivityDetector, BaseVoiceActivityDetectorConfig
+from vocode.utils.voice_activity_detection.vad import BaseVoiceActivityDetector, BaseVoiceActivityDetectorConfig, \
+    VoiceActivityDetectorType
 
 
-class WebRTCVoiceActivityDetectorConfig(BaseVoiceActivityDetectorConfig):
+class WebRTCVoiceActivityDetectorConfig(BaseVoiceActivityDetectorConfig, type=VoiceActivityDetectorType.WEB_RTC.value):
     pass
 
 

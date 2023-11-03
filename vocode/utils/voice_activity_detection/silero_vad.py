@@ -3,10 +3,11 @@ from typing import Optional
 
 import numpy as np
 
-from vocode.utils.voice_activity_detection.vad import BaseVoiceActivityDetector, BaseVoiceActivityDetectorConfig
+from vocode.utils.voice_activity_detection.vad import BaseVoiceActivityDetector, BaseVoiceActivityDetectorConfig, \
+    VoiceActivityDetectorType
 
 
-class SileroVoiceActivityDetectorConfig(BaseVoiceActivityDetectorConfig):
+class SileroVoiceActivityDetectorConfig(BaseVoiceActivityDetectorConfig, type=VoiceActivityDetectorType.SILERO.value):
     model_name: str = "silero_vad"
     USE_ONNX: bool = False
     repo_or_dir: str = 'snakers4/silero-vad'

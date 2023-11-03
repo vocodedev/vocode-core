@@ -7,7 +7,8 @@ from vocode.streaming.models.model import TypedModel
 
 class VoiceActivityDetectorType(str, Enum):
     BASE = "base_voice_activity_detector"
-    OPEN_AI = "web_rtc_vad_voice_activity_detector"
+    WEB_RTC = "web_rtc_voice_activity_detector"
+    SILERO = "silero_voice_activity_detector"
 
 
 class BaseVoiceActivityDetectorConfig(TypedModel, type=VoiceActivityDetectorType.BASE.value):
