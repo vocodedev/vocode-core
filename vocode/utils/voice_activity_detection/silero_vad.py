@@ -27,7 +27,7 @@ class SileroVoiceActivityDetector(BaseVoiceActivityDetector[SileroVoiceActivityD
 
         self.torch = torch
         self.torch.set_num_threads(self.config.num_threads)
-
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model, self.utils = torch.hub.load(
             repo_or_dir=self.config.repo_or_dir,
             model=self.config.model_name,
@@ -40,6 +40,7 @@ class SileroVoiceActivityDetector(BaseVoiceActivityDetector[SileroVoiceActivityD
          self.VADIterator,
          _) = self.utils
         self.vad_iterator = self.VADIterator(self.model)
+        self.model.to(self.device)
 
     def is_voice_active(self, frame: bytes) -> bool:
         np_frame = np.frombuffer(frame, dtype=np.int8)
