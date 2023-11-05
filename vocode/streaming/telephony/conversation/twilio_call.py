@@ -29,6 +29,9 @@ from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.state_manager import TwilioCallStateManager
 
+from telephony_app.models.call_status import CallStatus
+from telephony_app.utils.call_information_handler import execute_status_update_by_telephony_id
+
 
 class PhoneCallWebsocketAction(Enum):
     CLOSE_WEBSOCKET = 1
@@ -160,5 +163,8 @@ class TwilioCall(Call[TwilioOutputDevice]):
         elif data["event"] == "stop":
             self.logger.debug(f"Media WS: Received event 'stop': {message}")
             self.logger.debug("Stopping...")
+            await execute_status_update_by_telephony_id(telephony_id=data['stop']['callSid'],
+                                                        call_status=CallStatus.ENDED_BEFORE_TRANSFER.value)
+            self.logger.debug("Updated call status to have ended")
             return PhoneCallWebsocketAction.CLOSE_WEBSOCKET
         return None
