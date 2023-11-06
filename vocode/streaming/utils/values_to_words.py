@@ -56,30 +56,30 @@ MONTHS = {
 }
 
 HOURS = {
-    0: "ve dvanáct",
-    1: "v jednu",
-    2: "ve dvě",
-    3: "ve tři",
-    4: "ve čtyři",
-    5: "v pět",
-    6: "v šest",
-    7: "v sedm",
-    8: "v osm",
-    9: "v devět",
-    10: "v deset",
-    11: "v jedenáct",
-    12: "ve dvanáct",
-    13: "v jednu",
-    14: "ve dvě",
-    15: "ve tři",
-    16: "ve čtyři",
-    17: "v pět",
-    18: "v šest",
-    19: "v sedm",
-    20: "v osm",
-    21: "v devět",
-    22: "v deset",
-    23: "v jedenáct",
+    0: "dvanáct",
+    1: "jedna",
+    2: "dvě",
+    3: "tři",
+    4: "čtyři",
+    5: "pět",
+    6: "šest",
+    7: "sedm",
+    8: "osm",
+    9: "devět",
+    10: "deset",
+    11: "jedenáct",
+    12: "dvanáct",
+    13: "třináct",
+    14: "čtrnáct",
+    15: "patnáct",
+    16: "šestnáct",
+    17: "sedmnáct",
+    18: "osmnáct",
+    19: "devatenáct",
+    20: "dvacet",
+    21: "dvacet jedna",
+    22: "dvacet dva",
+    23: "dvacet tři",
 }
 
 MINUTES = {
@@ -214,7 +214,18 @@ def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
             tts_value = date_to_words(value, current_date=None)
         elif ":" in value:
             value_type = "time"
-            tts_value = time_to_words(value)
+            # TODO: extract values to enum
+            if text[:start].strip().endswith(("v", "ve")):
+                include_preposition = False
+            else:
+                include_preposition = True
+            if text[end:].strip().startswith(("ráno", "dopoledne", "odpoledne", "večer", "v noci")):
+                include_day_period = False
+            else:
+                include_day_period = True
+            tts_value = time_to_words(
+                value, include_day_period=include_day_period, include_preposition=include_preposition
+            )
         elif value.isnumeric():
             value_type = "integer"
             tts_value = integer_to_words(value)
@@ -245,6 +256,18 @@ def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
         result.append(ValueToConvert(value, (start, end), "percent", " procent"))
 
     return result
+
+
+def response_to_tts_format(response: str, values_to_rewrite: List[ValueToConvert]) -> str:
+    offset = 0
+    for value in values_to_rewrite:
+        start, end = value.position
+        start += offset
+        end += offset
+        response = response[:start] + value.tts_value + response[end:]
+        offset = len(value.tts_value) - (end - start)
+    return response
+
 
 
 def float_to_words(value: str) -> Optional[str]:
@@ -359,31 +382,44 @@ def date_to_words(value: Union[str, datetime.date], current_date: Union[str, dat
     return f"{weekday} {day} {month}"
 
 
-def time_to_words(value: Union[str, datetime.time]) -> str:
+def time_to_words(
+    value: Union[str, datetime.time], include_day_period: bool = True, include_preposition: bool = False
+) -> str:
     if not isinstance(value, datetime.time):
         try:
             value = datetime.time.fromisoformat(value)
         except (ValueError, TypeError):
             return "neznámý čas"
 
-    hour_int = value.hour
-    if 4 <= hour_int < 10:
-        day_period = "ráno"
-    elif 10 <= hour_int < 12:
-        day_period = "dopoledne"
-    elif 17 <= hour_int <= 23:
-        day_period = "večer"
-    elif 23 < hour_int < 4:
-        day_period = "v noci"
+    hour = HOURS[value.hour]
+    if value.minute is None or value.minute == 0:
+        text = hour + " hodin"
     else:
-        day_period = ""
+        minute = MINUTES[value.minute]
+        text = hour + " " + minute
 
-    minute = MINUTES[value.minute]
-    hour = HOURS[hour_int]
+    if include_day_period:
+        if 4 <= value.hour < 10:
+            text += " ráno"
+        elif 10 <= value.hour < 12:
+            text += " dopoledne"
+        elif 17 <= value.hour <= 23:
+            text += " večer"
+        elif 23 < value.hour < 4:
+            text += " v noci"
 
-    if minute is None or minute == 0:
-        return f"{hour} {day_period}".strip()
-    else:
-        if value.hour == 13:
-            hour = "ve třináct"
-        return f"{hour} {minute} {day_period}".strip()
+    if include_preposition:
+        if value.hour == 1:
+            text = "v " + text
+        if 2 <= value.hour < 5 or value.hour == 12:
+            text = "ve " + text
+        elif 5 <= value.hour < 12:
+            text = "v " + text
+        elif 12 <= value.hour < 15:
+            text = "ve " + text
+        elif 15 <= value.hour < 19:
+            text = "v " + text
+        elif 19 <= value.hour < 24:
+            text = "ve " + text
+
+    return text

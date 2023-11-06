@@ -1,12 +1,16 @@
+import datetime
 from typing import List
 
 import pytest
 
 from vocode.streaming.utils.values_to_words import (
     ValueToConvert,
+    date_to_words,
     float_to_words,
     integer_to_words,
-    find_values_to_rewrite
+    time_to_words,
+    find_values_to_rewrite,
+    response_to_tts_format,
 )
 
 
@@ -50,6 +54,7 @@ from vocode.streaming.utils.values_to_words import (
         ("2101010", "dva milióny sto jedna tisíc deset"),
         ("1000000000", "miliarda"),
         ("6942903410", "šest miliard devět set čtyřicet dva miliónů devět set tři tisíc čtyři sta deset"),
+        ("20.", "dvacátého"),
     ]
 )
 def test_integer_to_words(value, expected):
@@ -73,8 +78,76 @@ def test_float_to_words(value, expected):
 
 
 @pytest.mark.parametrize(
+    "value, include_day_period, include_preposition, expected",
+    [
+        ("10:00", True, True, "v deset hodin dopoledne"),
+        ("10:00", False, False, "deset hodin"),
+        ("08:02", True, False, "osm nula dva ráno"),
+        ("08:02", False, True, "v osm nula dva"),
+        ("13:00", True, True, "ve třináct hodin"),
+        ("13:00", True, False, "třináct hodin"),
+        ("13:00", False, False, "třináct hodin"),
+        ("14:00", True, True, "ve čtrnáct hodin"),
+        ("14:00", True, False, "čtrnáct hodin"),
+        ("14:00", False, True, "ve čtrnáct hodin"),
+        ("14:00", False, False, "čtrnáct hodin"),
+        ("22:15", True, True, "ve dvacet dva patnáct večer"),
+        ("!@:#$", True, True, "neznámý čas"),
+    ],
+)
+def test_time_to_words(value, include_day_period, include_preposition, expected):
+    assert time_to_words(value, include_day_period=include_day_period, include_preposition=include_preposition) == expected
+
+
+@pytest.mark.parametrize(
     "value, expected",
     [
+        (datetime.date.today().isoformat(), "dnes"),
+        ((datetime.date.today() + datetime.timedelta(days=1)).isoformat(), "zítra"),
+        ("2023-10-31", "v úterý třicátého prvního října"),
+    ],
+)
+def test_date_to_words(value, expected):
+    assert date_to_words(value, current_date=datetime.date.today()) == expected
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (
+            "Uzavřeme tedy schůzku na zítřejší den, 7. listopadu, v 10:30 dopoledne na naší pobočce v Brně.",
+            [
+                ValueToConvert(
+                    value="7.",
+                    position=(39, 41),
+                    value_type="integer",
+                    tts_value="sedm",
+                ),
+                ValueToConvert(
+                    value="10:30",
+                    position=(55, 60),
+                    value_type="time",
+                    tts_value="deset třicet",
+                ),
+            ],
+        ),
+        (
+            "Uzavřeme tedy schůzku na zítřejší den, 2023-11-07, v 10:30 na naší pobočce v Brně.",
+            [
+                ValueToConvert(
+                    value="2023-11-07",
+                    position=(39, 49),
+                    value_type="date",
+                    tts_value="v úterý sedmého listopadu",
+                ),
+                ValueToConvert(
+                    value="10:30",
+                    position=(53, 58),
+                    value_type="time",
+                    tts_value="deset třicet dopoledne",
+                ),
+            ],
+        ),
         (
             "Takže počítám s vámi 2023-10-31 v 10:15 u nás na pobočce.",
             [
@@ -88,7 +161,7 @@ def test_float_to_words(value, expected):
                     value="10:15",
                     position=(34, 39),
                     value_type="time",
-                    tts_value="v deset patnáct dopoledne",
+                    tts_value="deset patnáct dopoledne",
                 ),
             ],
         ),
@@ -192,3 +265,42 @@ def test_float_to_words(value, expected):
 )
 def test_find_values_to_rewrite(value: str, expected: List[str]):
     assert find_values_to_rewrite(value) == expected
+
+
+@pytest.mark.parametrize(
+    "response, values_to_rewrite, expected",
+    [
+        (
+            "Takže počítám s vámi 2023-11-07 v 10:00 u nás na pobočce.",
+            [
+                ValueToConvert(
+                    value="2023-11-07",
+                    position=(21, 31),
+                    value_type="date",
+                    tts_value="zítra",
+                ),
+                ValueToConvert(
+                    value="10:00",
+                    position=(34, 39),
+                    value_type="time",
+                    tts_value="deset",
+                ),
+            ],
+            "Takže počítám s vámi zítra v deset u nás na pobočce.",
+        ),
+        (
+            "10:15",
+            [
+                ValueToConvert(
+                    value="10:15",
+                    position=(0, 5),
+                    value_type="time",
+                    tts_value="v deset patnáct dopoledne",
+                ),
+            ],
+            "v deset patnáct dopoledne",
+        ),
+    ],
+)
+def test_response_to_tts_format(response: str, values_to_rewrite: List[ValueToConvert], expected):
+    assert response_to_tts_format(response, values_to_rewrite) == expected
