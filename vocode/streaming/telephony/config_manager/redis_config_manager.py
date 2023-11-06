@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 from typing import Optional
 
 from redis.asyncio import Redis
@@ -52,4 +53,4 @@ class RedisConfigManager(BaseConfigManager):
         await self.redis.set(f"internal_id:{internal_id}", json.dumps({"twilio_id": telephony_id}))
 
     async def log_call_state(self, telephony_id: str, state: str, **kwargs):
-        await self.redis.set(f"call_state:{telephony_id}:{state}", json.dumps(kwargs))
+        await self.redis.set(f"call_state:{telephony_id}:{state}:{time.time()}", json.dumps(kwargs))
