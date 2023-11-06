@@ -138,7 +138,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
-                # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
+                if self.conversation.transcriber.transcriber_config.voice_activity_detector_config and \
+                        transcription.message == HUMAN_ACTIVITY_DETECTED:
+                    return
                 event = self.interruptable_event_factory.create_interruptable_event(
                     TranscriptionAgentInput(
                         transcription=transcription,
