@@ -107,12 +107,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 output_queue: asyncio.Queue[InterruptibleEvent[AgentInput]],
                 conversation: "StreamingConversation",
                 interruptible_event_factory: InterruptibleEventFactory,
+                let_bot_finish_speaking: bool = True,
         ):
             super().__init__(input_queue, output_queue)
             self.input_queue = input_queue
             self.output_queue = output_queue
             self.conversation = conversation
             self.interruptible_event_factory = interruptible_event_factory
+            self.let_bot_finish_speaking = let_bot_finish_speaking
 
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
@@ -122,9 +124,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 # TODO human_speaking should be set here as this is the only place with is_final=false.
                 self.conversation.logger.info(f"Ignoring empty transcription {transcription}")
                 return
+            has_task = self.conversation.synthesis_results_worker.current_task is not None
+            bot_still_talking = has_task and not self.conversation.synthesis_results_worker.current_task.done() if has_task else False
+            self.conversation.logger.info(f"Bot still talking: {bot_still_talking}")
+            self.conversation.logger.info(
+                f"Current synth tasks: {self.conversation.synthesis_results_worker.current_task}")
+            self.conversation.logger.info(
+                f"Bot still talking: {bot_still_talking}")
 
-            # Detect if the bot is talking. This may fail if the current task is done and another not started yet. But playing the audio takes most of the time.
-            if self.conversation.synthesis_results_worker.current_task is not None and not self.conversation.synthesis_results_worker.current_task.done() and self.conversation.over_talking_filler_detector:
+            if bot_still_talking and self.let_bot_finish_speaking:
+                self.conversation.logger.info(
+                    f'The user said "{transcription.message}" during the bot was talking. We are letting the bot finish speaking. Message is not sent to the agent.')
+                # Detect if the bot is talking. This may fail if the current task is done and another not started yet. But playing the audio takes most of the time.
+                return  # just ignore the transcription for now.
+            elif bot_still_talking and self.conversation.over_talking_filler_detector:
                 self.conversation.logger.info(
                     f'The user said "{transcription.message}" during the bot was talking. Testing to ignore filler words and confirmation words.')
                 if self.conversation.over_talking_filler_detector.detect_filler(transcription.message):
@@ -832,8 +845,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.events_manager.publish_event(
             TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
         )
-        self.redis_event_manger.publish_event(
-            TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript))
+        if self.redis_event_manger is not None:
+            self.redis_event_manger.publish_event(
+                TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript))
         if self.check_for_idle_task:
             self.logger.debug("Terminating check_for_idle Task")
             self.check_for_idle_task.cancel()

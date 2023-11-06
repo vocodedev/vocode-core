@@ -1,12 +1,16 @@
+import datetime
 from typing import List
 
 import pytest
 
 from vocode.streaming.utils.values_to_words import (
     ValueToConvert,
+    date_to_words,
     float_to_words,
     integer_to_words,
-    find_values_to_rewrite
+    time_to_words,
+    find_values_to_rewrite,
+    response_to_tts_format,
 )
 
 
@@ -50,6 +54,11 @@ from vocode.streaming.utils.values_to_words import (
         ("2101010", "dva milióny sto jedna tisíc deset"),
         ("1000000000", "miliarda"),
         ("6942903410", "šest miliard devět set čtyřicet dva miliónů devět set tři tisíc čtyři sta deset"),
+        ("1.", "prvního"),
+        ("20.", "dvacátého"),
+        ("31.", "třicátého prvního"),
+        ("42.", "čtyřicet dva"),
+        ("0.", "nula"),
     ]
 )
 def test_integer_to_words(value, expected):
@@ -73,8 +82,82 @@ def test_float_to_words(value, expected):
 
 
 @pytest.mark.parametrize(
+    "value, include_day_period, include_preposition, include_oclock, expected",
+    [
+        ("10:00", True, True, True, "v deset hodin dopoledne"),
+        ("10:00", False, False, False, "deset"),
+        ("08:02", True, False, True, "osm nula dva ráno"),
+        ("08:02", False, True, True, "v osm nula dva"),
+        ("13:00", True, True, True, "ve třináct hodin"),
+        ("13:00", True, False, True, "třináct hodin"),
+        ("13:00", False, False, False, "třináct"),
+        ("14:00", True, True, True, "ve čtrnáct hodin"),
+        ("14:00", True, False, True, "čtrnáct hodin"),
+        ("14:00", False, True, True, "ve čtrnáct hodin"),
+        ("14:00", False, False, True, "čtrnáct hodin"),
+        ("22:15", True, True, True, "ve dvacet dva patnáct"),
+        ("22:15", True, True, False, "ve dvacet dva patnáct"),
+        ("!@:#$", True, True, True, "neznámý čas"),
+    ],
+)
+def test_time_to_words(value, include_day_period, include_preposition, include_oclock, expected):
+    assert time_to_words(
+        value,
+        include_day_period=include_day_period,
+        include_preposition=include_preposition,
+        include_oclock=include_oclock
+    ) == expected
+
+
+@pytest.mark.parametrize(
     "value, expected",
     [
+        (datetime.date.today().isoformat(), "dnes"),
+        ((datetime.date.today() + datetime.timedelta(days=1)).isoformat(), "zítra"),
+        ("2023-10-31", "v úterý třicátého prvního října"),
+    ],
+)
+def test_date_to_words(value, expected):
+    assert date_to_words(value, current_date=datetime.date.today()) == expected
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (
+            "Uzavřeme tedy schůzku na zítřejší den, 7. listopadu, v 10:30 dopoledne na naší pobočce v Brně.",
+            [
+                ValueToConvert(
+                    value="7.",
+                    position=(39, 41),
+                    value_type="integer",
+                    tts_value="sedmého",
+                ),
+                ValueToConvert(
+                    value="10:30",
+                    position=(55, 60),
+                    value_type="time",
+                    tts_value="deset třicet",
+                ),
+            ],
+        ),
+        (
+            "Uzavřeme tedy schůzku na zítřejší den, 2023-11-07, v 10:30 na naší pobočce v Brně.",
+            [
+                ValueToConvert(
+                    value="2023-11-07",
+                    position=(39, 49),
+                    value_type="date",
+                    tts_value="v úterý sedmého listopadu",
+                ),
+                ValueToConvert(
+                    value="10:30",
+                    position=(53, 58),
+                    value_type="time",
+                    tts_value="deset třicet dopoledne",
+                ),
+            ],
+        ),
         (
             "Takže počítám s vámi 2023-10-31 v 10:15 u nás na pobočce.",
             [
@@ -88,7 +171,18 @@ def test_float_to_words(value, expected):
                     value="10:15",
                     position=(34, 39),
                     value_type="time",
-                    tts_value="v deset patnáct dopoledne",
+                    tts_value="deset patnáct dopoledne",
+                ),
+            ],
+        ),
+        (
+            "takže se uvidíme dnes v 09:00 hodin",
+            [
+                ValueToConvert(
+                    value="09:00",
+                    position=(24, 29),
+                    value_type="time",
+                    tts_value="devět",
                 ),
             ],
         ),
@@ -99,7 +193,18 @@ def test_float_to_words(value, expected):
                     value="2000.",
                     position=(7, 12),
                     value_type="integer",
-                    tts_value="dva tisíce",
+                    tts_value="dva tisíce.",
+                ),
+            ],
+        ),
+        (
+            "Říkáte 2000. Děkuji.",
+            [
+                ValueToConvert(
+                    value="2000.",
+                    position=(7, 12),
+                    value_type="integer",
+                    tts_value="dva tisíce.",
                 ),
             ],
         ),
@@ -138,7 +243,7 @@ def test_float_to_words(value, expected):
                     value="1.6.",
                     position=(12, 16),
                     value_type="float",
-                    tts_value="jedna celá šest",
+                    tts_value="jedna celá šest.",
                 ),
             ],
         ),
@@ -192,3 +297,60 @@ def test_float_to_words(value, expected):
 )
 def test_find_values_to_rewrite(value: str, expected: List[str]):
     assert find_values_to_rewrite(value) == expected
+
+
+@pytest.mark.parametrize(
+    "response, values_to_rewrite, expected",
+    [
+        (
+            "Takže počítám s vámi 2023-11-07 v 10:00 u nás na pobočce.",
+            [
+                ValueToConvert(
+                    value="2023-11-07",
+                    position=(21, 31),
+                    value_type="date",
+                    tts_value="zítra",
+                ),
+                ValueToConvert(
+                    value="10:00",
+                    position=(34, 39),
+                    value_type="time",
+                    tts_value="deset",
+                ),
+            ],
+            "Takže počítám s vámi zítra v deset u nás na pobočce.",
+        ),
+        (
+            "10:15",
+            [
+                ValueToConvert(
+                    value="10:15",
+                    position=(0, 5),
+                    value_type="time",
+                    tts_value="v deset patnáct dopoledne",
+                ),
+            ],
+            "v deset patnáct dopoledne",
+        ),
+        (
+            'Chápu, vaše auto může nejspíš být například 1.6 TDI, 2.5 TDI...',
+            [
+                ValueToConvert(
+                    value="1.6 ",
+                    position=(44, 48),
+                    value_type="float",
+                    tts_value="jedna celá šest ",
+                ),
+                ValueToConvert(
+                    value="2.5 ",
+                    position=(53, 57),
+                    value_type="float",
+                    tts_value="dva celá pět ",
+                ),
+            ],
+            'Chápu, vaše auto může nejspíš být například jedna celá šest TDI, dva celá pět TDI...',
+        ),
+    ],
+)
+def test_response_to_tts_format(response: str, values_to_rewrite: List[ValueToConvert], expected):
+    assert response_to_tts_format(response, values_to_rewrite) == expected
