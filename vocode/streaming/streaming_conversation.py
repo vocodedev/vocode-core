@@ -136,6 +136,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 if self.conversation.current_transcription_is_interrupt:
                     self.conversation.logger.debug("sending interrupt")
+                    if getattr(self.conversation.synthesizer, 'dual_stream', False):
+                        await self.conversation.synthesizer.interrupt()
+                        self.conversation.logger.debug("Dual stream synthesizer interrupted from transcription")
                 self.conversation.logger.debug("Human started speaking")
 
             transcription.is_interrupt = (
@@ -285,6 +288,17 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                     ):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
+
+                if getattr(self.conversation.synthesizer, 'dual_stream', False):
+                    synthesis_result = await self.conversation.synthesizer.create_speech_stream(agent_response_message.message.text, agent_response_message.message.is_end)
+                    # synthesis_result is only returned at the first invoke
+                    if synthesis_result is not None:
+                        self.produce_interruptible_agent_response_event_nonblocking(
+                            (agent_response_message.message, synthesis_result),
+                            is_interruptible=item.is_interruptible,
+                            agent_response_tracker=item.agent_response_tracker,
+                        )
+                    return
 
                 self.conversation.logger.debug("Synthesizing speech for message")
                 synthesis_result = await self.conversation.synthesizer.create_speech(
@@ -469,6 +483,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
         self.output_device.start()
+        if getattr(self.synthesizer, 'dual_stream', False):
+            await self.synthesizer.ready()
         if self.filler_audio_worker is not None:
             self.filler_audio_worker.start()
         if self.actions_worker is not None:
@@ -636,6 +652,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 message_sent = f"{synthesis_result.get_message_up_to(seconds_spoken)}-"
                 cut_off = True
+                if getattr(self.synthesizer, 'dual_stream', False):
+                    # For dual stream of nopause synthesizer
+                    await self.synthesizer.interrupt()
+                    self.logger.debug('Dual stream synthesizer interrupted')
                 break
             if chunk_idx == 0:
                 if started_event:
