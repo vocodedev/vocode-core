@@ -399,14 +399,12 @@ def time_to_words(
         text = hour + " " + minute
 
     if include_day_period:
-        if 4 <= value.hour < 10:
+        if 0 <= value.hour < 4:
+            text += " v noci"
+        elif 4 <= value.hour < 10:
             text += " ráno"
         elif 10 <= value.hour < 12:
             text += " dopoledne"
-        elif 17 <= value.hour <= 23:
-            text += " večer"
-        elif 23 < value.hour < 4:
-            text += " v noci"
 
     if include_preposition:
         if value.hour == 1:

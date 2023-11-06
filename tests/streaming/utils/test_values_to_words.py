@@ -91,7 +91,7 @@ def test_float_to_words(value, expected):
         ("14:00", True, False, "čtrnáct hodin"),
         ("14:00", False, True, "ve čtrnáct hodin"),
         ("14:00", False, False, "čtrnáct hodin"),
-        ("22:15", True, True, "ve dvacet dva patnáct večer"),
+        ("22:15", True, True, "ve dvacet dva patnáct"),
         ("!@:#$", True, True, "neznámý čas"),
     ],
 )
