@@ -47,7 +47,7 @@ from vocode.streaming.synthesizer.base_synthesizer import (
 from vocode.streaming.telephony.noise_canceler.base_noise_canceler import BaseNoiseCanceler
 from vocode.streaming.transcriber.base_transcriber import (
     Transcription,
-    BaseTranscriber,
+    BaseTranscriber, HUMAN_ACTIVITY_DETECTED,
 )
 from vocode.streaming.utils import create_conversation_id, get_chunk_size_per_second
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
@@ -494,9 +494,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
         return num_interrupts > 0
 
     def is_interrupt(self, transcription: Transcription):
-        return transcription.confidence >= (
-                self.transcriber.get_transcriber_config().min_interrupt_confidence or 0
-        )
+        interrupt_by_confidence = transcription.confidence >= (
+                self.transcriber.get_transcriber_config().min_interrupt_confidence or 0)
+        interrupt_by_vad = (
+                self.transcriber.transcriber_config.voice_activity_detector_config and
+                transcription.message == HUMAN_ACTIVITY_DETECTED)
+        return interrupt_by_confidence or interrupt_by_vad
 
     async def send_speech_to_output(
             self,

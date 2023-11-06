@@ -20,6 +20,7 @@ from vocode.utils.voice_activity_detection.factory import VoiceActivityDetectorF
 
 tracer = trace.get_tracer(__name__)
 meter = metrics.get_meter(__name__)
+HUMAN_ACTIVITY_DETECTED = "human_activity_detected"
 
 
 class Transcription(BaseModel):

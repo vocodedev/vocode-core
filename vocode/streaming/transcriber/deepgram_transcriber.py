@@ -19,7 +19,7 @@ from vocode.streaming.models.transcriber import (
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
     Transcription,
-    meter,
+    meter, HUMAN_ACTIVITY_DETECTED,
 )
 
 PUNCTUATION_TERMINATORS = [".", "!", "?"]
@@ -206,10 +206,16 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 while not self._ended:
                     try:
                         data = await asyncio.wait_for(self.input_queue.get(), 5)
-                        try:
-                            self.logger.debug(self.voice_activity_detector.is_voice_active(data))
-                        except Exception as e:
-                            self.logger.debug(f"Error in voice activity detector: {repr(e)}")
+                        if self.transcriber_config.voice_activity_detector_config:
+                            try:
+                                if self.voice_activity_detector.should_interrupt(data):
+                                    self.output_queue.put_nowait(Transcription(
+                                        message=HUMAN_ACTIVITY_DETECTED,
+                                        confidence=1,
+                                        is_final=True,
+                                    ))
+                            except Exception as e:
+                                self.logger.debug(f"Error in voice activity detector: {repr(e)}")
                     except asyncio.exceptions.TimeoutError:
                         break
                     num_channels = 1
