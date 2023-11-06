@@ -245,16 +245,15 @@ def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
                 include_preposition=include_preposition,
                 include_oclock=include_oclock,
             )
-        elif value.strip(".").isnumeric():
+        elif is_integer(value):
             value_type = "integer"
             tts_value = integer_to_words(value)
-        else:
-            try:
-                float(value)
-            except ValueError:
-                continue
+        elif is_float(value):
             value_type = "float"
             tts_value = float_to_words(value)
+        else:
+            value_type = "unknown"
+            tts_value = value
 
         # Add trailing spaces if the original value had them
         trailing_spaces = len(original_value) - len(original_value.rstrip())
@@ -277,6 +276,22 @@ def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
     return result
 
 
+def is_float(value: str) -> bool:
+    try:
+        float(value.strip("."))
+    except ValueError:
+        return False
+    return True
+
+
+def is_integer(value: str) -> bool:
+    try:
+        int(value.strip("."))
+    except ValueError:
+        return False
+    return True
+
+
 def response_to_tts_format(response: str, values_to_rewrite: List[ValueToConvert]) -> str:
     offset = 0
     for value in values_to_rewrite:
@@ -284,7 +299,7 @@ def response_to_tts_format(response: str, values_to_rewrite: List[ValueToConvert
         start += offset
         end += offset
         response = response[:start] + value.tts_value + response[end:]
-        offset = len(value.tts_value) - (end - start)
+        offset += len(value.tts_value) - (end - start)
     return response
 
 
