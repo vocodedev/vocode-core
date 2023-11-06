@@ -8,7 +8,7 @@ from vocode.streaming.vector_db.base_vector_db import VectorDB
 
 logger = logging.getLogger(__name__)
 
-
+EMBEDDING_DIMENSION = 1536
 class PineconeDB(VectorDB):
     def __init__(self, config: PineconeConfig, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -133,9 +133,10 @@ class PineconeDB(VectorDB):
         # Adapted from: langchain/vectorstores/pinecone.py. Made langchain implementation async.
         if namespace is None:
             namespace = ""
-        query_obj = await self.create_openai_embedding(self._text_key)
+        # query_obj = await self.create_openai_embedding(self._text_key)
+        query_embedding = [1] + [0] * (EMBEDDING_DIMENSION - 1) 
         
-        docs = []
+        recordings = []
         async with self.aiohttp_session.post(
             f"{self.pinecone_url}/query",
             headers={"Api-Key": self.pinecone_api_key},
@@ -143,7 +144,7 @@ class PineconeDB(VectorDB):
                 "top_k": k,
                 "namespace": namespace,
                 "filter": filters,
-                "vector": query_obj,
+                "vector": query_embedding,
                 "includeMetadata": True,
             },
         ) as response:
@@ -153,9 +154,9 @@ class PineconeDB(VectorDB):
             metadata = res["metadata"]
             if self._text_key in metadata:
                 text = metadata.pop(self._text_key)
-                docs.append(Document(page_content=text, metadata=metadata))
+                recordings.append(Document(page_content=text, metadata=metadata))
             else:
                 logger.warning(
-                    f"Found document with no `{self._text_key}` key. Skipping."
+                    f"Found vector with no `{self._text_key}` key. Skipping."
                 )
-        return docs
+        return recordings
