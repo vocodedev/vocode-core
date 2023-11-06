@@ -332,6 +332,24 @@ def test_find_values_to_rewrite(value: str, expected: List[str]):
             ],
             "v deset patnáct dopoledne",
         ),
+        (
+            'Chápu, vaše auto může nejspíš být například 1.6 TDI, 2.5 TDI...',
+            [
+                ValueToConvert(
+                    value="1.6 ",
+                    position=(44, 48),
+                    value_type="float",
+                    tts_value="jedna celá šest ",
+                ),
+                ValueToConvert(
+                    value="2.5 ",
+                    position=(53, 57),
+                    value_type="float",
+                    tts_value="dva celá pět ",
+                ),
+            ],
+            'Chápu, vaše auto může nejspíš být například jedna celá šest TDI, dva celá pět TDI...',
+        ),
     ],
 )
 def test_response_to_tts_format(response: str, values_to_rewrite: List[ValueToConvert], expected):
