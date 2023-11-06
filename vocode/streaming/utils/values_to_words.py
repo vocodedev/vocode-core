@@ -56,30 +56,30 @@ MONTHS = {
 }
 
 HOURS = {
-    0: "ve dvanáct",
-    1: "v jednu",
-    2: "ve dvě",
-    3: "ve tři",
-    4: "ve čtyři",
-    5: "v pět",
-    6: "v šest",
-    7: "v sedm",
-    8: "v osm",
-    9: "v devět",
-    10: "v deset",
-    11: "v jedenáct",
-    12: "ve dvanáct",
-    13: "v jednu",
-    14: "ve dvě",
-    15: "ve tři",
-    16: "ve čtyři",
-    17: "v pět",
-    18: "v šest",
-    19: "v sedm",
-    20: "v osm",
-    21: "v devět",
-    22: "v deset",
-    23: "v jedenáct",
+    0: "dvanáct",
+    1: "jedna",
+    2: "dvě",
+    3: "tři",
+    4: "čtyři",
+    5: "pět",
+    6: "šest",
+    7: "sedm",
+    8: "osm",
+    9: "devět",
+    10: "deset",
+    11: "jedenáct",
+    12: "dvanáct",
+    13: "třináct",
+    14: "čtrnáct",
+    15: "patnáct",
+    16: "šestnáct",
+    17: "sedmnáct",
+    18: "osmnáct",
+    19: "devatenáct",
+    20: "dvacet",
+    21: "dvacet jedna",
+    22: "dvacet dva",
+    23: "dvacet tři",
 }
 
 MINUTES = {
@@ -207,15 +207,45 @@ def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
     for match in NUMBERS_PATTERN.finditer(text):
         start, end = match.start(), match.end()
         original_value = text[start:end]
-        # TODO: handle ordinal numbers
-        value = original_value.replace(" ", "").strip(string.punctuation)
+        if original_value.strip().endswith("."):
+            following_text = text[end:].strip()
+            sentence_follows = following_text and following_text[0].isupper()
+            if end < len(text) - 1 and not sentence_follows:
+                eos = False
+                value = original_value
+            else:
+                eos = True
+                value = original_value.strip(string.punctuation)
+        else:
+            value = original_value.strip(string.punctuation)
+            eos = False
+        value = value.replace(" ", "")
         if "-" in value:
             value_type = "date"
             tts_value = date_to_words(value, current_date=None)
         elif ":" in value:
             value_type = "time"
-            tts_value = time_to_words(value)
-        elif value.isnumeric():
+            # TODO: extract values to enum
+            if text[:start].strip().endswith(("v", "ve")):
+                include_preposition = False
+            else:
+                include_preposition = True
+            if text[end:].strip().startswith(("ráno", "dopoledne", "odpoledne", "večer", "v noci")):
+                include_day_period = False
+            else:
+                include_day_period = True
+            if text[end:].strip().startswith("hodin"):
+                include_oclock = False
+                include_day_period = False
+            else:
+                include_oclock = True
+            tts_value = time_to_words(
+                value,
+                include_day_period=include_day_period,
+                include_preposition=include_preposition,
+                include_oclock=include_oclock,
+            )
+        elif value.strip(".").isnumeric():
             value_type = "integer"
             tts_value = integer_to_words(value)
         else:
@@ -228,7 +258,7 @@ def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
 
         # Add trailing spaces if the original value had them
         trailing_spaces = len(original_value) - len(original_value.rstrip())
-        tts_value += " " * trailing_spaces
+        tts_value += " " * trailing_spaces + ("." if eos else "")
 
         result.append(ValueToConvert(original_value, (start, end), value_type, tts_value))
 
@@ -247,6 +277,17 @@ def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
     return result
 
 
+def response_to_tts_format(response: str, values_to_rewrite: List[ValueToConvert]) -> str:
+    offset = 0
+    for value in values_to_rewrite:
+        start, end = value.position
+        start += offset
+        end += offset
+        response = response[:start] + value.tts_value + response[end:]
+        offset = len(value.tts_value) - (end - start)
+    return response
+
+
 def float_to_words(value: str) -> Optional[str]:
     value = float(value)
     integral, decimal = divmod(value, 1)
@@ -261,13 +302,24 @@ def float_to_words(value: str) -> Optional[str]:
 
 
 def integer_to_words(value: Union[int, str]) -> Optional[str]:
+    if isinstance(value, str) and value.endswith("."):
+        value = value.strip(".")
+        ordinal = True
+    else:
+        ordinal = False
     try:
         value = int(value)
     except ValueError:
         return "neznámé číslo"
 
+    if ordinal is True and 1 <= value <= 31:
+        # TODO: handle all ordinal numbers
+        numbers_words_mapping = DAYS
+    else:
+        numbers_words_mapping = NUMBERS
+
     if 0 <= value <= 20:
-        return NUMBERS[value]
+        return numbers_words_mapping[value]
 
     # Decompose the value to digits
     remainders = []
@@ -293,22 +345,22 @@ def integer_to_words(value: Union[int, str]) -> Optional[str]:
         tens *= 10
 
         # Translate hundreds part to string
-        hundreds_str = "" if hundreds == 0 else f"{NUMBERS[hundreds]} "
+        hundreds_str = "" if hundreds == 0 else f"{numbers_words_mapping[hundreds]} "
 
         # Translate tens part to string
         if tens == 0:
             tens_str = ""
         elif tens == 10:
-            tens_str = f"{NUMBERS[tens + ones]} "
+            tens_str = f"{numbers_words_mapping[tens + ones]} "
         else:
-            tens_str = f"{NUMBERS[tens]} "
+            tens_str = f"{numbers_words_mapping[tens]} "
 
         # Translate ones part to string
         if ones == 0 or (order == max_order and ones == 1 and hundreds == 0 and tens == 0) or tens == 10:
             # Avoid outputs such as "jedna tisíc", "dvacet nula" and "dvanáct dva"
             ones_str = ""
         else:
-            ones_str = f"{NUMBERS[ones]} "
+            ones_str = f"{numbers_words_mapping[ones]} "
 
         result_str += f"{hundreds_str}{tens_str}{ones_str}"
 
@@ -359,31 +411,47 @@ def date_to_words(value: Union[str, datetime.date], current_date: Union[str, dat
     return f"{weekday} {day} {month}"
 
 
-def time_to_words(value: Union[str, datetime.time]) -> str:
+def time_to_words(
+    value: Union[str, datetime.time],
+    include_day_period: bool = True,
+    include_preposition: bool = False,
+    include_oclock: bool = True
+) -> str:
     if not isinstance(value, datetime.time):
         try:
             value = datetime.time.fromisoformat(value)
         except (ValueError, TypeError):
             return "neznámý čas"
 
-    hour_int = value.hour
-    if 4 <= hour_int < 10:
-        day_period = "ráno"
-    elif 10 <= hour_int < 12:
-        day_period = "dopoledne"
-    elif 17 <= hour_int <= 23:
-        day_period = "večer"
-    elif 23 < hour_int < 4:
-        day_period = "v noci"
+    hour = HOURS[value.hour]
+    if value.minute is None or value.minute == 0:
+        text = hour
+        if include_oclock:
+            text += " hodin"
     else:
-        day_period = ""
+        minute = MINUTES[value.minute]
+        text = hour + " " + minute
 
-    minute = MINUTES[value.minute]
-    hour = HOURS[hour_int]
+    if include_day_period:
+        if 0 <= value.hour < 4:
+            text += " v noci"
+        elif 4 <= value.hour < 10:
+            text += " ráno"
+        elif 10 <= value.hour < 12:
+            text += " dopoledne"
 
-    if minute is None or minute == 0:
-        return f"{hour} {day_period}".strip()
-    else:
-        if value.hour == 13:
-            hour = "ve třináct"
-        return f"{hour} {minute} {day_period}".strip()
+    if include_preposition:
+        if value.hour == 1:
+            text = "v " + text
+        if 2 <= value.hour < 5 or value.hour == 12:
+            text = "ve " + text
+        elif 5 <= value.hour < 12:
+            text = "v " + text
+        elif 12 <= value.hour < 15:
+            text = "ve " + text
+        elif 15 <= value.hour < 19:
+            text = "v " + text
+        elif 19 <= value.hour < 24:
+            text = "ve " + text
+
+    return text
