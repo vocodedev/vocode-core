@@ -82,25 +82,31 @@ def test_float_to_words(value, expected):
 
 
 @pytest.mark.parametrize(
-    "value, include_day_period, include_preposition, expected",
+    "value, include_day_period, include_preposition, include_oclock, expected",
     [
-        ("10:00", True, True, "v deset hodin dopoledne"),
-        ("10:00", False, False, "deset hodin"),
-        ("08:02", True, False, "osm nula dva ráno"),
-        ("08:02", False, True, "v osm nula dva"),
-        ("13:00", True, True, "ve třináct hodin"),
-        ("13:00", True, False, "třináct hodin"),
-        ("13:00", False, False, "třináct hodin"),
-        ("14:00", True, True, "ve čtrnáct hodin"),
-        ("14:00", True, False, "čtrnáct hodin"),
-        ("14:00", False, True, "ve čtrnáct hodin"),
-        ("14:00", False, False, "čtrnáct hodin"),
-        ("22:15", True, True, "ve dvacet dva patnáct"),
-        ("!@:#$", True, True, "neznámý čas"),
+        ("10:00", True, True, True, "v deset hodin dopoledne"),
+        ("10:00", False, False, False, "deset"),
+        ("08:02", True, False, True, "osm nula dva ráno"),
+        ("08:02", False, True, True, "v osm nula dva"),
+        ("13:00", True, True, True, "ve třináct hodin"),
+        ("13:00", True, False, True, "třináct hodin"),
+        ("13:00", False, False, False, "třináct"),
+        ("14:00", True, True, True, "ve čtrnáct hodin"),
+        ("14:00", True, False, True, "čtrnáct hodin"),
+        ("14:00", False, True, True, "ve čtrnáct hodin"),
+        ("14:00", False, False, True, "čtrnáct hodin"),
+        ("22:15", True, True, True, "ve dvacet dva patnáct"),
+        ("22:15", True, True, False, "ve dvacet dva patnáct"),
+        ("!@:#$", True, True, True, "neznámý čas"),
     ],
 )
-def test_time_to_words(value, include_day_period, include_preposition, expected):
-    assert time_to_words(value, include_day_period=include_day_period, include_preposition=include_preposition) == expected
+def test_time_to_words(value, include_day_period, include_preposition, include_oclock, expected):
+    assert time_to_words(
+        value,
+        include_day_period=include_day_period,
+        include_preposition=include_preposition,
+        include_oclock=include_oclock
+    ) == expected
 
 
 @pytest.mark.parametrize(
@@ -166,6 +172,17 @@ def test_date_to_words(value, expected):
                     position=(34, 39),
                     value_type="time",
                     tts_value="deset patnáct dopoledne",
+                ),
+            ],
+        ),
+        (
+            "takže se uvidíme dnes v 09:00 hodin",
+            [
+                ValueToConvert(
+                    value="09:00",
+                    position=(24, 29),
+                    value_type="time",
+                    tts_value="devět",
                 ),
             ],
         ),

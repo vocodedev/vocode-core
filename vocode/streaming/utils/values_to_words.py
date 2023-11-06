@@ -234,8 +234,16 @@ def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
                 include_day_period = False
             else:
                 include_day_period = True
+            if text[end:].strip().startswith("hodin"):
+                include_oclock = False
+                include_day_period = False
+            else:
+                include_oclock = True
             tts_value = time_to_words(
-                value, include_day_period=include_day_period, include_preposition=include_preposition
+                value,
+                include_day_period=include_day_period,
+                include_preposition=include_preposition,
+                include_oclock=include_oclock,
             )
         elif value.strip(".").isnumeric():
             value_type = "integer"
@@ -404,7 +412,10 @@ def date_to_words(value: Union[str, datetime.date], current_date: Union[str, dat
 
 
 def time_to_words(
-    value: Union[str, datetime.time], include_day_period: bool = True, include_preposition: bool = False
+    value: Union[str, datetime.time],
+    include_day_period: bool = True,
+    include_preposition: bool = False,
+    include_oclock: bool = True
 ) -> str:
     if not isinstance(value, datetime.time):
         try:
@@ -414,7 +425,9 @@ def time_to_words(
 
     hour = HOURS[value.hour]
     if value.minute is None or value.minute == 0:
-        text = hour + " hodin"
+        text = hour
+        if include_oclock:
+            text += " hodin"
     else:
         minute = MINUTES[value.minute]
         text = hour + " " + minute
