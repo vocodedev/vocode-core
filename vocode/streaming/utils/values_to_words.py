@@ -207,8 +207,19 @@ def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
     for match in NUMBERS_PATTERN.finditer(text):
         start, end = match.start(), match.end()
         original_value = text[start:end]
-        # TODO: handle ordinal numbers
-        value = original_value.replace(" ", "").strip(string.punctuation)
+        if original_value.strip().endswith("."):
+            following_text = text[end:].strip()
+            sentence_follows = following_text and following_text[0].isupper()
+            if end < len(text) - 1 and not sentence_follows:
+                eos = False
+                value = original_value
+            else:
+                eos = True
+                value = original_value.strip(string.punctuation)
+        else:
+            value = original_value.strip(string.punctuation)
+            eos = False
+        value = value.replace(" ", "")
         if "-" in value:
             value_type = "date"
             tts_value = date_to_words(value, current_date=None)
@@ -226,7 +237,7 @@ def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
             tts_value = time_to_words(
                 value, include_day_period=include_day_period, include_preposition=include_preposition
             )
-        elif value.isnumeric():
+        elif value.strip(".").isnumeric():
             value_type = "integer"
             tts_value = integer_to_words(value)
         else:
@@ -239,7 +250,7 @@ def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
 
         # Add trailing spaces if the original value had them
         trailing_spaces = len(original_value) - len(original_value.rstrip())
-        tts_value += " " * trailing_spaces
+        tts_value += " " * trailing_spaces + ("." if eos else "")
 
         result.append(ValueToConvert(original_value, (start, end), value_type, tts_value))
 
@@ -269,7 +280,6 @@ def response_to_tts_format(response: str, values_to_rewrite: List[ValueToConvert
     return response
 
 
-
 def float_to_words(value: str) -> Optional[str]:
     value = float(value)
     integral, decimal = divmod(value, 1)
@@ -284,13 +294,24 @@ def float_to_words(value: str) -> Optional[str]:
 
 
 def integer_to_words(value: Union[int, str]) -> Optional[str]:
+    if isinstance(value, str) and value.endswith("."):
+        value = value.strip(".")
+        ordinal = True
+    else:
+        ordinal = False
     try:
         value = int(value)
     except ValueError:
         return "neznámé číslo"
 
+    if ordinal is True and 1 <= value <= 31:
+        # TODO: handle all ordinal numbers
+        numbers_words_mapping = DAYS
+    else:
+        numbers_words_mapping = NUMBERS
+
     if 0 <= value <= 20:
-        return NUMBERS[value]
+        return numbers_words_mapping[value]
 
     # Decompose the value to digits
     remainders = []
@@ -316,22 +337,22 @@ def integer_to_words(value: Union[int, str]) -> Optional[str]:
         tens *= 10
 
         # Translate hundreds part to string
-        hundreds_str = "" if hundreds == 0 else f"{NUMBERS[hundreds]} "
+        hundreds_str = "" if hundreds == 0 else f"{numbers_words_mapping[hundreds]} "
 
         # Translate tens part to string
         if tens == 0:
             tens_str = ""
         elif tens == 10:
-            tens_str = f"{NUMBERS[tens + ones]} "
+            tens_str = f"{numbers_words_mapping[tens + ones]} "
         else:
-            tens_str = f"{NUMBERS[tens]} "
+            tens_str = f"{numbers_words_mapping[tens]} "
 
         # Translate ones part to string
         if ones == 0 or (order == max_order and ones == 1 and hundreds == 0 and tens == 0) or tens == 10:
             # Avoid outputs such as "jedna tisíc", "dvacet nula" and "dvanáct dva"
             ones_str = ""
         else:
-            ones_str = f"{NUMBERS[ones]} "
+            ones_str = f"{numbers_words_mapping[ones]} "
 
         result_str += f"{hundreds_str}{tens_str}{ones_str}"
 

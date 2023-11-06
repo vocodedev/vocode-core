@@ -54,7 +54,11 @@ from vocode.streaming.utils.values_to_words import (
         ("2101010", "dva milióny sto jedna tisíc deset"),
         ("1000000000", "miliarda"),
         ("6942903410", "šest miliard devět set čtyřicet dva miliónů devět set tři tisíc čtyři sta deset"),
+        ("1.", "prvního"),
         ("20.", "dvacátého"),
+        ("31.", "třicátého prvního"),
+        ("42.", "čtyřicet dva"),
+        ("0.", "nula"),
     ]
 )
 def test_integer_to_words(value, expected):
@@ -121,7 +125,7 @@ def test_date_to_words(value, expected):
                     value="7.",
                     position=(39, 41),
                     value_type="integer",
-                    tts_value="sedm",
+                    tts_value="sedmého",
                 ),
                 ValueToConvert(
                     value="10:30",
@@ -172,7 +176,18 @@ def test_date_to_words(value, expected):
                     value="2000.",
                     position=(7, 12),
                     value_type="integer",
-                    tts_value="dva tisíce",
+                    tts_value="dva tisíce.",
+                ),
+            ],
+        ),
+        (
+            "Říkáte 2000. Děkuji.",
+            [
+                ValueToConvert(
+                    value="2000.",
+                    position=(7, 12),
+                    value_type="integer",
+                    tts_value="dva tisíce.",
                 ),
             ],
         ),
@@ -211,7 +226,7 @@ def test_date_to_words(value, expected):
                     value="1.6.",
                     position=(12, 16),
                     value_type="float",
-                    tts_value="jedna celá šest",
+                    tts_value="jedna celá šest.",
                 ),
             ],
         ),
