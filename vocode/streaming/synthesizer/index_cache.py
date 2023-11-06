@@ -2,10 +2,9 @@ from vocode.streaming.models.index_config import IndexConfig
 from typing import Dict, Any
 from vocode.streaming.models.index_config import IndexConfig
 from vocode.streaming.vector_db.pinecone import PineconeDB
-from vocode.streaming.utils.aws_s3 import load_from_s3, load_from_s3_async
+from vocode.streaming.utils.aws_s3 import load_from_s3_async
 import logging
 import base64 
-import io 
 import asyncio
 from aiobotocore.session import get_session
 from botocore.client import Config
@@ -39,12 +38,14 @@ async def load_index_cache(
     async def load_from_s3_and_save_task(vector_db_cache, doc, s3_client):
         object_key= doc.metadata.get("object_key")
         text_message = doc.page_content
+        if text_message in vector_db_cache:
+            logger.debug(f"Phrase: \"{text_message}\" already exists in vector_db_cache")
+            return
         try:
             audio_data = await load_from_s3_async(bucket_name, object_key, s3_client)
             audio_encoded: bytes = base64.b64encode(audio_data)
             vector_db_cache[text_message] = audio_encoded
-            print(f"Loaded phrase: \"{text_message}\" to vector_db_cache")
-            logger.debug(f"Loaded phrase: \"{text_message}\" to vector_db_cache")
+            # logger.debug(f"Loaded phrase: \"{text_message}\" to vector_db_cache")
         except Exception as e:
             print(f"Error loading object from S3: {str(e)}")
             logger.debug(f"Error loading object from S3: {str(e)}")
@@ -52,15 +53,14 @@ async def load_index_cache(
 
     try:
         aiosession = get_session()
+        logger.debug(f"Loading cache")
         async with aiosession.create_client('s3', config=config) as _s3: 
             tasks = [load_from_s3_and_save_task(vector_db_cache, doc, _s3)
                     for doc in preloaded_vectors]
-            print("After tasks")
             await asyncio.gather(*tasks)
-            print("After gather")
+        logger.debug(f"Cache loaded! {len(vector_db_cache)} items.")
     except Exception as e:
-        print("Error saving cache")
-        print(e)
+        logger.debug(f"Error loading cache: {str(e)}")
 
 if __name__ == "__main__":
     from vocode.streaming.models.vector_db import PineconeConfig
