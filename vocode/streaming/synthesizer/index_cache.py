@@ -80,7 +80,7 @@ if __name__ == "__main__":
         bucket_name="bluberry-synthesizer"
     )
     vector_db_cache = {}
-    cache_size = 1000
+    cache_size = 2000
     loop = asyncio.get_event_loop()
     start = time.time()
     loop.run_until_complete(

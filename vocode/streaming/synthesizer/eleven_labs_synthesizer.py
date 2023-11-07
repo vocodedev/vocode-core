@@ -157,7 +157,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     ) -> Union[SynthesisResult, Tuple[SynthesisResult, BaseMessage]]:
         
         if self.vector_db and self.bucket_name:
-
+            self.logger.debug(f"Checking vector_db for \"{message.text}\"...")
             # if we are using vector_db, check if we have a similar phrase
             if self.vector_db_cache:
                 if message.text in self.vector_db_cache:
