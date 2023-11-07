@@ -1,6 +1,5 @@
 import logging
-import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Generic, TypeVar, Optional
 
@@ -16,8 +15,7 @@ class VoiceActivityDetectorType(str, Enum):
 
 class BaseVoiceActivityDetectorConfig(TypedModel, type=VoiceActivityDetectorType.BASE.value):
     frame_rate: int = 16000
-    min_activity_duration_seconds: float = 0.4
-    silence_break_threshold: float = 0.1
+    min_activity_duration: timedelta = timedelta(milliseconds=400)
     speach_ratio: float = .8
 
 
@@ -52,7 +50,7 @@ class BaseVoiceActivityDetector(Generic[VoiceActivityDetectorConfigType]):
         if self.speach_start_timestamp is None:
             return False
 
-        if (now - self.speach_start_timestamp).total_seconds() > self.config.min_activity_duration_seconds:
+        if (now - self.speach_start_timestamp) > self.config.min_activity_duration:
             speach_ratio = self.activity_state[True] / (self.activity_state[True] + self.activity_state[False])
             if speach_ratio > self.config.speach_ratio:
                 if self.is_interrupted:
