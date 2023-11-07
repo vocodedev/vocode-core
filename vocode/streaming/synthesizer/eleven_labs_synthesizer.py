@@ -102,24 +102,20 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
     async def generate_speech_output_chunks(self):
         async with websockets.connect(self.uri) as ws:
-            await ws.send(
-                json.dumps(
-                    {
-                        "text": " ",
-                        "voice_settings": {
-                            "stability": self.stability,
-                            "similarity_boost": self.similarity_boost,
-                        },
-                        "xi_api_key": self.api_key,
-                    }
-                )
-            )
-            async for text in text_chunker(self.text_generator):
-                self.logger.debug(f"sending text over socket: {text}")
-                await ws.send(
-                    json.dumps({"text": text, "try_trigger_generation": True})
-                )
-            await ws.send(json.dumps({"text": ""}))
+            async def input_text_task():
+                await ws.send(json.dumps({
+                    "text": " ",
+                    "voice_settings": {
+                        "stability": self.stability,
+                        "similarity_boost": self.similarity_boost
+                    },
+                    "xi_api_key": self.api_key,
+                }))
+                async for text in text_chunker(self.text_generator):
+                    self.logger.debug(f"sending text over socket: {text}")
+                    await ws.send(json.dumps({"text": text, "try_trigger_generation": True}))
+                await ws.send(json.dumps({"text": ""}))
+            asyncio.create_task(input_text_task())
             """Listen to the websocket for audio data and stream it."""
             while True:
                 try:
