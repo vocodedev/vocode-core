@@ -5,7 +5,6 @@ import re
 import time
 from dataclasses import dataclass
 from json import JSONDecodeError
-
 from typing import Any, Dict, List, Union
 from typing import AsyncGenerator, Optional, Tuple
 
@@ -28,7 +27,7 @@ from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.model import BaseModel
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.transcriber.base_transcriber import Transcription
-from vocode.streaming.utils.values_to_words import ValueToConvert, find_values_to_rewrite, response_to_tts_format
+from vocode.streaming.utils.values_to_words import find_values_to_rewrite, response_to_tts_format
 from vocode.streaming.vector_db.factory import VectorDBFactory
 
 
@@ -96,6 +95,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             openai.api_base = getenv("AZURE_OPENAI_API_BASE")
             openai.api_version = agent_config.azure_params.api_version
             openai.api_key = getenv("AZURE_OPENAI_API_KEY")
+            if agent_config.chat_gpt_functions_config.api_version is None:
+                agent_config.chat_gpt_functions_config.api_version = "2023-07-01-preview"  # functions must have this or higher to work
         else:
             openai.api_type = "open_ai"
             openai.api_base = "https://api.openai.com/v1"
@@ -286,8 +287,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
                     self.transcript.log_gpt_message(response, message_type="follow_up")
 
-        
-
             decision.follow_up_response_raw_text = ' '.join(all_follow_up_responses)
 
             self.append_chat_params_to_decision_and_log_dialog_state(decision)
@@ -327,7 +326,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     async def get_normalized_values(self, content: str, keys_to_normalize: List[str]) -> dict[str, Any]:
         chat_parameters = self.get_chat_parameters(normalize=True, keys_to_normalize=keys_to_normalize)
         # TODO: discuss configs.
-        chat_parameters["api_version"] = "2023-07-01-preview"
+        chat_parameters["api_version"] = self.agent_config.chat_gpt_functions_config.api_version # TODO: refactor it.
         chat_parameters["n"] = 3
 
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + [{"role": "user", "content": content}]
