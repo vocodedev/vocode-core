@@ -94,7 +94,7 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
 
 class ChatGPTFunctionsConfig(BaseModel):
     temperature: float = 0.2
-    api_version: str = "2023-07-01-preview"
+    api_version: Optional[str] = None
     n: int = 3
 
 
