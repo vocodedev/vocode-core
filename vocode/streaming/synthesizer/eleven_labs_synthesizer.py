@@ -10,7 +10,7 @@ from opentelemetry.trace import Span
 from pydub import AudioSegment
 from langchain.docstore.document import Document
 import base64
-
+from botocore.client import Config
 from vocode import getenv
 from vocode.streaming.synthesizer.base_synthesizer import (
     # BaseSynthesizer, # this wont reflect the changes in the base_synthesizer.py when editing
@@ -33,13 +33,14 @@ from vocode.streaming.utils.mp3_helper import decode_mp3
 from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 
-from vocode.streaming.utils.aws_s3 import load_from_s3
+from vocode.streaming.utils.aws_s3 import load_from_s3, load_from_s3_async
 
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
 
 SIMILARITY_THRESHOLD = 0.98
 
+s3_config = Config(s3={'use_accelerate_endpoint': True})
 class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     def __init__(
         self,
@@ -197,10 +198,16 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     self.logger.debug(f"Found similar synthesized text in vector_db: {text_message}")
                     self.logger.debug(f"Original text: {message.text}")
                     try:
-                        audio_data = await load_from_s3(
-                            bucket_name=self.bucket_name, 
-                            object_key=object_id
-                        )
+                        # audio_data = await load_from_s3(
+                        #     bucket_name=self.bucket_name, 
+                        #     object_key=object_id
+                        # )
+                        async with self.aiobotocore_session.create_client('s3', config=s3_config) as _s3:
+                            audio_data = await load_from_s3_async(
+                                bucket_name=self.bucket_name, 
+                                object_key=object_id,
+                                s3_client=_s3
+                            )
                     except Exception as e:
                         self.logger.debug(f"Error loading object from S3: {str(e)}")
                         audio_data = None

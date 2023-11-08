@@ -18,6 +18,7 @@ import math
 import io
 import wave
 import aiohttp
+from  aiobotocore.session import get_session
 from nltk.tokenize import word_tokenize
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 from opentelemetry import trace
@@ -168,7 +169,8 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         else:
             self.aiohttp_session = aiohttp.ClientSession()
             self.should_close_session_on_tear_down = True
-
+        
+        self.aiobotocore_session = get_session()
     async def empty_generator(self):
         yield SynthesisResult.ChunkResult(b"", True)
 
