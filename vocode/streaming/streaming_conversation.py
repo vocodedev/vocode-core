@@ -588,8 +588,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.active = False
 
     def report_call(self):
-        if self.call_reporter:
-            self.call_reporter.report()
+        self.logger.debug(f"transcript is: {self.transcript}")
+        # if self.call_reporter:
+        #     self.call_reporter.report(self.agent.update_last_bot_message_on_cut_off())
 
     async def terminate(self):
         self.report_call()

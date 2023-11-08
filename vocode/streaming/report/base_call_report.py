@@ -25,5 +25,5 @@ class BaseCallReporter(Generic[CallReporterConfigType]):
     def get_config(self) -> CallReporterConfig:
         return self.config
 
-    def report(self, **kwargs):
+    def report(self, messages: list) -> None:
         raise NotImplementedError
