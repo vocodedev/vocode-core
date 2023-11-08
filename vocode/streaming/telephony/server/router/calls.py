@@ -23,14 +23,14 @@ from vocode.streaming.utils.events_manager import EventsManager
 
 class CallsRouter(BaseRouter):
     def __init__(
-        self,
-        base_url: str,
-        config_manager: BaseConfigManager,
-        transcriber_factory: TranscriberFactory = TranscriberFactory(),
-        agent_factory: AgentFactory = AgentFactory(),
-        synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
-        events_manager: Optional[EventsManager] = None,
-        logger: Optional[logging.Logger] = None,
+            self,
+            base_url: str,
+            config_manager: BaseConfigManager,
+            transcriber_factory: TranscriberFactory = TranscriberFactory(),
+            agent_factory: AgentFactory = AgentFactory(),
+            synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+            events_manager: Optional[EventsManager] = None,
+            logger: Optional[logging.Logger] = None,
     ):
         super().__init__()
         self.base_url = base_url
@@ -44,16 +44,16 @@ class CallsRouter(BaseRouter):
         self.router.websocket("/connect_call/{id}")(self.connect_call)
 
     def _from_call_config(
-        self,
-        base_url: str,
-        call_config: BaseCallConfig,
-        config_manager: BaseConfigManager,
-        conversation_id: str,
-        logger: logging.Logger,
-        transcriber_factory: TranscriberFactory = TranscriberFactory(),
-        agent_factory: AgentFactory = AgentFactory(),
-        synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
-        events_manager: Optional[EventsManager] = None,
+            self,
+            base_url: str,
+            call_config: BaseCallConfig,
+            config_manager: BaseConfigManager,
+            conversation_id: str,
+            logger: logging.Logger,
+            transcriber_factory: TranscriberFactory = TranscriberFactory(),
+            agent_factory: AgentFactory = AgentFactory(),
+            synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+            events_manager: Optional[EventsManager] = None,
     ):
         if isinstance(call_config, TwilioCallConfig):
             return TwilioCall(
@@ -72,6 +72,7 @@ class CallsRouter(BaseRouter):
                 agent_factory=agent_factory,
                 synthesizer_factory=synthesizer_factory,
                 events_manager=events_manager,
+                call_reporter_config=call_config.call_reporter_config,
             )
         elif isinstance(call_config, VonageCallConfig):
             return VonageCall(
@@ -91,6 +92,7 @@ class CallsRouter(BaseRouter):
                 synthesizer_factory=synthesizer_factory,
                 events_manager=events_manager,
                 output_to_speaker=call_config.output_to_speaker,
+                call_reporter_config=call_config.call_reporter_config,
             )
         else:
             raise ValueError(f"Unknown call config type {call_config.type}")

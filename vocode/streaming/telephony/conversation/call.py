@@ -14,6 +14,8 @@ from vocode.streaming.models.transcriber import (
 )
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
 from vocode.streaming.output_device.vonage_output_device import VonageOutputDevice
+from vocode.streaming.report.base_call_report import CallReporterConfig
+from vocode.streaming.report.factory import CallReporterFactory
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.synthesizer.factory import SynthesizerFactory
 from vocode.streaming.telephony.config_manager.base_config_manager import (
@@ -47,9 +49,11 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
             agent_factory: AgentFactory = AgentFactory(),
             synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
             noise_canceler_factory: NoiseCancelerFactory = NoiseCancelerFactory(),
+            call_reporter_factory: CallReporterFactory = CallReporterFactory(),
             events_manager: Optional[EventsManager] = None,
             logger: Optional[logging.Logger] = None,
             noise_canceling_config: Optional[NoiseCancelingConfig] = None,
+            call_reporter_config: Optional[CallReporterConfig] = None,
     ):
         conversation_id = conversation_id or create_conversation_id()
         logger = wrap_logger(
@@ -67,6 +71,7 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
             agent_factory.create_agent(agent_config, logger=logger),
             synthesizer_factory.create_synthesizer(synthesizer_config, logger=logger),
             noise_canceler_factory.create_noise_canceler(noise_canceling_config, logger=logger),
+            call_reporter_factory.create_call_reporter(call_reporter_config, logger=logger),
             conversation_id=conversation_id,
             per_chunk_allowance_seconds=0.01,
             events_manager=events_manager,

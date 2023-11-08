@@ -39,6 +39,7 @@ from vocode.streaming.models.transcript import (
     TranscriptCompleteEvent,
 )
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.report.base_call_report import CallReporterConfig, BaseCallReporter
 from vocode.streaming.response_worker.random_response import RandomAudioManager
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
@@ -298,6 +299,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             agent: BaseAgent,
             synthesizer: BaseSynthesizer,
             noise_canceler: Optional[BaseNoiseCanceler] = None,
+            call_reporter: Optional[BaseCallReporter] = None,
             conversation_id: Optional[str] = None,
             per_chunk_allowance_seconds: float = PER_CHUNK_ALLOWANCE_SECONDS,
             events_manager: Optional[EventsManager] = None,
@@ -309,6 +311,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             logger or logging.getLogger(__name__),
             conversation_id=self.id,
         )
+        self.call_reporter = call_reporter
         self.output_device = output_device
         self.transcriber = transcriber
         self.agent = agent
@@ -584,7 +587,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
     def mark_terminated(self):
         self.active = False
 
+    def report_call(self):
+        if self.call_reporter:
+            self.call_reporter.report()
+
     async def terminate(self):
+        self.report_call()
         self.mark_terminated()
         self.broadcast_interrupt()
         self.events_manager.publish_event(
