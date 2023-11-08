@@ -31,6 +31,9 @@ from vocode.streaming.utils.values_to_words import find_values_to_rewrite, respo
 from vocode.streaming.vector_db.factory import VectorDBFactory
 
 
+EXTRACTION_FIRST_N_ASSISTANT_SENTENCES = 2
+
+
 @dataclass
 class ConsoleChatResponse:
     message: str
@@ -236,6 +239,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     failed_validation = validation_result
                     self.logger.warning("Response failed validation: %s", response)
                     break
+                response = self.sanitize_response(response)
                 values_to_rewrite = find_values_to_rewrite(response)
                 response = response_to_tts_format(response, values_to_rewrite)
                 all_responses.append(response)
@@ -255,7 +259,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             formatted_responses = "\n".join(["BOT: " + response for response in all_responses])
 
             self.logger.info("Got responses from agent for dialog state extraction: %s", formatted_responses)
-            dialog_state_update = await self.get_dialog_state_update()
+            dialog_state_update = await self.get_dialog_state_update('. '.join(all_responses[:EXTRACTION_FIRST_N_ASSISTANT_SENTENCES]))
             self.logger.info("Got dialog state update from agent: %s", dialog_state_update)
             full_response_text_only = ' '.join(all_responses)
             chat_response = ConsoleChatResponse(full_response_text_only, dialog_state_update,
@@ -277,6 +281,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
                 async for response in self.follow_response(override_dialog_state=dict(
                         script_location=decision.say_now_script_location), combined_response=formatted_responses):
+                    response = self.sanitize_response(response)
                     values_to_rewrite = find_values_to_rewrite(response)
                     response = response_to_tts_format(response, values_to_rewrite)
                     all_follow_up_responses.append(response)
@@ -323,6 +328,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # handle it better
             return {}
 
+    @staticmethod
+    def sanitize_response(response: str) -> str:
+        result = re.sub(r'(\d+)\.\s+(\d+)', r'\1.\2', response)
+        result = result.replace("!", ".")
+        return result
+
     async def get_normalized_values(self, content: str, keys_to_normalize: List[str]) -> dict[str, Any]:
         chat_parameters = self.get_chat_parameters(normalize=True, keys_to_normalize=keys_to_normalize)
         # TODO: discuss configs.
@@ -340,7 +351,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         except JSONDecodeError:
             return {}
 
-    async def get_dialog_state_update(self) -> Dict[str, str]:
+    async def get_dialog_state_update(self, assistant_response_chunk: str) -> Dict[str, str]:
         """
         Extract the belief state by using transcript to get dialog history.
         :return: The belief state updated extracted from the response.
@@ -354,7 +365,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                       [{"role": "assistant", "content": self.transcript.last_assistant}]
 
         if self.transcript.last_user_message is not None:
-            chat_parameters["messages"] += [{"role": "user", "content": self.transcript.last_user_message}]
+            chat_parameters["messages"] += [{"role": "user", "content": self.transcript.last_user_message},]
+
+        if assistant_response_chunk is not None:
+            chat_parameters["messages"] += [{"role": "assistant", "content": assistant_response_chunk}]
 
         chat_parameters["messages"] = self.trim_messages_to_fit(chat_parameters["messages"])
         # Call the model

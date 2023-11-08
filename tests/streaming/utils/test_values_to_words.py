@@ -226,6 +226,35 @@ def test_date_to_words(value, expected):
             ],
         ),
         (
+            'Chápu, vaše auto může nejspíš být například 1.6 TDI, 2.5 TSI...',
+            [
+                ValueToConvert(
+                    value="1.6 ",
+                    position=(44, 48),
+                    value_type="float",
+                    tts_value="jedna celá šest ",
+                ),
+                ValueToConvert(
+                    value="TDI",
+                    position=(48, 51),
+                    value_type="abbreviation",
+                    tts_value="T D I",
+                ),
+                ValueToConvert(
+                    value="2.5 ",
+                    position=(53, 57),
+                    value_type="float",
+                    tts_value="dva celá pět ",
+                ),
+                ValueToConvert(
+                    value="TSI",
+                    position=(57, 60),
+                    value_type="abbreviation",
+                    tts_value="T S I",
+                ),
+            ]
+        ),
+        (
             "Takže je to 1.6 TDI.",
             [
                 ValueToConvert(
@@ -233,6 +262,12 @@ def test_date_to_words(value, expected):
                     position=(12, 16),
                     value_type="float",
                     tts_value="jedna celá šest ",
+                ),
+                ValueToConvert(
+                    value="TDI",
+                    position=(16, 19),
+                    value_type="abbreviation",
+                    tts_value="T D I",
                 ),
             ],
         ),
@@ -257,16 +292,16 @@ def test_date_to_words(value, expected):
                     tts_value="osmdesát ",
                 ),
                 ValueToConvert(
-                    value="90 ",
-                    position=(42, 45),
-                    value_type="integer",
-                    tts_value="devadesát ",
-                ),
-                ValueToConvert(
                     value="kW",
                     position=(22, 24),
                     value_type="power",
                     tts_value=" kilowattů",
+                ),
+                ValueToConvert(
+                    value="90 ",
+                    position=(42, 45),
+                    value_type="integer",
+                    tts_value="devadesát ",
                 ),
                 ValueToConvert(
                     value="kw",
@@ -333,7 +368,7 @@ def test_find_values_to_rewrite(value: str, expected: List[str]):
             "v deset patnáct dopoledne",
         ),
         (
-            'Chápu, vaše auto může nejspíš být například 1.6 TDI, 2.5 TDI...',
+            'Chápu, vaše auto může nejspíš být například 1.6 TDI, 2.5 TSI...',
             [
                 ValueToConvert(
                     value="1.6 ",
@@ -342,13 +377,25 @@ def test_find_values_to_rewrite(value: str, expected: List[str]):
                     tts_value="jedna celá šest ",
                 ),
                 ValueToConvert(
+                    value="TDI",
+                    position=(48, 51),
+                    value_type="abbreviation",
+                    tts_value="T D I",
+                ),
+                ValueToConvert(
                     value="2.5 ",
                     position=(53, 57),
                     value_type="float",
                     tts_value="dva celá pět ",
                 ),
+                ValueToConvert(
+                    value="TSI",
+                    position=(57, 60),
+                    value_type="abbreviation",
+                    tts_value="T S I",
+                ),
             ],
-            'Chápu, vaše auto může nejspíš být například jedna celá šest TDI, dva celá pět TDI...',
+            'Chápu, vaše auto může nejspíš být například jedna celá šest T D I, dva celá pět T S I...',
         ),
     ],
 )

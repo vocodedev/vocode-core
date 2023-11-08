@@ -192,6 +192,7 @@ NUMBERS = {
 NUMBERS_PATTERN = re.compile(r"(\d{4}-\d{2}-\d{2}|\d{2}:\d{2}|(\d+[\s.,]?)+)")
 KW_PATTERN = re.compile(r"[kK][wW]")
 PERCENT_PATTERN = re.compile(r"%")
+ABBR_PATTERN = re.compile(r'([A-Z]{3})')
 
 
 @dataclass
@@ -261,6 +262,13 @@ def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
 
         result.append(ValueToConvert(original_value, (start, end), value_type, tts_value))
 
+    # Find and convert all occurrences of abbreviations (e.g. SUV, TDI, etc.)
+    for match in ABBR_PATTERN.finditer(text):
+        start, end = match.start(), match.end()
+        value = text[start:end]
+        tts_value = " ".join(list(value))
+        result.append(ValueToConvert(value, (start, end), "abbreviation", tts_value))
+
     # Find and convert all occurrences of kilowatt abbreviations
     for match in KW_PATTERN.finditer(text):
         start, end = match.start(), match.end()
@@ -272,6 +280,8 @@ def find_values_to_rewrite(text: str) -> List[ValueToConvert]:
         start, end = match.start(), match.end()
         value = text[start:end]
         result.append(ValueToConvert(value, (start, end), "percent", " procent"))
+
+    result = sorted(result, key=lambda x: x.position[0])
 
     return result
 
