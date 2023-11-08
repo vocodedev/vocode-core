@@ -169,11 +169,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                            )) and deepgram_response[
                               "duration"] > self.transcriber_config.minimum_speaking_duration_to_interrupt
 
-            if is_finished:
-                print("Transcriber Duration" * 3)
-                print(deepgram_response["duration"])
-                print("Transcriber Duration" * 3)
-
             if is_finished and self.transcriber_config.skip_on_back_track_audio:
                 is_interrupt_task = asyncio.create_task(
                     self.skip_model.is_filler(transcript)

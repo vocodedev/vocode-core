@@ -22,5 +22,6 @@ class ApiCallReporter(BaseCallReporter[ApiCallReporterConfig]):
             "logs": logs,
             "start_time": transcript.start_time,
         }
-        response = requests.post(self.config.url, data=data)
+        self.logger.debug(f"Data to call reporter: {data}")
+        response = requests.post(self.config.url, json=data)
         self.logger.debug(f"Response from call reporter: {response}")

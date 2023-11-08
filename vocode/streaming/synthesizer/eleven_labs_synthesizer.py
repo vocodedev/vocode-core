@@ -174,9 +174,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         )
         filler_audio_path = os.path.join(base_path, f"{cache_key}.wav")
         if not os.path.exists(filler_audio_path):
-            print('$#@$!#@$!@#'*10)
-            print(filler_audio_path)
-            print('$#@$!#@$!@#'*10)       
             self.logger.debug(f"Generating cached audio for {phrase.text}")
             audio_data = await self.download_filler_audio_data(phrase)
 
