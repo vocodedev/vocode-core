@@ -327,7 +327,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     @staticmethod
     def sanitize_response(response: str) -> str:
-        return re.sub(r'(\d+)\.\s+(\d+)', r'\1.\2', response)
+        result = re.sub(r'(\d+)\.\s+(\d+)', r'\1.\2', response)
+        result = result.replace("!", ".")
+        return result
 
     async def get_normalized_values(self, content: str, keys_to_normalize: List[str]) -> dict[str, Any]:
         chat_parameters = self.get_chat_parameters(normalize=True, keys_to_normalize=keys_to_normalize)
