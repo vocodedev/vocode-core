@@ -236,6 +236,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     failed_validation = validation_result
                     self.logger.warning("Response failed validation: %s", response)
                     break
+                response = self.sanitize_response(response)
                 values_to_rewrite = find_values_to_rewrite(response)
                 response = response_to_tts_format(response, values_to_rewrite)
                 all_responses.append(response)
@@ -277,6 +278,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
                 async for response in self.follow_response(override_dialog_state=dict(
                         script_location=decision.say_now_script_location), combined_response=formatted_responses):
+                    response = self.sanitize_response(response)
                     values_to_rewrite = find_values_to_rewrite(response)
                     response = response_to_tts_format(response, values_to_rewrite)
                     all_follow_up_responses.append(response)
@@ -322,6 +324,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             self.logger.error("No JSON data parsed in response.")
             # handle it better
             return {}
+
+    @staticmethod
+    def sanitize_response(response: str) -> str:
+        return re.sub(r'(\d+)\.\s+(\d+)', r'\1.\2', response)
 
     async def get_normalized_values(self, content: str, keys_to_normalize: List[str]) -> dict[str, Any]:
         chat_parameters = self.get_chat_parameters(normalize=True, keys_to_normalize=keys_to_normalize)
