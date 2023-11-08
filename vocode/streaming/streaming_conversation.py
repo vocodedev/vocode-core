@@ -312,7 +312,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             conversation_id=self.id,
         )
         self.call_reporter = call_reporter
-        self.reported = False
         self.output_device = output_device
         self.transcriber = transcriber
         self.agent = agent
@@ -589,16 +588,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.active = False
 
     def report_call(self):
-        if self.reported:
-            return
-        self.reported = True
-        if self.call_reporter and not self.reported:
+        if self.call_reporter:
             self.call_reporter.report(self.id, self.transcript)
 
     async def terminate(self):
-        self.report_call()
         self.mark_terminated()
         self.broadcast_interrupt()
+        self.report_call()
         self.events_manager.publish_event(
             TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
         )
