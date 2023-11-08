@@ -13,7 +13,10 @@ from typing import (
     Union,
 )
 
-from openai.openai_object import OpenAIObject
+from openai.types.chat import ChatCompletionChunk
+from openai.types.chat.chat_completion_chunk import Choice, ChoiceDelta
+
+# from openai.openai_object import OpenAIObject
 from vocode.streaming.models.actions import FunctionCall, FunctionFragment
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import (
@@ -73,27 +76,28 @@ async def collate_response_async(
 
 async def openai_get_tokens(gen) -> AsyncGenerator[Union[str, FunctionFragment], None]:
     async for event in gen:
-        choices = event.get("choices", [])
+        # choices = event.get("choices", [])
+        choices: List[Choice] = event.choices
         if len(choices) == 0:
             continue
-        choice = choices[0]
+        choice: Choice= choices[0]
         if choice.finish_reason:
             break
-        delta = choice.get("delta", {})
-        if "text" in delta and delta["text"] is not None:
-            token = delta["text"]
+        delta: ChoiceDelta= choice.delta
+        # if "text" in delta and delta["text"] is not None:
+        #     token = delta["text"]
+        #     yield token
+        if delta.content is not None:
+            token = delta.content
             yield token
-        if "content" in delta and delta["content"] is not None:
-            token = delta["content"]
-            yield token
-        elif "function_call" in delta and delta["function_call"] is not None:
+        # if "content" in delta and delta["content"] is not None:
+        #     token = delta["content"]
+        #     yield token
+        # elif "function_call" in delta and delta["function_call"] is not None:
+        elif delta.function_call is not None:
             yield FunctionFragment(
-                name=delta["function_call"]["name"]
-                if "name" in delta["function_call"]
-                else "",
-                arguments=delta["function_call"]["arguments"]
-                if "arguments" in delta["function_call"]
-                else "",
+                name=delta.function_call.name,
+                arguments=delta.function_call.arguments,
             )
 
 

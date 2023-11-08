@@ -13,7 +13,6 @@ class PineconeDB(VectorDB):
     def __init__(self, config: PineconeConfig, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.config = config
-
         self.index_name = self.config.index
         self.pinecone_api_key = getenv("PINECONE_API_KEY") or self.config.api_key
         self.pinecone_environment = (
@@ -22,6 +21,7 @@ class PineconeDB(VectorDB):
         self.pinecone_url = (
             f"https://{self.index_name}.svc.{self.pinecone_environment}.pinecone.io"
         )
+
         self._text_key = "text"
 
     async def add_texts(
@@ -133,9 +133,8 @@ class PineconeDB(VectorDB):
         # Adapted from: langchain/vectorstores/pinecone.py. Made langchain implementation async.
         if namespace is None:
             namespace = ""
-        # query_obj = await self.create_openai_embedding(self._text_key)
-        query_embedding = [1] + [0] * (EMBEDDING_DIMENSION - 1) 
-        
+      
+        query_embedding = [1] + [0] * (EMBEDDING_DIMENSION - 1)  
         recordings = []
         async with self.aiohttp_session.post(
             f"{self.pinecone_url}/query",

@@ -1,7 +1,7 @@
 import os
 import asyncio
 from typing import Optional
-import openai
+from openai import AsyncAzureOpenAI, AsyncOpenAI
 import numpy as np
 import requests
 
@@ -27,11 +27,16 @@ class GoodbyeModel:
         embeddings_cache_path=os.path.join(
             os.path.dirname(__file__), "goodbye_embeddings"
         ),
-        openai_api_key: Optional[str] = None,
     ):
-        openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
-        if not openai.api_key:
-            raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
+        if os.getenv("AZURE_OPENAI_API_BASE") is not None:  
+            self.openai_client = AsyncAzureOpenAI(
+                api_version="2023-07-01-preview",
+                azure_endpoint=os.getenv("AZURE_OPENAI_API_BASE")
+            )
+        elif os.getenv("OPENAI_API_KEY") is not None:
+            self.openai_client = AsyncOpenAI()
+        else:
+            raise ValueError("Missing Azure/OpenAI API key in GoodbyeModel!")
         self.embeddings_cache_path = embeddings_cache_path
         self.goodbye_embeddings: Optional[np.ndarray] = None
 
@@ -71,13 +76,13 @@ class GoodbyeModel:
 
         engine = getenv("AZURE_OPENAI_TEXT_EMBEDDING_ENGINE")
         if engine:
-            params["engine"] = engine
+            params["model"] = engine
         else:
             params["model"] = "text-embedding-ada-002"
-
-        return np.array(
-            (await openai.Embedding.acreate(**params))["data"][0]["embedding"]
-        )
+        embedding = ((await self.openai_client.embeddings.create(**params))
+                     .data[0]
+                     .embedding)
+        return np.array(embedding)
 
 
 if __name__ == "__main__":
