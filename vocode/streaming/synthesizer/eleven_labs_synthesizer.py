@@ -103,31 +103,44 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     async def generate_speech_output_chunks(self):
         async with websockets.connect(self.uri) as ws:
             async def input_text_task():
-                await ws.send(json.dumps({
+                json_request = json.dumps({
                     "text": " ",
                     "voice_settings": {
                         "stability": self.stability,
                         "similarity_boost": self.similarity_boost
                     },
                     "xi_api_key": self.api_key,
-                }))
+                })
+                self.logger.debug(f"Request to 11labs: {json_request}")
+                await ws.send(json_request)
                 async for text in text_chunker(self.text_generator):
                     self.logger.debug(f"sending text over socket: {text}")
                     await ws.send(json.dumps({"text": text, "try_trigger_generation": True}))
+                self.logger.debug("Sending eos to 11labs...")
                 await ws.send(json.dumps({"text": ""}))
             asyncio.create_task(input_text_task())
             """Listen to the websocket for audio data and stream it."""
             while True:
                 try:
+                    self.logger.debug("Waiting on 11labs output...")
                     msg = await ws.recv()
                     data = json.loads(msg)
+                    if data.get("error"):
+                        self.logger.error(f"Error from 11labs: {msg}")
+                        break
                     if data.get("audio"):
+                        self.logger.debug("got audio...")
                         yield base64.b64decode(data["audio"])
                     elif data.get("isFinal"):
+                        self.logger.debug("got final...")
                         break
                 except websockets.ConnectionClosed:
                     print("Connection closed")
                     break
+                except asyncio.CancelledError:
+                    self.logger.debug("Cancelled sound output")
+                    break
+
             self.logger.debug(f"socket may get closed now")
 
     async def create_speech_stream(self, text: str, is_end: bool = False):
