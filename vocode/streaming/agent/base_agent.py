@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import random
+import time
 import typing
 from enum import Enum
 from typing import (
@@ -17,6 +18,7 @@ from typing import (
 )
 
 from opentelemetry import trace
+
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.action.phone_call_action import (
     TwilioPhoneCallAction,
@@ -203,32 +205,39 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         agent_span_first = tracer.start_span(
             f"{tracer_name_start}.generate_first"  # type: ignore
         )
-        self.logger.debug("AGENT: Got transcription from agent: %s", transcription.message)
+
+        self.logger.info("AGENT: Got transcription from agent: %s", transcription.message)
+        generator_start = time.time()
         responses = self.generate_response(
             transcription.message,
             is_interrupt=transcription.is_interrupt,
             conversation_id=conversation_id,
         )
+        self.logger.info("AGENT: Got generator from OpenAI for user transcription: %s", transcription.message)
         is_first_response = True
         function_call = None
+        self.logger.info("Agent is generating responses")
+        first_response_start_time = time.time()
         async for response in responses:
-            self.logger.debug("Got response from agent `%s`", response
-                              )
+            text = response if isinstance(response, str) else response[0]  # TODO: add better handling for tuple
+            self.logger.info("Agent (generated) %s", text)
             if isinstance(response, FunctionCall):
                 function_call = response
                 continue
             if is_first_response:
+                first_response_end_time = time.time()
+                self.logger.info("Consuming first response took %s, total %s",
+                                 first_response_end_time - first_response_start_time,
+                                 first_response_end_time - generator_start)
                 agent_span_first.end()
                 is_first_response = False
-            self.logger.debug("Producing response `%s`", response)
-            if isinstance(response,tuple):
+            if isinstance(response, tuple):
                 response = response[0]
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
             )
 
-            self.logger.debug("Produced response `%s`", response)
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
