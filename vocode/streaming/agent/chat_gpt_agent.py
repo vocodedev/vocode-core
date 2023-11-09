@@ -594,6 +594,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             else None
         )
         self.is_first_response = True
+        self.timeout = 5.0 # seconds #TODO: parametrize
 
         if self.agent_config.vector_db_config:
             self.vector_db = vector_db_factory.create_vector_db(
@@ -671,6 +672,22 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
         self.logger.debug(f"LLM response: {text}")
         return text, False
 
+    async def attempt_stream_response(self, chat_parameters, response_timeout):
+        try:
+            # Create the chat stream
+            stream = await openai.ChatCompletion.acreate(**chat_parameters)
+            # Wait for the first message
+            first_response = await asyncio.wait_for(
+                collate_response_async(
+                    openai_get_tokens(stream), get_functions=True
+                ).__anext__(),
+                timeout=response_timeout
+            )
+            return stream, first_response
+        except asyncio.TimeoutError:
+            return None, None
+
+
     async def generate_response(
             self,
             human_input: str,
@@ -713,8 +730,24 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
         else:
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
-        stream = await openai.ChatCompletion.acreate(**chat_parameters)
-        async for message in collate_response_async(
-                openai_get_tokens(stream), get_functions=True
-        ):
-            yield message, True
+
+        stream, first_response = await self.attempt_stream_response(chat_parameters, self.timeout)
+
+        if first_response is not None:
+            yield first_response, True
+            async for message in collate_response_async(
+                    openai_get_tokens(stream), get_functions=True):
+                yield message, True
+        else:
+            # If no first response, send filler and retry once
+            yield "Please hold on, we are experiencing a delay.", False
+            stream, first_response = await self.attempt_stream_response(chat_parameters, self.timeout+2)
+            if first_response is not None:
+                yield first_response, True
+                async for message in collate_response_async(
+                        openai_get_tokens(stream), get_functions=True):
+                    yield message, True
+            else:
+                # If the retry also fails, send final filler word and raise an error
+                yield "We're sorry, but we're unable to process your request at this time.", False
+                raise RuntimeError("Failed to get a timely response from OpenAI.")
