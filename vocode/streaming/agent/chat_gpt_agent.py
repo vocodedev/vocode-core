@@ -730,7 +730,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
 
-        stream, first_response = await self.attempt_stream_response(chat_parameters, 0)
+        stream, first_response = await self.attempt_stream_response(chat_parameters, self.timeout)
 
         if first_response is not None:
             yield first_response, True
