@@ -728,9 +728,9 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
                 chat_parameters = self.get_chat_parameters()
         else:
             chat_parameters = self.get_chat_parameters()
-        chat_parameters["st
-        stream, first_respoream"] = True
-nse = await self.attempt_stream_response(chat_parameters, 0)
+        chat_parameters["stream"] = True
+
+        stream, first_response = await self.attempt_stream_response(chat_parameters, 0)
 
         if first_response is not None:
             yield first_response, True
