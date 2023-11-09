@@ -324,7 +324,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     async def get_normalized_values(self, content: str, keys_to_normalize: List[str]) -> dict[str, Any]:
         chat_parameters = self.get_chat_parameters(normalize=True, keys_to_normalize=keys_to_normalize)
         # TODO: discuss configs.
-        chat_parameters["api_version"] = self.agent_config.chat_gpt_functions_config.api_version # TODO: refactor it.
+        chat_parameters["api_version"] = self.agent_config.chat_gpt_functions_config.api_version  # TODO: refactor it.
         chat_parameters["n"] = 3
 
         chat_parameters["messages"] = [chat_parameters["messages"][0]] + [{"role": "user", "content": content}]
@@ -594,7 +594,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             else None
         )
         self.is_first_response = True
-        self.timeout = 5.0 # seconds #TODO: parametrize
+        self.timeout = 5.0  # seconds #TODO: parametrize
 
         if self.agent_config.vector_db_config:
             self.vector_db = vector_db_factory.create_vector_db(
@@ -687,7 +687,6 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
         except asyncio.TimeoutError:
             return None, None
 
-
     async def generate_response(
             self,
             human_input: str,
@@ -731,7 +730,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
 
-        stream, first_response = await self.attempt_stream_response(chat_parameters, self.timeout)
+        stream, first_response = await self.attempt_stream_response(chat_parameters, 0)
 
         if first_response is not None:
             yield first_response, True
@@ -740,8 +739,8 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
                 yield message, True
         else:
             # If no first response, send filler and retry once
-            yield "Please hold on, we are experiencing a delay.", False
-            stream, first_response = await self.attempt_stream_response(chat_parameters, self.timeout+2)
+            yield "<HOLD ON>", False  # FIXME: should use queue of filler words worker or someting better,
+            stream, first_response = await self.attempt_stream_response(chat_parameters, self.timeout + 2)
             if first_response is not None:
                 yield first_response, True
                 async for message in collate_response_async(
@@ -749,5 +748,5 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
                     yield message, True
             else:
                 # If the retry also fails, send final filler word and raise an error
-                yield "We're sorry, but we're unable to process your request at this time.", False
+                yield "<FAIL>", False  # FIXME: should use queue of filler words worker or someting better,
                 raise RuntimeError("Failed to get a timely response from OpenAI.")

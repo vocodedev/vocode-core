@@ -265,7 +265,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.logger.debug(f"Sending filler audio with sentiment {sentiment}")
             conversation_length = len(self.conversation.transcript.event_logs)
             prefix = "n_"  # Uses neutral filler audios by default.
-            if conversation_length < 3:
+            if sentiment == "delay":
+                prefix = "sd_"
+            elif sentiment == "broken":
+                prefix = "sb_"
+            elif conversation_length < 3:
                 prefix = "f_"
             elif sentiment == "positive":
                 prefix = "p_"
@@ -297,8 +301,17 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             try:
                 agent_response = item.payload
-                if isinstance(agent_response, AgentResponseFillerAudio):
-                    sentiment = None
+                sentiment = None
+                send_filler = False
+                if hasattr(agent_response, "message"):
+                    hold_on = agent_response.message.text == "<HOLD ON>"
+                    fail = agent_response.message.text == "<FAIL>"
+                    if hold_on:
+                        sentiment = "delay"
+                    elif fail:
+                        sentiment = "broken"
+                    send_filler = hold_on or fail
+                if isinstance(agent_response, AgentResponseFillerAudio) or send_filler:
                     # if self.conversation.openai_embeddings_response_classifier:
                     #     response = self.conversation.openai_embeddings_response_classifier.classify_response(
                     #         agent_response.transcript)
@@ -336,7 +349,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     bot_sentiment=self.conversation.bot_sentiment,
                 )
                 end_time = time.time()
-                self.conversation.logger.info("Getting response from Synth took {} seconds".format(end_time - start_time))
+                self.conversation.logger.info(
+                    "Getting response from Synth took {} seconds".format(end_time - start_time))
                 self.produce_interruptible_agent_response_event_nonblocking(
                     (agent_response_message.message, synthesis_result),
                     is_interruptible=item.is_interruptible,
@@ -795,7 +809,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             if first_chunk:
                 generating_end_time = time.time()
                 first_chunk = False
-                self.logger.info(f"Generating first chunk took {generating_end_time - generating_start_time} seconds for message {message}")
+                self.logger.info(
+                    f"Generating first chunk took {generating_end_time - generating_start_time} seconds for message {message}")
 
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
