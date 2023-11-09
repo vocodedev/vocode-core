@@ -17,7 +17,7 @@ class VectorDB:
             self.aiohttp_session = aiohttp_session
             self.should_close_session_on_tear_down = False
         else:
-            self.aiohttp_session = aiohttp.ClientSession()
+            self.aiohttp_session = aiohttp.ClientSession(trust_env = True)
             self.should_close_session_on_tear_down = True
         
         if os.getenv("AZURE_OPENAI_API_BASE") is not None:  
