@@ -213,16 +213,22 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.filler_audio_config.silence_threshold_seconds
                 )
                 await asyncio.sleep(silence_threshold)
-                self.conversation.logger.debug("Sending filler audio to output")
-                self.filler_audio_started_event = threading.Event()
-                await self.conversation.send_speech_to_output(
-                    filler_audio.message.text,
-                    filler_synthesis_result,
-                    item.interruption_event,
-                    filler_audio.seconds_per_chunk,
-                    started_event=self.filler_audio_started_event,
+                should_send_filler_audio = (
+                    not self.conversation.is_bot_speaking
+                    and self.conversation.synthesis_results_queue.empty()
                 )
-                item.agent_response_tracker.set()
+                self.conversation.logger.debug(f"Should send filler audio: {should_send_filler_audio}")
+                if should_send_filler_audio:
+                    self.conversation.logger.debug("Sending filler audio to output")
+                    self.filler_audio_started_event = threading.Event()
+                    await self.conversation.send_speech_to_output(
+                        filler_audio.message.text,
+                        filler_synthesis_result,
+                        item.interruption_event,
+                        filler_audio.seconds_per_chunk,
+                        started_event=self.filler_audio_started_event,
+                    )
+                    item.agent_response_tracker.set()
             except asyncio.CancelledError:
                 pass
 
@@ -300,7 +306,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             try:
                 agent_response = item.payload
-                if isinstance(agent_response, AgentResponseFillerAudio):
+                should_send_filler_audio = (
+                    isinstance(agent_response, AgentResponseFillerAudio)
+                    and not self.conversation.is_bot_speaking
+                    and self.conversation.synthesis_results_queue.empty()
+                )
+                if should_send_filler_audio:
                     self.send_filler_audio(item.agent_response_tracker)
                     return
                 if isinstance(agent_response, AgentResponseStop):
@@ -317,6 +328,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     if (
                         self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                     ):
+                        self.conversation.logger.debug("Waiting for filler audio to finish")
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
 
                 self.conversation.logger.debug("Synthesizing speech for message")
@@ -332,7 +344,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 else:
                     synthesis_result = synthesis_results
                     message = agent_response_message.message
-                self.conversation.is_synthesizing = False
+                # check if there is more to synthesize 
+                self.conversation.is_synthesizing = not self.input_queue.empty()
                 self.produce_interruptible_agent_response_event_nonblocking(
                     (message, synthesis_result),
                     is_interruptible=item.is_interruptible,
@@ -373,8 +386,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 # set flag for bot interruption
                 self.conversation.is_interrupted = False
+                
                 # set flag for bot speaking
                 self.conversation.is_bot_speaking = True
+
                 message_sent, cut_off = await self.conversation.send_speech_to_output(
                     message.text,
                     synthesis_result,
@@ -384,8 +399,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 # set flag to indicate whether bot was interrupted
                 self.conversation.is_interrupted = cut_off
-                # set flag to indicate bot finished speaking
-                self.conversation.is_bot_speaking = False
+                # set flag to check if there is more to say
+                self.conversation.is_bot_speaking = not self.input_queue.empty()
                 # publish the transcript message now that it includes what was said during send_speech_to_output
                 self.conversation.transcript.maybe_publish_transcript_event_from_message(
                     message=transcript_message,
