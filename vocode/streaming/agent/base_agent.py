@@ -299,8 +299,8 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 goodbye_detected_task = self.create_goodbye_detection_task(
                     transcription.message
                 )
-            # only output filler_audio 50% of the time randomly
-            if self.agent_config.send_filler_audio and random.random() < 0.5:
+            # only output  filler_audio with a probability
+            if self.agent_config.send_filler_audio and random.random() < self.agent_config.send_filler_audio.probability:
                 self.produce_interruptible_agent_response_event_nonblocking(
                     AgentResponseFillerAudio()
                 )

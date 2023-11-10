@@ -42,6 +42,7 @@ class FillerAudioConfig(BaseModel):
     silence_threshold_seconds: float = FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
     use_phrases: bool = True
     use_typing_noise: bool = False
+    probability: float = 0.5
 
     @validator("use_typing_noise")
     def typing_noise_excludes_phrases(cls, v, values):
