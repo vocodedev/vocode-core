@@ -164,7 +164,7 @@ class ClassifiedResponse:
     max_similarity_response: str
 
 
-class OpenaiEmbeddingsResponseClassifier:
+class   OpenaiEmbeddingsResponseClassifier:
 
     def __init__(self, cache_storage_path=JsonCacheProxy.DEFAULT_CACHE_STORAGE_PATH, logger=None):
         if logger is None:

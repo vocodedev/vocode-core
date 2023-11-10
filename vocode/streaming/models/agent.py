@@ -123,6 +123,17 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     class Config:
         arbitrary_types_allowed = True
 
+class ChatGPTAgentConfigOLD(AgentConfig, type=AgentType.CHAT_GPT.value):
+    prompt_preamble: str
+    expected_first_prompt: Optional[str] = None
+    model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
+    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
+    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
+    cut_off_response: Optional[CutOffResponse] = None
+    azure_params: Optional[AzureOpenAIConfig] = None
+    vector_db_config: Optional[VectorDBConfig] = None
+    initial_audio_path: Optional[str] = None
+
 
 class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):
     prompt_preamble: str
