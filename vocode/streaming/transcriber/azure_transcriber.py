@@ -92,7 +92,7 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
         stream = self.generator()
 
         def stop_cb(evt):
-            self.logger.debug("CLOSING on {}".format(evt))
+            self.logger.info("CLOSING on {}".format(evt))
             self.speech.stop_continuous_recognition()
             self._ended = True
 
@@ -125,9 +125,11 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
             try:
                 chunk = self.input_janus_queue.sync_q.get(timeout=5)
             except queue.Empty:
+                self.logger.warning("Input queue timeout - no audio data received within 5 seconds.")
                 return
 
             if chunk is None:
+                self.logger.debug("Got end of stream.")
                 return
             data = [chunk]
 
@@ -147,3 +149,4 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
         self._ended = True
         self.speech.stop_continuous_recognition_async()
         super().terminate()
+        self.logger.info("Termination called, stopping continuous recognition.")

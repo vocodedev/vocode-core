@@ -303,14 +303,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 agent_response = item.payload
                 sentiment = None
                 send_filler = False
-                # if hasattr(agent_response, "message"): # FIXME: doesn't work.
-                #     hold_on = agent_response.message.text == "<HOLD ON>"
-                #     fail = agent_response.message.text == "<FAIL>"
-                #     if hold_on:
-                #         sentiment = "delay"
-                #     elif fail:
-                #         sentiment = "broken"
-                #     send_filler = hold_on or fail
+                if hasattr(agent_response, "message"): # FIXME: doesn't work.
+                    hold_on = agent_response.message.text == "<HOLD ON>"
+                    fail = agent_response.message.text == "<FAIL>"
+                    if hold_on:
+                        sentiment = "delay"
+                    elif fail:
+                        sentiment = "broken"
+                    send_filler = hold_on or fail
                 if isinstance(agent_response, AgentResponseFillerAudio) or send_filler:
                     # if self.conversation.openai_embeddings_response_classifier:
                     #     response = self.conversation.openai_embeddings_response_classifier.classify_response(
