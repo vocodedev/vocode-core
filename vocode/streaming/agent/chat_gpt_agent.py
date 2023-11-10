@@ -729,15 +729,16 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
         else:
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
-
+        self.logger.info('attempting stream response')
         stream, first_response = await self.attempt_stream_response(chat_parameters, self.timeout)
-
         if first_response is not None:
+            self.logger.info('First steam was successful')
             yield first_response, True
             async for message in collate_response_async(
                     openai_get_tokens(stream), get_functions=True):
                 yield message, True
         else:
+            self.logger.info('First steam failed, dropping it and retrying once again')
             # If no first response, send filler and retry once
             yield "Dejte mi jen malou chviličku a budeme pokračovat", False  # FIXME: should use queue of filler words worker or someting better,
             stream, first_response = await self.attempt_stream_response(chat_parameters, self.timeout + 2)
@@ -747,6 +748,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
                         openai_get_tokens(stream), get_functions=True):
                     yield message, True
             else:
+                self.logger.error('Second stream failed, giving up')
                 # If the retry also fails, send final filler word and raise an error
                 yield "Omlouvám se ale přestal mi fungovat systém na vytváření schůzek. Zavolám vám později", False  # FIXME: should use queue of filler words worker or someting better,
                 raise RuntimeError("Failed to get a timely response from OpenAI.")
