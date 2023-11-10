@@ -270,6 +270,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             # Await the output queue of the MiniaudioWorker and yield the wav chunks in another loop
             while True:
                 # Get the wav chunk and the flag from the output queue of the MiniaudioWorker
+
                 wav_chunk, is_last = await miniaudio_worker.output_queue.get()
                 if self.synthesizer_config.should_encode_as_wav:
                     wav_chunk = encode_as_wav(wav_chunk, self.synthesizer_config)
