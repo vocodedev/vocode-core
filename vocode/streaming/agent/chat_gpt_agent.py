@@ -610,7 +610,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             else None
         )
         self.is_first_response = True
-        self.timeout = 5.0  # seconds #TODO: parametrize
+        self.timeout = 3.0  # seconds #TODO: parametrize
 
         if self.agent_config.vector_db_config:
             self.vector_db = vector_db_factory.create_vector_db(
@@ -691,7 +691,12 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
     async def attempt_stream_response(self, chat_parameters, response_timeout):
         try:
             # Create the chat stream
-            stream = await openai.ChatCompletion.acreate(**chat_parameters)
+            self.logger.info('attempt_stream_response')
+            stream = await asyncio.wait_for(
+                openai.ChatCompletion.acreate(**chat_parameters),
+                timeout=3 # Fixme: parametrize, this is different cos it usually very fast.
+            )
+            self.logger.info('have attempt_stream_response')
             # Wait for the first message
             first_response = await asyncio.wait_for(
                 collate_response_async(
@@ -699,8 +704,10 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
                 ).__anext__(),
                 timeout=response_timeout
             )
+            self.logger.info('got first message')
             return stream, first_response
         except asyncio.TimeoutError:
+            self.logger.info('got error timeout')
             return None, None
 
     async def generate_response(

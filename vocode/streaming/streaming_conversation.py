@@ -132,7 +132,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     f'The user said "{transcription.message}" during the bot was talking. We are letting the bot finish speaking. Message is not sent to the agent.')
                 # Detect if the bot is talking. This may fail if the current task is done and another not started yet. But playing the audio takes most of the time.
                 return  # just ignore the transcription for now.
-            elif bot_still_talking and self.conversation.over_talking_filler_detector:
+            if bot_still_talking and self.conversation.over_talking_filler_detector:
                 self.conversation.logger.info(
                     f'The user said "{transcription.message}" during the bot was talking. Testing to ignore filler words and confirmation words.')
                 if self.conversation.over_talking_filler_detector.detect_filler(transcription.message):
