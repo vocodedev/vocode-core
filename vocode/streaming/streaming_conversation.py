@@ -586,18 +586,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     async def send_initial_message(self, initial_message: BaseMessage):
         # TODO: configure if initial message is interruptible
-        self.transcriber.mute()
         initial_message_tracker = asyncio.Event()
         agent_response_event = (
             self.interruptible_event_factory.create_interruptible_agent_response_event(
                 AgentResponseMessage(message=initial_message),
-                is_interruptible=False,
+                is_interruptible=self.agent.get_agent_config().interrupt_initial_message,
                 agent_response_tracker=initial_message_tracker,
             )
         )
         self.agent_responses_worker.consume_nonblocking(agent_response_event)
         await initial_message_tracker.wait()
-        self.transcriber.unmute()
 
     async def check_for_idle(self):
         """Terminates the conversation after allowed_idle_time_seconds seconds if no activity is detected"""

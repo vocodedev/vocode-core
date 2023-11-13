@@ -65,6 +65,7 @@ class AzureOpenAIConfig(BaseModel):
 
 class AgentConfig(TypedModel, type=AgentType.BASE.value):
     initial_message: Optional[BaseMessage] = None
+    interrupt_initial_message: Optional[bool] = False
     generate_responses: bool = True
     allowed_idle_time_seconds: Optional[float] = None
     allow_agent_to_be_cut_off: bool = True
