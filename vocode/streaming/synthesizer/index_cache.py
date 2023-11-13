@@ -1,5 +1,6 @@
 from vocode.streaming.models.index_config import IndexConfig
-from typing import Dict, Any
+from typing import Dict, Any, List
+from langchain.docstore.document import Document
 from vocode.streaming.models.index_config import IndexConfig
 from vocode.streaming.vector_db.pinecone import PineconeDB
 from vocode.streaming.utils.aws_s3 import load_from_s3_async
@@ -17,7 +18,7 @@ config = Config(
 async def load_index_cache(
           index_config: IndexConfig, 
           vector_db_cache: Dict[str, Any],
-          voice_filters: Dict[str, Any] = None,
+          voice_filters: [Dict[str, Any]] = None,
           cache_size: int = 100,
           logger: logging.Logger = None
     ):
@@ -27,10 +28,14 @@ async def load_index_cache(
     vector_db = PineconeDB(index_config.pinecone_config)
     bucket_name = index_config.bucket_name
     
-    preloaded_vectors = await vector_db.retrieve_k_vectors_with_filter(
-            filters=voice_filters,
+    preloaded_vectors: List[Document] = []
+    for i in range(len(voice_filters)):
+        vecs = await vector_db.retrieve_k_vectors_with_filter(
+            filters=voice_filters[i],
             k=cache_size
-    )
+        )
+        preloaded_vectors.extend(vecs)
+    
     await vector_db.tear_down()
     print(f"{len(preloaded_vectors)} preloaded vectors")
     logger.debug(f"Preloaded {len(preloaded_vectors)} items from index")
