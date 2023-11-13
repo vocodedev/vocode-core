@@ -306,13 +306,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             try:
                 agent_response = item.payload
-                should_send_filler_audio = (
-                    isinstance(agent_response, AgentResponseFillerAudio)
-                    and not self.conversation.is_bot_speaking
-                    and self.conversation.synthesis_results_queue.empty()
-                )
-                if should_send_filler_audio:
-                    self.send_filler_audio(item.agent_response_tracker)
+                if isinstance(agent_response, AgentResponseFillerAudio):
+                    should_send_filler_audio = (                    
+                        not self.conversation.is_bot_speaking
+                        and self.conversation.synthesis_results_queue.empty()
+                    )
+                    if should_send_filler_audio:
+                        self.send_filler_audio(item.agent_response_tracker)
                     return
                 if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")

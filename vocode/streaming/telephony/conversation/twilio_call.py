@@ -102,8 +102,8 @@ class TwilioCall(Call[TwilioOutputDevice]):
             )
             self.logger.info(f"Recording: {recording.sid}")
 
-        if twilio_call.answered_by in ("machine_start", "fax"):
-            self.logger.info(f"Call answered by {twilio_call.answered_by}")
+        self.logger.info(f"Call answered by {twilio_call.answered_by}")
+        if twilio_call.answered_by in ("machine_start", "fax"):           
             twilio_call.update(status="completed")
         else:
             await self.wait_for_twilio_start(ws)
