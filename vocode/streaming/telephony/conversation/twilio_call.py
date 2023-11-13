@@ -102,8 +102,9 @@ class TwilioCall(Call[TwilioOutputDevice]):
             )
             self.logger.info(f"Recording: {recording.sid}")
 
-        self.logger.info(f"Call answered by {twilio_call.answered_by}")
-        if twilio_call.answered_by in ("machine_start", "fax"):           
+        # since now AMD is async, twilio_call should not contain the answered_by field
+        if twilio_call.answered_by in ("machine_start", "fax"): 
+            self.logger.info(f"Call answered by {twilio_call.answered_by}")          
             twilio_call.update(status="completed")
         else:
             await self.wait_for_twilio_start(ws)

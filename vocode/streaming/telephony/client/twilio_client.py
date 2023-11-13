@@ -34,6 +34,11 @@ class TwilioClient(BaseTelephonyClient):
     ) -> str:
         # TODO: Make this async. This is blocking.
         twiml = self.get_connection_twiml(conversation_id=conversation_id)
+        extra_params: dict = self.get_telephony_config().extra_params
+        if extra_params.get("async_amd", None) == "true":
+            extra_params["async_amd_status_callback"] = (
+                'https://' + self.base_url + '/check_machine_detection'
+            )
         twilio_call = self.twilio_client.calls.create(
             twiml=twiml.body.decode("utf-8"),
             to=to_phone,
