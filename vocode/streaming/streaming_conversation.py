@@ -742,6 +742,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent.cancel_current_task()
         self.agent_responses_worker.cancel_current_task()
 
+        self.logger.info(f"Broadcasting interrupt. Cancelled {num_interrupts} interruptible events.")
+
         # Clearing these queues cuts time from finishing interruption talking to bot talking cut by 1 second from ~4.5 to ~3.5 seconds.
         self.clear_queue(self.agent.output_queue, 'agent.output_queue')
         self.clear_queue(self.agent_responses_worker.output_queue, 'agent_responses_worker.output_queue')
