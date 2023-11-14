@@ -30,6 +30,7 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
 
         google.auth.default()
         self.speech = speech
+        self.logger = logger
 
         self._ended = False
         self.google_streaming_config = self.create_google_streaming_config()
