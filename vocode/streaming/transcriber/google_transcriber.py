@@ -35,6 +35,7 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
         self._ended = False
         self.google_streaming_config = self.create_google_streaming_config()
         self.client = self.speech.SpeechClient()
+        self.start_time = None
         self.is_ready = False
         if self.transcriber_config.endpointing_config:
             raise Exception("Google endpointing config not supported yet")
@@ -63,14 +64,19 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
         )
 
     def _run_loop(self):
+        self.logger.warning("~~~~  RUN LOOP")
+        while not self._ended:
+            self.start_time = time.time()
+            self.restart_stream()
+            time.sleep(0.1)  # Short pause to prevent tight looping, adjust as needed
+
+    def restart_stream(self):
+        self.logger.warning("~~~~  Restart LOOP")
+        self.client = self.speech.SpeechClient()
         stream = self.generator()
-        requests = (
-            self.speech.StreamingRecognizeRequest(audio_content=content)
-            for content in stream
-        )
-        responses = self.client.streaming_recognize(
-            self.google_streaming_config, requests
-        )
+        self.logger.warning("~~~~  Restart GENERATOR")
+        requests = (self.speech.StreamingRecognizeRequest(audio_content=content) for content in stream)
+        responses = self.client.streaming_recognize(self.google_streaming_config, requests)
         self.process_responses_loop(responses)
 
     def terminate(self):
@@ -103,16 +109,15 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
         )
 
     def generator(self):
+        self.logger.warning("~~~~  GENERATOR")
         while not self._ended:
-            # Use a blocking get() to ensure there's at least one chunk of
-            # data, and stop iteration if the chunk is None, indicating the
-            # end of the audio stream.
+            if time.time() - self.start_time > 20:  # 10-second limit
+                self.logger.warning("~~~~  Killing generator")
+                return
             chunk = self.input_janus_queue.sync_q.get()
             if chunk is None:
                 return
             data = [chunk]
-
-            # Now consume whatever other data's still buffered.
             while True:
                 try:
                     chunk = self.input_janus_queue.sync_q.get_nowait()
@@ -121,5 +126,4 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
                     data.append(chunk)
                 except queue.Empty:
                     break
-
             yield b"".join(data)
