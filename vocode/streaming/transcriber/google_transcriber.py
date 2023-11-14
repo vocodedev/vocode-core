@@ -1,27 +1,23 @@
-import asyncio
 import logging
-import os
-import time
 import queue
-from typing import Optional
 import threading
-from vocode import getenv
+import time
+from typing import Optional
 
 from vocode.streaming.models.audio_encoding import AudioEncoding
+from vocode.streaming.models.transcriber import GoogleTranscriberConfig
 from vocode.streaming.transcriber.base_transcriber import (
     BaseThreadAsyncTranscriber,
     Transcription,
 )
-from vocode.streaming.models.transcriber import GoogleTranscriberConfig
-from vocode.streaming.utils import create_loop_in_thread
 
 
 # TODO: make this nonblocking so it can run in the main thread, see speech.async_client.SpeechAsyncClient
 class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
     def __init__(
-        self,
-        transcriber_config: GoogleTranscriberConfig,
-        logger: Optional[logging.Logger] = None,
+            self,
+            transcriber_config: GoogleTranscriberConfig,
+            logger: Optional[logging.Logger] = None,
     ):
         super().__init__(transcriber_config)
 
@@ -30,11 +26,14 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
 
         google.auth.default()
         self.speech = speech
+        self.logger = logger
 
         self._ended = False
         self.google_streaming_config = self.create_google_streaming_config()
         self.client = self.speech.SpeechClient()
+        self.start_time = None
         self.is_ready = False
+        self.restart_event = threading.Event()
         if self.transcriber_config.endpointing_config:
             raise Exception("Google endpointing config not supported yet")
 
@@ -62,14 +61,20 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
         )
 
     def _run_loop(self):
+        self.logger.info("Transcriber loop started")
+        while not self._ended:
+            self.start_time = time.time()
+            self.restart_stream()
+            self.restart_event.wait()
+            self.restart_event.clear()
+
+    def restart_stream(self):
+        self.logger.info("Transcriber stream restarted or started")
+        self.client = self.speech.SpeechClient()
         stream = self.generator()
-        requests = (
-            self.speech.StreamingRecognizeRequest(audio_content=content)
-            for content in stream
-        )
-        responses = self.client.streaming_recognize(
-            self.google_streaming_config, requests
-        )
+        self.logger.info("Started new STT generator")
+        requests = (self.speech.StreamingRecognizeRequest(audio_content=content) for content in stream)
+        responses = self.client.streaming_recognize(self.google_streaming_config, requests)
         self.process_responses_loop(responses)
 
     def terminate(self):
@@ -102,16 +107,16 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
         )
 
     def generator(self):
+        self.logger.info("Starting STT generator")
         while not self._ended:
-            # Use a blocking get() to ensure there's at least one chunk of
-            # data, and stop iteration if the chunk is None, indicating the
-            # end of the audio stream.
+            if time.time() - self.start_time > 250:  # 250 seconds limit, before restarting.
+                self.logger.warning(f"Killing generator to restart, hit limit of 250 seconds.")
+                self.restart_event.set()
+                return
             chunk = self.input_janus_queue.sync_q.get()
             if chunk is None:
                 return
             data = [chunk]
-
-            # Now consume whatever other data's still buffered.
             while True:
                 try:
                     chunk = self.input_janus_queue.sync_q.get_nowait()
@@ -120,5 +125,4 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
                     data.append(chunk)
                 except queue.Empty:
                     break
-
             yield b"".join(data)
