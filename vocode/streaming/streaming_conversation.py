@@ -117,6 +117,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.let_bot_finish_speaking = let_bot_finish_speaking
 
         async def process(self, transcription: Transcription):
+            self.conversation.logger.info(f"Got transcription event: {transcription.message}, {transcription.confidence}, {transcription.is_final}, {transcription.is_interrupt}")
             self.conversation.mark_last_action_timestamp()
             if transcription.message.strip() == "":
                 # This is often received when the person starts talking. We don't know if they will use filler word.
