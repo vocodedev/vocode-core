@@ -188,7 +188,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             try:
                 agent_response = item.payload
-                self.conversation.logger.debug("Got agent response: {}".format(agent_response))
                 if isinstance(agent_response, AgentResponseFillerAudio):
                     self.conversation.random_audio_manager.sync_send_filler_audio(item.agent_response_tracker)
                     return
@@ -594,7 +593,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
     async def terminate(self):
         self.mark_terminated()
         self.broadcast_interrupt()
-        self.report_call()
         self.events_manager.publish_event(
             TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
         )
@@ -625,6 +623,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.logger.debug("Terminating speech transcriber")
         self.transcriber.terminate()
         self.logger.debug("Terminating transcriptions worker")
+        self.report_call()
         self.transcriptions_worker.terminate()
         self.logger.debug("Terminating final transcriptions worker")
         self.agent_responses_worker.terminate()
