@@ -142,10 +142,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.current_transcription_is_interrupt
             )
             self.conversation.is_human_speaking = not transcription.is_final
-            min_interrupt_confidence = self.conversation.transcriber.get_transcriber_config().min_interrupt_confidence
-            is_confidence_above_threshold = transcription.confidence >= min_interrupt_confidence
-            self.conversation.logger.debug(f"is_confidence_above_threshold: {is_confidence_above_threshold}")
-            if transcription.is_final and is_confidence_above_threshold:
+            min_interrupt_confidence = (
+                self.conversation.transcriber.get_transcriber_config().min_interrupt_confidence
+                or 0
+            )
+            if (
+                transcription.is_final
+                and transcription.confidence >= min_interrupt_confidence
+            ):
                 # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
                 event = self.interruptible_event_factory.create_interruptible_event(
                     TranscriptionAgentInput(
