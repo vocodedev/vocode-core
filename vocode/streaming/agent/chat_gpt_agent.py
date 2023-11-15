@@ -612,7 +612,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
         self.is_first_response = True
         self.timeout = 3.0  # seconds #TODO: parametrize
 
-        self.seed = 42#agent_config.seed
+        self.seed = agent_config.seed
         if self.agent_config.vector_db_config:
             self.vector_db = vector_db_factory.create_vector_db(
                 self.agent_config.vector_db_config

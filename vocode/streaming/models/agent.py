@@ -30,6 +30,7 @@ class AgentType(str, Enum):
     LLM = "agent_llm"
     CHAT_GPT_ALPHA = "agent_chat_gpt_alpha"
     CHAT_GPT = "agent_chat_gpt"
+    CHAT_GPT_CUSTOM = "agent_chat_gpt_custom"
     CHAT_ANTHROPIC = "agent_chat_anthropic"
     CHAT_VERTEX_AI = "agent_chat_vertex_ai"
     ECHO = "agent_echo"
@@ -123,7 +124,8 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     class Config:
         arbitrary_types_allowed = True
 
-class ChatGPTAgentConfigOLD(AgentConfig, type=AgentType.CHAT_GPT.value):
+
+class ChatGPTAgentConfigOLD(AgentConfig, type=AgentType.CHAT_GPT_CUSTOM.value):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
