@@ -5,7 +5,6 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Form, Request, Response
 from pydantic import BaseModel, Field
-
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import RecordingEvent
@@ -109,6 +108,7 @@ class TelephonyServer:
         call_sid = form_data.get('CallSid')
         from_number = form_data.get('From')
         to_number = form_data.get('To')
+        self.logger.info(f"Call status: {call_status}, call sid: {call_sid}, from: {from_number}, to: {to_number}")
 
         await self.config_manager.log_call_state(call_sid, call_status, from_number=from_number, to_number=to_number)
         return {"message": "Status received & logged"}
