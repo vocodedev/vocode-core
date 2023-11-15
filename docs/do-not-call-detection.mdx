@@ -1,0 +1,52 @@
+---
+title: "[Beta] Do Not Call detection"
+description: "Configure whether or not to run automatic estimated Do Not Call analysis"
+---
+
+The Vocode API allows you to configure whether or not to run automatic rudimentary detection
+on outbound calls as to whether or not the receiving party has indicated they would like to
+be placed on a Do Not Call list. Additionally, if Do Not Call analysis was run on a call,
+the result will be populated into a field on the Call object returned from the Get Call endpoint.
+
+By default, if the `run_do_not_call_detection` argument is not supplied, Vocode will not run
+Do Not Call detection.
+
+# Example 1: Run Do Not Call detection on an outbound call, and retrieve the result
+
+The `run_do_not_call_detection` parameter on outbound call creation defines whether
+or not to run rudimentary Do Not Call analysis.
+
+```python
+from vocode import CreateCallAgentParams
+
+vocode_client.calls.create_call(
+    from_number="<YOUR VOCODE NUMBER>",
+    to_number="15555555555",
+    agent=CreateCallAgentParams(
+        prompt=Prompt(
+            content="Ask Eliot if the sun is on today"
+        ),
+    ),
+    run_do_not_call_detection=True
+)
+```
+
+After the call has completed, we can query for calls as usual, and find the returned Call object
+has the Do Not Call detection result set:
+
+```python Python
+vocode_client.calls.get_call(id="CALL_ID")
+```
+
+returning:
+
+```json
+{
+  "id": "call_id",
+  "to_number": "123456789",
+  "from_number": "123456789",
+  ...
+  "do_not_call_result": true,
+  ...
+}
+```
