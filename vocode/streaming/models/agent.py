@@ -133,6 +133,7 @@ class ChatGPTAgentConfigOLD(AgentConfig, type=AgentType.CHAT_GPT.value):
     azure_params: Optional[AzureOpenAIConfig] = None
     vector_db_config: Optional[VectorDBConfig] = None
     initial_audio_path: Optional[str] = None
+    seed: Optional[int] = None
 
 
 class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):

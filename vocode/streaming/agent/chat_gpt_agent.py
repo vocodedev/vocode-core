@@ -30,7 +30,6 @@ from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils.values_to_words import find_values_to_rewrite, response_to_tts_format
 from vocode.streaming.vector_db.factory import VectorDBFactory
 
-
 EXTRACTION_FIRST_N_ASSISTANT_SENTENCES = 2
 
 
@@ -259,7 +258,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             formatted_responses = "\n".join(["BOT: " + response for response in all_responses])
 
             self.logger.info("Got responses from agent for dialog state extraction: %s", formatted_responses)
-            dialog_state_update = await self.get_dialog_state_update('. '.join(all_responses[:EXTRACTION_FIRST_N_ASSISTANT_SENTENCES]))
+            dialog_state_update = await self.get_dialog_state_update(
+                '. '.join(all_responses[:EXTRACTION_FIRST_N_ASSISTANT_SENTENCES]))
             self.logger.info("Got dialog state update from agent: %s", dialog_state_update)
             full_response_text_only = ' '.join(all_responses)
             chat_response = ConsoleChatResponse(full_response_text_only, dialog_state_update,
@@ -365,7 +365,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                       [{"role": "assistant", "content": self.transcript.last_assistant}]
 
         if self.transcript.last_user_message is not None:
-            chat_parameters["messages"] += [{"role": "user", "content": self.transcript.last_user_message},]
+            chat_parameters["messages"] += [{"role": "user", "content": self.transcript.last_user_message}, ]
 
         if assistant_response_chunk is not None:
             chat_parameters["messages"] += [{"role": "assistant", "content": assistant_response_chunk}]
@@ -612,6 +612,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
         self.is_first_response = True
         self.timeout = 3.0  # seconds #TODO: parametrize
 
+        self.seed = agent_config.seed
         if self.agent_config.vector_db_config:
             self.vector_db = vector_db_factory.create_vector_db(
                 self.agent_config.vector_db_config
@@ -694,7 +695,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             self.logger.info('attempt_stream_response')
             stream = await asyncio.wait_for(
                 openai.ChatCompletion.acreate(**chat_parameters),
-                timeout=3 # Fixme: parametrize, this is different cos it usually very fast.
+                timeout=3  # Fixme: parametrize, this is different cos it usually very fast.
             )
             self.logger.info('have attempt_stream_response')
             # Wait for the first message
@@ -723,7 +724,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             return
         assert self.transcript is not None
 
-        chat_parameters = {}
+        chat_parameters = {"seed": self.seed}
         if self.agent_config.vector_db_config:
             try:
                 docs_with_scores = await self.vector_db.similarity_search_with_score(
