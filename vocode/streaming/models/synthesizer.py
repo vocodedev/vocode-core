@@ -11,8 +11,8 @@ from vocode.streaming.telephony.constants import (
 )
 
 from vocode.streaming.models.index_config import IndexConfig
-from .model import BaseModel, TypedModel
-from .audio_encoding import AudioEncoding
+from vocode.streaming.models.model import BaseModel, TypedModel
+from vocode.streaming.models.audio_encoding import AudioEncoding
 
 
 class SynthesizerType(str, Enum):
@@ -145,6 +145,11 @@ class ElevenLabsSynthesizerConfig(
             raise ValueError("optimize_streaming_latency must be between 0 and 4.")
         return optimize_streaming_latency
 
+    def get_no_cache_copy(self):
+        '''utility method to get copy without cache'''
+        state = self.copy()
+        state.index_cache = None
+        return state
 
 RIME_DEFAULT_SPEAKER = "young_male_unmarked-1"
 RIME_DEFAULT_SAMPLE_RATE = 22050

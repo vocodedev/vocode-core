@@ -12,7 +12,7 @@ from typing import (
     TypeVar,
     Union,
 )
-
+import logging
 from openai.types.chat import ChatCompletionChunk
 from openai.types.chat.chat_completion_chunk import Choice, ChoiceDelta
 
@@ -34,6 +34,7 @@ async def collate_response_async(
     gen: AsyncIterable[Union[str, FunctionFragment]],
     sentence_endings: List[str] = SENTENCE_ENDINGS,
     get_functions: Literal[True, False] = False,
+    logger: Optional[logging.Logger] = None
 ) -> AsyncGenerator[Union[str, FunctionCall], None]:
     sentence_endings_pattern = "|".join(map(re.escape, sentence_endings))
     list_item_ending_pattern = r"\n"
@@ -65,8 +66,11 @@ async def collate_response_async(
                     buffer = ""
             prev_ends_with_money = ends_with_money
         elif isinstance(token, FunctionFragment):
-            function_name_buffer += token.name
-            function_args_buffer += token.arguments
+            logger.debug(f"function token: {token}")
+            if token.name:
+                function_name_buffer += token.name
+            if token.arguments:
+                function_args_buffer += token.arguments
     to_return = buffer.strip()
     if to_return:
         yield to_return
@@ -74,7 +78,7 @@ async def collate_response_async(
         yield FunctionCall(name=function_name_buffer, arguments=function_args_buffer)
 
 
-async def openai_get_tokens(gen) -> AsyncGenerator[Union[str, FunctionFragment], None]:
+async def openai_get_tokens(gen, logger: Optional[logging.Logger] = None) -> AsyncGenerator[Union[str, FunctionFragment], None]:
     async for event in gen:
         # choices = event.get("choices", [])
         choices: List[Choice] = event.choices
@@ -95,6 +99,7 @@ async def openai_get_tokens(gen) -> AsyncGenerator[Union[str, FunctionFragment],
         #     yield token
         # elif "function_call" in delta and delta["function_call"] is not None:
         elif delta.function_call is not None:
+            logger.debug(f"Delta function call: {delta.function_call}")
             yield FunctionFragment(
                 name=delta.function_call.name,
                 arguments=delta.function_call.arguments,

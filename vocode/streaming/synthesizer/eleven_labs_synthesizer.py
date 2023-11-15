@@ -198,16 +198,14 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     self.logger.debug(f"Found similar synthesized text in vector_db: {text_message}")
                     self.logger.debug(f"Original text: {message.text}")
                     try:
-                        # audio_data = await load_from_s3(
-                        #     bucket_name=self.bucket_name, 
-                        #     object_key=object_id
-                        # )
                         async with self.aiobotocore_session.create_client('s3', config=s3_config) as _s3:
                             audio_data = await load_from_s3_async(
                                 bucket_name=self.bucket_name, 
                                 object_key=object_id,
                                 s3_client=_s3
                             )
+                            self.logger.debug(f"Adding {text_message} to cache.")
+                            self.vector_db_cache[text_message] = base64.b64encode(audio_data)
                     except Exception as e:
                         self.logger.debug(f"Error loading object from S3: {str(e)}")
                         audio_data = None
