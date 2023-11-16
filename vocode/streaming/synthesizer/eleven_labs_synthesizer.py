@@ -7,6 +7,7 @@ import aiohttp
 
 from vocode import getenv
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
+from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
     ElevenLabsSynthesizerConfig,
@@ -45,6 +46,26 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
         self.experimental_streaming = synthesizer_config.experimental_streaming
+
+        self.logger = logger or logging.getLogger(__name__)
+        self.fillers_cache = None
+
+    def set_fillers_cache(self):
+        self.fillers_cache = {}
+        self.logger.info("Setting filler cache")
+        self.logger.info(f"{self.filler_audios} filler audios are available")
+        for filler_audio in self.filler_audios:
+            self.fillers_cache[filler_audio.message.text] = filler_audio
+
+    async def set_filler_audios(self, filler_audio_config: FillerAudioConfig):
+        if filler_audio_config.use_phrases:
+            self.filler_audios = await self.get_phrase_filler_audios()
+            self.set_fillers_cache()
+
+    async def get_filler(self, hash_val: str) -> FillerAudio:
+        if self.fillers_cache is None:
+            self.set_fillers_cache()
+        return self.fillers_cache.get(hash_val, None)  # FIXME: what should we do on cache miss?
 
     async def create_speech(
             self,
@@ -136,7 +157,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     filler_phrase,
                     audio_data=audio_data,
                     synthesizer_config=self.synthesizer_config,
-                    is_interruptible=True,
+                    is_interruptible=False,  # FIXME: consider making this configurable.
                     seconds_per_chunk=2,
                 )
             )
