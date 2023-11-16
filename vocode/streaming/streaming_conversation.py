@@ -452,6 +452,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             logger or logging.getLogger(__name__),
             conversation_id=self.id,
         )
+        self.call_start = time.time()
+        self.call_initial_delay = 1.5
         self.output_device = output_device
         self.transcriber = transcriber
         self.agent = agent
@@ -564,6 +566,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
         synth_result = self.reconstruct_synthesis_result(initial_audio_path, initial_message,
                                                          self.agent_responses_worker.chunk_size)
         self.transcriber.mute()
+        elapsed_time = time.time() - self.call_start
+        remaining_time = self.call_initial_delay - elapsed_time
+        self.logger.info(f"Waiting for {remaining_time} seconds before sending initial message")
+        # Wait for the remaining time if it is positive
+        if remaining_time > 0:
+            await asyncio.sleep(remaining_time)
+
         initial_message_tracker = asyncio.Event()
         self.agent_responses_worker.produce_interruptible_agent_response_event_nonblocking(
             (initial_message, synth_result),
