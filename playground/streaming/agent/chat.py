@@ -1,6 +1,7 @@
 import asyncio
 import typing
 from dotenv import load_dotenv
+# from playground.streaming.tracing_utils import make_parser_and_maybe_trace
 from playground.streaming.tracing_utils import make_parser_and_maybe_trace
 from pydantic import BaseModel
 from vocode.streaming.action.base_action import BaseAction
@@ -171,5 +172,8 @@ async def agent_main():
 
 
 if __name__ == "__main__":
+    """
+    to test run python -m playground.streaming.agent.chat from vocode-python dir
+    """
     make_parser_and_maybe_trace()
     asyncio.run(agent_main())
