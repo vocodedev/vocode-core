@@ -117,7 +117,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         # FIXME currently it is stored on github but later replace with
         # blob storage & env path to downloaded files.
         filler_phrase_audios = []
-        audio_files = os.listdir(FILLER_AUDIO_PATH)
+        elevenlabs_fillers = os.path.join(FILLER_AUDIO_PATH, "elevenlabs", self.model_id, self.voice_id)
+        audio_files = os.listdir(elevenlabs_fillers)
         for audio_file in audio_files:
             wav = open(FILLER_AUDIO_PATH + "/" + audio_file, "rb").read()
             filler_phrase = BaseMessage(text=audio_file.split(".")[0])
