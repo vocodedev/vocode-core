@@ -211,13 +211,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def process(self, item: InterruptibleAgentResponseEvent[FillerAudio]):
             try:
-                filler_audio = item.payload
+                if isinstance(item.payload, tuple):
+                    filler_audio, silence_threshold = item.payload
+                else:
+                    filler_audio = item.payload
+                    silence_threshold = (
+                        self.conversation.filler_audio_config.silence_threshold_seconds
+                    )
                 # assert self.conversation.filler_audio_config is not None
                 filler_synthesis_result = filler_audio.create_synthesis_result()
                 self.current_filler_seconds_per_chunk = filler_audio.seconds_per_chunk
-                silence_threshold = (
-                    self.conversation.filler_audio_config.silence_threshold_seconds
-                )
                 await asyncio.sleep(silence_threshold)
                 self.conversation.logger.debug("Sending filler audio to output")
                 self.conversation.logger.info(f"BOT (filler): {filler_audio.message.text}")
@@ -268,31 +271,31 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.error(f"Error getting filler audio: {e}")
                 return None
 
-        def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event], filler_audio: FillerAudio):
+        def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event], filler_audio: FillerAudio,
+                              delay: Optional[float] = None):
             if self.conversation.filler_audio_worker is None:
                 raise ValueError("filler_audio_worker is None, must be set")
 
             self.conversation.logger.info(f"Chose {filler_audio.message.text}")
             event = self.interruptible_event_factory.create_interruptible_agent_response_event(
-                filler_audio,
+                (filler_audio, delay),  # FIXME refactor this for separate event?
                 is_interruptible=filler_audio.is_interruptible,
                 agent_response_tracker=agent_response_tracker,
             )
             self.conversation.filler_audio_worker.consume_nonblocking(event)
             # if self.conversation.synthesizer.filler_audios:
 
-
-                # filler_audio = random.choice(
-                #     [audio for audio in self.conversation.synthesizer.filler_audios if
-                #      audio.message.text.startswith(prefix)]
-                # )
-                # self.conversation.logger.debug(f"Chose {filler_audio.message.text}")
-                # event = self.interruptible_event_factory.create_interruptible_agent_response_event(
-                #     filler_audio,
-                #     is_interruptible=filler_audio.is_interruptible,
-                #     agent_response_tracker=agent_response_tracker,
-                # )
-                # self.conversation.filler_audio_worker.consume_nonblocking(event)
+            # filler_audio = random.choice(
+            #     [audio for audio in self.conversation.synthesizer.filler_audios if
+            #      audio.message.text.startswith(prefix)]
+            # )
+            # self.conversation.logger.debug(f"Chose {filler_audio.message.text}")
+            # event = self.interruptible_event_factory.create_interruptible_agent_response_event(
+            #     filler_audio,
+            #     is_interruptible=filler_audio.is_interruptible,
+            #     agent_response_tracker=agent_response_tracker,
+            # )
+            # self.conversation.filler_audio_worker.consume_nonblocking(event)
             # else:
             #     self.conversation.logger.debug(
             #         "No filler audio available for synthesizer"
@@ -312,7 +315,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     filler = await self.pick_filler_audio(agent_response.message.text)
                     if filler is not None:
                         self.conversation.logger.debug(f"Chose {filler.message.text}")
-                        self.send_filler_audio(item.agent_response_tracker, filler)
+                        self.send_filler_audio(item.agent_response_tracker, filler, 0.0)
                         return  # do not send the message to the output queue. No 11labs call.
                     else:
                         self.conversation.logger.info(f"cache miss for {agent_response.message.text}")
