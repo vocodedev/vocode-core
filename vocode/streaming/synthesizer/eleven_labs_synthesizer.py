@@ -120,7 +120,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         elevenlabs_fillers = os.path.join(FILLER_AUDIO_PATH, "elevenlabs", self.model_id, self.voice_id)
         audio_files = os.listdir(elevenlabs_fillers)
         for audio_file in audio_files:
-            wav = open(FILLER_AUDIO_PATH + "/" + audio_file, "rb").read()
+            wav = open(elevenlabs_fillers + "/" + audio_file, "rb").read()
             filler_phrase = BaseMessage(text=audio_file.split(".")[0])
             audio_data = convert_wav(
                 io.BytesIO(wav),
