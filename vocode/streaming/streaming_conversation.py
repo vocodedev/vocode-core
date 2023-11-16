@@ -310,16 +310,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
             try:
                 agent_response = item.payload
 
-                if hasattr(agent_response, "message"):
-                    # need hashing here.
-
-                    cached_audio = await self.pick_cached_audio(agent_response.message.text)
-                    if cached_audio is not None:
-                        self.conversation.logger.debug(f"Chose {cached_audio.message.text}")
-                        self.send_filler_audio(item.agent_response_tracker, cached_audio, 0.0)
-                        return  # do not send the message to the output queue. No 11labs call.
-                    else:
-                        self.conversation.logger.info(f"cache miss for {agent_response.message.text}")
+                # if hasattr(agent_response, "message"):
+                #     # need hashing here.
+                #
+                #     cached_audio = await self.pick_cached_audio(agent_response.message.text)
+                #     if cached_audio is not None:
+                #         self.conversation.logger.debug(f"Chose {cached_audio.message.text}")
+                #         self.send_filler_audio(item.agent_response_tracker, cached_audio, 0.0)
+                #         return  # do not send the message to the output queue. No 11labs call.
+                #     else:
+                #         self.conversation.logger.info(f"cache miss for {agent_response.message.text}")
 
                 if isinstance(agent_response, AgentResponseFillerAudio):
                     # This is triggered when user says something. It has transcript.

@@ -1,9 +1,12 @@
-import io
+import asyncio
+import hashlib
 import logging
 import os
-from typing import Optional, List
+import wave
+from typing import Optional, List, AsyncGenerator, Union, Tuple
 
 import aiohttp
+from opentelemetry.trace import Span
 
 from vocode import getenv
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
@@ -16,9 +19,9 @@ from vocode.streaming.models.synthesizer import (
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
-    tracer, FillerAudio, FILLER_AUDIO_PATH,
+    tracer, FillerAudio, FILLER_AUDIO_PATH, encode_as_wav,
 )
-from vocode.streaming.utils import convert_wav
+from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.utils.mp3_helper import decode_mp3
 
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
@@ -49,6 +52,28 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
         self.logger = logger or logging.getLogger(__name__)
         self.fillers_cache = None
+    @property
+    def cache_path(self):
+        return os.path.join(FILLER_AUDIO_PATH, "elevenlabs", self.model_id, self.voice_id)
+
+    def generate_audio_filename(self, message_text: str) -> str:
+        hash_object = hashlib.sha1(message_text.encode())
+        hashed_text = hash_object.hexdigest()
+        filename = f"{hashed_text}.wav"
+        return filename
+
+    async def save_audio(self, audio_data: bytes, message_text: str):
+        file_path = os.path.join(self.cache_path, self.generate_audio_filename(message_text))
+        # Assuming the sample rate and other parameters are known
+        sample_rate = self.synthesizer_config.sampling_rate
+        num_channels = 1  # Mono
+        sample_width = 2  # Number of bytes per sample (2 for 16-bit audio)
+
+        with wave.open(file_path, 'wb') as wav_file:
+            wav_file.setnchannels(num_channels)
+            wav_file.setsampwidth(sample_width)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(audio_data)
 
     def set_fillers_cache(self):
         self.fillers_cache = {}
@@ -67,6 +92,59 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             self.set_fillers_cache()
         return self.fillers_cache.get(hash_val, None)  # FIXME: what should we do on cache miss?
 
+    async def experimental_mp3_streaming_output_generator(
+            self,
+            response: aiohttp.ClientResponse,
+            chunk_size: int,
+            create_speech_span: Optional[Span],
+            message: BaseMessage
+    ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
+        miniaudio_worker_input_queue: asyncio.Queue[
+            Union[bytes, None]
+        ] = asyncio.Queue()
+        miniaudio_worker_output_queue: asyncio.Queue[
+            Tuple[bytes, bool]
+        ] = asyncio.Queue()
+        miniaudio_worker = MiniaudioWorker(
+            self.synthesizer_config,
+            chunk_size,
+            miniaudio_worker_input_queue,
+            miniaudio_worker_output_queue,
+        )
+        miniaudio_worker.start()
+        stream_reader = response.content
+
+        accumulated_audio_chunks = []
+        # Create a task to send the mp3 chunks to the MiniaudioWorker's input queue in a separate loop
+        async def send_chunks():
+            async for chunk in stream_reader.iter_any():
+                miniaudio_worker.consume_nonblocking(chunk)
+            miniaudio_worker.consume_nonblocking(None)  # sentinel
+
+        try:
+            asyncio.create_task(send_chunks())
+
+            # Await the output queue of the MiniaudioWorker and yield the wav chunks in another loop
+            while True:
+                # Get the wav chunk and the flag from the output queue of the MiniaudioWorker
+
+                wav_chunk, is_last = await miniaudio_worker.output_queue.get()
+                if self.synthesizer_config.should_encode_as_wav:
+                    wav_chunk = encode_as_wav(wav_chunk, self.synthesizer_config)
+                accumulated_audio_chunks.append(wav_chunk)
+                yield SynthesisResult.ChunkResult(wav_chunk, is_last)
+                # If this is the last chunk, break the loop
+                if is_last and create_speech_span is not None:
+                    self.logger.info(f"Saving audio for {message.text}")
+                    complete_audio_data = b''.join(accumulated_audio_chunks)
+                    await self.save_audio(complete_audio_data, message.text)
+                    create_speech_span.end()
+                    break
+        except asyncio.CancelledError:
+            pass
+        finally:
+            miniaudio_worker.terminate()
+
     async def create_speech(
             self,
             message: BaseMessage,
@@ -74,6 +152,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
+
+
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
                 stability=self.stability, similarity_boost=self.similarity_boost
@@ -111,7 +191,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         if self.experimental_streaming:
             return SynthesisResult(
                 self.experimental_mp3_streaming_output_generator(
-                    response, chunk_size, create_speech_span
+                    response, chunk_size, create_speech_span, message
                 ),  # should be wav
                 lambda seconds: self.get_message_cutoff_from_voice_speed(
                     message, seconds, self.words_per_minute
@@ -140,26 +220,26 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         filler_phrase_audios = []
         elevenlabs_fillers = os.path.join(FILLER_AUDIO_PATH, "elevenlabs", self.model_id, self.voice_id)
         audio_files = os.listdir(elevenlabs_fillers)
-        for audio_file in audio_files:
-            wav = open(elevenlabs_fillers + "/" + audio_file, "rb").read()
-            filler_phrase = BaseMessage(text=audio_file.split(".")[0])
-            audio_data = convert_wav(
-                io.BytesIO(wav),
-                output_sample_rate=self.synthesizer_config.sampling_rate,
-                output_encoding=self.synthesizer_config.audio_encoding,
-            )
-            offset_ms = 20
-            offset = self.synthesizer_config.sampling_rate * offset_ms // 1000
-            audio_data = audio_data[offset:]
-
-            filler_phrase_audios.append(
-                FillerAudio(
-                    filler_phrase,
-                    audio_data=audio_data,
-                    synthesizer_config=self.synthesizer_config,
-                    is_interruptible=False,  # FIXME: consider making this configurable.
-                    seconds_per_chunk=2,
-                )
-            )
+        # for audio_file in audio_files:
+        #     wav = open(elevenlabs_fillers + "/" + audio_file, "rb").read()
+        #     filler_phrase = BaseMessage(text=audio_file.split(".")[0])
+        #     audio_data = convert_wav(
+        #         io.BytesIO(wav),
+        #         output_sample_rate=self.synthesizer_config.sampling_rate,
+        #         output_encoding=self.synthesizer_config.audio_encoding,
+        #     )
+        #     offset_ms = 20
+        #     offset = self.synthesizer_config.sampling_rate * offset_ms // 1000
+        #     audio_data = audio_data[offset:]
+        #
+        #     filler_phrase_audios.append(
+        #         FillerAudio(
+        #             filler_phrase,
+        #             audio_data=audio_data,
+        #             synthesizer_config=self.synthesizer_config,
+        #             is_interruptible=False,  # FIXME: consider making this configurable.
+        #             seconds_per_chunk=2,
+        #         )
+        #     )
 
         return filler_phrase_audios
