@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import io
 import logging
 import os
 import wave
@@ -52,18 +53,26 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
         self.logger = logger or logging.getLogger(__name__)
         self.fillers_cache = None
+
     @property
     def cache_path(self):
         return os.path.join(FILLER_AUDIO_PATH, "elevenlabs", self.model_id, self.voice_id)
 
-    def generate_audio_filename(self, message_text: str) -> str:
+    @staticmethod
+    def hash_message(message_text: str) -> str:
         hash_object = hashlib.sha1(message_text.encode())
         hashed_text = hash_object.hexdigest()
-        filename = f"{hashed_text}.wav"
-        return filename
+        return hashed_text
+
+    def get_cached_audio(self, message_text: str) -> Optional[bytes]:
+        file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.wav")
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                return f.read()
+        return None
 
     async def save_audio(self, audio_data: bytes, message_text: str):
-        file_path = os.path.join(self.cache_path, self.generate_audio_filename(message_text))
+        file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.wav")
         # Assuming the sample rate and other parameters are known
         sample_rate = self.synthesizer_config.sampling_rate
         num_channels = 1  # Mono
@@ -115,6 +124,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         stream_reader = response.content
 
         accumulated_audio_chunks = []
+
         # Create a task to send the mp3 chunks to the MiniaudioWorker's input queue in a separate loop
         async def send_chunks():
             async for chunk in stream_reader.iter_any():
@@ -153,6 +163,14 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     ) -> SynthesisResult:
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
 
+        cached_audio = self.get_cached_audio(message.text)
+        if cached_audio is not None:
+            self.logger.info(f"Using cached audio for message: {message.text}")
+            return self.create_synthesis_result_from_wav(
+                file=io.BytesIO(cached_audio),
+                message=message,
+                chunk_size=chunk_size
+            )
 
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
