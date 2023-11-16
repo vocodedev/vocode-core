@@ -264,7 +264,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
             )
 
-        async def pick_filler_audio(self, hash_str) -> Optional[FillerAudio]:
+        async def pick_cached_audio(self, hash_str) -> Optional[FillerAudio]:
             try:
                 return await self.conversation.synthesizer.get_filler(hash_str)
             except Exception as e:  # FIXME better exception handling.
@@ -312,10 +312,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                 if hasattr(agent_response, "message"):
                     # need hashing here.
-                    filler = await self.pick_filler_audio(agent_response.message.text)
-                    if filler is not None:
-                        self.conversation.logger.debug(f"Chose {filler.message.text}")
-                        self.send_filler_audio(item.agent_response_tracker, filler, 0.0)
+
+                    cached_audio = await self.pick_cached_audio(agent_response.message.text)
+                    if cached_audio is not None:
+                        self.conversation.logger.debug(f"Chose {cached_audio.message.text}")
+                        self.send_filler_audio(item.agent_response_tracker, cached_audio, 0.0)
                         return  # do not send the message to the output queue. No 11labs call.
                     else:
                         self.conversation.logger.info(f"cache miss for {agent_response.message.text}")
