@@ -53,7 +53,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     def set_fillers_cache(self):
         self.fillers_cache = {}
         self.logger.info("Setting filler cache")
-        self.logger.info(f"{self.filler_audios} filler audios are available")
+        self.logger.info(f"{len(self.filler_audios)} filler audios are available")
         for filler_audio in self.filler_audios:
             self.fillers_cache[filler_audio.message.text] = filler_audio
 
