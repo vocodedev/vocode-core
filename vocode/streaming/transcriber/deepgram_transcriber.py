@@ -19,7 +19,7 @@ from vocode.streaming.models.transcriber import (
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
     Transcription,
-    meter,
+    meter, HUMAN_ACTIVITY_DETECTED,
 )
 
 PUNCTUATION_TERMINATORS = [".", "!", "?"]
@@ -158,27 +158,16 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         ):
 
             is_finished = ((
-                                  transcript
-                                  and deepgram_response["speech_final"]
-                                  and transcript.strip()[-1] in PUNCTUATION_TERMINATORS
-                          ) or (
-                                  not transcript
-                                  and current_buffer
-                                  and (time_silent + deepgram_response["duration"])
-                                  > self.transcriber_config.endpointing_config.time_cutoff_seconds
-                          )) and deepgram_response["duration"] > self.transcriber_config.minimum_speaking_duration_to_interupt
-            
-
-
-            # print('_silece_'*5)
-            # print(time_silent)
-            # print('_silece_'*5)
-
-            
-            if is_finished:
-                print("Transcriber Duration"*3)
-                print(deepgram_response["duration"])
-                print("Transcriber Duration"*3)
+                                   transcript
+                                   and deepgram_response["speech_final"]
+                                   and transcript.strip()[-1] in PUNCTUATION_TERMINATORS
+                           ) or (
+                                   not transcript
+                                   and current_buffer
+                                   and (time_silent + deepgram_response["duration"])
+                                   > self.transcriber_config.endpointing_config.time_cutoff_seconds
+                           )) and deepgram_response[
+                              "duration"] > self.transcriber_config.minimum_speaking_duration_to_interrupt
 
             if is_finished and self.transcriber_config.skip_on_back_track_audio:
                 is_interrupt_task = asyncio.create_task(
@@ -212,6 +201,16 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 while not self._ended:
                     try:
                         data = await asyncio.wait_for(self.input_queue.get(), 5)
+                        if self.transcriber_config.voice_activity_detector_config:
+                            try:
+                                if self.voice_activity_detector.should_interrupt(data):
+                                    self.output_queue.put_nowait(Transcription(
+                                        message=HUMAN_ACTIVITY_DETECTED,
+                                        confidence=1,
+                                        is_final=True,
+                                    ))
+                            except Exception as e:
+                                self.logger.debug(f"Error in voice activity detector: {repr(e)}")
                     except asyncio.exceptions.TimeoutError:
                         break
                     num_channels = 1

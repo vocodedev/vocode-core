@@ -14,6 +14,7 @@ from vocode.streaming.models.synthesizer import (
 from vocode.streaming.models.transcriber import (
     TranscriberConfig,
 )
+from vocode.streaming.report.base_call_report import CallReporterConfig
 from vocode.streaming.synthesizer.factory import SynthesizerFactory
 from vocode.streaming.telephony.client.vonage_client import VonageClient
 from vocode.streaming.telephony.config_manager.base_config_manager import (
@@ -33,23 +34,25 @@ from vocode.streaming.utils.state_manager import (
 
 class VonageCall(Call[VonageOutputDevice]):
     def __init__(
-        self,
-        from_phone: str,
-        to_phone: str,
-        base_url: str,
-        config_manager: BaseConfigManager,
-        agent_config: AgentConfig,
-        transcriber_config: TranscriberConfig,
-        synthesizer_config: SynthesizerConfig,
-        vonage_uuid: str,
-        vonage_config: Optional[VonageConfig] = None,
-        conversation_id: Optional[str] = None,
-        transcriber_factory: TranscriberFactory = TranscriberFactory(),
-        agent_factory: AgentFactory = AgentFactory(),
-        synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
-        events_manager: Optional[EventsManager] = None,
-        output_to_speaker: bool = False,
-        logger: Optional[logging.Logger] = None,
+            self,
+            from_phone: str,
+            to_phone: str,
+            base_url: str,
+            config_manager: BaseConfigManager,
+            agent_config: AgentConfig,
+            transcriber_config: TranscriberConfig,
+            synthesizer_config: SynthesizerConfig,
+            vonage_uuid: str,
+            vonage_config: Optional[VonageConfig] = None,
+            conversation_id: Optional[str] = None,
+            transcriber_factory: TranscriberFactory = TranscriberFactory(),
+            agent_factory: AgentFactory = AgentFactory(),
+            synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+            events_manager: Optional[EventsManager] = None,
+            output_to_speaker: bool = False,
+            logger: Optional[logging.Logger] = None,
+            call_reporter_config: Optional[CallReporterConfig] = None,
+
     ):
         super().__init__(
             from_phone,
@@ -66,6 +69,7 @@ class VonageCall(Call[VonageOutputDevice]):
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
             logger=logger,
+            call_reporter_config=call_reporter_config
         )
         self.output_to_speaker = output_to_speaker
         self.base_url = base_url

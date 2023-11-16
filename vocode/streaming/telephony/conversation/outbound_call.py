@@ -16,6 +16,7 @@ from vocode.streaming.models.telephony import (
 from vocode.streaming.models.transcriber import (
     TranscriberConfig,
 )
+from vocode.streaming.report.base_call_report import CallReporterConfig
 from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
 from vocode.streaming.telephony.client.vonage_client import VonageClient
@@ -27,24 +28,25 @@ from vocode.streaming.utils import create_conversation_id
 
 class OutboundCall:
     def __init__(
-        self,
-        base_url: str,
-        to_phone: str,
-        from_phone: str,
-        config_manager: BaseConfigManager,
-        agent_config: AgentConfig,
-        twilio_config: Optional[TwilioConfig] = None,
-        vonage_config: Optional[VonageConfig] = None,
-        transcriber_config: Optional[TranscriberConfig] = None,
-        synthesizer_config: Optional[SynthesizerConfig] = None,
-        conversation_id: Optional[str] = None,
-        logger: Optional[logging.Logger] = None,
-        mobile_only: bool = True,
-        digits: Optional[
-            str
-        ] = None,  # Keys to press when the call connects, see send_digits https://www.twilio.com/docs/voice/api/call-resource#create-a-call-resource
-        output_to_speaker: bool = False,
-    ):
+            self,
+            base_url: str,
+            to_phone: str,
+            from_phone: str,
+            config_manager: BaseConfigManager,
+            agent_config: AgentConfig,
+            twilio_config: Optional[TwilioConfig] = None,
+            vonage_config: Optional[VonageConfig] = None,
+            transcriber_config: Optional[TranscriberConfig] = None,
+            synthesizer_config: Optional[SynthesizerConfig] = None,
+            conversation_id: Optional[str] = None,
+            logger: Optional[logging.Logger] = None,
+            mobile_only: bool = True,
+            digits: Optional[
+                str
+            ] = None,
+            # Keys to press when the call connects, see send_digits https://www.twilio.com/docs/voice/api/call-resource#create-a-call-resource
+            output_to_speaker: bool = False,
+            call_reporter_config: [CallReporterConfig] = None):
         self.base_url = base_url
         self.to_phone = to_phone
         self.digits = digits
@@ -72,6 +74,7 @@ class OutboundCall:
         self.synthesizer_config = self.create_synthesizer_config(synthesizer_config)
         self.telephony_id = None
         self.output_to_speaker = output_to_speaker
+        self.call_reporter_config = call_reporter_config
 
     def create_telephony_client(self) -> BaseTelephonyClient:
         if self.twilio_config is not None:
@@ -86,7 +89,7 @@ class OutboundCall:
             raise ValueError("No telephony config provided")
 
     def create_transcriber_config(
-        self, transcriber_config_override: Optional[TranscriberConfig]
+            self, transcriber_config_override: Optional[TranscriberConfig]
     ) -> TranscriberConfig:
         if transcriber_config_override is not None:
             return transcriber_config_override
@@ -98,7 +101,7 @@ class OutboundCall:
             raise ValueError("No telephony config provided")
 
     def create_synthesizer_config(
-        self, synthesizer_config_override: Optional[SynthesizerConfig]
+            self, synthesizer_config_override: Optional[SynthesizerConfig]
     ) -> SynthesizerConfig:
         if synthesizer_config_override is not None:
             return synthesizer_config_override
@@ -132,6 +135,7 @@ class OutboundCall:
                 twilio_sid=self.telephony_id,
                 from_phone=self.from_phone,
                 to_phone=self.to_phone,
+                call_reporter_config=self.call_reporter_config,
             )
         elif isinstance(self.telephony_client, VonageClient):
             call_config = VonageCallConfig(
@@ -143,6 +147,7 @@ class OutboundCall:
                 from_phone=self.from_phone,
                 to_phone=self.to_phone,
                 output_to_speaker=self.output_to_speaker,
+                call_reporter_config=self.call_reporter_config,
             )
         else:
             raise ValueError("Unknown telephony client")

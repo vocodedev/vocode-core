@@ -13,6 +13,7 @@ from vocode.streaming.telephony.constants import (
 from .audio_encoding import AudioEncoding
 from .model import TypedModel
 from vocode.utils.context_tracker import BaseContextTrackerConfig
+from ...utils.voice_activity_detection import BaseVoiceActivityDetectorConfig
 
 AZURE_DEFAULT_LANGUAGE = "en-US"
 
@@ -44,8 +45,8 @@ class TimeEndpointingConfig(EndpointingConfig, type=EndpointingType.TIME_BASED):
 
 class PunctuationEndpointingConfig(
     EndpointingConfig, type=EndpointingType.PUNCTUATION_BASED
-): 
-   time_cutoff_seconds: float = 0.4
+):
+    time_cutoff_seconds: float = 0.4
 
 
 class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
@@ -57,9 +58,10 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     min_interrupt_confidence: Optional[float] = None
     mute_during_speech: bool = False
     context_tracker_config: Optional[BaseContextTrackerConfig] = None
+    voice_activity_detector_config: Optional[BaseVoiceActivityDetectorConfig] = None
     interrupt_on_blockers: bool = False
     skip_on_back_track_audio: bool = False
-    minimum_speaking_duration_to_interupt: float = 0
+    minimum_speaking_duration_to_interrupt: float = 0
 
     @validator("min_interrupt_confidence")
     def min_interrupt_confidence_must_be_between_0_and_1(cls, v):

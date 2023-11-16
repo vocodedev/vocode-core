@@ -12,6 +12,7 @@ from vocode.streaming.models.transcriber import (
     PunctuationEndpointingConfig,
     TranscriberConfig,
 )
+from vocode.streaming.report.base_call_report import CallReporterConfig
 from vocode.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_CHUNK_SIZE,
@@ -97,6 +98,7 @@ class BaseCallConfig(TypedModel, type=CallConfigType.BASE.value):
     transcriber_config: TranscriberConfig
     agent_config: AgentConfig
     synthesizer_config: SynthesizerConfig
+    call_reporter_config: Optional[CallReporterConfig] = None
     from_phone: str
     to_phone: str
 

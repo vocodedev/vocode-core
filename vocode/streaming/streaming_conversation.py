@@ -39,6 +39,7 @@ from vocode.streaming.models.transcript import (
     TranscriptCompleteEvent,
 )
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.report.base_call_report import CallReporterConfig, BaseCallReporter
 from vocode.streaming.response_worker.random_response import RandomAudioManager
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
@@ -47,7 +48,7 @@ from vocode.streaming.synthesizer.base_synthesizer import (
 from vocode.streaming.telephony.noise_canceler.base_noise_canceler import BaseNoiseCanceler
 from vocode.streaming.transcriber.base_transcriber import (
     Transcription,
-    BaseTranscriber,
+    BaseTranscriber, HUMAN_ACTIVITY_DETECTED,
 )
 from vocode.streaming.utils import create_conversation_id, get_chunk_size_per_second
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
@@ -138,7 +139,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
-                # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
+                if self.conversation.transcriber.transcriber_config.voice_activity_detector_config and \
+                        transcription.message == HUMAN_ACTIVITY_DETECTED:
+                    return
                 event = self.interruptable_event_factory.create_interruptable_event(
                     TranscriptionAgentInput(
                         transcription=transcription,
@@ -185,7 +188,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             try:
                 agent_response = item.payload
-                self.conversation.logger.debug("Got agent response: {}".format(agent_response))
                 if isinstance(agent_response, AgentResponseFillerAudio):
                     self.conversation.random_audio_manager.sync_send_filler_audio(item.agent_response_tracker)
                     return
@@ -296,6 +298,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             agent: BaseAgent,
             synthesizer: BaseSynthesizer,
             noise_canceler: Optional[BaseNoiseCanceler] = None,
+            call_reporter: Optional[BaseCallReporter] = None,
             conversation_id: Optional[str] = None,
             per_chunk_allowance_seconds: float = PER_CHUNK_ALLOWANCE_SECONDS,
             events_manager: Optional[EventsManager] = None,
@@ -307,6 +310,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             logger or logging.getLogger(__name__),
             conversation_id=self.id,
         )
+        self.call_reporter = call_reporter
         self.output_device = output_device
         self.transcriber = transcriber
         self.agent = agent
@@ -494,9 +498,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
         return num_interrupts > 0
 
     def is_interrupt(self, transcription: Transcription):
-        return transcription.confidence >= (
-                self.transcriber.get_transcriber_config().min_interrupt_confidence or 0
-        )
+        interrupt_by_confidence = transcription.confidence >= (
+                self.transcriber.get_transcriber_config().min_interrupt_confidence or 0)
+        interrupt_by_vad = (
+                self.transcriber.transcriber_config.voice_activity_detector_config and
+                transcription.message == HUMAN_ACTIVITY_DETECTED)
+        return interrupt_by_confidence or interrupt_by_vad
 
     async def send_speech_to_output(
             self,
@@ -579,6 +586,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
     def mark_terminated(self):
         self.active = False
 
+    def report_call(self):
+        if self.call_reporter:
+            self.call_reporter.report(self.id, self.transcript)
+
     async def terminate(self):
         self.mark_terminated()
         self.broadcast_interrupt()
@@ -612,6 +623,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.logger.debug("Terminating speech transcriber")
         self.transcriber.terminate()
         self.logger.debug("Terminating transcriptions worker")
+        self.report_call()
         self.transcriptions_worker.terminate()
         self.logger.debug("Terminating final transcriptions worker")
         self.agent_responses_worker.terminate()
