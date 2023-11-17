@@ -116,7 +116,7 @@ class OutboundCall:
             from_phone=self.from_phone,
             mobile_only=self.mobile_only,
         )
-        self.telephony_id = self.telephony_client.create_call(
+        self.telephony_id = await self.telephony_client.create_call(
             conversation_id=self.conversation_id,
             to_phone=self.to_phone,
             from_phone=self.from_phone,
@@ -148,5 +148,5 @@ class OutboundCall:
             raise ValueError("Unknown telephony client")
         await self.config_manager.save_config(self.conversation_id, call_config)
 
-    def end(self):
-        return self.telephony_client.end_call(self.telephony_id)
+    async def end(self):
+        return await self.telephony_client.end_call(self.telephony_id)

@@ -1,0 +1,38 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+
+      - name: Install poetry 1.4.2
+        run: |
+          python -m ensurepip
+          python -m pip install --upgrade pip
+          python -m pip install poetry==1.4.2
+
+      - name: Install dependencies
+        shell: bash
+        run: python -m poetry install -E all
+
+      - name: Set poetry PyPI token
+        run: python -m poetry config pypi-token.pypi "${{ secrets.PYPI_API_KEY }}"
+      
+      - name: Publish to PyPI
+        run: |
+          python -m poetry publish --build --no-interaction

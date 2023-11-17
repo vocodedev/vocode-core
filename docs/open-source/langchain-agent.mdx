@@ -1,0 +1,138 @@
+---
+title: "Langchain agent"
+description: "Empower Langchain agents to interact with the real world via phone calls"
+---
+
+# Introduction
+
+This example shows how to use Vocode as a tool augmenting the abilities of a Langchain
+agent. By providing it with access to Vocode, a [Langchain Agent](https://python.langchain.com/en/latest/modules/agents.html)
+can now make autonomous phone calls and take action based on the outcome of the calls.
+
+Our demo will walk through how to instruct the agent to lookup a phone number and make the
+appropriate call.
+
+<div>
+  <iframe
+    style={{
+      width: "100%",
+      height: "300px",
+      paddingLeft: "75px",
+      paddingRight: "75px",
+    }}
+    src="https://www.loom.com/embed/ba80f55524944ccc8c3b437b7a909270"
+  ></iframe>
+</div>
+<br />
+
+# How to run it
+
+## Requirements
+
+1. Install [Ngrok](https://ngrok.com/)
+2. Install [Redis](https://redis.com/)
+3. Install [Poetry](https://python-poetry.org/)
+
+## Run the example
+
+Note: `gpt-4` is required for this to work. `gpt-3.5-turbo` or older models are not smart enough to parse JSON responses in Langchain agents reliably out-of-the-box.
+
+To get started, clone the Vocode repo or copy the [Langchain agent app](https://github.com/vocodedev/vocode-python/tree/main/apps/langchain_agent) directory.
+
+```bash
+git clone https://github.com/vocodedev/vocode-python.git
+```
+
+### Environment
+
+1. Copy the `.env.template` and fill in your API keys. You'll need:
+
+- [Deepgram](https://deepgram.com) (for speech transcription)
+- [OpenAI](https://platform.openai.com) (for the underlying agent)
+- [Azure](https://azure.microsoft.com/en-us/products/cognitive-services/text-to-speech/) (for speech synthesis)
+- [Twilio](https://console.twilio.com/) (for telephony)
+
+2. Tunnel port 3000 to ngrok by running:
+
+```
+ngrok http 3000
+```
+
+Fill in the `TELEPHONY_SERVER_BASE_URL` environment variable with your ngrok base URL: don't include `https://` so should be something like:
+
+```
+TELEPHONY_SERVER_BASE_URL=asdf1234.ngrok.app
+```
+
+3. Buy a phone number on Twilio or [verify your caller ID](https://support.twilio.com/hc/en-us/articles/223180048-Adding-a-Verified-Phone-Number-or-Caller-ID-with-Twilio) to use as the outbound phone number.
+   Set this phone number as the `OUTBOUND_CALLER_NUMBER` environment variable. Include `+` and the area code, so for a US phone number, it would look something like.
+
+```
+OUTBOUND_CALLER_NUMBER=+15555555555
+```
+
+### Set up self-hosted telephony server
+
+Run the following setups from the `langchain_agent` directory.
+
+#### Running with Docker
+
+1. Build the telephony server Docker image
+
+```
+docker build -t vocode-langchain-agent-telephony-app .
+```
+
+2. Run the service using `docker-compose`
+
+```
+docker-compose up
+```
+
+#### Running with Python
+
+1. (optional) Set up a Python environment: we recommend `virtualenv`
+
+```
+python3 -m venv venv
+source venv/bin/activate
+```
+
+2. Install requirements
+
+```bash
+poetry install
+```
+
+3. Run an instance of Redis at http://localhost:6379. With Docker, this can be done with:
+
+```
+docker run -dp 6379:6379 -it redis/redis-stack:latest
+```
+
+4. Run the `TelephonyServer`:
+
+```bash
+uvicorn telephony_app:app --reload --port 3000
+```
+
+### Set up the Langchain agent
+
+With the self-hosted telephony server running:
+
+1. Update the phone numbers in the contact book in `tools/contacts.py`
+
+```python
+CONTACTS = [{"name": "Kian", "phone": "+123456789"}]
+```
+
+2. Run `main.py`
+
+```bash
+poetry install
+poetry run python main.py
+```
+
+# Code explanation
+
+🚧 Under construction

@@ -2,6 +2,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import logging
 from typing import Optional
+import aiohttp
 from pydub import AudioSegment
 import numpy as np
 import io
@@ -28,8 +29,9 @@ class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
         self,
         synthesizer_config: CoquiTTSSynthesizerConfig,
         logger: Optional[logging.Logger] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config)
+        super().__init__(synthesizer_config, aiohttp_session)
 
         from TTS.api import TTS
 
@@ -75,7 +77,10 @@ class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
         audio_segment.export(output_bytes_io, format="wav")  # type: ignore
 
         result = self.create_synthesis_result_from_wav(
-            file=output_bytes_io, message=message, chunk_size=chunk_size
+            synthesizer_config=self.synthesizer_config,
+            file=output_bytes_io,
+            message=message,
+            chunk_size=chunk_size,
         )
 
         convert_span.end()

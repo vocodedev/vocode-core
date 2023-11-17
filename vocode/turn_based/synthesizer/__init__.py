@@ -8,6 +8,7 @@ from vocode.turn_based.synthesizer.google_synthesizer import GoogleSynthesizer
 from vocode.turn_based.synthesizer.gtts_synthesizer import GTTSSynthesizer
 from vocode.turn_based.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
 from vocode.turn_based.synthesizer.rime_synthesizer import RimeSynthesizer
+from vocode.turn_based.synthesizer.polly_synthesizer import PollySynthesizer
 from vocode.turn_based.synthesizer.stream_elements_synthesizer import (
     StreamElementsSynthesizer,
 )

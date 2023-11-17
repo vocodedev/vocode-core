@@ -107,13 +107,17 @@ class VonageCall(Call[VonageOutputDevice]):
                 from_phone_number=self.from_phone,
             )
         )
+        disconnected = False
         while self.active:
             try:
                 chunk = await ws.receive_bytes()
                 self.receive_audio(chunk)
             except WebSocketDisconnect:
                 self.logger.debug("Websocket disconnected")
+                disconnected = True
                 break
+        if not disconnected:
+            await ws.close()
         await self.config_manager.delete_config(self.id)
         await self.tear_down()
 

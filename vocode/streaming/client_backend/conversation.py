@@ -31,11 +31,13 @@ from vocode.streaming.models.events import Event, EventType
 from vocode.streaming.models.transcript import TranscriptEvent
 from vocode.streaming.utils import events_manager
 
+BASE_CONVERSATION_ENDPOINT = "/conversation"
+
 
 class ConversationRouter(BaseRouter):
     def __init__(
         self,
-        agent: BaseAgent,
+        agent_thunk: Callable[[], BaseAgent],
         transcriber_thunk: Callable[
             [InputAudioConfig], BaseTranscriber
         ] = lambda input_audio_config: DeepgramTranscriber(
@@ -52,14 +54,15 @@ class ConversationRouter(BaseRouter):
             )
         ),
         logger: Optional[logging.Logger] = None,
+        conversation_endpoint: str = BASE_CONVERSATION_ENDPOINT,
     ):
         super().__init__()
         self.transcriber_thunk = transcriber_thunk
-        self.agent = agent
+        self.agent_thunk = agent_thunk
         self.synthesizer_thunk = synthesizer_thunk
         self.logger = logger or logging.getLogger(__name__)
         self.router = APIRouter()
-        self.router.websocket("/conversation")(self.conversation)
+        self.router.websocket(conversation_endpoint)(self.conversation)
 
     def get_conversation(
         self,
@@ -72,7 +75,7 @@ class ConversationRouter(BaseRouter):
         return StreamingConversation(
             output_device=output_device,
             transcriber=transcriber,
-            agent=self.agent,
+            agent=self.agent_thunk(),
             synthesizer=synthesizer,
             conversation_id=start_message.conversation_id,
             events_manager=TranscriptEventManager(output_device, self.logger)
@@ -119,7 +122,7 @@ class TranscriptEventManager(events_manager.EventsManager):
         self.output_device = output_device
         self.logger = logger or logging.getLogger(__name__)
 
-    def handle_event(self, event: Event):
+    async def handle_event(self, event: Event):
         if event.type == EventType.TRANSCRIPT:
             transcript_event = typing.cast(TranscriptEvent, event)
             self.output_device.consume_transcript(transcript_event)

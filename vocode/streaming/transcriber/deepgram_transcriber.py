@@ -17,6 +17,8 @@ from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     EndpointingConfig,
     EndpointingType,
+    PunctuationEndpointingConfig,
+    TimeEndpointingConfig,
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
 
@@ -59,7 +61,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self._ended = False
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
-        self.audio_cursor = 0.
+        self.audio_cursor = 0.0
 
     async def _run_loop(self):
         restarts = 0
@@ -131,9 +133,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         # if it is not time based, then return true if speech is final and there is a transcript
         if not self.transcriber_config.endpointing_config:
             return transcript and deepgram_response["speech_final"]
-        elif (
-            self.transcriber_config.endpointing_config.type
-            == EndpointingType.TIME_BASED
+        elif isinstance(
+            self.transcriber_config.endpointing_config, TimeEndpointingConfig
         ):
             # if it is time based, then return true if there is no transcript
             # and there is some speech to send
@@ -144,9 +145,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 and (time_silent + deepgram_response["duration"])
                 > self.transcriber_config.endpointing_config.time_cutoff_seconds
             )
-        elif (
-            self.transcriber_config.endpointing_config.type
-            == EndpointingType.PUNCTUATION_BASED
+        elif isinstance(
+            self.transcriber_config.endpointing_config, PunctuationEndpointingConfig
         ):
             return (
                 transcript
@@ -168,7 +168,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         return data["duration"]
 
     async def process(self):
-        self.audio_cursor = 0.
+        self.audio_cursor = 0.0
         extra_headers = {"Authorization": f"Token {self.api_key}"}
 
         async with websockets.connect(
@@ -193,6 +193,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
             async def receiver(ws: WebSocketClientProtocol):
                 buffer = ""
+                buffer_avg_confidence = 0
+                num_buffer_utterances = 1
                 time_silent = 0
                 transcript_cursor = 0.0
                 while not self._ended:
@@ -226,14 +228,26 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
                     if top_choice["transcript"] and confidence > 0.0 and is_final:
                         buffer = f"{buffer} {top_choice['transcript']}"
+                        if buffer_avg_confidence == 0:
+                            buffer_avg_confidence = confidence
+                        else:
+                            buffer_avg_confidence = (
+                                buffer_avg_confidence
+                                + confidence / (num_buffer_utterances)
+                            ) * (num_buffer_utterances / (num_buffer_utterances + 1))
+                        num_buffer_utterances += 1
 
                     if speech_final:
                         self.output_queue.put_nowait(
                             Transcription(
-                                message=buffer, confidence=confidence, is_final=True
+                                message=buffer,
+                                confidence=buffer_avg_confidence,
+                                is_final=True,
                             )
                         )
                         buffer = ""
+                        buffer_avg_confidence = 0
+                        num_buffer_utterances = 1
                         time_silent = 0
                     elif top_choice["transcript"] and confidence > 0.0:
                         self.output_queue.put_nowait(

@@ -1,0 +1,60 @@
+---
+title: "[Beta] Injecting context"
+description: "Add context to inbound calls"
+---
+
+When a call comes in, some applications may want to inject context (eg the caller's first name, if
+the number is recognized). In order to support injecting context, the Vocode API allows prompts
+to be templated. When an inbound call comes in, the template variables can then be filled in
+at runtime.
+
+# How it works
+
+At a high level, context injection works like this:
+
+- set your Vocode prompt to include template values
+- include a `context_endpoint` parameter to your bot
+- when an inbound call comes in, Vocode will query the context endpoint provided with
+  the caller phone number
+- the queried information from the endpoint is then filled into the prompt template
+
+# Context injection example
+
+In order to have your bot use injected variables, the prompt must include template variables. Let's set up
+our prompt to accept a user's first name and link it to our context endpoint.
+
+```python
+from vocode import AgentUpdateParams
+
+name_prompt = "You are talking to ${name}"
+number = vocode_client.numbers.update_number(
+    phone_number="YOUR_NUMBER",
+    inbound_agent=AgentUpdateParams(prompt=name_prompt),
+    context_endpoint="YOUR_CONTEXT_URL"
+)
+```
+
+Now, let's set up a simple context endpoint that will return the user's first name:
+
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/my-context-endpoint")
+def endpoint(phone_number: str):
+    if phone_number == "123":
+        return {"name": "Kian"}
+    elif phone_number == "456":
+        return {"name": "Ajay"}
+    else:
+        return {}
+```
+
+This sets up a route at `http://localhost:8000/my-context-endpoint` that accepts `phone_number` as a URL param, i.e.
+`http://localhost:8000/my-context-endpoint?phone_number=15555555555`.
+
+Now, when either Kian or Ajay call the bot – the prompt will reflect the name of the person
+the bot is talking to!
+
+Note: This feature is experimental... improvements and proper authentication coming.

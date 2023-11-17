@@ -25,6 +25,7 @@ class SynthesizerType(str, Enum):
     COQUI_TTS = "synthesizer_coqui_tts"
     COQUI = "synthesizer_coqui"
     BARK = "synthesizer_bark"
+    POLLY = "synthesizer_polly"
 
 
 class SentimentConfig(BaseModel):
@@ -81,6 +82,7 @@ class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE.value
     voice_name: str = AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME
     pitch: int = AZURE_SYNTHESIZER_DEFAULT_PITCH
     rate: int = AZURE_SYNTHESIZER_DEFAULT_RATE
+    language_code: str = "en-US"
 
 
 DEFAULT_GOOGLE_LANGUAGE_CODE = "en-US"
@@ -104,9 +106,10 @@ class ElevenLabsSynthesizerConfig(
 ):
     api_key: Optional[str] = None
     voice_id: Optional[str] = ELEVEN_LABS_ADAM_VOICE_ID
+    optimize_streaming_latency: Optional[int]
+    experimental_streaming: Optional[bool] = False
     stability: Optional[float]
     similarity_boost: Optional[float]
-    optimize_streaming_latency: Optional[int]
     model_id: Optional[str]
 
     @validator("voice_id")
@@ -135,11 +138,12 @@ RIME_DEFAULT_SPEAKER = "young_male_unmarked-1"
 RIME_DEFAULT_SAMPLE_RATE = 22050
 RIME_DEFAULT_BASE_URL = "https://rjmopratfrdjgmfmaios.functions.supabase.co/rime-tts"
 
+
 class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME.value):
     speaker: str = RIME_DEFAULT_SPEAKER
     sampling_rate: int = RIME_DEFAULT_SAMPLE_RATE
     base_url: str = RIME_DEFAULT_BASE_URL
-
+    speed_alpha: Optional[float] = None
 
 
 COQUI_DEFAULT_SPEAKER_ID = "ebe2db86-62a6-49a1-907a-9a1360d4416e"
@@ -162,9 +166,13 @@ PLAYHT_DEFAULT_VOICE_ID = "larry"
 
 
 class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.value):
+    api_key: Optional[str] = None
+    user_id: Optional[str] = None
+    speed: Optional[int] = None
+    seed: Optional[int] = None
+    temperature: Optional[int] = None
     voice_id: str = PLAYHT_DEFAULT_VOICE_ID
-    speed: Optional[str] = None
-    preset: Optional[str] = None
+    experimental_streaming: bool = False
 
 
 class CoquiTTSSynthesizerConfig(
@@ -191,3 +199,14 @@ class StreamElementsSynthesizerConfig(
 class BarkSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.BARK.value):
     preload_kwargs: Dict[str, Any] = {}
     generate_kwargs: Dict[str, Any] = {}
+
+
+DEFAULT_POLLY_LANGUAGE_CODE = "en-US"
+DEFAULT_POLLY_VOICE_ID = "Matthew"
+DEFAULT_POLLY_SAMPLING_RATE = 16000
+
+
+class PollySynthesizerConfig(SynthesizerConfig, type=SynthesizerType.POLLY.value):
+    language_code: str = DEFAULT_POLLY_LANGUAGE_CODE
+    voice_id: str = DEFAULT_POLLY_VOICE_ID
+    sampling_rate: int = DEFAULT_POLLY_SAMPLING_RATE

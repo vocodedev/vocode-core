@@ -1,0 +1,184 @@
+---
+title: "Configuring your number"
+description: "Learn how to configure your phone number with an agent."
+---
+
+# Configuring Numbers
+
+Once you have purchased a number, you can configure it with an inbound agent to set its prompt, voice, and actions.
+
+## Pick your Number
+
+First, list your numbers and pick the number you want to configure.
+
+<CodeGroup>
+
+```python Python
+numbers = vocode_client.numbers.list_numbers()
+```
+
+```javascript TypeScript
+const numbers = await vocode.numbers.listNumbers();
+```
+
+</CodeGroup>
+
+## Changing the Prompt
+
+All phone numbers come with the default agent configuration. Let's change the
+prompt so the AI responds like Yoda.
+
+<CodeGroup>
+
+```python Python
+from vocode import AgentUpdateParams, PromptUpdateParams
+
+yoda_prompt = PromptUpdateParams(content="I want you to act as Yoda. Respond as Yoda would.")
+number = vocode_client.numbers.update_number(
+    phone_number="YOUR_NUMBER", inbound_agent=AgentUpdateParams(prompt=yoda_prompt)
+)
+```
+
+```javascript TypeScript
+const yoda_prompt = "I want you to act as Yoda. Respond as Yoda would.";
+const number = await vocode.numbers.updateNumber({
+  phoneNumber: "YOUR_NUMBER",
+  inboundAgent: { prompt: { content: yoda_prompt } },
+});
+```
+
+</CodeGroup>
+
+## Changing the Voice
+
+Our prompt has been updated. Now let's use a voice provided by other API providers.
+
+### Rime
+
+<CodeGroup>
+
+```python Python
+from vocode import RimeVoiceParams
+
+rime_voice = RimeVoiceParams(
+    type="voice_rime",
+    speaker="RIME_SPEAKER",
+)
+voice = vocode_client.voices.create_voice(request=rime_voice)
+```
+
+```javascript TypeScript
+const rimeVoice = {
+  type: "voice_rime",
+  voiceId: "RIME_SPEAKER",
+};
+const number = await vocode.voices.createVoice(rimeVoice);
+```
+
+</CodeGroup>
+
+### Play.ht
+
+<CodeGroup>
+
+```python Python
+from vocode import PlayHtVoiceParams
+
+play_ht_voice = PlayHtVoiceParams(
+    type="voice_play_ht",
+    voice_id="PLAY_HT_VOICE_ID",
+    api_user_id="PLAY_HT_USER_ID",
+    api_key="PLAY_HT_API_KEY",
+)
+voice = vocode_client.voices.create_voice(request=play_ht_voice)
+```
+
+```javascript TypeScript
+const playHtVoice = {
+  type: "voice_play_ht",
+  voiceId: "PLAY_HT_VOICE_ID",
+  apiUserId: "PLAY_HT_USER_ID",
+  apiKey: "PLAY_HT_API_KEY,
+};
+const number = await vocode.voices.createVoice(playHtVoice);
+```
+
+</CodeGroup>
+
+### ElevenLabs
+
+We will use the `rachel` voice from ElevenLabs. Instead of updating our existing agent directly,
+we'll create a new voice config and set the agent to use it.
+
+<CodeGroup>
+
+```python Python
+from vocode import ElevenLabsVoiceParams
+
+elevenlabs_voice = ElevenLabsVoiceParams(
+    type="voice_eleven_labs",
+    voice_id="ELEVEN_LABS_VOICE_ID",
+    api_key="ELEVEN_LABS_API_KEY",
+)
+voice = vocode_client.voices.create_voice(request=elevenlabs_voice)
+```
+
+```javascript TypeScript
+const elevenlabsVoice = {
+  type: "voice_eleven_labs",
+  voiceId: "ELEVEN_LABS_VOICE_ID",
+  apiKey: "ELEVEN_LABS_API_KEY",
+};
+const number = await vocode.voices.createVoice(elevenlabsVoice);
+```
+
+</CodeGroup>
+
+Now, we have our `voice_id` and can update our agent to use it.
+
+<CodeGroup>
+
+```python Python
+from vocode import AgentUpdateParams
+
+agent = vocode_client.agents.update_agent(
+    id="AGENT_ID",
+    request=AgentUpdateParams(voice="VOICE_ID"),
+)
+```
+
+```javascript TypeScript
+const agent = await vocode.agents.updateAgent({
+  id: "AGENT_ID",
+  body: { voice: "VOICE_ID" },
+});
+console.log(agent);
+```
+
+</CodeGroup>
+
+## Adding an Initial Message
+
+The initial message will be spoken as soon as the call starts before the user says anything. Let's make our agent say "Hello, I am Yoda" when the call starts.
+
+<CodeGroup>
+
+```python Python
+from vocode import AgentUpdateParams
+
+number = vocode_client.numbers.update_number(
+    phone_number="YOUR_NUMBER", inbound_agent=AgentUpdateParams(initial_message="Hello, I am Yoda.")
+)
+
+```
+
+```javascript TypeScript
+import { VocodeClient } from "@vocode/vocode-api";
+
+const number = await vocode.numbers.updateNumber({
+  phoneNumber: "YOUR_NUMBER",
+  inboundAgent: { initialMessage: "Hello, I am Yoda." },
+});
+```
+
+</CodeGroup>

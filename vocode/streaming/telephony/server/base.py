@@ -184,12 +184,12 @@ class TelephonyServer:
             telephony_client = TwilioClient(
                 base_url=self.base_url, twilio_config=call_config.twilio_config
             )
-            telephony_client.end_call(call_config.twilio_sid)
+            await telephony_client.end_call(call_config.twilio_sid)
         elif isinstance(call_config, VonageCallConfig):
             telephony_client = VonageClient(
                 base_url=self.base_url, vonage_config=call_config.vonage_config
             )
-            telephony_client.end_call(call_config.vonage_uuid)
+            await telephony_client.end_call(call_config.vonage_uuid)
         return {"id": conversation_id}
 
     def get_router(self) -> APIRouter:

@@ -1,6 +1,0 @@
-vocode==0.1.111a1
-google-cloud-texttospeech
-redis
-twilio
-python-dotenv
-vonage

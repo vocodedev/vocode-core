@@ -1,3 +1,4 @@
+import asyncio
 import os
 from typing import (
     Any,
@@ -7,18 +8,23 @@ from typing import (
     Generic,
     List,
     Optional,
+    Tuple,
     TypeVar,
+    Union,
 )
 import math
 import io
 import wave
+import aiohttp
 from nltk.tokenize import word_tokenize
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 from opentelemetry import trace
+from opentelemetry.trace import Span
 
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.synthesizer import SynthesizerConfig
@@ -61,7 +67,7 @@ class SynthesisResult:
     def __init__(
         self,
         chunk_generator: AsyncGenerator[ChunkResult, None],
-        get_message_up_to: Callable[[int], str],
+        get_message_up_to: Callable[[float], str],
     ):
         self.chunk_generator = chunk_generator
         self.get_message_up_to = get_message_up_to
@@ -115,13 +121,24 @@ SynthesizerConfigType = TypeVar("SynthesizerConfigType", bound=SynthesizerConfig
 
 
 class BaseSynthesizer(Generic[SynthesizerConfigType]):
-    def __init__(self, synthesizer_config: SynthesizerConfigType):
+    def __init__(
+        self,
+        synthesizer_config: SynthesizerConfigType,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,
+    ):
         self.synthesizer_config = synthesizer_config
         if synthesizer_config.audio_encoding == AudioEncoding.MULAW:
             assert (
                 synthesizer_config.sampling_rate == 8000
             ), "MuLaw encoding only supports 8kHz sampling rate"
         self.filler_audios: List[FillerAudio] = []
+        if aiohttp_session:
+            # the caller is responsible for closing the session
+            self.aiohttp_session = aiohttp_session
+            self.should_close_session_on_tear_down = False
+        else:
+            self.aiohttp_session = aiohttp.ClientSession()
+            self.should_close_session_on_tear_down = True
 
     async def empty_generator(self):
         yield SynthesisResult.ChunkResult(b"", True)
@@ -155,20 +172,23 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         pass
 
     # given the number of seconds the message was allowed to go until, where did we get in the message?
+    @staticmethod
     def get_message_cutoff_from_total_response_length(
-        self, message: BaseMessage, seconds: int, size_of_output: int
+        synthesizer_config: SynthesizerConfig,
+        message: BaseMessage,
+        seconds: float,
+        size_of_output: int,
     ) -> str:
-        estimated_output_seconds = (
-            size_of_output / self.synthesizer_config.sampling_rate
-        )
+        estimated_output_seconds = size_of_output / synthesizer_config.sampling_rate
         if not message.text:
             return message.text
 
         estimated_output_seconds_per_char = estimated_output_seconds / len(message.text)
         return message.text[: int(seconds / estimated_output_seconds_per_char)]
 
+    @staticmethod
     def get_message_cutoff_from_voice_speed(
-        self, message: BaseMessage, seconds: int, words_per_minute: int
+        message: BaseMessage, seconds: float, words_per_minute: int
     ) -> str:
         words_per_second = words_per_minute / 60
         estimated_words_spoken = math.floor(words_per_second * seconds)
@@ -186,19 +206,21 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         raise NotImplementedError
 
     # @param file - a file-like object in wav format
+    @staticmethod
     def create_synthesis_result_from_wav(
-        self, file: Any, message: BaseMessage, chunk_size: int
+        synthesizer_config: SynthesizerConfig,
+        file: Any,
+        message: BaseMessage,
+        chunk_size: int,
     ) -> SynthesisResult:
         output_bytes = convert_wav(
             file,
-            output_sample_rate=self.synthesizer_config.sampling_rate,
-            output_encoding=self.synthesizer_config.audio_encoding,
+            output_sample_rate=synthesizer_config.sampling_rate,
+            output_encoding=synthesizer_config.audio_encoding,
         )
 
-        if self.synthesizer_config.should_encode_as_wav:
-            chunk_transform = lambda chunk: encode_as_wav(
-                chunk, self.synthesizer_config
-            )
+        if synthesizer_config.should_encode_as_wav:
+            chunk_transform = lambda chunk: encode_as_wav(chunk, synthesizer_config)
         else:
             chunk_transform = lambda chunk: chunk
 
@@ -215,7 +237,58 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
 
         return SynthesisResult(
             chunk_generator(output_bytes),
-            lambda seconds: self.get_message_cutoff_from_total_response_length(
-                message, seconds, len(output_bytes)
+            lambda seconds: BaseSynthesizer.get_message_cutoff_from_total_response_length(
+                synthesizer_config, message, seconds, len(output_bytes)
             ),
         )
+
+    async def experimental_mp3_streaming_output_generator(
+        self,
+        response: aiohttp.ClientResponse,
+        chunk_size: int,
+        create_speech_span: Optional[Span],
+    ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
+        miniaudio_worker_input_queue: asyncio.Queue[
+            Union[bytes, None]
+        ] = asyncio.Queue()
+        miniaudio_worker_output_queue: asyncio.Queue[
+            Tuple[bytes, bool]
+        ] = asyncio.Queue()
+        miniaudio_worker = MiniaudioWorker(
+            self.synthesizer_config,
+            chunk_size,
+            miniaudio_worker_input_queue,
+            miniaudio_worker_output_queue,
+        )
+        miniaudio_worker.start()
+        stream_reader = response.content
+
+        # Create a task to send the mp3 chunks to the MiniaudioWorker's input queue in a separate loop
+        async def send_chunks():
+            async for chunk in stream_reader.iter_any():
+                miniaudio_worker.consume_nonblocking(chunk)
+            miniaudio_worker.consume_nonblocking(None)  # sentinel
+
+        try:
+            asyncio.create_task(send_chunks())
+
+            # Await the output queue of the MiniaudioWorker and yield the wav chunks in another loop
+            while True:
+                # Get the wav chunk and the flag from the output queue of the MiniaudioWorker
+                wav_chunk, is_last = await miniaudio_worker.output_queue.get()
+                if self.synthesizer_config.should_encode_as_wav:
+                    wav_chunk = encode_as_wav(wav_chunk, self.synthesizer_config)
+
+                yield SynthesisResult.ChunkResult(wav_chunk, is_last)
+                # If this is the last chunk, break the loop
+                if is_last and create_speech_span is not None:
+                    create_speech_span.end()
+                    break
+        except asyncio.CancelledError:
+            pass
+        finally:
+            miniaudio_worker.terminate()
+
+    async def tear_down(self):
+        if self.should_close_session_on_tear_down:
+            await self.aiohttp_session.close()

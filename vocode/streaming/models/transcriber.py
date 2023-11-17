@@ -13,6 +13,8 @@ from vocode.streaming.telephony.constants import (
 from .audio_encoding import AudioEncoding
 from .model import TypedModel
 
+AZURE_DEFAULT_LANGUAGE = "en-US"
+
 
 class TranscriberType(str, Enum):
     BASE = "transcriber_base"
@@ -32,7 +34,7 @@ class EndpointingType(str, Enum):
 
 
 class EndpointingConfig(TypedModel, type=EndpointingType.BASE):
-    time_cutoff_seconds: float
+    pass
 
 
 class TimeEndpointingConfig(EndpointingConfig, type=EndpointingType.TIME_BASED):
@@ -119,7 +121,8 @@ class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.val
 
 
 class AzureTranscriberConfig(TranscriberConfig, type=TranscriberType.AZURE.value):
-    pass
+    language: str = AZURE_DEFAULT_LANGUAGE
+    candidate_languages: Optional[List[str]] = None
 
 
 class AssemblyAITranscriberConfig(

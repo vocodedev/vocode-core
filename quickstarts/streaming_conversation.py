@@ -29,6 +29,7 @@ async def main():
     ) = create_streaming_microphone_input_and_speaker_output(
         use_default_devices=False,
         logger=logger,
+        use_blocking_speaker_output=True,  # this moves the playback to a separate thread, set to False to use the main thread
     )
 
     conversation = StreamingConversation(
