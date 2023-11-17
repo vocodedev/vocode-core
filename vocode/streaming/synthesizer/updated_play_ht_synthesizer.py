@@ -120,5 +120,5 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
 
     @staticmethod
     async def async_response(response):
-        async for i in response:
+        for i in response:
             yield i
