@@ -23,6 +23,7 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     tracer, FillerAudio, FILLER_AUDIO_PATH, encode_as_wav,
 )
 from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
+from vocode.streaming.utils import convert_wav
 from vocode.streaming.utils.mp3_helper import decode_mp3
 
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
@@ -88,9 +89,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 return f.read()
         return None
 
-    async def save_audio(self, audio_data: bytes, message_text: str, sample_rate: Optional[int] = None):
-        sample_rate = sample_rate or self.synthesizer_config.sampling_rate  # ignoring the config because
-        # decode_mp3 uses 44100
+    async def save_audio(self, audio_data: bytes, message_text: str):
+        sample_rate = self.synthesizer_config.sampling_rate  # ignoring the config because
         file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.wav")
         # Assuming the sample rate and other parameters are known
         num_channels = 1  # Mono
@@ -212,8 +212,13 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         response = await self.__send_request(message, ignore_streaming=True)
         audio_data = await response.read()
         output_bytes_io = decode_mp3(audio_data)
-        audio_bytes = output_bytes_io.read()
-        await self.save_audio(audio_bytes, message.text, sample_rate=44100)  # as in decode_mp3
+        audio_data = convert_wav(
+            output_bytes_io,
+            output_sample_rate=self.synthesizer_config.sampling_rate,
+            output_encoding=self.synthesizer_config.audio_encoding,
+        )
+        audio_bytes = audio_data
+        await self.save_audio(audio_bytes, message.text)  # as in decode_mp3
 
     async def create_speech(
             self,
