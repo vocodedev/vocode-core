@@ -66,9 +66,19 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         hashed_text = hash_object.hexdigest()
         return hashed_text
 
-    def pick_filler(self, bot_message: BaseMessage, user_message: BaseMessage) -> Optional[FillerAudio]:
+    def pick_filler(self, bot_message: str, user_message: str) -> Optional[FillerAudio]:
         if self.filler_picker is not None:
-            return self.get_cached_audio(self.filler_picker(bot_message.text, user_message.text))
+            self.logger.info(f"Using filler picker for {bot_message} and {user_message}")
+            pick = self.filler_picker(bot_message, user_message)
+            self.logger.info(f"Filler picked: {pick}")
+            audio = self.get_cached_audio(pick)
+            if audio is not None:
+                return FillerAudio(
+                    BaseMessage(text=pick),
+                    audio_data=audio,
+                    synthesizer_config=self.synthesizer_config,
+                    is_interruptible=False
+                )
         return None
 
     def get_cached_audio(self, message_text: str) -> Optional[bytes]:
@@ -220,7 +230,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 chunk_size=chunk_size
             )
 
-        response = await self.__send_request()
+        response = await self.__send_request(message)
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_total",
         )
@@ -281,10 +291,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
         return filler_phrase_audios
 
-    async def validate_fillers(self, fillers: Dict[str, List[str]]):
+    async def validate_fillers(self, fillers: Dict[str, List[str]], flush_cache: bool = False):
         for filler_list in fillers.values():
             for filler_text in filler_list:
                 cached_audio = self.get_cached_audio(filler_text)
-                if cached_audio is None:
+                if cached_audio is None or flush_cache:
                     self.logger.info(f"Creating audio for missing filler: {filler_text}")
                     await self.__save_filler(filler_text)

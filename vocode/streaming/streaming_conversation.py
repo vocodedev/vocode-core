@@ -211,14 +211,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def process(self, item: InterruptibleAgentResponseEvent[FillerAudio]):
             try:
-                if isinstance(item.payload, tuple):
-                    filler_audio, silence_threshold = item.payload
-                else:
-                    filler_audio = item.payload
-                    silence_threshold = (
-                        self.conversation.filler_audio_config.silence_threshold_seconds
-                    )
-                # assert self.conversation.filler_audio_config is not None
+
+                filler_audio = item.payload
+                silence_threshold = (
+                    self.conversation.filler_audio_config.silence_threshold_seconds
+                )
                 filler_synthesis_result = filler_audio.create_synthesis_result()
                 self.current_filler_seconds_per_chunk = filler_audio.seconds_per_chunk
                 await asyncio.sleep(silence_threshold)
@@ -264,42 +261,18 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
             )
 
-        async def pick_cached_audio(self, hash_str) -> Optional[FillerAudio]:
-            try:
-                return await self.conversation.synthesizer.get_filler(hash_str)
-            except Exception as e:  # FIXME better exception handling.
-                self.conversation.logger.error(f"Error getting filler audio: {e}")
-                return None
-
         def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event], filler_audio: FillerAudio,
-                              delay: Optional[float] = None):
+                              ):
             if self.conversation.filler_audio_worker is None:
                 raise ValueError("filler_audio_worker is None, must be set")
 
             self.conversation.logger.info(f"Chose {filler_audio.message.text}")
             event = self.interruptible_event_factory.create_interruptible_agent_response_event(
-                (filler_audio, delay),  # FIXME refactor this for separate event?
+                filler_audio,
                 is_interruptible=filler_audio.is_interruptible,
                 agent_response_tracker=agent_response_tracker,
             )
             self.conversation.filler_audio_worker.consume_nonblocking(event)
-            # if self.conversation.synthesizer.filler_audios:
-
-            # filler_audio = random.choice(
-            #     [audio for audio in self.conversation.synthesizer.filler_audios if
-            #      audio.message.text.startswith(prefix)]
-            # )
-            # self.conversation.logger.debug(f"Chose {filler_audio.message.text}")
-            # event = self.interruptible_event_factory.create_interruptible_agent_response_event(
-            #     filler_audio,
-            #     is_interruptible=filler_audio.is_interruptible,
-            #     agent_response_tracker=agent_response_tracker,
-            # )
-            # self.conversation.filler_audio_worker.consume_nonblocking(event)
-            # else:
-            #     self.conversation.logger.debug(
-            #         "No filler audio available for synthesizer"
-            #     )
 
         async def process(self, item: InterruptibleAgentResponseEvent[AgentResponse]):
             if not self.conversation.synthesis_enabled:
@@ -310,21 +283,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
             try:
                 agent_response = item.payload
 
-                # if hasattr(agent_response, "message"):
-                #     # need hashing here.
-                #
-                #     cached_audio = await self.pick_cached_audio(agent_response.message.text)
-                #     if cached_audio is not None:
-                #         self.conversation.logger.debug(f"Chose {cached_audio.message.text}")
-                #         self.send_filler_audio(item.agent_response_tracker, cached_audio, 0.0)
-                #         return  # do not send the message to the output queue. No 11labs call.
-                #     else:
-                #         self.conversation.logger.info(f"cache miss for {agent_response.message.text}")
-
                 if isinstance(agent_response, AgentResponseFillerAudio):
-                    # This is triggered when user says something. It has transcript.
-                    # TODO: need to pick filler here based on the transcript.
-                    # self.send_filler_audio(item.agent_response_tracker)
+                    if hasattr(self.conversation.synthesizer, "pick_filler"):
+                        user_message = agent_response.transcript
+                        bot_message = self.conversation.transcript.get_last_bot_text()
+                        picked = self.conversation.synthesizer.pick_filler(bot_message, user_message)
+                        self.send_filler_audio(item.agent_response_tracker, picked)
+                        return
                     return
 
                 if isinstance(agent_response, AgentResponseStop):

@@ -319,6 +319,10 @@ class Transcript(BaseModel):
         for idx, message in enumerate(self.event_logs[::-1]):
             if message.sender == Sender.BOT:
                 return -1 * (idx + 1), message.to_string()
+    def get_last_bot_text(self):
+        for idx, message in enumerate(self.event_logs[::-1]):
+            if message.sender == Sender.BOT:
+                return message.text
 
     def add_action_start_log(self, action_input: ActionInput, conversation_id: str):
         timestamp = time.time()
