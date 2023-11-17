@@ -88,10 +88,11 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 return f.read()
         return None
 
-    async def save_audio(self, audio_data: bytes, message_text: str):
+    async def save_audio(self, audio_data: bytes, message_text: str, sample_rate: Optional[int] = None):
+        sample_rate = sample_rate or self.synthesizer_config.sampling_rate  # ignoring the config because
+        # decode_mp3 uses 44100
         file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.wav")
         # Assuming the sample rate and other parameters are known
-        sample_rate = self.synthesizer_config.sampling_rate
         num_channels = 1  # Mono
         sample_width = 2  # Number of bytes per sample (2 for 16-bit audio)
 
@@ -212,7 +213,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         audio_data = await response.read()
         output_bytes_io = decode_mp3(audio_data)
         audio_bytes = output_bytes_io.read()
-        await self.save_audio(audio_bytes, message.text)
+        await self.save_audio(audio_bytes, message.text, sample_rate=44100)  # as in decode_mp3
 
     async def create_speech(
             self,
