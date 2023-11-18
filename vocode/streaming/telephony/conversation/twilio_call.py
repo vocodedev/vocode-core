@@ -1,4 +1,4 @@
-import asyncio
+import httpx
 from fastapi import WebSocket
 import base64
 from enum import Enum
@@ -101,7 +101,11 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 else twilio_call_ref.recordings.create()
             )
             self.logger.info(f"Recording: {recording.sid}")
-
+            recording_url = f"https://api.twilio.com/2010-04-01/Accounts/{recording.account_sid}/Recordings/{recording.sid}.json"
+            httpx.post(
+                f"https://{self.base_url}/recordings/{self.id}",
+                json={"recording_url": recording_url},
+            )
         if twilio_call.answered_by in ("machine_start", "fax"):
             self.logger.info(f"Call answered by {twilio_call.answered_by}")
             twilio_call.update(status="completed")
