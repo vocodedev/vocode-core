@@ -1,4 +1,3 @@
-import httpx
 from fastapi import WebSocket
 import base64
 from enum import Enum
@@ -8,7 +7,7 @@ from typing import Optional
 from vocode import getenv
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.events import PhoneCallConnectedEvent
+from vocode.streaming.models.events import PhoneCallConnectedEvent, RecordingEvent
 
 from vocode.streaming.models.telephony import TwilioConfig
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
@@ -102,9 +101,8 @@ class TwilioCall(Call[TwilioOutputDevice]):
             )
             self.logger.info(f"Recording: {recording.sid}")
             recording_url = f"https://api.twilio.com/2010-04-01/Accounts/{recording.account_sid}/Recordings/{recording.sid}.json"
-            httpx.post(
-                f"https://{self.base_url}/recordings/{self.id}",
-                json={"recording_url": recording_url},
+            self.events_manager.publish_event(
+                RecordingEvent(recording_url=recording_url, conversation_id=self.id)
             )
         if twilio_call.answered_by in ("machine_start", "fax"):
             self.logger.info(f"Call answered by {twilio_call.answered_by}")
