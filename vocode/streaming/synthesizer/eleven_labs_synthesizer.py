@@ -67,7 +67,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
     def pick_filler(self, bot_message: str, user_message: str) -> Optional[FillerAudio]:
         if self.filler_picker is not None:
-            self.logger.info(f"Using filler picker for {bot_message} and {user_message}")
+            self.logger.info(f'Using filler picker for "{bot_message}" and "{user_message}"')
             pick = self.filler_picker(bot_message, user_message)
             if pick is not None:
                 self.logger.info(f"Filler picked: {pick}")
