@@ -26,7 +26,7 @@ class BaseCallReporter(Generic[CallReporterConfigType]):
     def get_config(self) -> CallReporterConfig:
         return self.config
 
-    def report(self, conversation_id: str, transcript: Transcript):
+    def report(self, conversation_id: str, transcript: Transcript, slug: str):
         raise NotImplementedError
 
     @staticmethod

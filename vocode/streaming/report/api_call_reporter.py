@@ -15,11 +15,12 @@ class ApiCallReporter(BaseCallReporter[ApiCallReporterConfig]):
     def __init__(self, config: ApiCallReporterConfig, logger: Optional[logging.Logger] = None):
         super().__init__(config, logger)
 
-    def report(self, conversation_id: str, transcript: Transcript):
+    def report(self, conversation_id: str, transcript: Transcript, slug: str):
         logs = self.get_event_logs(transcript)
         data = {
             "conversation_id": conversation_id,
             "logs": logs,
+            "slug": slug,
             "start_time": transcript.start_time,
         }
         self.logger.debug(f"Data to call reporter: {data}")
