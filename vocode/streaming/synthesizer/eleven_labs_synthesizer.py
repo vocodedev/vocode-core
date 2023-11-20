@@ -1,6 +1,5 @@
 import asyncio
 import hashlib
-import io
 import logging
 import os
 import wave
@@ -68,25 +67,24 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         return hashed_text
 
     def pick_filler(self, bot_message: str, user_message: str) -> Optional[FillerAudio]:
-        if self.filler_picker is not None:
-            self.logger.info(f"Using filler picker for {bot_message} and {user_message}")
-            pick = self.filler_picker(bot_message, user_message)
-            self.logger.info(f"Filler picked: {pick}")
-            audio = self.get_cached_audio(pick)
-            if audio is not None:
-                return FillerAudio(
-                    BaseMessage(text=pick),
-                    audio_data=audio,
-                    synthesizer_config=self.synthesizer_config,
-                    is_interruptible=False
-                )
+        # if self.filler_picker is not None:
+        #     self.logger.info(f"Using filler picker for {bot_message} and {user_message}")
+        #     pick = self.filler_picker(bot_message, user_message)
+        #     self.logger.info(f"Filler picked: {pick}")
+        #     audio = self.get_cached_audio(pick)
+        #     if audio is not None:
+        #         return FillerAudio(
+        #             BaseMessage(text=pick),
+        #             audio_data=audio,
+        #             synthesizer_config=self.synthesizer_config,
+        #             is_interruptible=False
+        #         )
         return None
 
-    def get_cached_audio(self, message_text: str) -> Optional[bytes]:
+    def get_cached_audio(self, message_text: str, chunk_size) -> Optional[SynthesisResult]:
         file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.wav")
         if os.path.exists(file_path):
-            with open(file_path, "rb") as f:
-                return f.read()
+            return self.create_synthesis_result_from_wav(file_path, BaseMessage(text=message_text), chunk_size)
         return None
 
     async def save_audio(self, audio_data: bytes, message_text: str):
@@ -163,9 +161,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 yield SynthesisResult.ChunkResult(wav_chunk, is_last)
                 # If this is the last chunk, break the loop
                 if is_last and create_speech_span is not None:
-                    self.logger.info(f"Saving audio for {message.text}")
-                    complete_audio_data = b''.join(accumulated_audio_chunks)
-                    await self.save_audio(complete_audio_data, message.text)
+                    # self.logger.info(f"Saving audio for {message.text}")
+                    # complete_audio_data = b''.join(accumulated_audio_chunks)
+                    # await self.save_audio(complete_audio_data, message.text)
                     create_speech_span.end()
                     break
         except asyncio.CancelledError:
@@ -227,14 +225,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
 
-        cached_audio = self.get_cached_audio(message.text)
+        cached_audio = self.get_cached_audio(message.text, chunk_size)
         if cached_audio is not None:
             self.logger.info(f"Using cached audio for message: {message.text}")
-            return self.create_synthesis_result_from_wav(
-                file=io.BytesIO(cached_audio),
-                message=message,
-                chunk_size=chunk_size
-            )
+            return cached_audio
 
         response = await self.__send_request(message)
         create_speech_span = tracer.start_span(
