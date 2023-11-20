@@ -2,7 +2,6 @@ import asyncio
 import hashlib
 import logging
 import os
-import wave
 from typing import Optional, List, AsyncGenerator, Union, Tuple, Dict, Callable
 
 import aiohttp
@@ -82,23 +81,18 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         return None
 
     def get_cached_audio(self, message_text: str, chunk_size) -> Optional[SynthesisResult]:
-        file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.wav")
+        file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.mp3")
         if os.path.exists(file_path):
-            return self.create_synthesis_result_from_wav(file_path, BaseMessage(text=message_text), chunk_size)
+            audio_data = open(file_path, "rb").read()
+            output_bytes_io = decode_mp3(audio_data)
+            return self.create_synthesis_result_from_wav(output_bytes_io, BaseMessage(text=message_text), chunk_size)
         return None
 
     async def save_audio(self, audio_data: bytes, message_text: str):
-        sample_rate = self.synthesizer_config.sampling_rate  # ignoring the config because
-        file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.wav")
-        # Assuming the sample rate and other parameters are known
-        num_channels = 1  # Mono
-        sample_width = 2  # Number of bytes per sample (2 for 16-bit audio)
+        file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.mp3")
 
-        with wave.open(file_path, 'wb') as wav_file:
-            wav_file.setnchannels(num_channels)
-            wav_file.setsampwidth(sample_width)
-            wav_file.setframerate(sample_rate)
-            wav_file.writeframes(audio_data)
+        with open(file_path, 'wb') as mp3_file:
+            mp3_file.write(audio_data)
 
     def set_fillers_cache(self):
         self.fillers_cache = {}
@@ -144,8 +138,12 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         # Create a task to send the mp3 chunks to the MiniaudioWorker's input queue in a separate loop
         async def send_chunks():
             async for chunk in stream_reader.iter_any():
+                accumulated_audio_chunks.append(chunk)
                 miniaudio_worker.consume_nonblocking(chunk)
             miniaudio_worker.consume_nonblocking(None)  # sentinel
+            complete_audio_data = b''.join(accumulated_audio_chunks)
+            self.logger.info(f"Saving audio for message: {message.text}")
+            await self.save_audio(complete_audio_data, message.text)
 
         try:
             asyncio.create_task(send_chunks())
@@ -157,13 +155,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 wav_chunk, is_last = await miniaudio_worker.output_queue.get()
                 if self.synthesizer_config.should_encode_as_wav:
                     wav_chunk = encode_as_wav(wav_chunk, self.synthesizer_config)
-                accumulated_audio_chunks.append(wav_chunk)
                 yield SynthesisResult.ChunkResult(wav_chunk, is_last)
                 # If this is the last chunk, break the loop
                 if is_last and create_speech_span is not None:
-                    # self.logger.info(f"Saving audio for {message.text}")
-                    # complete_audio_data = b''.join(accumulated_audio_chunks)
-                    # await self.save_audio(complete_audio_data, message.text)
                     create_speech_span.end()
                     break
         except asyncio.CancelledError:
