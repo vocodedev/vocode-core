@@ -340,6 +340,18 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.input_queue = input_queue
             self.conversation = conversation
 
+            self.goodbye_token = "<ENDCALL>"  # FIXME PARAMETRIZE
+
+        async def custom_goodbye(self, message: BaseMessage):
+            if message.text == self.goodbye_token:
+                await self.goodbye_terminate()
+
+        async def goodbye_terminate(self):
+            self.conversation.logger.info(
+                "Agent said goodbye, ending call"
+            )
+            await self.conversation.terminate()
+
         async def process(
                 self,
                 item: InterruptibleAgentResponseEvent[Tuple[BaseMessage, SynthesisResult]],
@@ -347,6 +359,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             try:
                 message, synthesis_result = item.payload
                 # create an empty transcript message and attach it to the transcript
+                await self.custom_goodbye(message)
                 transcript_message = Message(
                     text="",
                     sender=Sender.BOT,
@@ -386,10 +399,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                     try:
                         if await asyncio.wait_for(goodbye_detected_task, 0.1):
-                            self.conversation.logger.debug(
-                                "Agent said goodbye, ending call"
-                            )
-                            await self.conversation.terminate()
+                            await self.goodbye_terminate()
                     except asyncio.TimeoutError:
                         pass
             except asyncio.CancelledError:
