@@ -589,7 +589,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
     def report_call(self):
         if self.call_reporter:
             self.call_reporter.report(self.id, self.transcript,
-                                      getattr(self, "vonage_uuid", None) or getattr(self, "vonage_call_id", ""))
+                                      getattr(self, "vonage_uuid", None) or getattr(self, "twilio_sid", ""))
 
     async def terminate(self):
         self.mark_terminated()
