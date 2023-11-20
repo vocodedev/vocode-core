@@ -23,10 +23,6 @@ class TranscriberFactory:
         transcriber_config: TranscriberConfig,
         logger: Optional[logging.Logger] = None,
     ):
-        logger.info(f"Bluberry - Transcriber:{transcriber_config}")
-        logger.info(f"Bluberry - transcriber_config type:{type(transcriber_config)}")
-        logger.info(f"Bluberry - transcriber_config class:{transcriber_config.__class__}")
-        logger.info(f"Bluberry - DeepgramTranscriberConfig class:{DeepgramTranscriberConfig.__class__}")
         if isinstance(transcriber_config, DeepgramTranscriberConfig):
             return DeepgramTranscriber(transcriber_config, logger=logger)
         elif isinstance(transcriber_config, GoogleTranscriberConfig):

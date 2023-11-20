@@ -5,6 +5,7 @@ from enum import Enum
 import json
 import logging
 import random
+import time
 from typing import (
     AsyncGenerator,
     Generator,
@@ -52,6 +53,7 @@ from vocode.streaming.utils.worker import (
 if TYPE_CHECKING:
     from vocode.streaming.utils.state_manager import ConversationStateManager
 
+
 tracer = trace.get_tracer(__name__)
 AGENT_TRACE_NAME = "agent"
 
@@ -87,10 +89,15 @@ class AgentResponseType(str, Enum):
     MESSAGE = "agent_response_message"
     STOP = "agent_response_stop"
     FILLER_AUDIO = "agent_response_filler_audio"
+    FOLLOW_UP_AUDIO = "agent_response_follow_up_audio"
 
 
 class AgentResponse(TypedModel, type=AgentResponseType.BASE.value):
     pass
+
+    def __str__(self):
+        return json.dumps(self.dict())
+
 
 
 class AgentResponseMessage(AgentResponse, type=AgentResponseType.MESSAGE.value):
@@ -106,6 +113,12 @@ class AgentResponseFillerAudio(
     AgentResponse, type=AgentResponseType.FILLER_AUDIO.value
 ):
     pass
+
+class AgentResponseFollowUpAudio(
+    AgentResponse, type=AgentResponseType.FOLLOW_UP_AUDIO.value
+):
+    seconds_spoken: float = 0
+
 
 
 AgentConfigType = TypeVar("AgentConfigType", bound=AgentConfig)
@@ -217,6 +230,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         )
         is_first_response = True
         function_call = None
+        start_time = time.time() 
         async for response, is_interruptible in responses:
             if isinstance(response, FunctionCall):
                 function_call = response
@@ -230,6 +244,8 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 and is_interruptible,
                 agent_response_tracker=agent_input.agent_response_tracker,
             )
+            self.logger.debug(f"Agent generating response took: {time.time() - start_time:.4f} seconds")
+            start_time = time.time()
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:

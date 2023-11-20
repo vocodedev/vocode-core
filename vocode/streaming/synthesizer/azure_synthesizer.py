@@ -16,12 +16,16 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
     FILLER_PHRASES,
-    FILLER_AUDIO_PATH,
     FillerAudio,
     encode_as_wav,
     tracer,
 )
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig, SynthesizerType
+from vocode.streaming.models.synthesizer import (
+    AzureSynthesizerConfig, 
+    SynthesizerType,
+    FILLER_AUDIO_PATH,
+    FOLLOW_UP_AUDIO_PATH
+)
 from vocode.streaming.models.audio_encoding import AudioEncoding
 
 import azure.cognitiveservices.speech as speechsdk

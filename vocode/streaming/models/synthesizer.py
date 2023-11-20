@@ -1,3 +1,5 @@
+import os
+import __main__
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
@@ -13,6 +15,34 @@ from vocode.streaming.telephony.constants import (
 from vocode.streaming.models.index_config import IndexConfig
 from vocode.streaming.models.model import BaseModel, TypedModel
 from vocode.streaming.models.audio_encoding import AudioEncoding
+
+
+DOCKER_CONTAINER = os.getenv("DOCKER_CONTAINER")
+try:
+    if DOCKER_CONTAINER:
+        main_dir = "/code"
+    else:
+        main_dir = os.path.dirname(__main__.__file__)
+
+    FILLER_AUDIO_PATH = os.path.join(
+        main_dir, "_submodules","vocode-python",
+        "vocode", "streaming", "synthesizer",
+        "filler_audio"
+    )
+    FOLLOW_UP_AUDIO_PATH = os.path.join(
+        main_dir, "_submodules", "vocode-python",
+        "vocode", "streaming", "synthesizer",
+        "follow_up_audio"
+    )
+    os.makedirs(FILLER_AUDIO_PATH, exist_ok=True)
+    os.makedirs(FOLLOW_UP_AUDIO_PATH, exist_ok=True)
+except Exception as e:
+    print(f"Error: {e}")
+    FILLER_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "filler_audio")
+    FOLLOW_UP_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "follow_up_audio")
+
+
+TYPING_NOISE_PATH = "%s/typing-noise.wav" % FILLER_AUDIO_PATH
 
 
 class SynthesizerType(str, Enum):
@@ -51,6 +81,8 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
     sentiment_config: Optional[SentimentConfig] = None
     # added by bluberry
     initial_bot_sentiment: Optional[BotSentiment] = None
+    base_filler_audio_path: str = FILLER_AUDIO_PATH
+    base_follow_up_audio_path: str = FOLLOW_UP_AUDIO_PATH
 
     class Config:
         arbitrary_types_allowed = True
