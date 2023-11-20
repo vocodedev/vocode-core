@@ -66,25 +66,35 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         return hashed_text
 
     def pick_filler(self, bot_message: str, user_message: str) -> Optional[FillerAudio]:
-        # if self.filler_picker is not None:
-        #     self.logger.info(f"Using filler picker for {bot_message} and {user_message}")
-        #     pick = self.filler_picker(bot_message, user_message)
-        #     self.logger.info(f"Filler picked: {pick}")
-        #     audio = self.get_cached_audio(pick)
-        #     if audio is not None:
-        #         return FillerAudio(
-        #             BaseMessage(text=pick),
-        #             audio_data=audio,
-        #             synthesizer_config=self.synthesizer_config,
-        #             is_interruptible=False
-        #         )
+        if self.filler_picker is not None:
+            self.logger.info(f"Using filler picker for {bot_message} and {user_message}")
+            pick = self.filler_picker(bot_message, user_message)
+            self.logger.info(f"Filler picked: {pick}")
+            mp3 = self.__get_mp3(pick)
+            wav = decode_mp3(mp3)
+            converted_wav = convert_wav(
+                wav,
+                output_sample_rate=self.synthesizer_config.sampling_rate,
+                output_encoding=self.synthesizer_config.audio_encoding,
+            )
+            return FillerAudio(
+                BaseMessage(text=pick),
+                audio_data=converted_wav,
+                synthesizer_config=self.synthesizer_config,
+                is_interruptible=False
+            )
+        return None
+
+    def __get_mp3(self, message_text: str):
+        file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.mp3")
+        if os.path.exists(file_path):
+            return open(file_path, "rb").read()
         return None
 
     def get_cached_audio(self, message_text: str, chunk_size) -> Optional[SynthesisResult]:
-        file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.mp3")
-        if os.path.exists(file_path):
-            audio_data = open(file_path, "rb").read()
-            output_bytes_io = decode_mp3(audio_data)
+        mp3 = self.__get_mp3(message_text)
+        if mp3 is not None:
+            output_bytes_io = decode_mp3(mp3)
             return self.create_synthesis_result_from_wav(output_bytes_io, BaseMessage(text=message_text), chunk_size)
         return None
 
@@ -203,14 +213,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         message = BaseMessage(text=message)
         response = await self.__send_request(message, ignore_streaming=True)
         audio_data = await response.read()
-        output_bytes_io = decode_mp3(audio_data)
-        audio_data = convert_wav(
-            output_bytes_io,
-            output_sample_rate=self.synthesizer_config.sampling_rate,
-            output_encoding=self.synthesizer_config.audio_encoding,
-        )
-        audio_bytes = audio_data
-        await self.save_audio(audio_bytes, message.text)  # as in decode_mp3
+        await self.save_audio(audio_data, message.text)  # as in decode_mp3
 
     async def create_speech(
             self,
@@ -288,7 +291,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     async def validate_fillers(self, fillers: Dict[str, List[str]], flush_cache: bool = False):
         for filler_list in fillers.values():
             for filler_text in filler_list:
-                cached_audio = self.get_cached_audio(filler_text)
+                cached_audio = self.__get_mp3(filler_text)
                 if cached_audio is None or flush_cache:
                     self.logger.info(f"Creating audio for missing filler: {filler_text}")
                     await self.__save_filler(filler_text)
