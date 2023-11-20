@@ -288,7 +288,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         user_message = agent_response.transcript
                         bot_message = self.conversation.transcript.get_last_bot_text()
                         picked = self.conversation.synthesizer.pick_filler(bot_message, user_message)
-                        self.send_filler_audio(item.agent_response_tracker, picked)
+                        if picked is not None:
+                            self.send_filler_audio(item.agent_response_tracker, picked)
                         return
                     return
 

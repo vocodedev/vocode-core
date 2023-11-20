@@ -69,20 +69,22 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         if self.filler_picker is not None:
             self.logger.info(f"Using filler picker for {bot_message} and {user_message}")
             pick = self.filler_picker(bot_message, user_message)
-            self.logger.info(f"Filler picked: {pick}")
-            mp3 = self.__get_mp3(pick)
-            wav = decode_mp3(mp3)
-            converted_wav = convert_wav(
-                wav,
-                output_sample_rate=self.synthesizer_config.sampling_rate,
-                output_encoding=self.synthesizer_config.audio_encoding,
-            )
-            return FillerAudio(
-                BaseMessage(text=pick),
-                audio_data=converted_wav,
-                synthesizer_config=self.synthesizer_config,
-                is_interruptible=False
-            )
+            if pick is not None:
+                self.logger.info(f"Filler picked: {pick}")
+                mp3 = self.__get_mp3(pick)
+                wav = decode_mp3(mp3)
+                converted_wav = convert_wav(
+                    wav,
+                    output_sample_rate=self.synthesizer_config.sampling_rate,
+                    output_encoding=self.synthesizer_config.audio_encoding,
+                )
+                return FillerAudio(
+                    BaseMessage(text=pick),
+                    audio_data=converted_wav,
+                    synthesizer_config=self.synthesizer_config,
+                    is_interruptible=False
+                )
+            self.logger.warning(f"Filler picker returned None for {bot_message} and {user_message}")
         return None
 
     def __get_mp3(self, message_text: str):
