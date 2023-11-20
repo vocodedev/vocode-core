@@ -299,11 +299,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
             synthesizer: BaseSynthesizer,
             noise_canceler: Optional[BaseNoiseCanceler] = None,
             call_reporter: Optional[BaseCallReporter] = None,
+            from_phone: Optional[str] = None,
+            to_phone: Optional[str] = None,
             conversation_id: Optional[str] = None,
             per_chunk_allowance_seconds: float = PER_CHUNK_ALLOWANCE_SECONDS,
             events_manager: Optional[EventsManager] = None,
             logger: Optional[logging.Logger] = None,
     ):
+        self.from_phone = from_phone
+        self.to_phone = to_phone
         self.last_action_timestamp = None
         self.id = conversation_id or create_conversation_id()
         self.logger = wrap_logger(
@@ -588,8 +592,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     def report_call(self):
         if self.call_reporter:
-            self.call_reporter.report(self.id, self.transcript,
-                                      getattr(self, "vonage_uuid", None) or getattr(self, "twilio_sid", ""))
+            self.call_reporter.report(self.id,
+                                      self.transcript,
+                                      getattr(self, "vonage_uuid", None),
+                                      getattr(self, "twilio_sid", None),
+                                      self.from_phone,
+                                      self.to_phone)
 
     async def terminate(self):
         self.mark_terminated()

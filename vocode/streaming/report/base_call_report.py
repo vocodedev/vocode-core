@@ -26,7 +26,8 @@ class BaseCallReporter(Generic[CallReporterConfigType]):
     def get_config(self) -> CallReporterConfig:
         return self.config
 
-    def report(self, conversation_id: str, transcript: Transcript, slug: str):
+    def report(self, conversation_id: str, transcript: Transcript, vonage_uuid: Optional[str],
+               twilio_sid: Optional[str], from_phone: Optional[str], to_phone: Optional[str]):
         raise NotImplementedError
 
     @staticmethod

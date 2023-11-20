@@ -15,13 +15,17 @@ class ApiCallReporter(BaseCallReporter[ApiCallReporterConfig]):
     def __init__(self, config: ApiCallReporterConfig, logger: Optional[logging.Logger] = None):
         super().__init__(config, logger)
 
-    def report(self, conversation_id: str, transcript: Transcript, slug: str):
+    def report(self, conversation_id: str, transcript: Transcript, vonage_uuid: Optional[str],
+               twilio_sid: Optional[str], from_phone: Optional[str], to_phone: Optional[str]):
         logs = self.get_event_logs(transcript)
         data = {
             "conversation_id": conversation_id,
             "logs": logs,
-            "slug": slug,
+            "twilio_sid": twilio_sid,
+            "vonage_uuid": vonage_uuid,
             "start_time": transcript.start_time,
+            "from_phone": from_phone,
+            "to_phone": to_phone,
         }
         self.logger.debug(f"Data to call reporter: {data}")
         response = requests.post(self.config.url, json=data)
