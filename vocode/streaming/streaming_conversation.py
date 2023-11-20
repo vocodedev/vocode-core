@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import queue
-import random
 import threading
 import time
 import typing
@@ -117,7 +116,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.let_bot_finish_speaking = let_bot_finish_speaking
 
         async def process(self, transcription: Transcription):
-            self.conversation.logger.info(f"Got transcription event: {transcription.message}, {transcription.confidence}, {transcription.is_final}, {transcription.is_interrupt}")
+            self.conversation.logger.info(
+                f"Got transcription event: {transcription.message}, {transcription.confidence}, {transcription.is_final}, {transcription.is_interrupt}")
             self.conversation.mark_last_action_timestamp()
             if transcription.message.strip() == "":
                 # This is often received when the person starts talking. We don't know if they will use filler word.
@@ -211,13 +211,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def process(self, item: InterruptibleAgentResponseEvent[FillerAudio]):
             try:
+
                 filler_audio = item.payload
-                # assert self.conversation.filler_audio_config is not None
-                filler_synthesis_result = filler_audio.create_synthesis_result()
-                self.current_filler_seconds_per_chunk = filler_audio.seconds_per_chunk
                 silence_threshold = (
                     self.conversation.filler_audio_config.silence_threshold_seconds
                 )
+                filler_synthesis_result = filler_audio.create_synthesis_result()
+                self.current_filler_seconds_per_chunk = filler_audio.seconds_per_chunk
                 await asyncio.sleep(silence_threshold)
                 self.conversation.logger.debug("Sending filler audio to output")
                 self.conversation.logger.info(f"BOT (filler): {filler_audio.message.text}")
@@ -261,38 +261,18 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
             )
 
-        def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event], sentiment: Optional[str] = None):
-            assert self.conversation.filler_audio_worker is not None
-            self.conversation.logger.debug(f"Sending filler audio with sentiment {sentiment}")
-            conversation_length = len(self.conversation.transcript.event_logs)
-            prefix = "n_"  # Uses neutral filler audios by default.
-            if sentiment == "delay":
-                prefix = "sd_"
-            elif sentiment == "broken":
-                prefix = "sb_"
-            elif conversation_length < 3:
-                prefix = "f_"
-            elif sentiment == "positive":
-                prefix = "p_"
-            elif sentiment == "question":
-                prefix = "q_"
+        def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event], filler_audio: FillerAudio,
+                              ):
+            if self.conversation.filler_audio_worker is None:
+                raise ValueError("filler_audio_worker is None, must be set")
 
-            if self.conversation.synthesizer.filler_audios:
-                filler_audio = random.choice(
-                    [audio for audio in self.conversation.synthesizer.filler_audios if
-                     audio.message.text.startswith(prefix)]
-                )
-                self.conversation.logger.debug(f"Chose {filler_audio.message.text}")
-                event = self.interruptible_event_factory.create_interruptible_agent_response_event(
-                    filler_audio,
-                    is_interruptible=filler_audio.is_interruptible,
-                    agent_response_tracker=agent_response_tracker,
-                )
-                self.conversation.filler_audio_worker.consume_nonblocking(event)
-            else:
-                self.conversation.logger.debug(
-                    "No filler audio available for synthesizer"
-                )
+            self.conversation.logger.info(f"Chose {filler_audio.message.text}")
+            event = self.interruptible_event_factory.create_interruptible_agent_response_event(
+                filler_audio,
+                is_interruptible=filler_audio.is_interruptible,
+                agent_response_tracker=agent_response_tracker,
+            )
+            self.conversation.filler_audio_worker.consume_nonblocking(event)
 
         async def process(self, item: InterruptibleAgentResponseEvent[AgentResponse]):
             if not self.conversation.synthesis_enabled:
@@ -302,32 +282,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             try:
                 agent_response = item.payload
-                sentiment = None
-                send_filler = False
-                if hasattr(agent_response, "message"): # FIXME: doesn't work.
-                    hold_on = agent_response.message.text == "<HOLD ON>"
-                    fail = agent_response.message.text == "<FAIL>"
-                    if hold_on:
-                        sentiment = "delay"
-                    elif fail:
-                        sentiment = "broken"
-                    send_filler = hold_on or fail
-                if isinstance(agent_response, AgentResponseFillerAudio) or send_filler:
-                    # if self.conversation.openai_embeddings_response_classifier:
-                    #     response = self.conversation.openai_embeddings_response_classifier.classify_response(
-                    #         agent_response.transcript)
-                    #     sentiment = "question" if response.is_question else None
-                    #
-                    # # if question mark in transcript set sentiment to question **AND** ignore call to text analysis.
-                    # if self.conversation.text_analysis_client is not None and sentiment is None:
-                    #     response = await self.conversation.text_analysis_client.analyze_sentiment(
-                    #         documents=[agent_response.transcript],
-                    #         show_opinion_mining=True,
-                    #     )
-                    #     sentiment = response[0].sentiment
-                    #     item.agent_response_tracker.sentiment = sentiment
-                    self.send_filler_audio(item.agent_response_tracker, sentiment)
+
+                if isinstance(agent_response, AgentResponseFillerAudio):
+                    if hasattr(self.conversation.synthesizer, "pick_filler"):
+                        user_message = agent_response.transcript
+                        bot_message = self.conversation.transcript.get_last_bot_text()
+                        picked = self.conversation.synthesizer.pick_filler(bot_message, user_message)
+                        self.send_filler_audio(item.agent_response_tracker, picked)
+                        return
                     return
+
                 if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")
                     item.agent_response_tracker.set()
