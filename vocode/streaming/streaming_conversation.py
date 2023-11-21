@@ -419,7 +419,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             summarizer: Optional[ChatGPTSummaryAgent] = None,
             summary_character_limit: Optional[int] = 250,
             over_talking_filler_detector: Optional[OpenAIEmbeddingOverTalkingFillerDetector] = None,
-            openai_embeddings_response_classifier: Optional[OpenaiEmbeddingsResponseClassifier] = None
+            openai_embeddings_response_classifier: Optional[OpenaiEmbeddingsResponseClassifier] = None,
+            post_call_callback: Optional[Callable[[StreamingConversation], None]] = None,
     ):
         self.summary_character_limit = summary_character_limit
         self.id = conversation_id or create_conversation_id()
@@ -437,6 +438,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.text_analysis_client = text_analysis_client
 
         self.summarizer = summarizer
+        self.post_call_callback = post_call_callback
 
         self.over_talking_filler_detector = over_talking_filler_detector
         self.openai_embeddings_response_classifier = openai_embeddings_response_classifier
@@ -861,6 +863,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.track_bot_sentiment_task:
             self.logger.debug("Terminating track_bot_sentiment Task")
             self.track_bot_sentiment_task.cancel()
+
+        if self.post_call_callback:
+            self.post_call_callback(self)
 
         if self.summarize_conversation_task:
             self.logger.debug("Terminating summarize_conversation Task")
