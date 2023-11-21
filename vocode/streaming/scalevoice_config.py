@@ -37,7 +37,8 @@ SUMMARY:
 
 """
 def get_scalevoice_conversation_config(logger: Logger,
-                                       summarizer_prompt_preamble: Optional[str] = None):
+                                       summarizer_prompt_preamble: Optional[str] = None,
+                                       conversation_post_call_callback=None):
     """
     This is a quick hack to pass configuration to the config below.
     The disadvantage is that we have to be able to quickly change this code on changes beyond the environmental variables.
@@ -55,7 +56,7 @@ def get_scalevoice_conversation_config(logger: Logger,
     AZURE_TEXT_ANALYTICS_ENDPOINT = os.environ['AZURE_TEXT_ANALYTICS_ENDPOINT']
 
     # This is useful for local post call summarization without any infra. Example CONVERSATION_POST_CALL_CALLBACK=local_app.build_conversation.save_and_summarize_conversation
-    conversation_post_call_callback = None
+
     post_call_callback_str = os.environ.get('CONVERSATION_POST_CALL_CALLBACK')
     if post_call_callback_str is not None:
         module_name = '.'.join(post_call_callback_str.split('.')[:-1])
