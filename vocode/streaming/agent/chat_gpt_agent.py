@@ -610,7 +610,6 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             else None
         )
         self.is_first_response = True
-        self.timeout = 3.0  # seconds #TODO: parametrize
 
         self.seed = agent_config.seed
         if self.agent_config.vector_db_config:
@@ -711,6 +710,35 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             self.logger.info('got error timeout')
             return None, None
 
+    async def __attempt_stream_with_retries(self, chat_parameters, initial_timeout, max_retries):
+        timeout_increment = self.agent_config.retry_time_increment_seconds
+        current_timeout = initial_timeout
+
+        for attempt in range(max_retries + 1):
+            stream, first_response = await self.attempt_stream_response(chat_parameters, current_timeout)
+
+            if first_response is not None:
+                self.logger.info(f'Stream attempt {attempt + 1} was successful.')
+                yield first_response, True
+
+                async for message in collate_response_async(
+                        openai_get_tokens(stream), get_functions=True):
+                    yield message, True
+                return  # Exit the function after successful attempt
+
+            else:
+                self.logger.info(f'Stream attempt {attempt + 1} failed, retrying.')
+                # Send filler words based on the attempt number
+                yield "Dejte mi prosím chviličku, hned budeme pokračovat.", False
+
+                # Update timeout for the next attempt
+                current_timeout += timeout_increment
+
+        # If all retries fail
+        self.logger.error('All stream attempts failed, giving up.')
+        yield "Omlouvám se, ale nějak mi teď nefunguje náš interní systém. Zavolala bych vám později, až vše zase pojede. Moc se omlouvám a brzy nashledanou.", False
+        raise RuntimeError("Failed to get a timely response from OpenAI after retries.")
+
     async def generate_response(
             self,
             human_input: str,
@@ -723,8 +751,6 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             yield cut_off_response, False
             return
         assert self.transcript is not None
-
-        chat_parameters = {"seed": self.seed}
         if self.agent_config.vector_db_config:
             try:
                 docs_with_scores = await self.vector_db.similarity_search_with_score(
@@ -753,27 +779,10 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
         else:
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
-        self.logger.info('attempting stream response')
-        stream, first_response = await self.attempt_stream_response(chat_parameters, self.timeout)
-        if first_response is not None:
-            self.logger.info('First steam was successful')
-            yield first_response, True
-            async for message in collate_response_async(
-                    openai_get_tokens(stream), get_functions=True):
-                yield message, True
-        else:
-            self.logger.info('First steam failed, dropping it and retrying once again')
-            # If no first response, send filler and retry once
-            #FIXME: remove hardcoded
-            yield "Dejte mi prosím chviličku, hned budeme pokračovat.", False  # FIXME: should use queue of filler words worker or someting better,
-            stream, first_response = await self.attempt_stream_response(chat_parameters, self.timeout + 2)
-            if first_response is not None:
-                yield first_response, True
-                async for message in collate_response_async(
-                        openai_get_tokens(stream), get_functions=True):
-                    yield message, True
-            else:
-                self.logger.error('Second stream failed, giving up')
-                # If the retry also fails, send final filler word and raise an error
-                yield "Omlouvám se, ale nějak mi teď nefunguje náš interní systém. Zavolala bych vám později, až vše zase pojede. Moc se omlouvám a brzy nashledanou.", False  # FIXME: should use queue of filler words worker or someting better,
-                raise RuntimeError("Failed to get a timely response from OpenAI.")
+        chat_parameters["seed"] = self.seed
+
+        self.logger.info('Attempting to stream response.')
+        async for response, is_successful in self.__attempt_stream_with_retries(
+                chat_parameters, self.agent_config.timeout_seconds,
+                max_retries=self.agent_config.max_retries):
+            yield response, is_successful
