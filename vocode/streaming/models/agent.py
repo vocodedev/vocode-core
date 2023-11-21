@@ -136,7 +136,9 @@ class ChatGPTAgentConfigOLD(AgentConfig, type=AgentType.CHAT_GPT_CUSTOM.value):
     vector_db_config: Optional[VectorDBConfig] = None
     initial_audio_path: Optional[str] = None
     seed: Optional[int] = None
-
+    timeout_seconds: float = 5
+    max_retries: int = 4
+    retry_time_increment_seconds: float = 1
 
 class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):
     prompt_preamble: str
