@@ -624,8 +624,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if len(self.events_manager.subscriptions) > 0:
             self.events_task = asyncio.create_task(self.events_manager.start())
 
-        if self.redis_event_manger is not None:
-            self.redis_task = asyncio.create_task(self.redis_event_manger.start())
+        # if self.redis_event_manger is not None:
+        #     self.redis_task = asyncio.create_task(self.redis_event_manger.start())
 
     async def send_initial_message(self, initial_message: BaseMessage):
         # TODO: configure if initial message is interruptible
