@@ -19,7 +19,7 @@ class ConversationLog(BaseModel):
 
     @property
     def redis_key(self):
-        return f"conversation_log:{self.conversation_id}:{self.event.type}:{self.current_timestamp}"
+        return f"conversation_log:{self.conversation_id}:{self.event.type.value}:{self.current_timestamp}"
 
     @property
     def data(self):
