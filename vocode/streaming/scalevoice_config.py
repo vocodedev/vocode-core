@@ -1,13 +1,12 @@
-import os
 from logging import Logger
-from typing import Optional
 
+import importlib
+import os
 from azure.ai.textanalytics.aio import TextAnalyticsClient
 from azure.core.credentials import AzureKeyCredential
+from typing import Optional
 
-from vocode.streaming.agent.gpt_summary_agent import ChatGPTSummaryAgent
 from vocode.streaming.ignored_while_talking_fillers_fork import OpenAIEmbeddingOverTalkingFillerDetector
-from vocode.streaming.models.agent import ChatGPTAgentConfig, AzureOpenAIConfig
 from vocode.streaming.response_classifier import OpenaiEmbeddingsResponseClassifier
 
 SUMMARIZER_PROMPT_PREAMBLE = """You are creating summaries for telephone calls transcripts between AI voice bot and customer.
@@ -55,6 +54,15 @@ def get_scalevoice_conversation_config(logger: Logger,
     AZURE_TEXT_ANALYTICS_KEY = os.environ['AZURE_TEXT_ANALYTICS_KEY']
     AZURE_TEXT_ANALYTICS_ENDPOINT = os.environ['AZURE_TEXT_ANALYTICS_ENDPOINT']
 
+    # This is useful for local post call summarization without any infra. Example CONVERSATION_POST_CALL_CALLBACK=local_app.build_conversation.save_and_summarize_conversation
+    conversation_post_call_callback = None
+    post_call_callback_str = os.environ.get('CONVERSATION_POST_CALL_CALLBACK')
+    if post_call_callback_str is not None:
+        module_name = '.'.join(post_call_callback_str.split('.')[:-1])
+        function_name = post_call_callback_str.split('.')[-1]
+        module = importlib.import_module(module_name)
+        conversation_post_call_callback = getattr(module, function_name)
+
     return dict(
         # summarizer=ChatGPTSummaryAgent(logger=logger,
         #                                # TODO: refactor it. RN there is a problem with standard openai auth because we have
@@ -74,5 +82,5 @@ def get_scalevoice_conversation_config(logger: Logger,
         openai_embeddings_response_classifier=OpenaiEmbeddingsResponseClassifier(),
         text_analysis_client=TextAnalyticsClient(endpoint=AZURE_TEXT_ANALYTICS_ENDPOINT,
                                                  credential=AzureKeyCredential(AZURE_TEXT_ANALYTICS_KEY)),
-
+        post_call_callback=conversation_post_call_callback,
     )
