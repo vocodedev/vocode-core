@@ -382,10 +382,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                 )
                 # redis call here
-                if self.conversation.redis_event_manger is not None:
-                    self.conversation.transcript.publish_redis_transcript_event_from_message(
-                        message=transcript_message
-                    )
+                # if self.conversation.redis_event_manger is not None:
+                #     self.conversation.transcript.publish_redis_transcript_event_from_message(
+                #         message=transcript_message
+                #     )
                 item.agent_response_tracker.set()
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(
@@ -488,23 +488,24 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
 
         self.events_manager = events_manager or EventsManager()
-        try:
-            self.redis_event_manger = RedisEventsManager(
-                session_id=self.id,
-                subscriptions=[EventType.TRANSCRIPT, EventType.DIALOG_STATE, EventType.TRANSCRIPT_COMPLETE,
-                               EventType.FOLLOW_UP,
-                               EventType.GPT_RESPONSE])
-            # attach it to transript.
-        except Exception as e:
-            self.redis_event_manger = None
-            self.logger.error(f"Failed to create RedisEventsManager: {e}. Not logging events to Redis.")
+        self.redis_event_manger = None
+        # try:
+        #     self.redis_event_manger = RedisEventsManager(
+        #         session_id=self.id,
+        #         subscriptions=[EventType.TRANSCRIPT, EventType.DIALOG_STATE, EventType.TRANSCRIPT_COMPLETE,
+        #                        EventType.FOLLOW_UP,
+        #                        EventType.GPT_RESPONSE])
+        #     # attach it to transript.
+        # except Exception as e:
+        #     self.redis_event_manger = None
+        #     self.logger.error(f"Failed to create RedisEventsManager: {e}. Not logging events to Redis.")
 
         self.events_task: Optional[asyncio.Task] = None
         self.redis_task: Optional[asyncio.Task] = None
         self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
         self.transcript = Transcript()
         self.transcript.attach_events_manager(self.events_manager)
-        self.transcript.attach_redis_events_manager(self.redis_event_manger)
+        # self.transcript.attach_redis_events_manager(self.redis_event_manger)
         self.bot_sentiment = None
         if self.agent.get_agent_config().track_bot_sentiment:
             self.sentiment_config = (
@@ -854,9 +855,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.events_manager.publish_event(
             TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
         )
-        if self.redis_event_manger is not None:
-            self.redis_event_manger.publish_event(
-                TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript))
+        # if self.redis_event_manger is not None:
+        #     self.redis_event_manger.publish_event(
+        #         TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript))
         if self.check_for_idle_task:
             self.logger.debug("Terminating check_for_idle Task")
             self.check_for_idle_task.cancel()
@@ -874,9 +875,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.events_manager and self.events_task:
             self.logger.debug("Terminating events Task")
             await self.events_manager.flush()
-        if self.redis_event_manger and self.redis_task:
-            self.logger.debug("Terminating redis events Task")
-            await self.redis_event_manger.flush()
+        # if self.redis_event_manger and self.redis_task:
+        #     self.logger.debug("Terminating redis events Task")
+        #     await self.redis_event_manger.flush()
         self.logger.debug("Tearing down synthesizer")
         await self.synthesizer.tear_down()
         self.logger.debug("Terminating agent")
