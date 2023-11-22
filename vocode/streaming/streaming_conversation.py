@@ -345,11 +345,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             await self.conversation.terminate()
                     except asyncio.TimeoutError:
                         pass
-                self.conversation.logger.debug("Synthesis complete. Sending Follow Up to AgentResponseWorker.")
-                if (
+                
+                should_send_follow_up = (
                     not self.conversation.is_bot_speaking and 
+                    not self.conversation.is_synthesizing and
                     self.conversation.agent.get_agent_config().send_follow_up_audio
-                ):
+                )
+                if should_send_follow_up:
+                    self.conversation.logger.debug("Sending Follow Up to AgentResponseWorker.")
                     self.conversation.agent.produce_interruptible_agent_response_event_nonblocking(
                         AgentResponseFollowUpAudio())
             except asyncio.CancelledError:

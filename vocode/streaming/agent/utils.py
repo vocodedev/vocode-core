@@ -42,6 +42,8 @@ async def collate_response_async(
     function_name_buffer = ""
     function_args_buffer = ""
     prev_ends_with_money = False
+    possible_sentence_ending = False
+
     async for token in gen:
         if not token:
             continue
@@ -50,15 +52,23 @@ async def collate_response_async(
                 yield buffer.strip()
                 buffer = ""
 
+            if possible_sentence_ending and token.startswith(" "):
+                to_return = buffer.strip()
+                if to_return:
+                    yield to_return
+                buffer = ""
+                
             buffer += token
             possible_list_item = bool(re.match(r"^\d+[ .]", buffer))
+            possible_sentence_ending = bool(re.match(sentence_endings_pattern, token))
             ends_with_money = bool(re.findall(r"\$\d+.$", buffer))
-            if re.findall(
-                list_item_ending_pattern
-                if possible_list_item
-                else sentence_endings_pattern,
-                token,
-            ):
+            if possible_list_item and re.findall(list_item_ending_pattern, token):
+            # if re.findall(
+            #     list_item_ending_pattern
+            #     if possible_list_item
+            #     else sentence_endings_pattern,
+            #     token,
+            # ):
                 if not ends_with_money:
                     to_return = buffer.strip()
                     if to_return:

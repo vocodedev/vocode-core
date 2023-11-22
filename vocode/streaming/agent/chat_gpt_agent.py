@@ -88,7 +88,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             self.agent_config.prompt_preamble,
             self.agent_config.prompt_epilogue
         )
-
+        self.logger.debug(f"Last four LLM input messages: {messages[-5:-1]}")
         parameters: Dict[str, Any] = {
             "messages": messages,
             "max_tokens": self.agent_config.max_tokens,
