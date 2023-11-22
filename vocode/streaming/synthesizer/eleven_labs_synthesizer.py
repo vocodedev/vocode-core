@@ -2,7 +2,7 @@ import asyncio
 import hashlib
 import logging
 import os
-from typing import Optional, List, AsyncGenerator, Union, Tuple, Dict, Callable
+from typing import Optional, List, AsyncGenerator, Union, Tuple, Dict, Any
 
 import aiohttp
 from opentelemetry.trace import Span
@@ -34,7 +34,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             synthesizer_config: ElevenLabsSynthesizerConfig,
             logger: Optional[logging.Logger] = None,
             aiohttp_session: Optional[aiohttp.ClientSession] = None,
-            filler_picker: Optional[Callable] = None,
+            filler_picker: Optional[Any] = None,
+            # FIXME: consider unifying it. For now it has Any to prevent circular imports.
     ):
         super().__init__(synthesizer_config, aiohttp_session)
 
@@ -68,7 +69,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     def pick_filler(self, bot_message: str, user_message: str) -> Optional[FillerAudio]:
         if self.filler_picker is not None:
             self.logger.info(f'Using filler picker for "{bot_message}" and "{user_message}"')
-            pick = self.filler_picker(bot_message, user_message)
+            pick = self.filler_picker.predict_filler_phrase(bot_message, user_message)
             if pick is not None:
                 self.logger.info(f"Filler picked: {pick}")
                 mp3 = self.__get_mp3(pick)
@@ -290,10 +291,13 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
         return filler_phrase_audios
 
-    async def validate_fillers(self, fillers: Dict[str, List[str]], flush_cache: bool = False):
-        for filler_list in fillers.values():
-            for filler_text in filler_list:
-                cached_audio = self.__get_mp3(filler_text)
-                if cached_audio is None or flush_cache:
-                    self.logger.info(f"Creating audio for missing filler: {filler_text}")
-                    await self.__save_filler(filler_text)
+    async def validate_fillers(self, flush_cache: bool = False):
+        if self.filler_picker is None:
+            self.logger.info("No filler picker provided, skipping fillers validation")
+            return
+
+        for filler_text in self.filler_picker.all_fillers:
+            cached_audio = self.__get_mp3(filler_text)
+            if cached_audio is None or flush_cache:
+                self.logger.info(f"Creating audio for missing filler: {filler_text}")
+                await self.__save_filler(filler_text)

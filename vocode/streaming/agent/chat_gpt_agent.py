@@ -588,6 +588,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             logger: Optional[logging.Logger] = None,
             openai_api_key: Optional[str] = None,
             vector_db_factory=VectorDBFactory(),
+            response_predictor: Optional[Any] = None,
     ):
         super().__init__(
             agent_config=agent_config, action_factory=action_factory, logger=logger
@@ -611,6 +612,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
         )
         self.is_first_response = True
 
+        self.response_predictor = response_predictor
         self.seed = agent_config.seed
         if self.agent_config.vector_db_config:
             self.vector_db = vector_db_factory.create_vector_db(
@@ -729,14 +731,15 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             else:
                 self.logger.info(f'Stream attempt {attempt + 1} failed, retrying.')
                 # Send filler words based on the attempt number
-                yield "Dejte mi prosím chviličku, hned budeme pokračovat.", False
+                if self.response_predictor is not None:
+                    yield self.response_predictor.get_retry_text(attempt), False
 
                 # Update timeout for the next attempt
                 current_timeout += timeout_increment
 
         # If all retries fail
         self.logger.error('All stream attempts failed, giving up.')
-        yield "Omlouvám se, ale nějak mi teď nefunguje náš interní systém. Zavolala bych vám později, až vše zase pojede. Moc se omlouvám a brzy nashledanou.", False
+        yield self.response_predictor.get_retry_failed(), False
         raise RuntimeError("Failed to get a timely response from OpenAI after retries.")
 
     async def generate_response(
@@ -745,7 +748,6 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             conversation_id: str,
             is_interrupt: bool = False,
     ) -> AsyncGenerator[Tuple[Union[str, FunctionCall], bool], None]:
-        self.logger
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
             yield cut_off_response, False
