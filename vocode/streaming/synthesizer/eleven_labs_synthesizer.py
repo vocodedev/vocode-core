@@ -102,6 +102,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         return None
 
     async def save_audio(self, audio_data: bytes, message_text: str):
+        os.makedirs(self.cache_path, exist_ok=True)
         file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.mp3")
 
         with open(file_path, 'wb') as mp3_file:
