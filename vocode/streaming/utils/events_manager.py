@@ -38,7 +38,7 @@ class RedisManager:
             port=int(os.environ['REDISPORT']),
             password=os.environ['REDISPASSWORD'],
             ssl=True,
-            db=0,
+            db=os.environ['REDISDB'],
             decode_responses=True,
         )
         self.logger = logger or logging.getLogger(__name__)
