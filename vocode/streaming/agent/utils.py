@@ -203,3 +203,19 @@ def format_openai_chat_messages_from_transcript(
 
 def vector_db_result_to_openai_chat_message(vector_db_result):
     return {"role": "user", "content": vector_db_result}
+
+def replace_map_symbols(message, symbol_map):
+    """
+    Replace symbols in the message based on the provided symbol_map.
+
+    Parameters:
+    - message (str): The input message containing symbols to be replaced.
+    - symbol_map (dict): A dictionary mapping symbol keys to their corresponding values.
+
+    Returns:
+    - str: The message with symbols replaced based on the provided symbol_map.
+    """
+    import re
+
+    pattern = re.compile("|".join(re.escape(key) for key in symbol_map.keys()))
+    return pattern.sub(lambda match: symbol_map[match.group(0)], message)

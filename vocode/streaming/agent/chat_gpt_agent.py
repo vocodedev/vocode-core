@@ -25,7 +25,7 @@ from vocode.streaming.agent.utils import (
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.vector_db.factory import VectorDBFactory
-
+from vocode.streaming.agent.utils import replace_map_symbols
 
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def __init__(
@@ -191,6 +191,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             logger=self.logger
         ):
             if isinstance(message, str):
+                if self.agent_config.character_replacement_map:
+                    message = replace_map_symbols(message, self.agent_config.character_replacement_map)
                 if self.agent_config.remove_exclamation:
                     # replace ! by . because it sounds better when speaking.
                     message = message.replace('!','.')
