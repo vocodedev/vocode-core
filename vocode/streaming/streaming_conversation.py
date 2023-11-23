@@ -420,7 +420,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             summary_character_limit: Optional[int] = 250,
             over_talking_filler_detector: Optional[OpenAIEmbeddingOverTalkingFillerDetector] = None,
             openai_embeddings_response_classifier: Optional[OpenaiEmbeddingsResponseClassifier] = None,
-            post_call_callback: Optional[Callable[[StreamingConversation], None]] = None,
+            post_call_callback: Optional[Callable[[StreamingConversation], typing.Coroutine[None]]] = None,
     ):
         self.summary_character_limit = summary_character_limit
         self.id = conversation_id or create_conversation_id()
@@ -866,7 +866,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.track_bot_sentiment_task.cancel()
 
         if self.post_call_callback:
-            self.post_call_callback(self)
+            asyncio.create_task(self.post_call_callback(self))
 
         if self.summarize_conversation_task:
             self.logger.debug("Terminating summarize_conversation Task")
