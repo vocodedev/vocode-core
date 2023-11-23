@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from enum import Enum
 import json
 import logging
@@ -213,6 +214,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         )
         is_first_response = True
         function_call = None
+        should_stop = False
         async for response in responses:
             if isinstance(response, FunctionCall):
                 function_call = response
@@ -220,15 +222,24 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             if is_first_response:
                 agent_span_first.end()
                 is_first_response = False
-            self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=response),
-                is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
-            )
+            
+            if isinstance(response, BaseMessage):
+                if response.metadata.get("stop") == True:
+                    should_stop = True
+
+                # Only send onward if we have text
+                elif re.search(r"\w", response.text):
+                    self.produce_interruptible_agent_response_event_nonblocking(
+                        AgentResponseMessage(message=response),
+                        is_interruptible=self.agent_config.allow_agent_to_be_cut_off and not should_stop,
+                    )
+                else:
+                    self.logger.warning("Got empty text response from agent, skipping")
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
             await self.call_function(function_call, agent_input)
-        return False
+        return should_stop
 
     async def handle_respond(
         self, transcription: Transcription, conversation_id: str
