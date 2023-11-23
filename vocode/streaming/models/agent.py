@@ -10,6 +10,8 @@ from .model import TypedModel, BaseModel
 from .vector_db import VectorDBConfig
 
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
+FILLER_AUDIO_DEFAULT_PROBABILITY = 0.5
+FOLLOW_UP_DEFAULT_SILENCE_THRESHOLD_SECONDS = 3
 LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
 LLM_AGENT_DEFAULT_MAX_TOKENS = 256
 LLM_AGENT_DEFAULT_MODEL_NAME = "text-curie-001"
@@ -42,7 +44,7 @@ class FillerAudioConfig(BaseModel):
     silence_threshold_seconds: float = FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
     use_phrases: bool = True
     use_typing_noise: bool = False
-    probability: float = 0.5
+    probability: float = FILLER_AUDIO_DEFAULT_PROBABILITY
 
     @validator("use_typing_noise")
     def typing_noise_excludes_phrases(cls, v, values):
@@ -51,6 +53,9 @@ class FillerAudioConfig(BaseModel):
         if not v and not values.get("use_phrases"):
             raise ValueError("must use either typing noise or phrases for filler audio")
         return v
+
+class FollowUpAudioConfig(BaseModel):
+    silence_threshold_seconds: float = FOLLOW_UP_DEFAULT_SILENCE_THRESHOLD_SECONDS
 
 
 class WebhookConfig(BaseModel):
@@ -71,6 +76,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     allow_agent_to_be_cut_off: bool = True
     end_conversation_on_goodbye: bool = False
     send_filler_audio: Union[bool, FillerAudioConfig] = False
+    send_follow_up_audio: Union[bool, FollowUpAudioConfig] = False
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
     actions: Optional[List[ActionConfig]] = None

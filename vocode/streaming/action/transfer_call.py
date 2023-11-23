@@ -31,7 +31,7 @@ class TransferCall(
         TransferCallActionConfig, TransferCallParameters, TransferCallResponse
     ]
 ):
-    description: str = "transfers the call. use when you need to connect the active call to another phone line."
+    description: str = "Transfer the call to a product specialist. Use when you need to connect the active call to another phone line."
     parameters_type: Type[TransferCallParameters] = TransferCallParameters
     response_type: Type[TransferCallResponse] = TransferCallResponse
 

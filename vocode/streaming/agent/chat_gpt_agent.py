@@ -88,7 +88,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             self.agent_config.prompt_preamble,
             self.agent_config.prompt_epilogue
         )
-
+        self.logger.debug(f"Last four LLM input messages: {messages[-5:-1]}")
         parameters: Dict[str, Any] = {
             "messages": messages,
             "max_tokens": self.agent_config.max_tokens,
@@ -186,14 +186,17 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters["stream"] = True
         stream = await self.aclient.chat.completions.create(**chat_parameters)
         async for message in collate_response_async(
-            openai_get_tokens(stream), get_functions=True
+            openai_get_tokens(stream, logger=self.logger), 
+            get_functions=True,
+            logger=self.logger
         ):
-            if self.agent_config.character_replacement_map:
-                message = replace_map_symbols(message, self.agent_config.character_replacement_map)
-            if self.agent_config.remove_exclamation:
-                # replace ! by . because it sounds better when speaking.
-                message = message.replace('!','.')
-            if self.agent_config.add_disfluencies:
-                # artificially add disfluencies to message
-                message = make_disfluency(message)
+            if isinstance(message, str):
+                if self.agent_config.character_replacement_map:
+                    message = replace_map_symbols(message, self.agent_config.character_replacement_map)
+                if self.agent_config.remove_exclamation:
+                    # replace ! by . because it sounds better when speaking.
+                    message = message.replace('!','.')
+                if self.agent_config.add_disfluencies:
+                    # artificially add disfluencies to message
+                    message = make_disfluency(message)
             yield message, True

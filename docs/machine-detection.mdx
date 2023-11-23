@@ -1,5 +1,5 @@
 ---
-title: "[Beta] Answering machine detection"
+title: "Answering machine detection"
 description: "Define the behavior of the bot when no one answers the phone"
 ---
 
@@ -8,7 +8,7 @@ phone call is an answerphone as well as subscribe to events relating to machine 
 
 # Example 1: Hang up the call if it goes to voicemail
 
-The `on_machine_answer` parameter defines what should happen if a machine answers the phone.
+The `on_no_human_answer` parameter defines what should happen if a machine answers the phone.
 
 ```python
 from vocode import CreateCallAgentParams
@@ -21,14 +21,14 @@ vocode_client.calls.create_call(
             content="Ask Ajay if his refrigerator is running"
         ),
     ),
-    on_machine_answer="hangup"
+    on_no_human_answer="hangup"
 )
 ```
 
 # Example 2: Hook into when a call goes to voicemail
 
-If you'd like the bot to stay on the call and leave a voicemail, set `on_machine_answer` to `"continue"`. You can
-also configure a webhook to be fired when the answering machine detection status
+If you'd like the bot to stay on the call and leave a voicemail, set `on_no_human_answer` to `"continue"`. You can
+also configure a webhook to be fired when the answering machine detection status is populated.
 
 ```python
 from vocode import CreateCallAgentParams, PromptParams
@@ -42,10 +42,10 @@ vocode_client.calls.create_call(
         ),
         webhook=WebhookParams(
             url="<YOUR WEBHOOK URL>",
-            subscriptions=["event_machine_detection"]
+            subscriptions=["event_human_detection"]
         )
     ),
-    on_machine_answer="continue"
+    on_no_human_answer="continue"
 )
 ```
 
@@ -53,10 +53,10 @@ Once the call is picked up, the webhook URL configured above will get the follow
 
 ```
 {
-  "type": "event_machine_detection",
+  "type": "event_human_detection",
   "call_id": "<some UUID>",
   "payload": {
-    "result": "machine" # or "human"
+    "result": "no_human" # or "human"
   }
 }
 ```

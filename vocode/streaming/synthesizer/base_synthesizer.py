@@ -25,12 +25,12 @@ from opentelemetry import trace
 from opentelemetry.trace import Span
 
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
-from vocode.streaming.models.agent import FillerAudioConfig
+from vocode.streaming.models.agent import FillerAudioConfig, FollowUpAudioConfig
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
 from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.models.synthesizer import SynthesizerConfig
+from vocode.streaming.models.synthesizer import SynthesizerConfig, TYPING_NOISE_PATH
 import logging
 
 # Get the root logger
@@ -38,7 +38,8 @@ logger = logging.getLogger()
 
 FILLER_KEY: Dict = {
     'question': ["Um...","Uh...","Uhm...","Hmm..."],
-    'confirm': ["Mmhmm.","Yeah.","Cool.","Ok."]
+    'confirm': ["Mmhmm.","Yeah.","Cool.","Ok."],
+    'interrupt': ["Go on, go on."]
 }
 
 FILLERS = [] 
@@ -49,29 +50,14 @@ FILLERS = list(set(FILLERS))
 FILLER_PHRASES = [BaseMessage(text=filler) 
                   for filler in FILLERS]
 
-
-DOCKER_CONTAINER = os.getenv("DOCKER_CONTAINER")
-try:
-    if DOCKER_CONTAINER:
-        main_dir = "/code"
-    else:
-        main_dir = os.path.dirname(__main__.__file__)
-
-    FILLER_AUDIO_PATH = os.path.join(main_dir, 
-                                     "_submodules",
-                                     "vocode-python",
-                                     "vocode",
-                                     "streaming",
-                                     "synthesizer",
-                                     "filler_audio")
-    os.makedirs(FILLER_AUDIO_PATH, exist_ok=True)
-except Exception as e:
-    print(f"Error: {e}")
-    FILLER_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "filler_audio")
-
-
-TYPING_NOISE_PATH = "%s/typing-noise.wav" % FILLER_AUDIO_PATH
-
+FOLLOW_UP_PHRASES = [
+    BaseMessage(text="You were saying..."),
+    BaseMessage(text="Go on..."),
+    BaseMessage(text="Please continue..."),
+    BaseMessage(text="I'm listening..."),
+    BaseMessage(text="I'm all ears..."),
+    BaseMessage(text="Are you still with me?"),
+]
 
 def encode_as_wav(chunk: bytes, synthesizer_config: SynthesizerConfig) -> bytes:
     output_bytes_io = io.BytesIO()
@@ -154,14 +140,19 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
     def __init__(
         self,
         synthesizer_config: SynthesizerConfigType,
+        logger: Optional[logging.Logger] = None,
         aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
+        self.logger = logger or logging.getLogger(__name__)
         self.synthesizer_config = synthesizer_config
+        self.base_filler_audio_path = self.synthesizer_config.base_filler_audio_path
+        self.base_follow_up_audio_path = self.synthesizer_config.base_follow_up_audio_path
         if synthesizer_config.audio_encoding == AudioEncoding.MULAW:
             assert (
                 synthesizer_config.sampling_rate == 8000
             ), "MuLaw encoding only supports 8kHz sampling rate"
         self.filler_audios: Dict[str,List[FillerAudio]] = {}
+        self.follow_up_audios: List[FillerAudio] = []
         if aiohttp_session:
             # the caller is responsible for closing the session
             self.aiohttp_session = aiohttp_session
@@ -171,6 +162,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             self.should_close_session_on_tear_down = True
         
         self.aiobotocore_session = get_session()
+
     async def empty_generator(self):
         yield SynthesisResult.ChunkResult(b"", True)
 
@@ -191,12 +183,21 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         )
 
     async def set_filler_audios(self, filler_audio_config: FillerAudioConfig):
+        self.logger.debug(f"Setting filler audios...")
         if filler_audio_config.use_phrases:
             self.filler_audios = await self.get_phrase_filler_audios()
         elif filler_audio_config.use_typing_noise:
-            self.filler_audios = [self.get_typing_noise_filler_audio()]
+            self.filler_audios = {"typing": [self.get_typing_noise_filler_audio()]}
 
-    async def get_phrase_filler_audios(self) -> List[FillerAudio]:
+    async def set_follow_up_audios(self, follow_up_audio_config: FollowUpAudioConfig):
+        self.logger.debug(f"Setting follow up audios...")
+        if follow_up_audio_config:
+            self.follow_up_audios = await self.get_phrase_follow_up_audios()
+
+    async def get_phrase_filler_audios(self) -> Dict[str, List[FillerAudio]]:
+        return []
+    
+    async def get_phrase_follow_up_audios(self) -> List[FillerAudio]:
         return []
 
     def ready_synthesizer(self):
@@ -226,14 +227,16 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         tokens = word_tokenize(message.text)
         return TreebankWordDetokenizer().detokenize(tokens[:estimated_words_spoken])
 
-    # returns a chunk generator and a thunk that can tell you what part of the message was read given the number of seconds spoken
-    # chunk generator must return a ChunkResult, essentially a tuple (bytes of size chunk_size, flag if it is the last chunk)
     async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        '''
+        returns a chunk generator and a thunk that can tell you what part of the message was read given the number of seconds spoken
+        chunk generator must return a ChunkResult, essentially a tuple (bytes of size chunk_size, flag if it is the last chunk)
+        '''
         raise NotImplementedError
 
     # @param file - a file-like object in wav format

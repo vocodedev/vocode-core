@@ -30,8 +30,8 @@ class ActionInput(BaseModel, Generic[ParametersType]):
 
 
 class FunctionFragment(BaseModel):
-    name: str
-    arguments: str
+    name: Optional[str]
+    arguments: Optional[str]
 
 
 class FunctionCall(BaseModel):
