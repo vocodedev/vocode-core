@@ -118,7 +118,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async def process(self, transcription: Transcription):
             self.conversation.logger.info(
                 f"Got transcription event: {transcription.message}, {transcription.confidence}, {transcription.is_final}, {transcription.is_interrupt}")
-            self.conversation.mark_last_action_timestamp()
             if transcription.message.strip() == "":
                 # This is often received when the person starts talking. We don't know if they will use filler word.
                 # TODO set a timer here, if transcription does not arrive on time, assume the person keeps talking and need to interrupt the bot.
@@ -161,6 +160,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
+                self.conversation.mark_last_action_timestamp()
                 # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
 
                 event = self.interruptible_event_factory.create_interruptible_event(
@@ -646,6 +646,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
     async def check_for_idle(self):
         """Asks if user still here."""
         while self.is_active():
+            self.logger.info("Checking for idle")
             if time.time() - self.last_action_timestamp > (
                     self.agent.get_agent_config().allowed_idle_time_seconds
                     or ALLOWED_IDLE_TIME
@@ -657,7 +658,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     is_final=True,
                     is_interrupt=True)
                 self.transcriptions_worker.consume_nonblocking(transcription)
-                return
             await asyncio.sleep(2)  # checks every 2 seconds
 
     async def track_bot_sentiment(self):
