@@ -31,6 +31,7 @@ from vocode.streaming.constants import (
     ALLOWED_IDLE_TIME,
 )
 from vocode.streaming.ignored_while_talking_fillers_fork import OpenAIEmbeddingOverTalkingFillerDetector
+from vocode.streaming.input_device.stream_handler import AudioStreamHandler
 from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.events import Sender, EventType
 from vocode.streaming.models.message import BaseMessage
@@ -432,6 +433,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.call_initial_delay = 1.5
         self.output_device = output_device
         self.transcriber = transcriber
+        self.audio_stream_handler = AudioStreamHandler(transcriber)
         self.agent = agent
         self.synthesizer = synthesizer
         self.synthesis_enabled = True
@@ -705,7 +707,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriptions_worker.consume_nonblocking(transcription)
 
     def receive_audio(self, chunk: bytes):
-        self.transcriber.send_audio(chunk)
+        # TODO: refactor this, its not needed anymore, i can use just audio_stream_handler.
+        self.audio_stream_handler.receive_audio(chunk)
+
 
     def warmup_synthesizer(self):
         self.synthesizer.ready_synthesizer()
