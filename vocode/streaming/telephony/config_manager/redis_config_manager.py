@@ -38,9 +38,23 @@ class RedisConfigManager(BaseConfigManager):
         self._build_redis()
         await self.redis.ping()
 
-    async def save_config(self, conversation_id: str, config: BaseCallConfig):
+    async def save_config(self, conversation_id: str, config: BaseCallConfig) -> None:
+        # FIXME: resolve blocking calls that might cause the error, try to use bigger timeout.
         self.logger.debug(f"Saving config for {conversation_id}")
-        await self.redis.set(conversation_id, config.json())
+        for attempt in range(3):  # Retry up to 3 times
+            try:
+                await self.redis.set(conversation_id, config.json())
+            except ConnectionError as e:
+                self.logger.warning(f"Attempt {attempt + 1}: Connection error: {e}")
+                if attempt < 2:
+                    await self._reconnect_redis()
+                else:
+                    self.logger.error("Final attempt failed. Unable to get config.")
+                    raise
+            except Exception as e:
+                self.logger.error(f"An unexpected error occurred: {e}")
+                raise
+            await asyncio.sleep(0.5)
 
     async def get_config(self, conversation_id: str) -> Optional[BaseCallConfig]:
         self.logger.debug(f"Getting config for {conversation_id}")
