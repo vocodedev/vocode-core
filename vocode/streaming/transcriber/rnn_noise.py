@@ -24,44 +24,51 @@ rnnoise.rnnoise_destroy.argtypes = [POINTER(c_void_p)]
 # Get the frame size
 frame_size = rnnoise.rnnoise_get_frame_size()
 
-with wave.open('/Users/ruslanrozb/Desktop/output.wav', 'rb') as f:
-    params = f.getparams()
-    nchannels, sampwidth, framerate, nframes = params[:4]
+import numpy as np
+import wave
+from ctypes import *
 
-    # Ensure the file is mono and 16-bit
-    if nchannels != 1 or sampwidth != 2:
-        raise ValueError("Wave file must be mono and 16-bit")
+# Assuming rnnoise is already loaded and rnnoise_get_frame_size, rnnoise_create, rnnoise_destroy, and rnnoise_process_frame are set up
 
-    # Initialize DenoiseState
-    st = rnnoise.rnnoise_create(None)
+# Initialize the RNNoise state
+st = rnnoise.rnnoise_create(None)
+if not st:
+    raise Exception("Failed to create RNNoise state")
 
-    # Open the output file
-    with wave.open('outpu2t.wav', 'wb') as fout:
-        fout.setparams(params)
+# Open the WAV file
+with wave.open('/Users/ruslanrozb/Desktop/twillio_w_noise.wav', 'rb') as f, wave.open('output.wav', 'wb') as fout:
+    # Set the parameters for the output file
+    fout.setparams(f.getparams())
 
-        # Process the wave file in chunks
-        frame_size = rnnoise.rnnoise_get_frame_size()
-        while True:
-            # Read a chunk of data
-            data = f.readframes(frame_size)
-            if not data:
-                break
+    # Process the audio in chunks
+    frame_size = rnnoise.rnnoise_get_frame_size()
+    while True:
+        # Read a frame of data
+        frame_data = f.readframes(frame_size)
+        if not frame_data:
+            break
 
-            # Convert to floats
-            in_buf = (c_float * frame_size)(*map(lambda x: x / 32768,
-                                                 array('h', data)))
+        # Convert to numpy array of int16
+        in_buf = np.frombuffer(frame_data, dtype=np.int16)
 
-            # Allocate output buffer
-            out_buf = (c_float * frame_size)()
+        # Normalize the audio to the range of [-1, 1]
+        in_buf = in_buf.astype(np.float32)
+        # in_buf /= 32768
 
-            # Process the chunk
-            rnnoise.rnnoise_process_frame(st, out_buf, in_buf)
+        # Create a ctypes array from the numpy array
+        c_in_buf = in_buf.ctypes.data_as(POINTER(c_float))
+        c_out_buf = (c_float * frame_size)()
 
-            # Convert processed floats back to 16-bit integers
-            out_data = array('h', map(lambda x: int(x * 32768), out_buf))
+        # Process the frame
+        vad_prob = rnnoise.rnnoise_process_frame(st, c_out_buf, c_in_buf)
 
-            # Write the processed chunk
-            fout.writeframes(out_data.tobytes())
+        # Convert the processed audio back to int16
+        out_buf = np.ctypeslib.as_array(c_out_buf)
+        # out_buf *= 32768
+        out_buf = out_buf.astype(np.int16)
 
-    # Clean up
-    rnnoise.rnnoise_destroy(st)
+        # Write the processed data to the output file
+        fout.writeframes(out_buf.tobytes())
+
+# Clean up the RNNoise state
+rnnoise.rnnoise_destroy(st)
