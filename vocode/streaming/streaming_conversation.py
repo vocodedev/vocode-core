@@ -710,7 +710,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # TODO: refactor this, its not needed anymore, i can use just audio_stream_handler.
         self.audio_stream_handler.receive_audio(chunk)
 
-
     def warmup_synthesizer(self):
         self.synthesizer.ready_synthesizer()
 
@@ -859,6 +858,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.events_manager.publish_event(
             TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
         )
+        self.logger.info("Saving audio")
+        self.audio_stream_handler.flush(f"{self.id}_final.wav")
+        self.logger.info("audio saved")
         if self.redis_event_manger is not None:
             self.redis_event_manger.publish_event(
                 TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript))

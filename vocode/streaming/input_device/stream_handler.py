@@ -1,4 +1,5 @@
 import logging
+import os
 import wave
 
 from vocode.streaming.input_device.rnn_noise import RNNoiseWrapper
@@ -40,7 +41,8 @@ class AudioStreamHandler:
             wf.setframerate(48000)  # 48kHz sample rate
             wf.writeframes(b''.join(self.audio_buffer))
         # Optionally log the flush action
-        self.logger.info(f"Flushed audio buffer to {output_path}")
+        full_path = os.path.abspath(output_path)
+        self.logger.info(f"Flushed audio buffer to {full_path}")
 
         # Clear the buffer after flushing
         self.audio_buffer = []
