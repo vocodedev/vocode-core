@@ -97,7 +97,13 @@
         "requestBody": {
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/BuyPhoneNumberRequest" }
+              "schema": {
+                "allOf": [
+                  { "$ref": "#/components/schemas/BuyPhoneNumberRequest" }
+                ],
+                "title": "Request",
+                "default": { "telephony_provider": "vonage" }
+              }
             }
           }
         },
@@ -177,6 +183,42 @@
             "in": "query"
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PhoneNumber" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/numbers/link": {
+      "post": {
+        "tags": ["numbers"],
+        "summary": "Link Number",
+        "operationId": "link_number",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkPhoneNumberRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -348,7 +390,7 @@
         "parameters": [
           {
             "required": true,
-            "schema": { "type": "string", "title": "Id" },
+            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
             "in": "query"
           }
@@ -1459,6 +1501,11 @@
             "type": "number",
             "title": "Conversation Speed",
             "default": 1.0
+          },
+          "initial_message_delay": {
+            "type": "number",
+            "title": "Initial Message Delay",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -1567,6 +1614,11 @@
             "type": "number",
             "title": "Conversation Speed",
             "default": 1.0
+          },
+          "initial_message_delay": {
+            "type": "number",
+            "title": "Initial Message Delay",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -1700,6 +1752,13 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Conversation Speed"
+          },
+          "initial_message_delay": {
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Initial Message Delay"
           }
         },
         "type": "object",
@@ -1772,7 +1831,18 @@
       },
       "BuyPhoneNumberRequest": {
         "properties": {
-          "area_code": { "type": "string", "title": "Area Code" }
+          "area_code": { "type": "string", "title": "Area Code" },
+          "telephony_provider": {
+            "type": "string",
+            "enum": ["vonage", "twilio"],
+            "title": "Telephony Provider",
+            "default": "vonage"
+          },
+          "telephony_account_connection": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Telephony Account Connection"
+          }
         },
         "type": "object",
         "title": "BuyPhoneNumberRequest"
@@ -1801,9 +1871,15 @@
             "type": "boolean",
             "title": "Do Not Call Result"
           },
+          "telephony_id": { "type": "string", "title": "Telephony Id" },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "$ref": "#/components/schemas/Agent" },
+          "telephony_provider": {
+            "type": "string",
+            "enum": ["vonage", "twilio"],
+            "title": "Telephony Provider"
+          },
           "agent_phone_number": {
             "type": "string",
             "title": "Agent Phone Number"
@@ -1845,6 +1921,7 @@
           "to_number",
           "from_number",
           "agent",
+          "telephony_provider",
           "agent_phone_number"
         ],
         "title": "Call"
@@ -1972,6 +2049,11 @@
             "type": "number",
             "title": "Conversation Speed",
             "default": 1.0
+          },
+          "initial_message_delay": {
+            "type": "number",
+            "title": "Initial Message Delay",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -2074,7 +2156,12 @@
           "voice_id": { "type": "string", "title": "Voice Id" },
           "stability": { "type": "number", "title": "Stability" },
           "similarity_boost": { "type": "number", "title": "Similarity Boost" },
-          "api_key": { "type": "string", "title": "Api Key" }
+          "api_key": { "type": "string", "title": "Api Key" },
+          "optimize_streaming_latency": {
+            "type": "integer",
+            "title": "Optimize Streaming Latency"
+          },
+          "model_id": { "type": "string", "title": "Model Id" }
         },
         "type": "object",
         "required": ["id", "user_id", "type", "voice_id"],
@@ -2090,7 +2177,12 @@
           "voice_id": { "type": "string", "title": "Voice Id" },
           "stability": { "type": "number", "title": "Stability" },
           "similarity_boost": { "type": "number", "title": "Similarity Boost" },
-          "api_key": { "type": "string", "title": "Api Key" }
+          "api_key": { "type": "string", "title": "Api Key" },
+          "optimize_streaming_latency": {
+            "type": "integer",
+            "title": "Optimize Streaming Latency"
+          },
+          "model_id": { "type": "string", "title": "Model Id" }
         },
         "type": "object",
         "required": ["type", "voice_id"],
@@ -2130,6 +2222,20 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Api Key"
+          },
+          "optimize_streaming_latency": {
+            "anyOf": [
+              { "type": "integer" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Optimize Streaming Latency"
+          },
+          "model_id": {
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Model Id"
           }
         },
         "type": "object",
@@ -2231,6 +2337,24 @@
         "title": "Language",
         "description": "An enumeration."
       },
+      "LinkPhoneNumberRequest": {
+        "properties": {
+          "phone_number": { "type": "string", "title": "Phone Number" },
+          "telephony_account_connection": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Telephony Account Connection"
+          },
+          "outbound_only": {
+            "type": "boolean",
+            "title": "Outbound Only",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": ["phone_number", "telephony_account_connection"],
+        "title": "LinkPhoneNumberRequest"
+      },
       "NormalizedAgent": {
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
@@ -2287,6 +2411,11 @@
             "type": "number",
             "title": "Conversation Speed",
             "default": 1.0
+          },
+          "initial_message_delay": {
+            "type": "number",
+            "title": "Initial Message Delay",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -2317,9 +2446,15 @@
             "type": "boolean",
             "title": "Do Not Call Result"
           },
+          "telephony_id": { "type": "string", "title": "Telephony Id" },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "type": "string", "format": "uuid", "title": "Agent" },
+          "telephony_provider": {
+            "type": "string",
+            "enum": ["vonage", "twilio"],
+            "title": "Telephony Provider"
+          },
           "agent_phone_number": {
             "type": "string",
             "title": "Agent Phone Number"
@@ -2361,6 +2496,7 @@
           "to_number",
           "from_number",
           "agent",
+          "telephony_provider",
           "agent_phone_number"
         ],
         "title": "NormalizedCall"
@@ -2386,7 +2522,20 @@
             "type": "object",
             "title": "Example Context"
           },
-          "number": { "type": "string", "title": "Number" }
+          "number": { "type": "string", "title": "Number" },
+          "telephony_provider": {
+            "type": "string",
+            "enum": ["vonage", "twilio"],
+            "title": "Telephony Provider",
+            "default": "vonage"
+          },
+          "telephony_account_connection": {
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/TwilioAccountConnection" }
+            ],
+            "title": "Telephony Account Connection"
+          }
         },
         "type": "object",
         "required": ["id", "user_id", "inbound_agent", "number"],
@@ -2430,7 +2579,16 @@
             "type": "object",
             "title": "Example Context"
           },
-          "number": { "type": "string", "title": "Number" }
+          "number": { "type": "string", "title": "Number" },
+          "telephony_provider": {
+            "type": "string",
+            "enum": ["vonage", "twilio"],
+            "title": "Telephony Provider",
+            "default": "vonage"
+          },
+          "telephony_account_connection": {
+            "$ref": "#/components/schemas/TwilioAccountConnection"
+          }
         },
         "type": "object",
         "required": ["id", "user_id", "inbound_agent", "number"],
@@ -2831,7 +2989,42 @@
         "required": ["phone_number"],
         "title": "TransferCallConfig"
       },
-      "Undefined": { "properties": {}, "type": "object", "title": "Undefined" },
+      "TwilioAccountConnection": {
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "title": "Id" },
+          "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
+          "type": {
+            "type": "string",
+            "enum": ["account_connection_twilio"],
+            "title": "Type"
+          },
+          "credentials": { "$ref": "#/components/schemas/TwilioCredentials" }
+        },
+        "type": "object",
+        "required": ["id", "user_id", "type", "credentials"],
+        "title": "TwilioAccountConnection"
+      },
+      "TwilioCredentials": {
+        "properties": {
+          "twilio_account_sid": {
+            "type": "string",
+            "title": "Twilio Account Sid"
+          },
+          "twilio_auth_token": {
+            "type": "string",
+            "title": "Twilio Auth Token"
+          }
+        },
+        "type": "object",
+        "required": ["twilio_account_sid", "twilio_auth_token"],
+        "title": "TwilioCredentials"
+      },
+      "Undefined": {
+        "properties": {},
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Undefined"
+      },
       "UpdateNumberRequest": {
         "properties": {
           "label": {
