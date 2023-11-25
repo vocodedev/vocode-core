@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import time
 from typing import Optional
 import websockets
 from websockets.client import WebSocketClientProtocol
@@ -12,6 +13,7 @@ from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
     Transcription,
     meter,
+    HUMAN_ACTIVITY_DETECTED
 )
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
@@ -188,6 +190,23 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 while not self._ended:
                     try:
                         data = await asyncio.wait_for(self.input_queue.get(), 5)
+                        if self.transcriber_config.voice_activity_detector_config:
+                            # when using WebRTC VAD, there are too many false positive that break the conversation flow
+                            try:
+                                # TODO: make this async
+                                start_time = time.time()
+                                if self.voice_activity_detector.should_interrupt(data):
+                                    self.logger.debug(f"VAD detected - took {time.time() - start_time:.3f} seconds")
+                                    self.output_queue.put_nowait(
+                                        Transcription(
+                                            message=HUMAN_ACTIVITY_DETECTED,
+                                            confidence=1,
+                                            is_final=True,
+                                        )
+                                    )
+                                
+                            except Exception as e:
+                                self.logger.debug(f"Error in voice activity detector: {repr(e)}")
                     except asyncio.exceptions.TimeoutError:
                         break
                     num_channels = 1
@@ -206,6 +225,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 num_buffer_utterances = 1
                 time_silent = 0
                 transcript_cursor = 0.0
+                sent_vad_transcription = False
                 while not self._ended:
                     try:
                         msg = await ws.recv()
@@ -258,6 +278,22 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         buffer_avg_confidence = 0
                         num_buffer_utterances = 1
                         time_silent = 0
+                        sent_vad_transcription = False
+                    elif (
+                        data["duration"] > self.transcriber_config.minimum_speaking_duration_to_interrupt
+                        and len(top_choice["words"])> self.transcriber_config.interruption_word_threshold
+                        and not sent_vad_transcription
+                    ):
+                        self.logger.debug("Sending VAD transcription")
+                        self.output_queue.put_nowait(
+                            Transcription(
+                                message=HUMAN_ACTIVITY_DETECTED,
+                                confidence=1,
+                                is_final=False,
+                            )
+                        )
+                        sent_vad_transcription = True
+                        time_silent = self.calculate_time_silent(data)
                     elif top_choice["transcript"] and confidence > 0.0:
                         self.output_queue.put_nowait(
                             Transcription(

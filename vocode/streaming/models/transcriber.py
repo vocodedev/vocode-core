@@ -12,6 +12,7 @@ from vocode.streaming.telephony.constants import (
 )
 from .audio_encoding import AudioEncoding
 from .model import TypedModel
+from vocode.streaming.voice_activity_detection import BaseVoiceActivityDetectorConfig
 
 AZURE_DEFAULT_LANGUAGE = "en-US"
 
@@ -55,8 +56,10 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     downsampling: Optional[int] = None
     min_interrupt_confidence: Optional[float] = None
     mute_during_speech: bool = False
-    # maximum number of words spoken before checking for interruption
-    interruption_threshold: int = 2 
+    # minimum number of words spoken before checking for interruption
+    interruption_word_threshold: int = 2 
+    voice_activity_detector_config: Optional[BaseVoiceActivityDetectorConfig] = None
+    minimum_speaking_duration_to_interrupt: float = 0
 
     @validator("min_interrupt_confidence")
     def min_interrupt_confidence_must_be_between_0_and_1(cls, v):

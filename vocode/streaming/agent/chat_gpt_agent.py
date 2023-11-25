@@ -52,7 +52,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 api_version=agent_config.azure_params.api_version,
                 azure_endpoint=getenv("AZURE_OPENAI_API_BASE")
             )
-            self.logger.debug("After declaring Azure OpenAI")
         elif getenv("OPENAI_API_KEY"):
             self.aclient = AsyncOpenAI()
             self.client = OpenAI()

@@ -92,7 +92,6 @@ async def load_index_cache(
         preloaded_vectors[selected_voice.id] = vecs
     
     await vector_db.tear_down()
-    print(f"Preloading {preloaded_vectors_count} items from index")
     logger.debug(f"Preloading {preloaded_vectors_count} items from index")
    
     async def load_from_s3_and_save_task(

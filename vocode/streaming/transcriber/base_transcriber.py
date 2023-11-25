@@ -2,17 +2,21 @@ from __future__ import annotations
 
 import asyncio
 import audioop
+import logging
 from opentelemetry import trace, metrics
-from typing import Generic, TypeVar, Union
+from typing import Generic, TypeVar, Union, Optional
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.model import BaseModel
 
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
+from vocode.streaming.voice_activity_detection import BaseVoiceActivityDetector
+from vocode.streaming.voice_activity_detection.factory import VoiceActivityDetectorFactory
 
 
 tracer = trace.get_tracer(__name__)
 meter = metrics.get_meter(__name__)
+HUMAN_ACTIVITY_DETECTED = "human_activity_detected"
 
 class Transcription(BaseModel):
     message: str
@@ -56,11 +60,20 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
     def __init__(
         self,
         transcriber_config: TranscriberConfigType,
+        logger: Optional[logging.Logger] = None,
     ):
+        self.logger = logger or logging.getLogger(__name__)
+
         self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.output_queue: asyncio.Queue[Transcription] = asyncio.Queue()
         AsyncWorker.__init__(self, self.input_queue, self.output_queue)
         AbstractTranscriber.__init__(self, transcriber_config)
+
+        vad_factory = VoiceActivityDetectorFactory()
+        self.voice_activity_detector: Optional[BaseVoiceActivityDetector] = None
+        if transcriber_config.voice_activity_detector_config:
+            self.voice_activity_detector = vad_factory.create_voice_activity_detector(
+                transcriber_config.voice_activity_detector_config, self.logger)
 
     async def _run_loop(self):
         raise NotImplementedError

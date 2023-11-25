@@ -62,6 +62,7 @@ from vocode.streaming.utils import (create_conversation_id,
 from vocode.streaming.transcriber.base_transcriber import (
     Transcription,
     BaseTranscriber,
+    HUMAN_ACTIVITY_DETECTED
 )
 from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
@@ -126,6 +127,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
+            self.conversation.current_transcription_is_interrupt = transcription.is_interrupt
             if transcription.message.strip() == "":
                 self.conversation.logger.info("Ignoring empty transcription")
                 return
@@ -153,8 +155,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     if self.conversation.current_transcription_is_interrupt:
                         self.conversation.logger.debug("sending interrupt")
                     self.conversation.logger.debug("Human started speaking")
+
+                    # TODO: change from filler to back tracking audio
+                    self.conversation.random_audio_manager.sync_send_filler_audio(asyncio.Event())
                 else:    
-                    self.conversation.logger.debug(f"Ignoring human utterance - didn't trigger interruption: {transcription.message}")
+                    self.conversation.logger.debug(f"Ignoring human utterance - text didn't trigger interruption: {transcription.message}")
                     return
             # ignore low confidence trancriptions if bot is speaking
             if transcription.confidence < self.conversation.transcriber.get_transcriber_config().min_interrupt_confidence:
@@ -169,6 +174,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
+                detected_human_voice = (
+                    # self.conversation.transcriber.transcriber_config.voice_activity_detector_config and
+                    transcription.message == HUMAN_ACTIVITY_DETECTED
+                )
+                if detected_human_voice:
+                    return
                 # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
                 event = self.interruptible_event_factory.create_interruptible_event(
                     TranscriptionAgentInput(
@@ -570,14 +581,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent_responses_worker.cancel_current_task()
         return num_interrupts > 0
 
-    def is_interrupt(self, transcription: Transcription):        
+    def is_interrupt(self, transcription: Transcription) -> bool:  
+        detected_human_voice = (
+            # self.transcriber.transcriber_config.voice_activity_detector_config and
+            transcription.message == HUMAN_ACTIVITY_DETECTED
+        )   
+        if detected_human_voice:
+            return True   
         # guarantee minimum confidence in transcription
         if transcription.confidence >= (
             self.transcriber.get_transcriber_config().min_interrupt_confidence or 0
         ):
             message = transcription.message.lower().strip()
             words = message.split()
-            interruption_threshold = self.transcriber.get_transcriber_config().interruption_threshold
+            interruption_threshold = self.transcriber.get_transcriber_config().interruption_word_threshold
             # Verbal cues that indicate no interruption
             verbal_cues = ["uh", "um", "mhm", 
                            "yes", "yeah", "okay", 
