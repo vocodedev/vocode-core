@@ -51,11 +51,9 @@ FILLER_PHRASES = [BaseMessage(text=filler)
                   for filler in FILLERS]
 
 FOLLOW_UP_PHRASES = [
-    BaseMessage(text="You were saying..."),
-    BaseMessage(text="Go on..."),
-    BaseMessage(text="Please continue..."),
-    BaseMessage(text="I'm listening..."),
-    BaseMessage(text="I'm all ears..."),
+    BaseMessage(text="Hello?"),
+    BaseMessage(text="Can you hear me?"),
+    BaseMessage(text="Are you with me?"),
     BaseMessage(text="Are you still with me?"),
 ]
 
@@ -192,7 +190,14 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
     async def set_follow_up_audios(self, follow_up_audio_config: FollowUpAudioConfig):
         self.logger.debug(f"Setting follow up audios...")
         if follow_up_audio_config:
-            self.follow_up_audios = await self.get_phrase_follow_up_audios()
+            if follow_up_audio_config.follow_up_phrases:
+                self.follow_up_audios = await self.get_phrase_follow_up_audios(
+                    follow_up_audio_config.follow_up_phrases
+                )
+            else:
+                self.follow_up_audios = await self.get_phrase_follow_up_audios()
+        
+
 
     async def get_phrase_filler_audios(self) -> Dict[str, List[FillerAudio]]:
         return []

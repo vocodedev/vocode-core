@@ -56,6 +56,7 @@ class FillerAudioConfig(BaseModel):
 
 class FollowUpAudioConfig(BaseModel):
     silence_threshold_seconds: float = FOLLOW_UP_DEFAULT_SILENCE_THRESHOLD_SECONDS
+    follow_up_phrases: Optional[List[BaseMessage]] = None
 
 
 class WebhookConfig(BaseModel):

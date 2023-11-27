@@ -169,9 +169,15 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             
         return filler_phrase_audios
     
-    async def get_phrase_follow_up_audios(self) -> List[FillerAudio]:
+    async def get_phrase_follow_up_audios(
+            self,
+            follow_up_phrases: List[BaseMessage] = FOLLOW_UP_PHRASES
+        ) -> List[FillerAudio]:
         self.logger.debug("generating follow up audios")
-        follow_up_audios = await self.get_audios_from_messages(FOLLOW_UP_PHRASES, self.base_follow_up_audio_path)
+        follow_up_audios = await self.get_audios_from_messages(
+            follow_up_phrases, 
+            self.base_follow_up_audio_path
+        )
         return follow_up_audios
 
 
