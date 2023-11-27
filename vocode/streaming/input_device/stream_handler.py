@@ -26,6 +26,7 @@ class AudioStreamHandler:
             self.rnnoise_wrapper = None
 
     def receive_audio(self, chunk: bytes):
+        # TODO: this might be blocking as hell(even though it is fast). Consider using a thread?
         prepared_chunk = prepare_audio_for_rnnnoise(
             input_audio=chunk,
             input_sample_rate=self.transcriber.transcriber_config.input_device_config.sampling_rate,
@@ -58,6 +59,8 @@ class AudioStreamHandler:
             wf.writeframes(b''.join(audio_buffer))
 
     def save_debug_audios(self):
+        # TODO: consider not calling it buffers and just save the audio without emptying.
+        # TODO consider async writing.
         output_path = os.environ.get("DEBUG_AUDIO_PATH", None)
         if not output_path:
             self.logger.info("DEBUG_AUDIO_PATH not set, not saving debug audios.")
