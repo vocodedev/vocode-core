@@ -4,6 +4,7 @@ import wave
 
 from vocode.streaming.input_device.rnn_noise import RNNoiseWrapper
 from vocode.streaming.transcriber import BaseTranscriber
+from vocode.streaming.utils import prepare_audio_for_rnnnoise
 
 
 class AudioStreamHandler:
@@ -25,9 +26,14 @@ class AudioStreamHandler:
             self.rnnoise_wrapper = None
 
     def receive_audio(self, chunk: bytes):
-        self.frame_buffer.extend(chunk)
+        prepared_chunk = prepare_audio_for_rnnnoise(
+            input_audio=chunk,
+            input_sample_rate=self.transcriber.transcriber_config.input_device_config.sampling_rate,
+            input_encoding=self.transcriber.transcriber_config.input_device_config.audio_encoding.value,
+        )
+        self.frame_buffer.extend(prepared_chunk)
         # Optionally log the size of the incoming audio chunk
-        self.logger.debug(f"Received audio chunk of size: {len(chunk)}")
+        self.logger.debug(f"Received audio chunk of size: {len(prepared_chunk)}")
 
         while len(self.frame_buffer) >= self.FRAME_SIZE * 2:  # 2 bytes per 16-bit sample
             # Extract a full frame from the buffer
@@ -38,7 +44,6 @@ class AudioStreamHandler:
             if self.rnnoise_wrapper:
                 # Process the frame
                 frame, vad_prob = self.rnnoise_wrapper.process_frame(frame)
-                # Log VAD probability
                 # Store the denoised frame
                 self.audio_buffer_denoised.append(frame)
 

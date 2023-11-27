@@ -1,13 +1,14 @@
 import asyncio
 import audioop
 import secrets
-from typing import Any
 import wave
 from string import ascii_letters, digits
+from typing import Any
 
 from ..models.audio_encoding import AudioEncoding
 
 custom_alphabet = ascii_letters + digits + ".-_"
+
 
 def create_loop_in_thread(loop: asyncio.AbstractEventLoop, long_running_task=None):
     asyncio.set_event_loop(loop)
@@ -17,12 +18,30 @@ def create_loop_in_thread(loop: asyncio.AbstractEventLoop, long_running_task=Non
         loop.run_forever()
 
 
+def prepare_audio_for_rnnnoise(
+        input_audio: bytes,
+        input_sample_rate: int,
+        input_encoding: str
+):
+    # Decode mu-law to PCM if necessary
+    if input_encoding == AudioEncoding.MULAW:
+        input_audio = audioop.ulaw2lin(input_audio, 2)
+
+    # Resample the audio to 48kHz if necessary
+    if input_sample_rate != 48000:
+        input_audio, _ = audioop.ratecv(
+            input_audio, 2, 1, input_sample_rate, 48000, None
+        )
+
+    return input_audio
+
+
 def convert_linear_audio(
-    raw_wav: bytes,
-    input_sample_rate=24000,
-    output_sample_rate=8000,
-    output_encoding=AudioEncoding.LINEAR16,
-    output_sample_width=2,
+        raw_wav: bytes,
+        input_sample_rate=24000,
+        output_sample_rate=8000,
+        output_encoding=AudioEncoding.LINEAR16,
+        output_sample_width=2,
 ):
     # downsample
     if input_sample_rate != output_sample_rate:
@@ -37,9 +56,9 @@ def convert_linear_audio(
 
 
 def convert_wav(
-    file: Any,
-    output_sample_rate=8000,
-    output_encoding=AudioEncoding.LINEAR16,
+        file: Any,
+        output_sample_rate=8000,
+        output_encoding=AudioEncoding.LINEAR16,
 ):
     with wave.open(file, "rb") as wav:
         raw_wav = wav.readframes(wav.getnframes())
@@ -63,6 +82,7 @@ def get_chunk_size_per_second(audio_encoding: AudioEncoding, sampling_rate: int)
 
 def create_conversation_id() -> str:
     return secrets.token_urlsafe(16)
+
 
 def remove_non_letters_digits(text):
     return ''.join(i for i in text if i in custom_alphabet)
