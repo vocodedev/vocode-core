@@ -50,13 +50,12 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
         )
 
         options = self.pyht.TTSOptions(voice=self.synthesizer_config.voice_id)
-        options.sample_rate = self.synthesizer_config.sample_rate
+        options.sample_rate = self.synthesizer_config.sampling_rate
         options.quality = self.synthesizer_config.quality
         options.temperature = self.synthesizer_config.temperature
         options.top_p = self.synthesizer_config.top_p
         options.speed = self.synthesizer_config.speed
 
-        
         print(message.text)
         # for chunk in self.client.tts(message.text, options):
         #     print(chunk)
