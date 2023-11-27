@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import validator
+from pydantic import validator, BaseModel
 
 from vocode.streaming.input_device.base_input_device import BaseInputDevice
 from vocode.streaming.models.client_backend import InputAudioConfig
@@ -47,6 +47,11 @@ class PunctuationEndpointingConfig(
     time_cutoff_seconds: float = 0.4
 
 
+class InputDeviceConfig(BaseModel):
+    sampling_rate: int
+    audio_encoding: AudioEncoding
+
+
 class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     sampling_rate: int
     audio_encoding: AudioEncoding
@@ -55,7 +60,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     downsampling: Optional[int] = None
     min_interrupt_confidence: Optional[float] = None
     mute_during_speech: bool = False
-
+    input_device_config: Optional[InputDeviceConfig] = None
     denoise: bool = False
 
     @validator("min_interrupt_confidence")
@@ -63,6 +68,27 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
         if v is not None and (v < 0 or v > 1):
             raise ValueError("must be between 0 and 1")
         return v
+
+    @classmethod
+    def from_input_device_config_rnn(
+            cls,
+            input_device: BaseInputDevice,
+            endpointing_config: Optional[EndpointingConfig] = None,
+            **kwargs,
+    ):
+        return cls(
+            sampling_rate=48000,
+            audio_encoding=AudioEncoding.LINEAR16,  # This is for rnn 48k and 16bit linear pcm
+            chunk_size=input_device.chunk_size,
+            endpointing_config=endpointing_config,
+            denoise=True,
+            # this is used for mapping the input device to the transcriber
+            input_device_config=InputDeviceConfig(
+                sampling_rate=input_device.sampling_rate,
+                audio_encoding=input_device.audio_encoding
+            ),
+            **kwargs,
+        )
 
     @classmethod
     def from_input_device(
