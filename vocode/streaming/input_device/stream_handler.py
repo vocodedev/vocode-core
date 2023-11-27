@@ -17,7 +17,6 @@ class AudioStreamHandler:
         self.transcriber = transcriber
         self.audio_buffer_denoised = []
         self.frame_buffer = bytearray()
-        transcriber.transcriber_config.denoise = True
         if transcriber.transcriber_config.denoise:
             self.logger.info("Using RNNoise for denoising.")
             self.rnnoise_wrapper = RNNoiseWrapper()
@@ -27,29 +26,32 @@ class AudioStreamHandler:
 
     def receive_audio(self, chunk: bytes):
         # TODO: this might be blocking as hell(even though it is fast). Consider using a thread?
-        prepared_chunk = prepare_audio_for_rnnnoise(
-            input_audio=chunk,
-            input_sample_rate=self.transcriber.transcriber_config.input_device_config.sampling_rate,
-            input_encoding=self.transcriber.transcriber_config.input_device_config.audio_encoding.value,
-        )
-        self.frame_buffer.extend(prepared_chunk)
-        # Optionally log the size of the incoming audio chunk
-        self.logger.debug(f"Received audio chunk of size: {len(prepared_chunk)}")
+        if self.rnnoise_wrapper is None:
+            self.transcriber.send_audio(chunk)
+        else:
+            prepared_chunk = prepare_audio_for_rnnnoise(
+                input_audio=chunk,
+                input_sample_rate=self.transcriber.transcriber_config.input_device_config.sampling_rate,
+                input_encoding=self.transcriber.transcriber_config.input_device_config.audio_encoding.value,
+            )
+            self.frame_buffer.extend(prepared_chunk)
+            # Optionally log the size of the incoming audio chunk
+            self.logger.debug(f"Received audio chunk of size: {len(prepared_chunk)}")
 
-        while len(self.frame_buffer) >= self.FRAME_SIZE * 2:  # 2 bytes per 16-bit sample
-            # Extract a full frame from the buffer
-            frame = self.frame_buffer[:self.FRAME_SIZE * 2]
-            self.audio_buffer.append(frame)
-            del self.frame_buffer[:self.FRAME_SIZE * 2]
+            while len(self.frame_buffer) >= self.FRAME_SIZE * 2:  # 2 bytes per 16-bit sample
+                # Extract a full frame from the buffer
+                frame = self.frame_buffer[:self.FRAME_SIZE * 2]
+                self.audio_buffer.append(frame)
+                del self.frame_buffer[:self.FRAME_SIZE * 2]
 
-            if self.rnnoise_wrapper:
-                # Process the frame
-                frame, vad_prob = self.rnnoise_wrapper.process_frame(frame)
-                # Store the denoised frame
-                self.audio_buffer_denoised.append(frame)
+                if self.rnnoise_wrapper:
+                    # Process the frame
+                    frame, vad_prob = self.rnnoise_wrapper.process_frame(frame)
+                    # Store the denoised frame
+                    self.audio_buffer_denoised.append(frame)
 
-            # Store the frame (denoised or original) and send it for transcription
-            self.transcriber.send_audio(frame)
+                # Store the frame (denoised or original) and send it for transcription
+                self.transcriber.send_audio(frame)
 
     def __save_audio(self, audio_buffer, output_path):
         with wave.open(output_path, 'wb') as wf:

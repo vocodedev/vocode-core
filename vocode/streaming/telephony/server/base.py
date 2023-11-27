@@ -140,7 +140,7 @@ class TelephonyServer:
         ) -> Response:
             dialog_state = await self.config_manager.get_inbound_dialog_state(twilio_from)
             if dialog_state is None:
-                return self.get_reroute_twiml(number_to_dial="+420778042735")  # Ondra`s number, parametrize?
+                return self.get_reroute_twiml(number_to_dial="+420792212893")  # Ondra`s number, parametrize?
             inbound_call_config.agent_config.dialog_state = dialog_state
             initial_message = dialog_state.get(
                 "initial_message_NR_inbound") or inbound_call_config.agent_config.initial_message
