@@ -433,7 +433,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.call_initial_delay = 1.5
         self.output_device = output_device
         self.transcriber = transcriber
-        self.audio_stream_handler = AudioStreamHandler(transcriber)
+        self.audio_stream_handler = AudioStreamHandler(conversation_id=self.id, transcriber=transcriber)
         self.agent = agent
         self.synthesizer = synthesizer
         self.synthesis_enabled = True
@@ -859,7 +859,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
         )
         self.logger.info("Saving audio")
-        self.audio_stream_handler.flush(f"{self.id}_final.wav")
+        self.audio_stream_handler.save_debug_audios()
         self.logger.info("audio saved")
         if self.redis_event_manger is not None:
             self.redis_event_manger.publish_event(

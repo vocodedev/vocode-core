@@ -9,7 +9,8 @@ from vocode.streaming.transcriber import BaseTranscriber
 class AudioStreamHandler:
     FRAME_SIZE = 480
 
-    def __init__(self, transcriber: BaseTranscriber):
+    def __init__(self, conversation_id: str, transcriber: BaseTranscriber):
+        self.conversation_id = conversation_id
         self.audio_buffer = []  # Buffer for storing audio chunks
         self.logger = logging.getLogger(__name__)  # Set up logging
         self.transcriber = transcriber
@@ -31,6 +32,7 @@ class AudioStreamHandler:
         while len(self.frame_buffer) >= self.FRAME_SIZE * 2:  # 2 bytes per 16-bit sample
             # Extract a full frame from the buffer
             frame = self.frame_buffer[:self.FRAME_SIZE * 2]
+            self.audio_buffer.append(frame)
             del self.frame_buffer[:self.FRAME_SIZE * 2]
 
             if self.rnnoise_wrapper:
@@ -41,7 +43,6 @@ class AudioStreamHandler:
                 self.audio_buffer_denoised.append(frame)
 
             # Store the frame (denoised or original) and send it for transcription
-            self.audio_buffer.append(frame)
             self.transcriber.send_audio(frame)
 
     def __save_audio(self, audio_buffer, output_path):
@@ -51,18 +52,25 @@ class AudioStreamHandler:
             wf.setframerate(48000)
             wf.writeframes(b''.join(audio_buffer))
 
-    def flush(self, output_path: str):
+    def save_debug_audios(self):
+        output_path = os.environ.get("DEBUG_AUDIO_PATH", None)
+        if not output_path:
+            self.logger.info("DEBUG_AUDIO_PATH not set, not saving debug audios.")
+            return
+        # if path does not exist, create it
+        if not os.path.exists(output_path):
+            os.mkdir(output_path)
         # Save the audio buffer to a file
-        self.__save_audio(self.audio_buffer, output_path + ".wav")
+        raw_output_path = output_path + f"{self.conversation_id}_raw.wav"
+        self.__save_audio(self.audio_buffer, raw_output_path)
         # Optionally log the flush action
-        full_path = os.path.abspath(output_path)
-        self.logger.info(f"Flushed audio buffer to {full_path}")
+        self.logger.info(f"Saved {raw_output_path}")
         # Clear the buffer after flushing
         self.audio_buffer = []
 
         # Save the denoised audio buffer to a file
         if len(self.audio_buffer_denoised) > 0:
-            self.__save_audio(self.audio_buffer_denoised, output_path + "_denoised.wav")
-            self.logger.info(f"Flushed audio for denoised.")
+            denoised_output_path = output_path + f"{self.conversation_id}_denoised.wav"
+            self.__save_audio(self.audio_buffer_denoised, denoised_output_path)
+            self.logger.info(f"Saved {denoised_output_path}.")
             self.audio_buffer_denoised = []
-
