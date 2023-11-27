@@ -66,7 +66,7 @@ class AudioStreamHandler:
         if not os.path.exists(output_path):
             os.mkdir(output_path)
         # Save the audio buffer to a file
-        raw_output_path = output_path + f"{self.conversation_id}_raw.wav"
+        raw_output_path = output_path + f"/{self.conversation_id}_raw.wav"
         self.__save_audio(self.audio_buffer, raw_output_path)
         # Optionally log the flush action
         self.logger.info(f"Saved {raw_output_path}")
@@ -75,7 +75,7 @@ class AudioStreamHandler:
 
         # Save the denoised audio buffer to a file
         if len(self.audio_buffer_denoised) > 0:
-            denoised_output_path = output_path + f"{self.conversation_id}_denoised.wav"
+            denoised_output_path = output_path + f"/{self.conversation_id}_denoised.wav"
             self.__save_audio(self.audio_buffer_denoised, denoised_output_path)
             self.logger.info(f"Saved {denoised_output_path}.")
             self.audio_buffer_denoised = []
