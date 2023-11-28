@@ -180,7 +180,7 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
     async def download_filler_audio_data(self, back_tracking_phrase):
         audio_data = b''
         options = self.create_options()
-        for chunk in self.client.tts(back_tracking_phrase, options):
+        for chunk in self.client.tts(back_tracking_phrase.text, options):
             audio_data += chunk
 
         return audio_data
