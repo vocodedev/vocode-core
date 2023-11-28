@@ -1,3 +1,4 @@
+import io
 import logging
 import os
 from collections import defaultdict
@@ -172,18 +173,14 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
             self.logger.debug(f"Generating cached audio for {phrase.text}")
             audio_data = await self.download_filler_audio_data(phrase)
 
-            audio_segment: AudioSegment = AudioSegment.from_mp3(
-                io.BytesIO(audio_data)  # type: ignore
-            )
-            audio_segment.export(filler_audio_path, format="wav")
-
+            with open(filler_audio_path, mode='bx') as f:
+                f.write(audio_data)
         return filler_audio_path
 
     async def download_filler_audio_data(self, back_tracking_phrase):
-
         audio_data = b''
         options = self.create_options()
         for chunk in self.client.tts(back_tracking_phrase, options):
             audio_data += chunk
 
-        return decode_mp3(audio_data)
+        return audio_data
