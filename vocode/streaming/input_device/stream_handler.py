@@ -35,8 +35,6 @@ class AudioStreamHandler:
                 input_encoding=self.transcriber.transcriber_config.input_device_config.audio_encoding.value,
             )
             self.frame_buffer.extend(prepared_chunk)
-            # Optionally log the size of the incoming audio chunk
-            self.logger.debug(f"Received audio chunk of size: {len(prepared_chunk)}")
 
             while len(self.frame_buffer) >= self.FRAME_SIZE * 2:  # 2 bytes per 16-bit sample
                 # Extract a full frame from the buffer
