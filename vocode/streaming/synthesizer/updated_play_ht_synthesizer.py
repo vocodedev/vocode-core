@@ -165,7 +165,7 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
                 str(self.synthesizer_config.type),
                 str(self.synthesizer_config.audio_encoding),
                 str(self.synthesizer_config.sampling_rate),
-                str(self.synthesizer_config.voice_id),
+                str(self.synthesizer_config.voice_id.replace("/", "_").replace(".", "_").replace(":", "_")),
             )
         )
         filler_audio_path = os.path.join(base_path, f"{cache_key}.wav")
