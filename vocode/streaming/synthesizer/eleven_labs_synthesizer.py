@@ -215,5 +215,5 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     raise Exception(
                         f"ElevenLabs API returned {response.status} status code"
                     )
-                audio_data = await response.read() 
+                audio_data = await response.read()
         return audio_data
