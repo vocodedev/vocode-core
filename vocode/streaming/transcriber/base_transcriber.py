@@ -100,6 +100,18 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
         raise NotImplementedError
 
     def send_audio(self, chunk):
+        if self.transcriber_config.voice_activity_detector_config:
+            try:
+                if self.voice_activity_detector.should_interrupt(chunk):
+                    self.output_queue.put_nowait(Transcription(
+                        message=HUMAN_ACTIVITY_DETECTED,
+                        confidence=1,
+                        is_final=True,
+                    ))
+                    self.unmute()
+            except Exception as e:
+                self.logger.debug(f"Error in voice activity detector: {repr(e)}")
+
         if not self.is_muted:
             self.consume_nonblocking(chunk)
         else:
