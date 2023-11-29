@@ -59,26 +59,27 @@ class AudioStreamHandler:
             wf.writeframes(b''.join(audio_buffer))
 
     def save_debug_audios(self):
-        # TODO: consider not calling it buffers and just save the audio without emptying.
-        # TODO consider async writing.
         output_path = os.environ.get("DEBUG_AUDIO_PATH", None)
         if not output_path:
             self.logger.info("DEBUG_AUDIO_PATH not set, not saving debug audios.")
             return
-        # if path does not exist, create it
+
         if not os.path.exists(output_path):
             os.mkdir(output_path)
-        # Save the audio buffer to a file
-        raw_output_path = output_path + f"/{self.conversation_id}_raw.wav"
-        self.__save_audio(self.audio_buffer, raw_output_path)
-        # Optionally log the flush action
-        self.logger.info(f"Saved {raw_output_path}")
-        # Clear the buffer after flushing
-        self.audio_buffer = []
 
-        # Save the denoised audio buffer to a file
+        # Save the audio buffer to a file if it doesn't exist
+        raw_output_path = output_path + f"/{self.conversation_id}_raw.wav"
+        if not os.path.exists(raw_output_path):
+            self.__save_audio(self.audio_buffer, raw_output_path)
+            self.logger.info(f"Saved {raw_output_path}")
+        else:
+            self.logger.info(f"File {raw_output_path} already exists, not overwriting.")
+
+        # Save the denoised audio buffer to a file if it doesn't exist
         if len(self.audio_buffer_denoised) > 0:
             denoised_output_path = output_path + f"/{self.conversation_id}_denoised.wav"
-            self.__save_audio(self.audio_buffer_denoised, denoised_output_path)
-            self.logger.info(f"Saved {denoised_output_path}.")
-            self.audio_buffer_denoised = []
+            if not os.path.exists(denoised_output_path):
+                self.__save_audio(self.audio_buffer_denoised, denoised_output_path)
+                self.logger.info(f"Saved {denoised_output_path}.")
+            else:
+                self.logger.info(f"File {denoised_output_path} already exists, not overwriting.")
