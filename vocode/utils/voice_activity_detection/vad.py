@@ -54,6 +54,7 @@ class BaseVoiceActivityDetector(Generic[VoiceActivityDetectorConfigType]):
         if now - self.speach_start_timestamp > self.config.min_mute_duration and not is_voice_active:
             self.speach_start_timestamp = None
             self.is_interrupted = False
+            return False
 
         if (now - self.speach_start_timestamp) > self.config.min_activity_duration:
             speach_ratio = self.activity_state[True] / (self.activity_state[True] + self.activity_state[False])
@@ -65,5 +66,3 @@ class BaseVoiceActivityDetector(Generic[VoiceActivityDetectorConfigType]):
             else:
                 self.is_interrupted = False
                 self.speach_start_timestamp = None
-
-
