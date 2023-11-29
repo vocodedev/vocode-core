@@ -49,7 +49,7 @@ class BaseVoiceActivityDetector(Generic[VoiceActivityDetectorConfigType]):
 
         if self.speach_start_timestamp is None:
             return False
-
+        print(f"now: {now}, speach_start_timestamp: {self.speach_start_timestamp}, {self.activity_state}")
         if (now - self.speach_start_timestamp) > self.config.min_activity_duration:
             speach_ratio = self.activity_state[True] / (self.activity_state[True] + self.activity_state[False])
             if speach_ratio > self.config.speach_ratio:

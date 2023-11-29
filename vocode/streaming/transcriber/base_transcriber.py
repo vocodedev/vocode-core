@@ -108,6 +108,7 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
                         confidence=1,
                         is_final=True,
                     ))
+                    self.logger.debug("Un-muting due to voice activity detection")
                     self.unmute()
             except Exception as e:
                 self.logger.debug(f"Error in voice activity detector: {repr(e)}")
