@@ -209,6 +209,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                                         confidence=1,
                                         is_final=True,
                                     ))
+                                    self.unmute()
                             except Exception as e:
                                 self.logger.debug(f"Error in voice activity detector: {repr(e)}")
                     except asyncio.exceptions.TimeoutError:
