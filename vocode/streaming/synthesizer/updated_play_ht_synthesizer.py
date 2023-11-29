@@ -1,11 +1,9 @@
-import io
 import logging
 import os
 from collections import defaultdict
 from typing import Optional, Dict, List
 
 from aiohttp import ClientSession
-from pydub import AudioSegment
 
 from vocode import getenv
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
@@ -17,7 +15,6 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     tracer, FillerAudio, FILLER_PHRASES,
 )
 from vocode.streaming.utils import convert_wav
-from vocode.streaming.utils.mp3_helper import decode_mp3
 
 
 class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
