@@ -91,12 +91,12 @@ If you enabled call recording, you can download the call recording file.
 
 <CodeGroup>
 ```python Python
-vocode_client.calls.recording(id="CALL_ID")
+vocode_client.calls.get_recording(id="CALL_ID")
 ```
 
 ```javascript TypeScript
 const calls = await vocode.calls.listCalls();
-const recording = await vocode.calls.recording({ id: calls[0].id });
+const recording = await vocode.calls.get_recording({ id: calls[0].id });
 ```
 
 ```curl cURL
