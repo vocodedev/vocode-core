@@ -128,9 +128,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
             self.conversation.current_transcription_is_interrupt = transcription.is_interrupt
+            self.conversation.logger.debug(f"Stopping random audios")
+            self.conversation.random_audio_manager.stop_all_audios()
+
             if transcription.message.strip() == "":
                 self.conversation.logger.info("Ignoring empty transcription")
                 return
+            if transcription.message == HUMAN_ACTIVITY_DETECTED:
+                self.conversation.logger.info("Got transcription: Human activity detected")
+                
             if transcription.is_final:
                 self.conversation.logger.debug(
                     "Got transcription: {}, confidence: {}".format(
@@ -253,9 +259,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     item.agent_response_tracker.set()
                     await self.conversation.terminate()
                     return
-                
-                self.conversation.random_audio_manager.stop_all_audios()
-                
+                               
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
                 )
@@ -302,6 +306,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             item: InterruptibleAgentResponseEvent[Tuple[BaseMessage, SynthesisResult]],
         ):
             try:
+                self.conversation.random_audio_manager.stop_all_audios()
                 message, synthesis_result = item.payload
                 # create an empty transcript message and attach it to the transcript
                 transcript_message = Message(
@@ -579,11 +584,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 break
         self.agent.cancel_current_task()
         self.agent_responses_worker.cancel_current_task()
+        self.random_audio_manager.stop_all_audios()
         return num_interrupts > 0
 
     def is_interrupt(self, transcription: Transcription) -> bool:  
         detected_human_voice = (
-            # self.transcriber.transcriber_config.voice_activity_detector_config and
             transcription.message == HUMAN_ACTIVITY_DETECTED
         )   
         if detected_human_voice:

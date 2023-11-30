@@ -27,6 +27,8 @@ from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.vector_db.factory import VectorDBFactory
 from vocode.streaming.agent.utils import replace_map_symbols
 
+TIMEOUT_SECONDS = 5
+TIMEOUT_SECONDS_BACKUP = 10
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def __init__(
         self,
@@ -41,20 +43,41 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             action_factory=action_factory, 
             logger=logger
         )
+        self.aclient = None
+        self.client = None
+        self.aclient_backup = None
+        self.client_backup = None
+        self.use_backup: bool = False 
+        self.timeout_seconds = (self.agent_config.timeout_seconds 
+                                if self.agent_config.timeout_seconds
+                                else TIMEOUT_SECONDS)
 
         if agent_config.azure_params:
             self.logger.debug("Using Azure OpenAI")
             self.aclient = AsyncAzureOpenAI(
                 api_version=agent_config.azure_params.api_version,
-                azure_endpoint=getenv("AZURE_OPENAI_API_BASE")
+                azure_endpoint=getenv("AZURE_OPENAI_API_BASE"),
+                timeout=self.timeout_seconds
             )
             self.client = AzureOpenAI(
                 api_version=agent_config.azure_params.api_version,
-                azure_endpoint=getenv("AZURE_OPENAI_API_BASE")
+                azure_endpoint=getenv("AZURE_OPENAI_API_BASE"),
+                timeout=self.timeout_seconds,
             )
+            if getenv("OPENAI_API_KEY"):
+                self.aclient_backup = AsyncOpenAI(
+                    timeout=TIMEOUT_SECONDS_BACKUP
+                )
+                self.client_backup = OpenAI(
+                    timeout=TIMEOUT_SECONDS_BACKUP
+                )
         elif getenv("OPENAI_API_KEY"):
-            self.aclient = AsyncOpenAI()
-            self.client = OpenAI()
+            self.aclient = AsyncOpenAI(
+                timeout=self.timeout_seconds
+            )
+            self.client = OpenAI(
+                timeout=self.timeout_seconds
+            )
         else:
             raise ValueError("AZURE_OPENAI_API_KEY or OPENAI_API_KEY must be set in environment")
         self.first_response = (
@@ -79,7 +102,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         ]
 
     def get_chat_parameters(
-        self, messages: Optional[List] = None, use_functions: bool = True
+        self, 
+        messages: Optional[List] = None, 
+        use_functions: bool = True,
     ):
         assert self.transcript is not None
         messages = messages or format_openai_chat_messages_from_transcript(
@@ -92,6 +117,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             "messages": messages,
             "max_tokens": self.agent_config.max_tokens,
             "temperature": self.agent_config.temperature,
+            "stop": "\n",
+            "stream": True
         }
 
         if self.agent_config.azure_params is not None:
@@ -119,6 +146,34 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript
+
+    async def get_stream_response(
+            self, 
+            chat_parameters: dict,
+            max_retries: int = 3
+        ):
+        chat_parameters_backup = chat_parameters.copy()
+        chat_parameters_backup["model"] = self.agent_config.model_name
+        for attempt in range(max_retries+1):
+            self.logger.debug(f"Attempt {attempt} to get stream response")
+            if not self.use_backup:
+                try:
+                    stream = await self.aclient.chat.completions.create(**chat_parameters)
+                    return stream
+                except Exception as e1:
+                    self.use_backup = True
+                    self.logger.debug(f"Error in Azure OpenAIclient: {type(e1).__name__}")
+            if self.aclient_backup: 
+                self.logger.debug("Using backup client")
+                try:
+                    stream = await self.aclient_backup.chat.completions.create(**chat_parameters_backup)
+                    return stream
+                except Exception as e2:
+                    self.logger.error(f"Error in OpenAI backup client: {e2}")
+                    continue
+            else:
+                self.logger.error("No backup client available")
+                continue
 
     async def respond(
         self,
@@ -183,19 +238,28 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         else:
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
-        stream = await self.aclient.chat.completions.create(**chat_parameters)
-        async for message in collate_response_async(
-            openai_get_tokens(stream, logger=self.logger), 
-            get_functions=True,
-            logger=self.logger
-        ):
-            if isinstance(message, str):
-                if self.agent_config.character_replacement_map:
-                    message = replace_map_symbols(message, self.agent_config.character_replacement_map)
-                if self.agent_config.remove_exclamation:
-                    # replace ! by . because it sounds better when speaking.
-                    message = message.replace('!','.')
-                if self.agent_config.add_disfluencies:
-                    # artificially add disfluencies to message
-                    message = make_disfluency(message)
-            yield message, True
+        self.logger.debug(f"Starting LLM stream...")
+        stream = await self.get_stream_response(chat_parameters)
+        # stream = await self.aclient.chat.completions.create(**chat_parameters)
+        self.logger.debug(f"Got LLM stream...")
+        try:
+            async for message in collate_response_async(
+                openai_get_tokens(stream, logger=self.logger), 
+                get_functions=True,
+                logger=self.logger
+            ):
+                if isinstance(message, str):
+                    if self.agent_config.character_replacement_map:
+                        message = replace_map_symbols(message, self.agent_config.character_replacement_map)
+                    if self.agent_config.remove_exclamation:
+                        # replace ! by . because it sounds better when speaking.
+                        message = message.replace('!','.')
+                    if self.agent_config.add_disfluencies:
+                        # artificially add disfluencies to message
+                        message = make_disfluency(message)
+                yield message, True
+        except Exception as e:
+            self.logger.error(f"Error in LLM stream: {e}", exc_info=True)
+            if not self.use_backup:
+                self.logger.error("Switching to backup client")
+                self.use_backup = True

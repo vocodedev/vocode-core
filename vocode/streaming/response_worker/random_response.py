@@ -9,6 +9,12 @@ if TYPE_CHECKING:
     from vocode.streaming.streaming_conversation import StreamingConversation
 
 from vocode.streaming.models.agent import FollowUpAudioConfig, FillerAudioConfig
+from vocode.streaming.models.events import Sender
+from vocode.streaming.models.transcript import (
+    Message,
+    Transcript,
+    TranscriptCompleteEvent,
+)
 from vocode.streaming.synthesizer.base_synthesizer import FillerAudio
 from vocode.streaming.utils.worker import InterruptibleAgentResponseWorker, InterruptibleAgentResponseEvent
 
@@ -33,6 +39,7 @@ class RandomResponseAudioWorker(InterruptibleAgentResponseWorker):
         super().__init__(input_queue=input_queue)
         self.input_queue = input_queue
         self.conversation = conversation
+        self.interruptible_event_factory = self.conversation.interruptible_event_factory
         self.logger = self.conversation.logger
         self.current_filler_seconds_per_chunk: Optional[int] = None
         self.filler_audio_started_event: Optional[threading.Event] = None
@@ -55,8 +62,10 @@ class RandomResponseAudioWorker(InterruptibleAgentResponseWorker):
 
     def interrupt_current_random_audio(self):
         self.logger.debug(f"Interrupting filler audio: {self.name}")
-        return self.interruptible_event and self.interruptible_event.interrupt()
-
+        current_event_interrupted = self.interruptible_event and self.interruptible_event.interrupt()
+        self.cancel_current_task()
+        return current_event_interrupted
+    
     async def process(self, item: InterruptibleAgentResponseEvent[FillerAudio]):
         try:
             filler_audio = item.payload
@@ -75,6 +84,14 @@ class RandomResponseAudioWorker(InterruptibleAgentResponseWorker):
             if should_send_random_audio:
                 self.logger.debug("Sending random audio to output")
                 self.filler_audio_started_event = threading.Event()
+                transcript_message = Message(
+                    text=filler_audio.message.text,
+                    sender=Sender.BOT
+                )
+                self.conversation.transcript.add_message(
+                    message=transcript_message,
+                    conversation_id=self.conversation.id
+                )
                 await self.conversation.send_speech_to_output(
                     filler_audio.message.text,
                     filler_synthesis_result,
