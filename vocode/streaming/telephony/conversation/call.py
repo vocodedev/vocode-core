@@ -61,8 +61,6 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
             conversation_id=conversation_id,
         )
 
-        self.from_phone = from_phone
-        self.to_phone = to_phone
         self.base_url = base_url
         self.config_manager = config_manager
         super().__init__(
@@ -72,6 +70,8 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
             synthesizer_factory.create_synthesizer(synthesizer_config, logger=logger),
             noise_canceler_factory.create_noise_canceler(noise_canceling_config, logger=logger),
             call_reporter_factory.create_call_reporter(call_reporter_config, logger=logger),
+            from_phone=from_phone,
+            to_phone=to_phone,
             conversation_id=conversation_id,
             per_chunk_allowance_seconds=0.01,
             events_manager=events_manager,

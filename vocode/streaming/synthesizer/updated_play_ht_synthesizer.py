@@ -1,5 +1,7 @@
 import logging
-from typing import Optional
+import os
+from collections import defaultdict
+from typing import Optional, Dict, List
 
 from aiohttp import ClientSession
 
@@ -10,8 +12,9 @@ from vocode.streaming.models.synthesizer import UpdatedPlayHtSynthesizerConfig, 
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
-    tracer,
+    tracer, FillerAudio, FILLER_PHRASES,
 )
+from vocode.streaming.utils import convert_wav
 
 
 class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
@@ -49,14 +52,8 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
             f"synthesizer.{SynthesizerType.PLAY_HT.value.split('_', 1)[-1]}.create_total",
         )
 
-        options = self.pyht.TTSOptions(voice=self.synthesizer_config.voice_id)
-        options.sample_rate = self.synthesizer_config.sample_rate
-        options.quality = self.synthesizer_config.quality
-        options.temperature = self.synthesizer_config.temperature
-        options.top_p = self.synthesizer_config.top_p
-        options.speed = self.synthesizer_config.speed
+        options = self.create_options()
 
-        
         print(message.text)
         # for chunk in self.client.tts(message.text, options):
         #     print(chunk)
@@ -80,6 +77,15 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
                 message, seconds, self.words_per_minute
             ),
         )
+
+    def create_options(self):
+        options = self.pyht.TTSOptions(voice=self.synthesizer_config.voice_id)
+        options.sample_rate = self.synthesizer_config.sampling_rate
+        options.quality = self.synthesizer_config.quality
+        options.temperature = self.synthesizer_config.temperature
+        options.top_p = self.synthesizer_config.top_p
+        options.speed = self.synthesizer_config.speed
+        return options
 
     #     in_stream, out_stream = self.client.get_stream_pair(options)
     #     audio_task = asyncio.create_task(self.send_message_to_output(out_stream, message, chunk_size))
@@ -122,3 +128,56 @@ class UpdatedPlayHtSynthesizer(BaseSynthesizer[UpdatedPlayHtSynthesizerConfig]):
     async def async_response(response):
         for i in response:
             yield i
+
+    async def get_phrase_filler_audios(self) -> Dict[str, List[FillerAudio]]:
+        self.logger.debug("generating filler audios")
+        filler_phrase_audios = defaultdict(list)
+        for emotion, filler_phrases in FILLER_PHRASES.items():
+            audios = await self.get_audios_from_messages(filler_phrases, self.base_filler_audio_path)
+            filler_phrase_audios[emotion] = audios
+        return filler_phrase_audios
+
+    async def get_audios_from_messages(self, phrases: List[BaseMessage], base_path: str):
+        audios = []
+        for phrase in phrases:
+            if not os.path.exists(base_path):
+                os.makedirs(base_path)
+
+            audio_path = await self.get_audio_data_from_cache_or_download(phrase, base_path)
+            audio = FillerAudio(phrase,
+                                audio_data=convert_wav(
+                                    audio_path,
+                                    output_sample_rate=self.synthesizer_config.sampling_rate,
+                                    output_encoding=self.synthesizer_config.audio_encoding, ),
+                                synthesizer_config=self.synthesizer_config,
+                                is_interruptable=True,
+                                seconds_per_chunk=2, )
+            audios.append(audio)
+        return audios
+
+    async def get_audio_data_from_cache_or_download(self, phrase: BaseMessage, base_path: str) -> str:
+        cache_key = "-".join(
+            (
+                str(phrase.text),
+                str(self.synthesizer_config.type),
+                str(self.synthesizer_config.audio_encoding),
+                str(self.synthesizer_config.sampling_rate),
+                str(self.synthesizer_config.voice_id.replace("/", "_").replace(".", "_").replace(":", "_")),
+            )
+        )
+        filler_audio_path = os.path.join(base_path, f"{cache_key}.wav")
+        if not os.path.exists(filler_audio_path):
+            self.logger.debug(f"Generating cached audio for {phrase.text}")
+            audio_data = await self.download_filler_audio_data(phrase)
+
+            with open(filler_audio_path, mode='bx') as f:
+                f.write(audio_data)
+        return filler_audio_path
+
+    async def download_filler_audio_data(self, back_tracking_phrase):
+        audio_data = b''
+        options = self.create_options()
+        for chunk in self.client.tts(back_tracking_phrase.text, options):
+            audio_data += chunk
+
+        return audio_data

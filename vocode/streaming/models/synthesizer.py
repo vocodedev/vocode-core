@@ -178,7 +178,7 @@ PLAYHT_DEFAULT_VOICE_ID = "larry"
 class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.value):
     api_key: Optional[str] = None
     user_id: Optional[str] = None
-    speed: Optional[int] = None
+    speed: Optional[float] = None
     seed: Optional[int] = None
     temperature: Optional[int] = None
     voice_id: str = PLAYHT_DEFAULT_VOICE_ID
@@ -188,16 +188,13 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.va
 class UpdatedPlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.Updated_PLAY_HT.value):
     api_key: Optional[str] = None
     user_id: Optional[str] = None
-    speed: Optional[int] = None
+    speed: Optional[float] = None
     seed: Optional[int] = None
     temperature: Optional[int] = None
     voice_id: str = 's3://voice-cloning-zero-shot/d9ff78ba-d016-47f6-b0ef-dd630f59414e/female-cs/manifest.json'
     experimental_streaming: bool = False
-    sample_rate: int = 24000
     quality: str = "faster"
-    temperature: float = 0.5
     top_p: float = 0.5
-    speed: float = 1.0
 
 
 class CoquiTTSSynthesizerConfig(

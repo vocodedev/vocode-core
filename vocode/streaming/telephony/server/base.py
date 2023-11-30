@@ -9,6 +9,7 @@ from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import RecordingEvent
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.models.transcriber import TranscriberConfig
+from vocode.streaming.report.base_call_report import CallReporterConfig
 from vocode.streaming.synthesizer.factory import SynthesizerFactory
 from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
@@ -44,6 +45,7 @@ class AbstractInboundCallConfig(BaseModel, abc.ABC):
     agent_config: AgentConfig
     transcriber_config: Optional[TranscriberConfig] = None
     synthesizer_config: Optional[SynthesizerConfig] = None
+    call_reporter_config: Optional[CallReporterConfig] = None
 
 
 class TwilioInboundCallConfig(AbstractInboundCallConfig):
@@ -62,15 +64,15 @@ class VonageAnswerRequest(BaseModel):
 
 class TelephonyServer:
     def __init__(
-        self,
-        base_url: str,
-        config_manager: BaseConfigManager,
-        inbound_call_configs: List[AbstractInboundCallConfig] = [],
-        transcriber_factory: TranscriberFactory = TranscriberFactory(),
-        agent_factory: AgentFactory = AgentFactory(),
-        synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
-        events_manager: Optional[EventsManager] = None,
-        logger: Optional[logging.Logger] = None,
+            self,
+            base_url: str,
+            config_manager: BaseConfigManager,
+            inbound_call_configs: List[AbstractInboundCallConfig] = [],
+            transcriber_factory: TranscriberFactory = TranscriberFactory(),
+            agent_factory: AgentFactory = AgentFactory(),
+            synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+            events_manager: Optional[EventsManager] = None,
+            logger: Optional[logging.Logger] = None,
     ):
         self.base_url = base_url
         self.logger = logger or logging.getLogger(__name__)
@@ -101,32 +103,34 @@ class TelephonyServer:
 
         self.router.add_api_route("/recordings/{conversation_id}", self.recordings, methods=["GET", "POST"])
         self.logger.info(f"Set up recordings endpoint at https://{self.base_url}/recordings/{{conversation_id}}")
- 
+
     def events(self, request: Request):
         return Response()
 
     async def recordings(self, request: Request, conversation_id: str):
         recording_url = (await request.json())["recording_url"]
         if self.events_manager is not None and recording_url is not None:
-            self.events_manager.publish_event(RecordingEvent(recording_url=recording_url, conversation_id=conversation_id))
+            self.events_manager.publish_event(
+                RecordingEvent(recording_url=recording_url, conversation_id=conversation_id))
         return Response()
 
     def create_inbound_route(
-        self,
-        inbound_call_config: AbstractInboundCallConfig,
+            self,
+            inbound_call_config: AbstractInboundCallConfig,
     ):
         async def twilio_route(
-            twilio_config: TwilioConfig,
-            twilio_sid: str = Form(alias="CallSid"),
-            twilio_from: str = Form(alias="From"),
-            twilio_to: str = Form(alias="To"),
+                twilio_config: TwilioConfig,
+                twilio_sid: str = Form(alias="CallSid"),
+                twilio_from: str = Form(alias="From"),
+                twilio_to: str = Form(alias="To"),
         ) -> Response:
             call_config = TwilioCallConfig(
                 transcriber_config=inbound_call_config.transcriber_config
-                or TwilioCallConfig.default_transcriber_config(),
+                                   or TwilioCallConfig.default_transcriber_config(),
                 agent_config=inbound_call_config.agent_config,
                 synthesizer_config=inbound_call_config.synthesizer_config
-                or TwilioCallConfig.default_synthesizer_config(),
+                                   or TwilioCallConfig.default_synthesizer_config(),
+                call_reporter_config=inbound_call_config.call_reporter_config,
                 twilio_config=twilio_config,
                 twilio_sid=twilio_sid,
                 from_phone=twilio_from,
@@ -140,15 +144,16 @@ class TelephonyServer:
             )
 
         async def vonage_route(
-            vonage_config: VonageConfig, vonage_answer_request: VonageAnswerRequest
+                vonage_config: VonageConfig, vonage_answer_request: VonageAnswerRequest
         ):
             call_config = VonageCallConfig(
                 transcriber_config=inbound_call_config.transcriber_config
-                or VonageCallConfig.default_transcriber_config(),
+                                   or VonageCallConfig.default_transcriber_config(),
                 agent_config=inbound_call_config.agent_config,
                 synthesizer_config=inbound_call_config.synthesizer_config
-                or VonageCallConfig.default_synthesizer_config(),
+                                   or VonageCallConfig.default_synthesizer_config(),
                 vonage_config=vonage_config,
+                call_reporter_config=inbound_call_config.call_reporter_config,
                 vonage_uuid=vonage_answer_request.uuid,
                 to_phone=vonage_answer_request.from_,
                 from_phone=vonage_answer_request.to,

@@ -16,6 +16,7 @@ class VoiceActivityDetectorType(str, Enum):
 class BaseVoiceActivityDetectorConfig(TypedModel, type=VoiceActivityDetectorType.BASE.value):
     frame_rate: int = 16000
     min_activity_duration: timedelta = timedelta(milliseconds=400)
+    min_mute_duration: timedelta = timedelta(seconds=3)
     speach_ratio: float = .8
 
 
@@ -50,6 +51,11 @@ class BaseVoiceActivityDetector(Generic[VoiceActivityDetectorConfigType]):
         if self.speach_start_timestamp is None:
             return False
 
+        if now - self.speach_start_timestamp > self.config.min_mute_duration and not is_voice_active:
+            self.speach_start_timestamp = None
+            self.is_interrupted = False
+            return False
+
         if (now - self.speach_start_timestamp) > self.config.min_activity_duration:
             speach_ratio = self.activity_state[True] / (self.activity_state[True] + self.activity_state[False])
             if speach_ratio > self.config.speach_ratio:
@@ -60,4 +66,3 @@ class BaseVoiceActivityDetector(Generic[VoiceActivityDetectorConfigType]):
             else:
                 self.is_interrupted = False
                 self.speach_start_timestamp = None
-                return False
