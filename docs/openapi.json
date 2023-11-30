@@ -1506,6 +1506,13 @@
             "type": "number",
             "title": "Initial Message Delay",
             "default": 0.0
+          },
+          "openai_model_name_override": {
+            "type": "string",
+            "title": "Openai Model Name Override"
+          },
+          "openai_account_connection": {
+            "$ref": "#/components/schemas/OpenAIAccountConnection"
           }
         },
         "type": "object",
@@ -1619,6 +1626,17 @@
             "type": "number",
             "title": "Initial Message Delay",
             "default": 0.0
+          },
+          "openai_model_name_override": {
+            "type": "string",
+            "title": "Openai Model Name Override"
+          },
+          "openai_account_connection": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/OpenAIAccountConnection" },
+              { "type": "string", "format": "uuid" }
+            ],
+            "title": "Openai Account Connection"
           }
         },
         "type": "object",
@@ -1759,6 +1777,21 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Initial Message Delay"
+          },
+          "openai_model_name_override": {
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Openai Model Name Override"
+          },
+          "openai_account_connection": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/OpenAIAccountConnection" },
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Openai Account Connection"
           }
         },
         "type": "object",
@@ -1912,6 +1945,9 @@
           "run_do_not_call_detection": {
             "type": "boolean",
             "title": "Run Do Not Call Detection"
+          },
+          "telephony_account_connection": {
+            "$ref": "#/components/schemas/TwilioAccountConnection"
           }
         },
         "type": "object",
@@ -2054,6 +2090,17 @@
             "type": "number",
             "title": "Initial Message Delay",
             "default": 0.0
+          },
+          "openai_model_name_override": {
+            "type": "string",
+            "title": "Openai Model Name Override"
+          },
+          "openai_account_connection": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/OpenAIAccountConnection" },
+              { "type": "string", "format": "uuid" }
+            ],
+            "title": "Openai Account Connection"
           }
         },
         "type": "object",
@@ -2416,6 +2463,17 @@
             "type": "number",
             "title": "Initial Message Delay",
             "default": 0.0
+          },
+          "openai_model_name_override": {
+            "type": "string",
+            "title": "Openai Model Name Override"
+          },
+          "openai_account_connection": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/OpenAIAccountConnection" },
+              { "type": "string", "format": "uuid" }
+            ],
+            "title": "Openai Account Connection"
           }
         },
         "type": "object",
@@ -2487,6 +2545,13 @@
           "run_do_not_call_detection": {
             "type": "boolean",
             "title": "Run Do Not Call Detection"
+          },
+          "telephony_account_connection": {
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/TwilioAccountConnection" }
+            ],
+            "title": "Telephony Account Connection"
           }
         },
         "type": "object",
@@ -2561,6 +2626,29 @@
         "type": "object",
         "required": ["id", "user_id"],
         "title": "NormalizedPrompt"
+      },
+      "OpenAIAccountConnection": {
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "title": "Id" },
+          "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
+          "type": {
+            "type": "string",
+            "enum": ["account_connection_openai"],
+            "title": "Type"
+          },
+          "credentials": { "$ref": "#/components/schemas/OpenAICredentials" }
+        },
+        "type": "object",
+        "required": ["id", "user_id", "type", "credentials"],
+        "title": "OpenAIAccountConnection"
+      },
+      "OpenAICredentials": {
+        "properties": {
+          "openai_api_key": { "type": "string", "title": "Openai Api Key" }
+        },
+        "type": "object",
+        "required": ["openai_api_key"],
+        "title": "OpenAICredentials"
       },
       "PhoneNumber": {
         "properties": {
@@ -3027,6 +3115,13 @@
       },
       "UpdateNumberRequest": {
         "properties": {
+          "outbound_only": {
+            "anyOf": [
+              { "type": "boolean" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Outbound Only"
+          },
           "label": {
             "anyOf": [
               { "type": "string" },
