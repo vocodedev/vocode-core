@@ -26,13 +26,15 @@ We're actively looking for community maintainers, so please reach out if interes
 - 🤖 [Use an outbound call to a real phone number in a Langchain agent](https://docs.vocode.dev/langchain-agent)
 - Out of the box integrations with:
   - Transcription services, including:
-    - [Deepgram](https://deepgram.com/)
     - [AssemblyAI](https://www.assemblyai.com/)
+    - [Deepgram](https://deepgram.com/)
+    - [Gladia](https://gladia.io)
     - [Google Cloud](https://cloud.google.com/speech-to-text)
-    - [Whisper.cpp](https://github.com/ggerganov/whisper.cpp)
     - [Microsoft Azure](https://azure.microsoft.com/en-us/products/cognitive-services/speech-to-text)
-    - [Whisper](https://openai.com/blog/introducing-chatgpt-and-whisper-apis)
     - [RevAI](https://www.rev.ai/)
+    - [Whisper](https://openai.com/blog/introducing-chatgpt-and-whisper-apis)
+    - [Whisper.cpp](https://github.com/ggerganov/whisper.cpp)
+    
   - LLMs, including:
     - [ChatGPT](https://openai.com/blog/chatgpt)
     - [GPT-4](https://platform.openai.com/docs/models/gpt-4)
