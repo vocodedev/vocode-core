@@ -148,6 +148,9 @@ if __name__ == "__main__":
     synthesizer = ElevenLabsSynthesizer(
         synthesizer_config=ElevenLabsSynthesizerConfig(
             experimental_streaming=False,
+            stability=0.0,
+            similarity_boost=0.0,
+            model_id="nova",
             optimize_streaming_latency=0,
             sampling_rate=8000,
             audio_encoding=AudioEncoding.MULAW,

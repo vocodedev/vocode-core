@@ -100,8 +100,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
         base_url = urljoin(ELEVEN_LABS_BASE_URL, f"text-to-speech/{self.voice_id}")
 
-        print(base_url)
-
         if self.experimental_streaming:
             base_url = urljoin(base_url + "/", "stream")
 
@@ -194,6 +192,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 lambda seconds: self.get_message_cutoff_from_voice_speed(
                     message, seconds, self.words_per_minute
                 ),
+            )
+        else:
+            raise RuntimeError(
+                f"Unsupported ElevenLabs configuration: {self.synthesizer_config.sampling_rate}, {self.synthesizer_config.audio_encoding}, {self.output_format}"
             )
 
     def _get_eleven_labs_format(self):
