@@ -49,11 +49,19 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": ["welcome", "hosted-quickstart", "open-source-quickstart"]
+      "pages": [
+        "welcome",
+        "hosted-quickstart",
+        "open-source-quickstart"
+      ]
     },
     {
       "group": "Vocode 101",
-      "pages": ["what-is-vocode", "how-it-works", "how-to-use-it"]
+      "pages": [
+        "what-is-vocode",
+        "how-it-works",
+        "how-to-use-it"
+      ]
     },
     {
       "group": "Guides",
@@ -105,7 +113,9 @@
     },
     {
       "group": "Usage",
-      "pages": ["api-reference/usage/get-usage"]
+      "pages": [
+        "api-reference/usage/get-usage"
+      ]
     },
     {
       "group": "Actions",
@@ -175,7 +185,9 @@
         "machine-detection",
         "ivr-navigation",
         "hipaa-compliance",
-        "do-not-call-detection"
+        "do-not-call-detection",
+        "bring-your-own-telephony",
+        "bring-your-own-openai"
       ]
     }
   ],
