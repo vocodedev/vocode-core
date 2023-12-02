@@ -25,15 +25,15 @@ In summary:
 
 ## Endpointing Sensitivity
 
-`endpointing_sensitivity` controls how the bot determines the when the human is done speaking. It can be one of **sensitive**, **relaxed**, or **auto** (default and currently equivalent to relaxed). 
+`endpointing_sensitivity` controls how the bot determines when the human is done speaking so it can kick off its response. It can be one of **sensitive**, **relaxed**, or **auto** (default and currently equivalent to relaxed). 
 
 A bot with `endpointing_sensitivity == 'sensitive'` treats the end of a sentence or a short pause as the end of the human's turn. This works well for quick conversations in which you expect short, single-sentence responses from the human.
 A bot with this sensitivity runs the risk of interrupting the human if they continue speaking after a single sentence.
 
 A bot with `endpointing_sensitivity == 'relaxed'` waits a short time after the end of a human's sentence before considering their turn over. Alternatively, when a sentence is not finished, relaxed sensitivity waits for a longer pause before marking the end of the human's speech.
-This sensitivity has less risk of interrupting the human but can potentially have a slower response time. Note that auto sensitivity is equivalent to relaxed.
+This sensitivity has less risk of interrupting the human but can potentially have a slower response time. Note that `auto` sensitivity is equivalent to relaxed.
 
-***Note:** the amount of time the agent waits during a pause is adjusted based on the human's utterance speed. If the human speaks fast, the bot will wait less, and if the human speaks slow the bot will wait longer.*
+***Note:** the amount of time the agent waits during a pause adapts to the human's utterance speed. If the human speaks fast, the bot will wait less, and if the human speaks slow the bot will wait longer.*
 
 In summary:
 - **Possible values:** sensitive, relaxed, auto
@@ -43,7 +43,7 @@ In summary:
 
 ## Conversation Speed
 
-`conversation_speed` controls when the bot will begin responding to the human after they finish speaking. This includes normal utterances from the human as well as interruptions.
+`conversation_speed` controls the length of endpointing pauses, i.e. how long the bot will wait before responding to the human. This includes normal utterances from the human as well as interruptions.
 
 The amount of time the bot waits inversely scales with the `conversation_speed` value. So a bot with `conversation_speed` of 2 responds in half the time compared to a `conversation_speed` of 1.
 Likewise a `conversation_speed` of 0.5 means the bot takes twice as long to respond.
