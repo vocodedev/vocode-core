@@ -1,12 +1,11 @@
 from __future__ import annotations
-
 import asyncio
 from typing import List
 
 from vocode.streaming.models.events import Event, EventType
 
 
-async def handle_event(event):
+async def flush_event(event):
     if event:
         del event
 
@@ -28,13 +27,16 @@ class EventsManager:
                 event = await self.queue.get()
             except asyncio.QueueEmpty:
                 await asyncio.sleep(1)
-            await handle_event(event)
+            await self.handle_event(event)
+
+    async def handle_event(self, event: Event):
+        pass  # Default implementation, can be overridden
 
     async def flush(self, timeout=30):
         while True:
             try:
                 event = await asyncio.wait_for(self.queue.get(), timeout)
-                await handle_event(event)
+                await flush_event(event)
             except asyncio.TimeoutError:
                 break
             except asyncio.QueueEmpty:
