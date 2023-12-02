@@ -1,12 +1,8 @@
 import pytest
 import asyncio
 
-from vocode.streaming.models.events import PhoneCallEndedEvent
-from vocode.streaming.utils.events_manager import (
-    EventsManager,
-    Event,
-    EventType,
-)  # Replace 'your_module' with the actual module name
+from vocode.streaming.models.events import PhoneCallEndedEvent, EventType
+from vocode.streaming.utils.events_manager import EventsManager
 
 CONVERSATION_ID = "1"
 
