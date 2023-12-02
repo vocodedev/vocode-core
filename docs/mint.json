@@ -177,6 +177,7 @@
         "getting-number",
         "configuring-number",
         "retrieve-call-data",
+        "conversational-dials",
         "setting-up-webhook",
         "using-actions",
         "vectordb",
