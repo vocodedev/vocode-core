@@ -1,8 +1,8 @@
 from __future__ import annotations
 import asyncio
-from typing import List
 
-from vocode.streaming.models.events import Event, EventType
+
+from vocode.streaming.models.events import Event
 
 
 async def flush_event(event):
@@ -11,7 +11,9 @@ async def flush_event(event):
 
 
 class EventsManager:
-    def __init__(self, subscriptions: List[EventType] = []):
+    def __init__(self, subscriptions=None):
+        if subscriptions is None:
+            subscriptions = []
         self.queue: asyncio.Queue[Event] = asyncio.Queue()
         self.subscriptions = set(subscriptions)
         self.active = False
@@ -25,9 +27,9 @@ class EventsManager:
         while self.active:
             try:
                 event = await self.queue.get()
+                await self.handle_event(event)
             except asyncio.QueueEmpty:
                 await asyncio.sleep(1)
-            await self.handle_event(event)
 
     async def handle_event(self, event: Event):
         pass  # Default implementation, can be overridden
