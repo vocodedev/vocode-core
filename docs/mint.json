@@ -49,19 +49,11 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": [
-        "welcome",
-        "hosted-quickstart",
-        "open-source-quickstart"
-      ]
+      "pages": ["welcome", "hosted-quickstart", "open-source-quickstart"]
     },
     {
       "group": "Vocode 101",
-      "pages": [
-        "what-is-vocode",
-        "how-it-works",
-        "how-to-use-it"
-      ]
+      "pages": ["what-is-vocode", "how-it-works", "how-to-use-it"]
     },
     {
       "group": "Guides",
@@ -113,9 +105,7 @@
     },
     {
       "group": "Usage",
-      "pages": [
-        "api-reference/usage/get-usage"
-      ]
+      "pages": ["api-reference/usage/get-usage"]
     },
     {
       "group": "Actions",
@@ -169,6 +159,15 @@
         "api-reference/webhooks/list-webhooks",
         "api-reference/webhooks/create-webhook",
         "api-reference/webhooks/update-webhook"
+      ]
+    },
+    {
+      "group": "Account Connections",
+      "pages": [
+        "api-reference/account_connections/get-account-connection",
+        "api-reference/account_connections/list-account-connections",
+        "api-reference/account_connections/create-account-connection",
+        "api-reference/account_connections/update-account-connection"
       ]
     },
     {
