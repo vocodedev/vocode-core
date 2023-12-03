@@ -87,8 +87,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             parameters["model"] = self.agent_config.model_name
 
         if self.functions:
-            parameters["functions"] = self.functions
-
+            updated_functions_list = [{"type": "function", "function": func} for func in self.functions]
+            parameters["tools"] = updated_functions_list
+            
+        parameters["seed"] = 1234
         return parameters
 
     def create_first_response(self, first_prompt):

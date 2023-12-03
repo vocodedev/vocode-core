@@ -86,15 +86,13 @@ async def openai_get_tokens(gen) -> AsyncGenerator[Union[str, FunctionFragment],
         if "content" in delta and delta["content"] is not None:
             token = delta["content"]
             yield token
-        elif "function_call" in delta and delta["function_call"] is not None:
-            yield FunctionFragment(
-                name=delta["function_call"]["name"]
-                if "name" in delta["function_call"]
-                else "",
-                arguments=delta["function_call"]["arguments"]
-                if "arguments" in delta["function_call"]
-                else "",
-            )
+        elif "tool_calls" in delta:
+            for tool_call in delta["tool_calls"]:
+                if "function" in tool_call and tool_call["function"] is not None:
+                    yield FunctionFragment(
+                        name=tool_call["function"].get("name", ""),
+                        arguments=tool_call["function"].get("arguments", "")
+                    )
 
 
 def find_last_punctuation(buffer: str) -> Optional[int]:
