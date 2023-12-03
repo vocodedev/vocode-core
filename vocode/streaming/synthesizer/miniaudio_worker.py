@@ -20,7 +20,6 @@ class ID3TagProcessor:
         self.id3_tag_processed = False
 
     def process_chunk(self, chunk):
-        print(chunk)
         self.buffer += chunk
 
         if not self.id3_tag_processed:
@@ -45,14 +44,10 @@ class ID3TagProcessor:
     def calculate_id3_size(self, header):
         # Extract the four bytes that represent the size
         size_bytes = header[6:10]
-        print(size_bytes)
-
         # Calculate the size (each byte is only 7 bits)
         tag_size = 0
         for byte in size_bytes:
             tag_size = (tag_size << 7) | (byte & 0x7F)
-
-        print(tag_size)
 
         # The size does not include the 10-byte header
         return tag_size + 10
