@@ -1720,7 +1720,7 @@
           },
           "endpointing_sensitivity": {
             "type": "string",
-            "enum": ["auto", "relaxed"],
+            "enum": ["auto", "relaxed", "sensitive"],
             "title": "Endpointing Sensitivity",
             "default": "auto"
           },
@@ -1746,6 +1746,11 @@
           },
           "openai_account_connection": {
             "$ref": "#/components/schemas/OpenAIAccountConnection"
+          },
+          "run_do_not_call_detection": {
+            "type": "boolean",
+            "title": "Run Do Not Call Detection",
+            "default": false
           }
         },
         "type": "object",
@@ -1840,7 +1845,7 @@
           },
           "endpointing_sensitivity": {
             "type": "string",
-            "enum": ["auto", "relaxed"],
+            "enum": ["auto", "relaxed", "sensitive"],
             "title": "Endpointing Sensitivity",
             "default": "auto"
           },
@@ -1870,6 +1875,11 @@
               { "type": "string", "format": "uuid" }
             ],
             "title": "Openai Account Connection"
+          },
+          "run_do_not_call_detection": {
+            "type": "boolean",
+            "title": "Run Do Not Call Detection",
+            "default": false
           }
         },
         "type": "object",
@@ -1985,7 +1995,7 @@
           },
           "endpointing_sensitivity": {
             "anyOf": [
-              { "type": "string", "enum": ["auto", "relaxed"] },
+              { "type": "string", "enum": ["auto", "relaxed", "sensitive"] },
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Endpointing Sensitivity"
@@ -2025,6 +2035,13 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Openai Account Connection"
+          },
+          "run_do_not_call_detection": {
+            "anyOf": [
+              { "type": "boolean" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Run Do Not Call Detection"
           }
         },
         "type": "object",
@@ -2304,7 +2321,7 @@
           },
           "endpointing_sensitivity": {
             "type": "string",
-            "enum": ["auto", "relaxed"],
+            "enum": ["auto", "relaxed", "sensitive"],
             "title": "Endpointing Sensitivity",
             "default": "auto"
           },
@@ -2334,6 +2351,11 @@
               { "type": "string", "format": "uuid" }
             ],
             "title": "Openai Account Connection"
+          },
+          "run_do_not_call_detection": {
+            "type": "boolean",
+            "title": "Run Do Not Call Detection",
+            "default": false
           }
         },
         "type": "object",
@@ -2359,8 +2381,7 @@
           },
           "run_do_not_call_detection": {
             "type": "boolean",
-            "title": "Run Do Not Call Detection",
-            "default": false
+            "title": "Run Do Not Call Detection"
           },
           "hipaa_compliant": {
             "type": "boolean",
@@ -2677,7 +2698,7 @@
           },
           "endpointing_sensitivity": {
             "type": "string",
-            "enum": ["auto", "relaxed"],
+            "enum": ["auto", "relaxed", "sensitive"],
             "title": "Endpointing Sensitivity",
             "default": "auto"
           },
@@ -2707,6 +2728,11 @@
               { "type": "string", "format": "uuid" }
             ],
             "title": "Openai Account Connection"
+          },
+          "run_do_not_call_detection": {
+            "type": "boolean",
+            "title": "Run Do Not Call Detection",
+            "default": false
           }
         },
         "type": "object",
