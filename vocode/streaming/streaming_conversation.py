@@ -24,7 +24,6 @@ from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.streaming.agent.gpt_summary_agent import ChatGPTSummaryAgent
 from vocode.streaming.constants import (
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
     PER_CHUNK_ALLOWANCE_SECONDS,
@@ -417,13 +416,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             per_chunk_allowance_seconds: float = PER_CHUNK_ALLOWANCE_SECONDS,
             events_manager: Optional[EventsManager] = None,
             logger: Optional[logging.Logger] = None,
-            summarizer: Optional[ChatGPTSummaryAgent] = None,
-            summary_character_limit: Optional[int] = 250,
             over_talking_filler_detector: Optional[OpenAIEmbeddingOverTalkingFillerDetector] = None,
             openai_embeddings_response_classifier: Optional[OpenaiEmbeddingsResponseClassifier] = None,
             post_call_callback: Optional[Callable[[StreamingConversation], typing.Coroutine[None]]] = None,
     ):
-        self.summary_character_limit = summary_character_limit
         self.id = conversation_id or create_conversation_id()
         self.logger = wrap_logger(
             logger or logging.getLogger(__name__),
@@ -439,7 +435,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.synthesis_enabled = True
         self.text_analysis_client = text_analysis_client
 
-        self.summarizer = summarizer
         self.post_call_callback = post_call_callback
 
         self.over_talking_filler_detector = over_talking_filler_detector
@@ -525,8 +520,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         self.check_for_idle_task: Optional[asyncio.Task] = None
         self.track_bot_sentiment_task: Optional[asyncio.Task] = None
-
-        self.summarize_conversation_task: Optional[asyncio.Task] = None
 
         self.current_transcription_is_interrupt: bool = False
 
@@ -619,9 +612,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.track_bot_sentiment_task = asyncio.create_task(
                 self.track_bot_sentiment()
             )
-        self.summarize_conversation_task = asyncio.create_task(
-            self.summarize_conversation()
-        )
 
         self.check_for_idle_task = asyncio.create_task(self.check_for_idle())
         if len(self.events_manager.subscriptions) > 0:
@@ -671,24 +661,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 await self.update_bot_sentiment()
                 prev_transcript = self.transcript.to_string()
 
-    async def summarize_conversation(self):
-        self.logger.info("Summarizer started")
-        if self.summarizer is None:
-            self.logger.error("Summarizer or summary_character_limit not set. Not using summarizer.")
-            raise ValueError("Summarizer or summary_character_limit not set")
-        while self.is_active():
-            await asyncio.sleep(2)  # TODO: make this configurable or replace with hook on new message
-            # FIXME: replace character limit with gpt token limit?
-            # Check if the transcript has changed and is longer than the limit.
-            transcript_to_sum, previous_summary_text = self.transcript.summary_data()
-            if len(transcript_to_sum) > self.summary_character_limit:
-                self.logger.info("Summarizing conversation...")
-                summarizer_response = await self.summarizer.get_summary(transcript=transcript_to_sum,
-                                                                        last_summary=previous_summary_text)
-                summary = summarizer_response["choices"][0].message.content
-
-                self.logger.info("Summary: %s", summary)
-                self.transcript.add_summary(summary)
 
     async def update_bot_sentiment(self):
         new_bot_sentiment = await self.bot_sentiment_analyser.analyse(
@@ -873,10 +845,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         if self.post_call_callback:
             asyncio.create_task(self.post_call_callback(self))
-
-        if self.summarize_conversation_task:
-            self.logger.debug("Terminating summarize_conversation Task")
-            self.summarize_conversation_task.cancel()
 
         if self.events_manager and self.events_task:
             self.logger.debug("Terminating events Task")
