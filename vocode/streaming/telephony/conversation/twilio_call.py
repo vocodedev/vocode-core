@@ -90,6 +90,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
     async def attach_ws_and_start(self, ws: WebSocket):
         super().attach_ws(ws)
 
+        await self.telephony_client.initialize_client()
         twilio_call_ref = self.telephony_client.twilio_client.calls(self.twilio_sid)
         twilio_call = twilio_call_ref.fetch()
         if self.twilio_config.record:
