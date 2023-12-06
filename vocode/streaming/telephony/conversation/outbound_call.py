@@ -111,7 +111,9 @@ class OutboundCall:
 
     async def start(self, internal_id: Optional[str] = None):
         self.logger.debug("Starting outbound call")
-        self.telephony_client.validate_outbound_call(
+        await self.telephony_client.initialize_client()  # FIXME: ugly hack, to make it async.
+        # FIXME: not compatible with Vonage
+        await self.telephony_client.validate_outbound_call(
             to_phone=self.to_phone,
             from_phone=self.from_phone,
             mobile_only=self.mobile_only,
