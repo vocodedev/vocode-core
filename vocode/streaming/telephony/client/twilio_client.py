@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 
 from twilio.rest import Client
@@ -11,16 +12,28 @@ class TwilioClient(BaseTelephonyClient):
     def __init__(self, base_url: str, twilio_config: TwilioConfig):
         super().__init__(base_url)
         self.twilio_config = twilio_config
-        # TODO: this is blocking
-        self.twilio_client = Client(twilio_config.account_sid, twilio_config.auth_token)
-        try:
-            # Test credentials
-            self.twilio_client.api.accounts(twilio_config.account_sid).fetch()
-        except Exception as e:
-            raise RuntimeError(
-                "Could not create Twilio client. Invalid credentials"
-            ) from e
+
         self.templater = Templater()
+        self._client_ready = asyncio.Event()
+
+        self._twilio_client = None
+        self._client_initialized = False
+
+    async def initialize_client(self):
+        if not self._client_initialized:
+            self._twilio_client = Client(self.twilio_config.account_sid, self.twilio_config.auth_token)
+            try:
+                # Test credentials
+                self._twilio_client.api.accounts(self.twilio_config.account_sid).fetch()
+            except Exception as e:
+                raise RuntimeError("Could not create Twilio client. Invalid credentials") from e
+            self._client_initialized = True
+
+    @property
+    def twilio_client(self):
+        if not self._client_initialized:
+            raise RuntimeError("Twilio client is not initialized. Call 'initialize_client' asynchronously.")
+        return self._twilio_client
 
     def get_telephony_config(self):
         return self.twilio_config

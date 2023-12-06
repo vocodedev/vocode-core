@@ -111,6 +111,7 @@ class OutboundCall:
 
     async def start(self, internal_id: Optional[str] = None):
         self.logger.debug("Starting outbound call")
+        await self.telephony_client.initialize_client()
         self.telephony_client.validate_outbound_call(
             to_phone=self.to_phone,
             from_phone=self.from_phone,

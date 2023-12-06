@@ -207,11 +207,11 @@ class TelephonyServer:
         call_config = await self.config_manager.get_config(conversation_id)
         if not call_config:
             raise ValueError(f"Could not find call config for {conversation_id}")
-        telephony_client: BaseTelephonyClient
         if isinstance(call_config, TwilioCallConfig):
             telephony_client = TwilioClient(
                 base_url=self.base_url, twilio_config=call_config.twilio_config
             )
+            await telephony_client.initialize_client()
             await telephony_client.end_call(call_config.twilio_sid)
         elif isinstance(call_config, VonageCallConfig):
             telephony_client = VonageClient(
