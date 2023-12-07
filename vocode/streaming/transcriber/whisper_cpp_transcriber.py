@@ -49,7 +49,7 @@ class WhisperCPPTranscriber(BaseThreadAsyncTranscriber[WhisperCPPTranscriberConf
         )
 
         # get default whisper parameters and adjust as needed
-        self.params = self.whisper.whisper_full_default_params()
+        self.params = self.whisper.whisper_full_default_params(0)
         self.params.print_realtime = False
         self.params.print_progress = False
         self.params.single_segment = True
