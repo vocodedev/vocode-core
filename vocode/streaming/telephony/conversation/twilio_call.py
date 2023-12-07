@@ -150,7 +150,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 bytes_to_fill = 8 * (
                     int(media["timestamp"]) - (self.latest_media_timestamp + 20)
                 )
-                self.logger.debug(f"Filling {bytes_to_fill} bytes of silence")
+                # self.logger.debug(f"Filling {bytes_to_fill} bytes of silence")
                 # NOTE: 0xff is silence for mulaw audio
                 self.receive_audio(b"\xff" * bytes_to_fill)
             self.latest_media_timestamp = int(media["timestamp"])

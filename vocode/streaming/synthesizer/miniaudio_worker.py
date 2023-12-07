@@ -9,6 +9,7 @@ from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.utils import convert_wav
 from vocode.streaming.utils.mp3_helper import decode_mp3
 from vocode.streaming.utils.worker import ThreadAsyncWorker, logger
+import logging
 
 
 class MiniaudioWorker(ThreadAsyncWorker[Union[bytes, None]]):
@@ -18,11 +19,13 @@ class MiniaudioWorker(ThreadAsyncWorker[Union[bytes, None]]):
         chunk_size: int,
         input_queue: asyncio.Queue[Union[bytes, None]],
         output_queue: asyncio.Queue[Tuple[bytes, bool]],
+        logger: Optional[logging.Logger] = None,
     ) -> None:
         super().__init__(input_queue, output_queue)
         self.output_queue = output_queue  # for typing
         self.synthesizer_config = synthesizer_config
         self.chunk_size = chunk_size
+        self.logger = logger
         self._ended = False
 
     def _run_loop(self):
@@ -51,7 +54,7 @@ class MiniaudioWorker(ThreadAsyncWorker[Union[bytes, None]]):
                 output_bytes = decode_mp3(bytes(current_mp3_buffer))
             except miniaudio.DecodeError as e:
                 # TODO: better logging
-                logger.exception("MiniaudioWorker error: " + str(e), exc_info=True)
+                self.logger.exception("MiniaudioWorker error: " + str(e), exc_info=True)
                 self.output_janus_queue.sync_q.put(
                     (bytes(current_wav_output_buffer), True)
                 )  # sentinel

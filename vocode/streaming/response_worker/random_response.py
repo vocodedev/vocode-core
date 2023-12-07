@@ -61,7 +61,7 @@ class RandomResponseAudioWorker(InterruptibleAgentResponseWorker):
             await self.interruptible_event.agent_response_tracker.wait()
 
     def interrupt_current_random_audio(self):
-        self.logger.debug(f"Interrupting filler audio: {self.name}")
+        # self.logger.debug(f"Interrupting filler audio: {self.name}")
         current_event_interrupted = self.interruptible_event and self.interruptible_event.interrupt()
         self.cancel_current_task()
         return current_event_interrupted

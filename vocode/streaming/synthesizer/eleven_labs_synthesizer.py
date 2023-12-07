@@ -220,7 +220,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             result_embeds: List[Tuple[Document, float]] = await self.vector_db.similarity_search_with_score(
                 query=message.text,
                 filter=index_filter
-                )
+            )
             if result_embeds:
                 doc, score = result_embeds[0] # top result
                 if score > SIMILARITY_THRESHOLD:

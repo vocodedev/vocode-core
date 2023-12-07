@@ -298,6 +298,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             chunk_size,
             miniaudio_worker_input_queue,
             miniaudio_worker_output_queue,
+            logger=self.logger
         )
         miniaudio_worker.start()
         stream_reader = response.content
@@ -320,8 +321,10 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
 
                 yield SynthesisResult.ChunkResult(wav_chunk, is_last)
                 # If this is the last chunk, break the loop
-                if is_last and create_speech_span is not None:
-                    create_speech_span.end()
+                if is_last:
+                    if create_speech_span is not None:
+                        create_speech_span.end()
+                    self.logger.debug("Last chunk in MiniaudioWorker")
                     break
         except asyncio.CancelledError:
             pass

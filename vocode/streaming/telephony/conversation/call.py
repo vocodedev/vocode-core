@@ -80,4 +80,5 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
 
     async def tear_down(self):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
-        await self.terminate()
+        if self.is_active():
+            await self.terminate()
