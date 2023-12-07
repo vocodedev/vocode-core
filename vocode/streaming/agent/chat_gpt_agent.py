@@ -696,7 +696,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             self.logger.info('attempt_stream_response')
             stream = await asyncio.wait_for(
                 openai.ChatCompletion.acreate(**chat_parameters),
-                timeout=3  # Fixme: parametrize, this is different cos it usually very fast.
+                timeout=self.agent_config.timeout_generator_seconds
             )
             self.logger.info('have attempt_stream_response')
             # Wait for the first message
@@ -730,9 +730,10 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
 
             else:
                 self.logger.info(f'Stream attempt {attempt + 1} failed, retrying.')
-                # Send filler words based on the attempt number
-                if self.response_predictor is not None:
-                    yield self.response_predictor.get_retry_text(attempt), False
+                # Send filler words based on the attempt number minus one to ignore the first fail.
+                if self.response_predictor is not None and attempt > 0:
+                    # Ignore the first failed attempt.
+                    yield self.response_predictor.get_retry_text(attempt - 1), False
 
                 # Update timeout for the next attempt
                 current_timeout += timeout_increment
