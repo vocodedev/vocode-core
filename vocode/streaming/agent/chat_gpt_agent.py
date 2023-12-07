@@ -117,7 +117,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             "messages": messages,
             "max_tokens": self.agent_config.max_tokens,
             "temperature": self.agent_config.temperature,
-            "stop": "\n",
+            "stop": self.agent_config.stop_tokens,
+            "frequency_penalty": self.agent_config.frequency_penalty,
             "stream": True
         }
 
