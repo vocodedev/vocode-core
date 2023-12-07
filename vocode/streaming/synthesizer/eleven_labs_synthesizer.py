@@ -2,7 +2,11 @@ import asyncio
 import hashlib
 import logging
 import os
+from io import BytesIO
 from typing import Optional, List, AsyncGenerator, Union, Tuple, Dict, Any
+
+from pydub import AudioSegment
+from pydub.playback import play
 
 import aiohttp
 from opentelemetry.trace import Span
@@ -47,6 +51,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.voice_id = synthesizer_config.voice_id or ADAM_VOICE_ID
         self.stability = synthesizer_config.stability
         self.similarity_boost = synthesizer_config.similarity_boost
+        self.use_speaker_boost = synthesizer_config.use_speaker_boost
         self.model_id = synthesizer_config.model_id
         self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
@@ -65,6 +70,23 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         hash_object = hashlib.sha1(message_text.encode())
         hashed_text = hash_object.hexdigest()
         return hashed_text
+    
+    def speed_up_audio(input_stream, speed_factor):
+        # USAGE: audio_data = self.speed_up_audio(audio_data, 1.20)
+        # Load the audio file from the byte stream
+        audio = AudioSegment.from_file(input_stream)
+
+        # Speed up the audio
+        sped_up_audio = audio.speedup(playback_speed=speed_factor)
+
+        # Create a byte stream for the output
+        output_stream = BytesIO()
+        sped_up_audio.export(output_stream, format="mp3")
+    
+        # Reset stream position to the beginning
+        output_stream.seek(0)
+
+        return output_stream
 
     def pick_filler(self, bot_message: str, user_message: str) -> Optional[FillerAudio]:
         if self.filler_picker is not None:
@@ -183,7 +205,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
-                stability=self.stability, similarity_boost=self.similarity_boost
+                stability=self.stability, similarity_boost=self.similarity_boost, use_speaker_boost=self.use_speaker_boost
             )
         url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
 
@@ -250,6 +272,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             convert_span = tracer.start_span(
                 f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.convert",
             )
+            
             output_bytes_io = decode_mp3(audio_data)
 
             result = self.create_synthesis_result_from_wav(
