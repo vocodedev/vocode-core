@@ -10,7 +10,6 @@ import numpy as np
 from vocode.streaming.agent.utils import SENTENCE_ENDINGS
 from vocode.streaming.models.transcriber import WhisperCPPTranscriberConfig
 from vocode.streaming.transcriber.base_transcriber import (
-    BaseAsyncTranscriber,
     BaseThreadAsyncTranscriber,
     Transcription,
 )
@@ -53,6 +52,7 @@ class WhisperCPPTranscriber(BaseThreadAsyncTranscriber[WhisperCPPTranscriberConf
         self.params.print_realtime = False
         self.params.print_progress = False
         self.params.single_segment = True
+        self.params.language = self.transcriber_config.language.encode()
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
     def create_new_buffer(self):
