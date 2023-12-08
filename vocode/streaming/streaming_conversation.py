@@ -32,10 +32,11 @@ from vocode.streaming.constants import (
 from vocode.streaming.ignored_while_talking_fillers_fork import OpenAIEmbeddingOverTalkingFillerDetector
 from vocode.streaming.input_device.stream_handler import AudioStreamHandler
 from vocode.streaming.models.agent import FillerAudioConfig
+from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.events import Sender, EventType
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
-    SentimentConfig,
+    SentimentConfig, ELEVEN_LABS_MULAW_8000,
 )
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.models.transcript import (
@@ -44,6 +45,7 @@ from vocode.streaming.models.transcript import (
     TranscriptCompleteEvent, )
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.response_classifier import OpenaiEmbeddingsResponseClassifier
+from vocode.streaming.synthesizer import ElevenLabsSynthesizer
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
@@ -290,6 +292,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         if "THIS IS SYSTEM MESSAGE:" in user_message:  # no filler if this is a system message.
                             return
                         bot_message = self.conversation.transcript.get_last_bot_text()
+                        self.conversation.synthesizer: ElevenLabsSynthesizer
                         picked = self.conversation.synthesizer.pick_filler(bot_message, user_message)
                         if picked is not None:
                             self.send_filler_audio(item.agent_response_tracker, picked)
@@ -541,8 +544,17 @@ class StreamingConversation(Generic[OutputDeviceType]):
     async def handle_initial_audio(self, initial_audio_path: str, initial_message: BaseMessage):
         # load audio
         self.logger.info(f"Loading initial audio from {initial_audio_path}")
-        synth_result = self.reconstruct_synthesis_result(initial_audio_path, initial_message,
-                                                         self.agent_responses_worker.chunk_size)
+        # There is wav here, but I could have various outputs. Do I need that chunking?
+        # synth_result = self.reconstruct_synthesis_result(initial_audio_path, initial_message,
+        assert initial_audio_path.endswith(
+            self.synthesizer.synthesizer_config.output_format_to_cache_file_extension()), "File extension must be correct."
+        assert isinstance(self.synthesizer, ElevenLabsSynthesizer), "Only ElevenLabsSynthesizer is supported."
+        self.synthesizer: ElevenLabsSynthesizer
+        with open(initial_audio_path, 'rb') as f:
+            audio_data = f.read()
+
+        synth_result = self.synthesizer.create_synthesis_result_from_bytes(audio_data, initial_message, self.agent_responses_worker.chunk_size)
+
         self.transcriber.mute()
         elapsed_time = time.time() - self.call_start
         remaining_time = self.call_initial_delay - elapsed_time
