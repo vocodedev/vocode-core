@@ -284,16 +284,17 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         )
 
         session = self.aiohttp_session
+        response = await self.make_request(session, url, body, headers)
 
-        response = await session.request(
-            "POST",
-            url,
-            json=body,
-            headers=headers,
-            timeout=aiohttp.ClientTimeout(total=15),
-        )
-        if not response.ok:
-            raise Exception(f"ElevenLabs API returned {response.status} status code")
+        # response = await session.request(
+        #     "POST",
+        #     url,
+        #     json=body,
+        #     headers=headers,
+        #     timeout=aiohttp.ClientTimeout(total=15),
+        # )
+        # if not response.ok:
+        #     raise Exception(f"ElevenLabs API returned {response.status} status code")
         if self.experimental_streaming:
             result = SynthesisResult(
                 self.experimental_mp3_streaming_output_generator(
@@ -326,6 +327,36 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 return result, message
             else: 
                 return result
+
+    async def make_request(self, session, url, body, headers):
+        max_retries = 3
+        retry_delay = 1  # seconds
+
+        for retry_count in range(max_retries + 1):
+            try:
+                response = await session.request(
+                    "POST",
+                    url,
+                    json=body,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=15),
+                )
+                if not response.ok:
+                    self.logger.debug(f"ElevenLabs API returned {response.status} status code")
+                response.raise_for_status()  # Raise an HTTPError for bad responses
+
+                # If the response is okay, return it
+                return response
+
+            except aiohttp.ClientError as e:
+                print(f"Attempt {retry_count + 1} failed: {e}")
+
+                # Sleep before the next retry
+                await asyncio.sleep(retry_delay)
+
+        # If all retries fail, raise an exception
+        raise Exception(f"Failed after {max_retries} retries")
+
 
     def make_url(self):
         url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"

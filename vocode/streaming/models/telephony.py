@@ -25,6 +25,7 @@ from vocode.streaming.telephony.constants import (
 class TwilioConfig(BaseModel):
     account_sid: str
     auth_token: str
+    edge: Optional[str] = None
     record: bool = False
     extra_params: Optional[Dict[str, Any]] = {}
 

@@ -11,7 +11,7 @@ class TwilioClient(BaseTelephonyClient):
         super().__init__(base_url)
         self.twilio_config = twilio_config
         # TODO: this is blocking
-        self.twilio_client = Client(twilio_config.account_sid, twilio_config.auth_token)
+        self.twilio_client = Client(twilio_config.account_sid, twilio_config.auth_token, edge=twilio_config.edge)
         try:
             # Test credentials
             self.twilio_client.api.accounts(twilio_config.account_sid).fetch()
