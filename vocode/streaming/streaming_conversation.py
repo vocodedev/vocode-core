@@ -287,6 +287,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if isinstance(agent_response, AgentResponseFillerAudio):
                     if hasattr(self.conversation.synthesizer, "pick_filler"):
                         user_message = agent_response.transcript
+                        if "THIS IS SYSTEM MESSAGE:" in user_message:  # no filler if this is a system message.
+                            return
                         bot_message = self.conversation.transcript.get_last_bot_text()
                         picked = self.conversation.synthesizer.pick_filler(bot_message, user_message)
                         if picked is not None:
