@@ -648,6 +648,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     or ALLOWED_IDLE_TIME
             ):
                 self.logger.info("Conversation idle for too long")
+                # TODO: parametrize this message.
                 transcription = Transcription(
                     message="THIS IS SYSTEM MESSAGE: Conversation idle for too long. SAY: Slyšíme se? Jste ještě na lince?",
                     confidence=1.0,
