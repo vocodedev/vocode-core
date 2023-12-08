@@ -281,6 +281,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 return
             try:
+                self.conversation.mark_last_action_timestamp()  # received agent response.
                 agent_response = item.payload
 
                 if isinstance(agent_response, AgentResponseFillerAudio):
@@ -314,6 +315,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.chunk_size,
                     bot_sentiment=self.conversation.bot_sentiment,
                 )
+                self.conversation.mark_last_action_timestamp()  # once speech started creating.
                 end_time = time.time()
                 self.conversation.logger.info(
                     "Getting response from Synth took {} seconds".format(end_time - start_time))
@@ -661,7 +663,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 await self.update_bot_sentiment()
                 prev_transcript = self.transcript.to_string()
 
-
     async def update_bot_sentiment(self):
         new_bot_sentiment = await self.bot_sentiment_analyser.analyse(
             self.transcript.to_string()
@@ -772,6 +773,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         generating_start_time = time.time()
         first_chunk = True
         async for chunk_result in synthesis_result.chunk_generator:
+            self.mark_last_action_timestamp()  # once speech started consuming from synthesizer.
             if first_chunk:
                 generating_end_time = time.time()
                 first_chunk = False
@@ -806,7 +808,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     0,
                 )
             )
-
             self.mark_last_action_timestamp()
             chunk_idx += 1
             seconds_spoken += seconds_per_chunk
