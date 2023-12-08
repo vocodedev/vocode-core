@@ -3089,7 +3089,13 @@
             "title": "Version",
             "default": "2"
           },
-          "speed": { "type": "number", "title": "Speed" }
+          "speed": { "type": "number", "title": "Speed" },
+          "quality": {
+            "type": "string",
+            "enum": ["faster", "draft", "low", "medium", "high", "premium"],
+            "title": "Quality"
+          },
+          "temperature": { "type": "number", "title": "Temperature" }
         },
         "type": "object",
         "required": ["id", "user_id", "type", "voice_id"],
@@ -3111,7 +3117,13 @@
             "title": "Version",
             "default": "2"
           },
-          "speed": { "type": "number", "title": "Speed" }
+          "speed": { "type": "number", "title": "Speed" },
+          "quality": {
+            "type": "string",
+            "enum": ["faster", "draft", "low", "medium", "high", "premium"],
+            "title": "Quality"
+          },
+          "temperature": { "type": "number", "title": "Temperature" }
         },
         "type": "object",
         "required": ["type", "voice_id"],
@@ -3158,6 +3170,23 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Speed"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["faster", "draft", "low", "medium", "high", "premium"]
+              },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Quality"
+          },
+          "temperature": {
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Temperature"
           }
         },
         "type": "object",
