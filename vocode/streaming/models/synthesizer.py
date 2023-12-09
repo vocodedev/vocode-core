@@ -99,6 +99,7 @@ class GoogleSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GOOGLE.val
 
 
 ELEVEN_LABS_ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
+ELEVEN_LABS_MULAW_8000 = "ulaw_8000"
 
 
 class ElevenLabsSynthesizerConfig(
@@ -112,6 +113,7 @@ class ElevenLabsSynthesizerConfig(
     similarity_boost: Optional[float]
     model_id: Optional[str]
     use_speaker_boost: Optional[bool] = True
+    output_format: Optional[str] = ELEVEN_LABS_MULAW_8000
 
     @validator("voice_id")
     def set_name(cls, voice_id):
@@ -133,6 +135,20 @@ class ElevenLabsSynthesizerConfig(
         ):
             raise ValueError("optimize_streaming_latency must be between 0 and 4.")
         return optimize_streaming_latency
+
+    def output_format_to_cache_file_extension(self) -> str:
+        """ Useful to save the file with the correct extension as arrived from ElevenLabsSynthesizer """
+        if self.output_format.startswith('ulaw'):
+            return 'mulaw'
+
+        elif self.output_format.startswith('pcm'):
+            return 'pcm'
+
+        elif self.output_format.startswith('mp3'):
+            return 'mp3'
+
+        else:
+            raise ValueError(f"Unknown output format {self.output_format}")
 
 
 RIME_DEFAULT_SPEAKER = "young_male_unmarked-1"

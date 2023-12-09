@@ -1,5 +1,7 @@
 import asyncio
+import audioop
 import hashlib
+import io
 import logging
 import os
 from io import BytesIO
@@ -14,10 +16,11 @@ from opentelemetry.trace import Span
 from vocode import getenv
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.agent import FillerAudioConfig
+from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
     ElevenLabsSynthesizerConfig,
-    SynthesizerType,
+    SynthesizerType, ELEVEN_LABS_MULAW_8000,
 )
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
@@ -56,6 +59,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
         self.experimental_streaming = synthesizer_config.experimental_streaming
+        self.output_format = synthesizer_config.output_format
 
         self.logger = logger or logging.getLogger(__name__)
         self.fillers_cache = None
@@ -63,7 +67,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
     @property
     def cache_path(self):
-        return os.path.join(FILLER_AUDIO_PATH, "elevenlabs", self.model_id, self.voice_id)
+        return os.path.join(FILLER_AUDIO_PATH, "elevenlabs", self.model_id, self.voice_id, self.output_format)
 
     @staticmethod
     def hash_message(message_text: str) -> str:
@@ -94,41 +98,54 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             pick = self.filler_picker.predict_filler_phrase(bot_message, user_message)
             if pick is not None:
                 self.logger.info(f"Filler picked: {pick}")
-                mp3 = self.__get_mp3(pick)
-                wav = decode_mp3(mp3)
-                converted_wav = convert_wav(
-                    wav,
-                    output_sample_rate=self.synthesizer_config.sampling_rate,
-                    output_encoding=self.synthesizer_config.audio_encoding,
-                )
+                audio_data = self.get_cached_audio(pick)
+                if self.output_format != ELEVEN_LABS_MULAW_8000:
+                    # TODO Mulaw could also use resampling and encoding, but it is not used now.
+                    # Below also converts to linear, which is not desirable for Mulaw
+                    audio_data = convert_wav(
+                        audio_data,
+                        output_sample_rate=self.synthesizer_config.sampling_rate,
+                        output_encoding=self.synthesizer_config.audio_encoding,
+                    )
+
                 return FillerAudio(
                     BaseMessage(text=pick),
-                    audio_data=converted_wav,
+                    audio_data=audio_data,
                     synthesizer_config=self.synthesizer_config,
                     is_interruptible=False
                 )
             self.logger.warning(f"Filler picker returned None for {bot_message} and {user_message}")
         return None
 
-    def __get_mp3(self, message_text: str):
-        file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.mp3")
+    def read_audio_from_cache(self, message_text: str):
+        file_extension = self.synthesizer_config.output_format_to_cache_file_extension()
+        file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.{file_extension}")
         if os.path.exists(file_path):
             return open(file_path, "rb").read()
         return None
 
-    def get_cached_audio(self, message_text: str, chunk_size) -> Optional[SynthesisResult]:
-        mp3 = self.__get_mp3(message_text)
-        if mp3 is not None:
-            output_bytes_io = decode_mp3(mp3)
-            return self.create_synthesis_result_from_wav(output_bytes_io, BaseMessage(text=message_text), chunk_size)
+    def get_cached_audio(self, message_text: str) -> Optional[bytes]:
+        audio_data = self.read_audio_from_cache(message_text)
+        if audio_data is not None:
+            if self.output_format == ELEVEN_LABS_MULAW_8000:
+                if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
+                    audio_data = audioop.ulaw2lin(audio_data, 2)
+
+                return audio_data
+
+            else:
+                output_bytes_io = decode_mp3(audio_data)
+                return output_bytes_io.getvalue()
+
         return None
 
-    async def save_audio(self, audio_data: bytes, message_text: str):
+    async def save_audio_to_cache(self, audio_data: bytes, message_text: str):
         os.makedirs(self.cache_path, exist_ok=True)
-        file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.mp3")
+        file_extension = self.synthesizer_config.output_format_to_cache_file_extension()
+        file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.{file_extension}")
 
-        with open(file_path, 'wb') as mp3_file:
-            mp3_file.write(audio_data)
+        with open(file_path, 'wb') as file:
+            file.write(audio_data)
 
     def set_fillers_cache(self):
         self.fillers_cache = {}
@@ -146,6 +163,51 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         if self.fillers_cache is None:
             self.set_fillers_cache()
         return self.fillers_cache.get(hash_val, None)  # FIXME: what should we do on cache miss?
+
+    def create_synthesis_result_from_bytes(self, audio_data: bytes, message: BaseMessage, chunk_size: Optional[int] = None) -> SynthesisResult:
+        if self.synthesizer_config.output_format_to_cache_file_extension() == 'mulaw':
+            if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
+                audio_data = audioop.ulaw2lin(audio_data, 2)
+
+            async def generator():
+                # TODO there is no-rechunking
+                yield SynthesisResult.ChunkResult(audio_data, True)
+
+            result = SynthesisResult(
+                generator(),  # should be wav
+                lambda seconds: self.get_message_cutoff_from_voice_speed(
+                    message, seconds, self.words_per_minute
+                ),
+            )
+
+        elif self.synthesizer_config.output_format_to_cache_file_extension() == 'mp3':
+            output_bytes_io = decode_mp3(audio_data)
+            result = self.create_synthesis_result_from_wav(
+                file=output_bytes_io,
+                message=message,
+                chunk_size=chunk_size,
+            )
+
+        else:
+            raise Exception(f"Unknown output format: {self.synthesizer_config.output_format_to_cache_file_extension()}")
+
+        return result
+
+    async def experimental_direct_streaming_output_generator(self, response: aiohttp.ClientResponse, message: BaseMessage) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
+        accumulated_audio_chunks = []
+        response: aiohttp.ClientResponse
+        stream_reader = response.content
+        # Chunked as they come from Elevenlabs
+        async for chunk in stream_reader.iter_any():
+            accumulated_audio_chunks.append(chunk)
+            if self.output_format == ELEVEN_LABS_MULAW_8000 and self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
+                chunk = audioop.ulaw2lin(chunk, 2)
+
+            yield SynthesisResult.ChunkResult(chunk, True)
+
+        complete_audio_data = b''.join(accumulated_audio_chunks)
+        self.logger.info(f"Saving audio for message: {message.text}")
+        await self.save_audio_to_cache(complete_audio_data, message.text)
 
     async def experimental_mp3_streaming_output_generator(
             self,
@@ -179,7 +241,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             miniaudio_worker.consume_nonblocking(None)  # sentinel
             complete_audio_data = b''.join(accumulated_audio_chunks)
             self.logger.info(f"Saving audio for message: {message.text}")
-            await self.save_audio(complete_audio_data, message.text)
+            await self.save_audio_to_cache(complete_audio_data, message.text)
 
         try:
             asyncio.create_task(send_chunks())
@@ -214,6 +276,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
         if self.optimize_streaming_latency:
             url += f"?optimize_streaming_latency={self.optimize_streaming_latency}"
+
+        url += f"&output_format={self.output_format}"
+
         headers = {"xi-api-key": self.api_key}
         body = {
             "text": message.text,
@@ -235,51 +300,69 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             raise Exception(f"ElevenLabs API returned {response.status} status code")
         return response
 
-    async def __save_filler(self, message: str):
+    async def save_filler_to_cache(self, message: str):
         message = BaseMessage(text=message)
         response = await self.__send_request(message, ignore_streaming=True)
+        # Storing audio as it arrives to avoid re-coding distortion.
+        # Files take up space on disk, but ulaw_8000 is small as mp3 44k.
         audio_data = await response.read()
-        await self.save_audio(audio_data, message.text)  # as in decode_mp3
+        await self.save_audio_to_cache(audio_data, message.text)
 
     async def create_speech(
             self,
             message: BaseMessage,
             chunk_size: int,
-            bot_sentiment: Optional[BotSentiment] = None,
+            bot_sentiment: Optional[BotSentiment] = None
     ) -> SynthesisResult:
 
-        cached_audio = self.get_cached_audio(message.text, chunk_size)
+        cached_audio = self.get_cached_audio(message.text)
         if cached_audio is not None:
             self.logger.info(f"Using cached audio for message: {message.text}")
-            return cached_audio
+
+            async def generator():
+                yield SynthesisResult.ChunkResult(cached_audio, True)
+
+            return SynthesisResult(
+                generator(),  # should be wav
+                lambda seconds: self.get_message_cutoff_from_voice_speed(
+                    message, seconds, self.words_per_minute
+                ),
+            )
 
         response = await self.__send_request(message)
         create_speech_span = tracer.start_span(
             f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_total",
         )
         if self.experimental_streaming:
-            return SynthesisResult(
-                self.experimental_mp3_streaming_output_generator(
-                    response, chunk_size, create_speech_span, message
-                ),  # should be wav
-                lambda seconds: self.get_message_cutoff_from_voice_speed(
-                    message, seconds, self.words_per_minute
-                ),
-            )
+            if self.output_format == ELEVEN_LABS_MULAW_8000:
+                return SynthesisResult(
+                    self.experimental_direct_streaming_output_generator(
+                        response, message
+                    ),  # should be wav
+                    lambda seconds: self.get_message_cutoff_from_voice_speed(
+                        message, seconds, self.words_per_minute
+                    ),
+                )
+            else:
+                # MP3
+                return SynthesisResult(
+                    self.experimental_mp3_streaming_output_generator(
+                        response, chunk_size, create_speech_span, message
+                    ),  # should be wav
+                    lambda seconds: self.get_message_cutoff_from_voice_speed(
+                        message, seconds, self.words_per_minute
+                    ),
+                )
+
         else:
             audio_data = await response.read()
             create_speech_span.end()
             convert_span = tracer.start_span(
                 f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.convert",
             )
-            
-            output_bytes_io = decode_mp3(audio_data)
 
-            result = self.create_synthesis_result_from_wav(
-                file=output_bytes_io,
-                message=message,
-                chunk_size=chunk_size,
-            )
+            result = self.create_synthesis_result_from_bytes(audio_data, message)
+
             convert_span.end()
 
             return result
@@ -321,7 +404,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             return
 
         for filler_text in self.filler_picker.all_fillers:
-            cached_audio = self.__get_mp3(filler_text)
+            cached_audio = self.read_audio_from_cache(filler_text)
             if cached_audio is None or flush_cache:
                 self.logger.info(f"Creating audio for missing filler: {filler_text}")
-                await self.__save_filler(filler_text)
+                await self.save_filler_to_cache(filler_text)
+
+        # TODO generate other parts of call script to cache from prompt JSON also
