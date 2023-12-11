@@ -67,6 +67,9 @@ from vocode.streaming.utils.worker import (
     InterruptibleAgentResponseEvent,
 )
 
+BOT_TALKING_SINCE_LAST_FILLER_TIME_LIMIT = 3.0
+BOT_TALKING_SINCE_LAST_ACTION_TIME_LIMIT = 0.1
+
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
 
 
@@ -126,14 +129,27 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 # TODO human_speaking should be set here as this is the only place with is_final=false.
                 self.conversation.logger.info(f"Ignoring empty transcription {transcription}")
                 return
-            has_task = self.conversation.synthesis_results_worker.current_task is not None
-            bot_still_talking = has_task and not self.conversation.synthesis_results_worker.current_task.done() if has_task else False
+
+            # Prevent interrupt.
+            since_last_filler_time = time.time() - self.conversation.last_filler_timestamp
+            silence_since_last_action = time.time() - self.conversation.last_action_timestamp
+            if (since_last_filler_time < self.conversation.filler_audio_config.silence_threshold_seconds + BOT_TALKING_SINCE_LAST_FILLER_TIME_LIMIT
+                    or silence_since_last_action < BOT_TALKING_SINCE_LAST_ACTION_TIME_LIMIT):
+                # I could clear since_last_filler_time after first response is generated in the synthesizer, but this is complicated to detect, which audio is which.
+                bot_still_talking = True
+                self.conversation.logger.info(
+                    f'Bot still talking, because filler was said recently. since_last_filler_time: {since_last_filler_time}, silence_since_last_action: {silence_since_last_action}')
+
+            else:
+                has_task = self.conversation.synthesis_results_worker.current_task is not None
+                bot_still_talking = has_task and not self.conversation.synthesis_results_worker.current_task.done() if has_task else False
 
             if bot_still_talking and self.let_bot_finish_speaking:
                 self.conversation.logger.info(
                     f'The user said "{transcription.message}" during the bot was talking. We are letting the bot finish speaking. Message is not sent to the agent.')
                 # Detect if the bot is talking. This may fail if the current task is done and another not started yet. But playing the audio takes most of the time.
                 return  # just ignore the transcription for now.
+
             if bot_still_talking and self.conversation.over_talking_filler_detector:
                 self.conversation.logger.info(
                     f'The user said "{transcription.message}" during the bot was talking. Testing to ignore filler words and confirmation words.')
@@ -291,6 +307,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         user_message = agent_response.transcript
                         if "THIS IS SYSTEM MESSAGE:" in user_message:  # no filler if this is a system message.
                             return
+
+                        self.conversation.mark_last_filler_timestamp()
                         bot_message = self.conversation.transcript.get_last_bot_text()
                         self.conversation.synthesizer: ElevenLabsSynthesizer
                         picked = self.conversation.synthesizer.pick_filler(bot_message, user_message)
@@ -523,7 +541,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         self.is_human_speaking = False
         self.active = False
+
+        self.last_action_timestamp = 0.0
         self.mark_last_action_timestamp()
+
+        self.last_filler_timestamp = 0.0
+        self.mark_last_filler_timestamp()
 
         self.check_for_idle_task: Optional[asyncio.Task] = None
         self.track_bot_sentiment_task: Optional[asyncio.Task] = None
@@ -703,6 +726,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     def mark_last_action_timestamp(self):
         self.last_action_timestamp = time.time()
+
+    def mark_last_filler_timestamp(self):
+        """ Used to prevent noisy calls interrupting after fillers, but passing after other actions like Are You There. """
+        self.last_filler_timestamp = time.time()
 
     def broadcast_interrupt(self):
         """Stops all inflight events and cancels all workers that are sending output
