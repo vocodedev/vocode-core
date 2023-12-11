@@ -43,6 +43,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
     audio_encoding: AudioEncoding
     should_encode_as_wav: bool = False
     sentiment_config: Optional[SentimentConfig] = None
+    prompt_template_filename: Optional[str] = None
 
     class Config:
         arbitrary_types_allowed = True
