@@ -166,6 +166,7 @@ class WhisperCPPTranscriberConfig(
     buffer_size_seconds: float = 1
     libname: str
     fname_model: str
+    language: str
 
 
 class RevAITranscriberConfig(TranscriberConfig, type=TranscriberType.REV_AI.value):
