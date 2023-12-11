@@ -78,6 +78,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     actions: Optional[List[ActionConfig]] = None
 
     initial_audio_path: Optional[str] = None  # path to audio file.
+    prompt_template_filename: Optional[str] = None
 
 
 class CutOffResponse(BaseModel):
