@@ -1744,6 +1744,11 @@
             "type": "string",
             "title": "Openai Model Name Override"
           },
+          "ask_if_human_present_on_idle": {
+            "type": "boolean",
+            "title": "Ask If Human Present On Idle",
+            "default": false
+          },
           "openai_account_connection": {
             "$ref": "#/components/schemas/OpenAIAccountConnection"
           },
@@ -1868,6 +1873,11 @@
           "openai_model_name_override": {
             "type": "string",
             "title": "Openai Model Name Override"
+          },
+          "ask_if_human_present_on_idle": {
+            "type": "boolean",
+            "title": "Ask If Human Present On Idle",
+            "default": false
           },
           "openai_account_connection": {
             "anyOf": [
@@ -2027,6 +2037,13 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Openai Model Name Override"
+          },
+          "ask_if_human_present_on_idle": {
+            "anyOf": [
+              { "type": "boolean" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Ask If Human Present On Idle"
           },
           "openai_account_connection": {
             "anyOf": [
@@ -2345,6 +2362,11 @@
             "type": "string",
             "title": "Openai Model Name Override"
           },
+          "ask_if_human_present_on_idle": {
+            "type": "boolean",
+            "title": "Ask If Human Present On Idle",
+            "default": false
+          },
           "openai_account_connection": {
             "anyOf": [
               { "$ref": "#/components/schemas/OpenAIAccountConnection" },
@@ -2634,7 +2656,19 @@
       },
       "Language": {
         "type": "string",
-        "enum": ["en", "es", "de"],
+        "enum": [
+          "en",
+          "es",
+          "de",
+          "hi",
+          "pt",
+          "fr",
+          "nl",
+          "id",
+          "it",
+          "ja",
+          "ko"
+        ],
         "title": "Language",
         "description": "An enumeration."
       },
@@ -2721,6 +2755,11 @@
           "openai_model_name_override": {
             "type": "string",
             "title": "Openai Model Name Override"
+          },
+          "ask_if_human_present_on_idle": {
+            "type": "boolean",
+            "title": "Ask If Human Present On Idle",
+            "default": false
           },
           "openai_account_connection": {
             "anyOf": [
