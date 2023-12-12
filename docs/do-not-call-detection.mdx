@@ -17,13 +17,13 @@ The `run_do_not_call_detection` parameter on outbound call creation defines whet
 or not to run rudimentary Do Not Call analysis.
 
 ```python
-from vocode import CreateCallAgentParams
+from vocode import CreateCallAgentParams, PromptParams
 
 vocode_client.calls.create_call(
     from_number="<YOUR VOCODE NUMBER>",
     to_number="15555555555",
     agent=CreateCallAgentParams(
-        prompt=Prompt(
+        prompt=PromptParams(
             content="Ask Eliot if the sun is on today"
         ),
     ),

@@ -11,17 +11,17 @@ phone call is an answerphone as well as subscribe to events relating to machine 
 The `on_no_human_answer` parameter defines what should happen if a machine answers the phone.
 
 ```python
-from vocode import CreateCallAgentParams
+from vocode import CreateCallAgentParams, PromptParams
 
 vocode_client.calls.create_call(
     from_number="<YOUR VOCODE NUMBER>",
     to_number="15555555555",
     agent=CreateCallAgentParams(
-        prompt=Prompt(
+        prompt=PromptParams(
             content="Ask Ajay if his refrigerator is running"
         ),
     ),
-    on_no_human_answer="hangup"
+    on_no_human_answer="hangup",
 )
 ```
 
