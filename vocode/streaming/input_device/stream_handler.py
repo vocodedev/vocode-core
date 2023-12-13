@@ -2,13 +2,14 @@ import logging
 import os
 import wave
 
-from vocode.streaming.input_device.rnn_noise import RNNoiseWrapper
+from vocode.streaming.input_device.silero_vad import SileroVAD
 from vocode.streaming.transcriber import BaseTranscriber
-from vocode.streaming.utils import prepare_audio_for_rnnnoise
+from vocode.streaming.utils import prepare_audio_for_vad
 
 
 class AudioStreamHandler:
-    FRAME_SIZE = 480
+    VAD_SAMPLE_RATE = 8000
+    VAD_FRAME_SIZE = 256
 
     def __init__(self, conversation_id: str, transcriber: BaseTranscriber):
         self.conversation_id = conversation_id
@@ -18,44 +19,39 @@ class AudioStreamHandler:
         self.audio_buffer_denoised = []
         self.frame_buffer = bytearray()
         if transcriber.transcriber_config.denoise:
-            self.logger.info("Using RNNoise for denoising.")
-            self.rnnoise_wrapper = RNNoiseWrapper()
+            self.logger.info("Using Silero for VAD.")
+            self.vad_wrapper = SileroVAD(sample_rate=self.VAD_SAMPLE_RATE, window_size=self.VAD_FRAME_SIZE)
         else:
-            self.logger.info("Not denoising audio.")
-            self.rnnoise_wrapper = None
+            self.logger.info("Not using VAD.")
+            self.vad_wrapper = None
 
     def receive_audio(self, chunk: bytes):
         # TODO: this might be blocking as hell(even though it is fast). Consider using a thread?
-        if self.rnnoise_wrapper is None:
+        if self.vad_wrapper is None:
             self.transcriber.send_audio(chunk)
         else:
-            prepared_chunk = prepare_audio_for_rnnnoise(
+            prepared_chunk = prepare_audio_for_vad(
                 input_audio=chunk,
                 input_sample_rate=self.transcriber.transcriber_config.input_device_config.sampling_rate,
                 input_encoding=self.transcriber.transcriber_config.input_device_config.audio_encoding.value,
+                output_sample_rate=self.VAD_SAMPLE_RATE,
             )
             self.frame_buffer.extend(prepared_chunk)
-
-            while len(self.frame_buffer) >= self.FRAME_SIZE * 2:  # 2 bytes per 16-bit sample
-                # Extract a full frame from the buffer
-                frame = self.frame_buffer[:self.FRAME_SIZE * 2]
+            while len(self.frame_buffer) >= self.VAD_FRAME_SIZE * 2:  # 2 bytes per 16-bit sample
+                frame = self.frame_buffer[:self.VAD_FRAME_SIZE * 2]
                 self.audio_buffer.append(frame)
-                del self.frame_buffer[:self.FRAME_SIZE * 2]
-
-                if self.rnnoise_wrapper:
-                    # Process the frame
-                    frame, vad_prob = self.rnnoise_wrapper.process_frame(frame)
-                    # Store the denoised frame
+                del self.frame_buffer[:self.VAD_FRAME_SIZE * 2]
+                if self.vad_wrapper:
+                    frame = self.vad_wrapper.process_chunk(frame)
                     self.audio_buffer_denoised.append(frame)
 
-                # Store the frame (denoised or original) and send it for transcription
                 self.transcriber.send_audio(frame)
 
     def __save_audio(self, audio_buffer, output_path):
         with wave.open(output_path, 'wb') as wf:
             wf.setnchannels(1)
             wf.setsampwidth(2)
-            wf.setframerate(48000)
+            wf.setframerate(8000)
             wf.writeframes(b''.join(audio_buffer))
 
     def save_debug_audios(self):

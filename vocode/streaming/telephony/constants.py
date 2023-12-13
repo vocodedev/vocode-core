@@ -3,7 +3,7 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 # TODO(EPD-186): namespace as Twilio
 DEFAULT_SAMPLING_RATE = 8000
 DEFAULT_AUDIO_ENCODING = AudioEncoding.MULAW
-DEFAULT_CHUNK_SIZE = 20 * 160
+DEFAULT_CHUNK_SIZE = 3072
 
 VONAGE_SAMPLING_RATE = 16000
 VONAGE_AUDIO_ENCODING = AudioEncoding.LINEAR16

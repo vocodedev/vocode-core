@@ -45,7 +45,8 @@ miniaudio = "^1.59"
 boto3 = "^1.28.28"
 pandas = "2.0.3"
 tiktoken = "^0.5.1"
-
+torch = "2.1.1"
+torchaudio = "2.1.1"
 
 [tool.poetry.group.lint.dependencies]
 black = "^23.1.0"
