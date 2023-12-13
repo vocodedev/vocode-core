@@ -740,11 +740,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.active = False
 
     async def terminate(self):
-        self.mark_terminated()
         self.broadcast_interrupt()
-        self.events_manager.publish_event(
-            TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
-        )
+        if self.is_active():
+            self.events_manager.publish_event(
+                TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
+            )
+        self.mark_terminated()
         if self.check_for_idle_task:
             self.logger.debug("Terminating check_for_idle Task")
             self.check_for_idle_task.cancel()
@@ -783,7 +784,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.debug("Terminating actions worker")
             self.actions_worker.terminate()
         await terminate_transcriber_task
+        self.logger.debug("Terminated speech transcriber")
         await tear_down_synthesizer_task
+        self.logger.debug("Terminated synthesizer")
         self.logger.debug("Successfully terminated")
 
     def is_active(self):

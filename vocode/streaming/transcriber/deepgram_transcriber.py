@@ -232,6 +232,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             )
             await ws.send(data)
         self.logger.debug("Terminating Deepgram transcriber sender")
+        return
 
     async def receiver(self, ws: WebSocketClientProtocol):
         buffer = ""
@@ -331,6 +332,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             else:
                 time_silent += data["duration"]
         self.logger.debug("Terminating Deepgram transcriber receiver")
+        return
 
     async def process(self):
         self.audio_cursor = 0.0
