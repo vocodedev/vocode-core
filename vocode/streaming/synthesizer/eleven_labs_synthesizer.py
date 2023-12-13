@@ -34,6 +34,7 @@ from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 
 from vocode.streaming.utils.aws_s3 import load_from_s3, load_from_s3_async
+from vocode.streaming.utils.cache import RedisRenewableTTLCache
 
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
@@ -45,10 +46,16 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: ElevenLabsSynthesizerConfig,
+        cache: Optional[RedisRenewableTTLCache] = None,
         logger: Optional[logging.Logger] = None,
         aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config, aiohttp_session)
+        super().__init__(
+            synthesizer_config,
+            cache=cache, 
+            logger=logger,
+            aiohttp_session=aiohttp_session
+        )
 
         import elevenlabs
 
@@ -180,6 +187,71 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         )
         return follow_up_audios
 
+    def get_result_from_mp3_audio_data(
+            self, 
+            audio_data: bytes,
+            message: BaseMessage,
+            chunk_size: int
+        ) -> SynthesisResult:
+        output_bytes_io = decode_mp3(audio_data)
+        result = self.create_synthesis_result_from_wav(
+            synthesizer_config=self.synthesizer_config,
+            file=output_bytes_io,
+            message=BaseMessage(text=message.text),
+            chunk_size=chunk_size,
+        )
+        return result
+
+    async def get_result_from_index(
+            self,
+            message: BaseMessage,
+            chunk_size: int
+        ):
+        self.logger.debug(f"Checking vector_db for \"{message.text}\"...")
+        index_filter = None
+        if self.stability is not None and self.similarity_boost is not None:
+            index_filter = {
+                "stability": self.stability,
+                "similarity_boost": self.similarity_boost,
+                "voice_id": self.voice_id
+            }
+        result_embeds: List[Tuple[Document, float]] = await self.vector_db.similarity_search_with_score(
+            query=message.text,
+            filter=index_filter
+        )
+        if result_embeds:
+            doc, score = result_embeds[0] # top result
+            if score > SIMILARITY_THRESHOLD:
+                object_id = doc.metadata.get("object_key")
+                text_message = doc.page_content
+                self.logger.debug(f"Found similar synthesized text in vector_db: {text_message}")
+                self.logger.debug(f"Original text: {message.text}")
+                try:
+                    async with self.aiobotocore_session.create_client('s3', config=s3_config) as _s3:
+                        audio_data = await load_from_s3_async(
+                            bucket_name=self.bucket_name, 
+                            object_key=object_id,
+                            s3_client=_s3
+                        )
+                except Exception as e:
+                    self.logger.debug(f"Error loading object from S3: {str(e)}")
+                    audio_data = None
+                if audio_data is not None:
+                    if self.cache:
+                        self.logger.debug(f"Adding {text_message} to cache.")
+                        cache_key = self.get_cache_key(message.text)
+                        self.logger.debug(f"Cache key: {cache_key}")
+                        self.cache.set(cache_key, base64.b64encode(audio_data))
+                    result = self.get_result_from_mp3_audio_data(
+                        audio_data,
+                        message,
+                        chunk_size
+                    )
+                    return result
+                else:
+                    return None
+            else:
+                return None
 
     async def create_speech(
         self,
@@ -189,81 +261,39 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         return_tuple: Optional[bool] = False
     ) -> Union[SynthesisResult, Tuple[SynthesisResult, BaseMessage]]:
         
+        # check local cache
+        if self.cache:
+            self.logger.debug(f"Checking cache for: {message.text}")
+            cache_key = self.get_cache_key(message.text)
+            self.logger.debug(f"Cache key: {cache_key}")
+            audio_encoded = self.cache.get(cache_key)
+            if audio_encoded is not None:
+                self.logger.debug(f"Retrieving text from synthesizer cache: {message.text}")
+                audio_data = base64.b64decode(audio_encoded)
+                result = self.get_result_from_mp3_audio_data(
+                    audio_data,
+                    message,
+                    chunk_size
+                )
+                if return_tuple:
+                    return result, BaseMessage(text=message.text)
+                else:
+                    return result
+
+        # check vector db
         if self.vector_db and self.bucket_name:
-            self.logger.debug(f"Checking vector_db for \"{message.text}\"...")
-            # if we are using vector_db, check if we have a similar phrase
-            if self.vector_db_cache:
-                if message.text in self.vector_db_cache:
-                    self.logger.debug(f"Retrieving text from vector_db_cache: {message.text}")
-                    audio_encoded : bytes = self.vector_db_cache[message.text]
-                    # Decode the base64-encoded audio data back to bytes
-                    audio_data = base64.b64decode(audio_encoded)
-                    output_bytes_io = decode_mp3(audio_data)
-                    result = self.create_synthesis_result_from_wav(
-                        synthesizer_config=self.synthesizer_config,
-                        file=output_bytes_io,
-                        message=BaseMessage(text=message.text),
-                        chunk_size=chunk_size,
-                    )
-                    if return_tuple:
-                        return result, BaseMessage(text=message.text)
-                    else:
-                        return result
-
-            index_filter = None
-            if self.stability is not None and self.similarity_boost is not None:
-                index_filter = {
-                    "stability": self.stability,
-                    "similarity_boost": self.similarity_boost,
-                    "voice_id": self.voice_id
-                }
-            result_embeds: List[Tuple[Document, float]] = await self.vector_db.similarity_search_with_score(
-                query=message.text,
-                filter=index_filter
+            result: SynthesisResult = await self.get_result_from_index(
+                message,
+                chunk_size
             )
-            if result_embeds:
-                doc, score = result_embeds[0] # top result
-                if score > SIMILARITY_THRESHOLD:
-                    self.logger.debug(f"Found similar synthesized text in vector_db: {doc.metadata}")
-                    object_id = doc.metadata.get("object_key")
-                    text_message = doc.page_content
-                    self.logger.debug(f"Found similar synthesized text in vector_db: {text_message}")
-                    self.logger.debug(f"Original text: {message.text}")
-                    try:
-                        async with self.aiobotocore_session.create_client('s3', config=s3_config) as _s3:
-                            audio_data = await load_from_s3_async(
-                                bucket_name=self.bucket_name, 
-                                object_key=object_id,
-                                s3_client=_s3
-                            )
-                            self.logger.debug(f"Adding {text_message} to cache.")
-                            self.vector_db_cache[text_message] = base64.b64encode(audio_data)
-                    except Exception as e:
-                        self.logger.debug(f"Error loading object from S3: {str(e)}")
-                        audio_data = None
-                    
-                    # assert audio_data is not None
-                    # assert type(audio_data) == bytes
-
-                    output_bytes_io = decode_mp3(audio_data)
-                    
-                    # If successful, return result. Otherwise, synthesize below.
-
-                    result = self.create_synthesis_result_from_wav(
-                        synthesizer_config=self.synthesizer_config,
-                        file=output_bytes_io,
-                        message=BaseMessage(text=text_message),
-                        chunk_size=chunk_size,
-                    )
-                    
-                    # TODO: cache result in self.vector_db_cache
-                    if return_tuple:
-                        return result, BaseMessage(text=text_message)
-                    else:
-                        return result
+            if result is not None:
+                if return_tuple:
+                    return result, BaseMessage(text=message.text)
+                else:
+                    return result
 
         # else synthesize
-
+        self.logger.debug(f"Synthesizing: {message.text}")
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
@@ -286,19 +316,13 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         session = self.aiohttp_session
         response = await self.make_request(session, url, body, headers)
 
-        # response = await session.request(
-        #     "POST",
-        #     url,
-        #     json=body,
-        #     headers=headers,
-        #     timeout=aiohttp.ClientTimeout(total=15),
-        # )
-        # if not response.ok:
-        #     raise Exception(f"ElevenLabs API returned {response.status} status code")
         if self.experimental_streaming:
             result = SynthesisResult(
                 self.experimental_mp3_streaming_output_generator(
-                    response, chunk_size, create_speech_span
+                    response, 
+                    chunk_size, 
+                    create_speech_span,
+                    message                    
                 ),  # should be wav
                 lambda seconds: self.get_message_cutoff_from_voice_speed(
                     message, seconds, self.words_per_minute
@@ -314,14 +338,13 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             convert_span = tracer.start_span(
                 f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.convert",
             )
-            output_bytes_io = decode_mp3(audio_data)
 
-            result = self.create_synthesis_result_from_wav(
-                synthesizer_config=self.synthesizer_config,
-                file=output_bytes_io,
-                message=message,
-                chunk_size=chunk_size,
+            result = self.get_result_from_mp3_audio_data(
+                audio_data,
+                message,
+                chunk_size
             )
+
             convert_span.end()
             if return_tuple:
                 return result, message

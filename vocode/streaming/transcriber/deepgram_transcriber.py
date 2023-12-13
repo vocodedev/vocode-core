@@ -61,18 +61,25 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 "Please set DEEPGRAM_API_KEY environment variable or pass it as a parameter"
             )
         self._ended = False
+        self._task = None
+        self.received_first_audio = False
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
         self.audio_cursor = 0.0
 
     async def _run_loop(self):
-        restarts = 0
-        while not self._ended and restarts < NUM_RESTARTS:
-            await self.process()
-            restarts += 1
-            self.logger.debug(
-                "Deepgram connection died, restarting, num_restarts: %s", restarts
-            )
+        try:
+            restarts = 0
+            while not self._ended and restarts < NUM_RESTARTS:
+                await self.process()
+                if self._ended:
+                    break
+                restarts += 1
+                self.logger.debug(
+                    "Deepgram connection died, restarting, num_restarts: %s", restarts
+                )
+        except asyncio.CancelledError:
+            return
 
     def send_audio(self, chunk):
         if (
@@ -90,10 +97,11 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             )
         super().send_audio(chunk)
 
-    def terminate(self):
+    async def terminate(self):
         terminate_msg = json.dumps({"type": "CloseStream"})
         self.input_queue.put_nowait(terminate_msg)
         self._ended = True
+        await self._task
         super().terminate()
 
     def get_deepgram_url(self):
@@ -177,6 +185,152 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         if words:
             return end - words[-1]["end"]
         return data["duration"]
+    
+    async def sender(self, ws: WebSocketClientProtocol):  # sends audio to websocket
+        while not self._ended:
+            try:
+                if not self.received_first_audio:
+                    self.logger.debug("Deepgram sender: waiting for audio")
+                data = await asyncio.wait_for(self.input_queue.get(), 5)
+                if not self.received_first_audio:
+                    self.logger.debug("Deepgram sender: sent first audio")
+                self.received_first_audio = True
+                if self.transcriber_config.voice_activity_detector_config:
+                    # when using WebRTC VAD, there are too many false positive that break the conversation flow
+                    try:
+                        # TODO: make this async
+                        start_time = time.time()
+                        if self.voice_activity_detector.should_interrupt(data):
+                            self.logger.debug(f"VAD detected - took {time.time() - start_time:.3f} seconds")
+                            self.output_queue.put_nowait(
+                                Transcription(
+                                    message=HUMAN_ACTIVITY_DETECTED,
+                                    confidence=1,
+                                    is_final=True,
+                                )
+                            )
+                        
+                    except Exception as e:
+                        self.logger.debug(f"Error in voice activity detector: {repr(e)}")
+            except asyncio.exceptions.TimeoutError:
+                if not self.received_first_audio:
+                    self.logger.debug("Deepgram sender: sending KeepAlive")
+                    await ws.send(json.dumps({"type": "KeepAlive"}))
+                    continue
+                if self._ended:
+                    self.logger.debug("Deepgram sender: sending KeepAlive")
+                    terminate_msg = json.dumps({"type": "CloseStream"})
+                    await ws.send(terminate_msg)
+                    continue
+                break
+            num_channels = 1
+            sample_width = 2
+            self.audio_cursor += len(data) / (
+                self.transcriber_config.sampling_rate
+                * num_channels
+                * sample_width
+            )
+            await ws.send(data)
+        self.logger.debug("Terminating Deepgram transcriber sender")
+
+    async def receiver(self, ws: WebSocketClientProtocol):
+        buffer = ""
+        buffer_avg_confidence = 0
+        num_buffer_utterances = 1
+        time_silent = 0
+        transcript_cursor = 0.0
+        sent_vad_transcription = False
+        while not self._ended:
+            try:
+                msg = await ws.recv()
+            except websockets.exceptions.ConnectionClosed:
+                self.logger.debug("Deepgram websocket connection closed")
+                break
+            except asyncio.TimeoutError:
+                if self._ended:
+                    self.logger.debug("Deepgram receiver timeout error")                    
+                    break
+            except Exception as e:
+                self.logger.debug(f"Got error {e} in Deepgram receiver")
+                break
+            data = json.loads(msg)
+            if not self.received_first_audio:
+                self.logger.debug(f"Deepgram receiver: got message {data}")
+            if (
+                not "is_final" in data
+            ):  # means we've finished receiving transcriptions
+                self.logger.debug(f"Deepgram: received final transcription - _ended:{self._ended}")
+                self._ended = True
+                continue
+            cur_max_latency = self.audio_cursor - transcript_cursor
+            transcript_cursor = data["start"] + data["duration"]
+            cur_min_latency = self.audio_cursor - transcript_cursor
+
+            avg_latency_hist.record(
+                (cur_min_latency + cur_max_latency) / 2 * data["duration"]
+            )
+            duration_hist.record(data["duration"])
+
+            # Log max and min latencies
+            max_latency_hist.record(cur_max_latency)
+            min_latency_hist.record(max(cur_min_latency, 0))
+
+            is_final = data["is_final"]
+            speech_final = self.is_speech_final(buffer, data, time_silent)
+            top_choice = data["channel"]["alternatives"][0]
+            confidence = top_choice["confidence"]
+
+            if top_choice["transcript"] and confidence > 0.0 and is_final:
+                buffer = f"{buffer} {top_choice['transcript']}"
+                if buffer_avg_confidence == 0:
+                    buffer_avg_confidence = confidence
+                else:
+                    buffer_avg_confidence = (
+                        buffer_avg_confidence
+                        + confidence / (num_buffer_utterances)
+                    ) * (num_buffer_utterances / (num_buffer_utterances + 1))
+                num_buffer_utterances += 1
+
+            if speech_final:
+                self.output_queue.put_nowait(
+                    Transcription(
+                        message=buffer,
+                        confidence=buffer_avg_confidence,
+                        is_final=True,
+                    )
+                )
+                buffer = ""
+                buffer_avg_confidence = 0
+                num_buffer_utterances = 1
+                time_silent = 0
+                sent_vad_transcription = False
+            elif (
+                data["duration"] > self.transcriber_config.minimum_speaking_duration_to_interrupt
+                and len(top_choice["words"])> self.transcriber_config.interruption_word_threshold
+                and not sent_vad_transcription
+            ):
+                self.logger.debug("Sending VAD transcription")
+                self.output_queue.put_nowait(
+                    Transcription(
+                        message=HUMAN_ACTIVITY_DETECTED,
+                        confidence=1,
+                        is_final=False,
+                    )
+                )
+                sent_vad_transcription = True
+                time_silent = self.calculate_time_silent(data)
+            elif top_choice["transcript"] and confidence > 0.0:
+                self.output_queue.put_nowait(
+                    Transcription(
+                        message=buffer,
+                        confidence=confidence,
+                        is_final=False,
+                    )
+                )
+                time_silent = self.calculate_time_silent(data)
+            else:
+                time_silent += data["duration"]
+        self.logger.debug("Terminating Deepgram transcriber receiver")
 
     async def process(self):
         self.audio_cursor = 0.0
@@ -185,126 +339,5 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         async with websockets.connect(
             self.get_deepgram_url(), extra_headers=extra_headers
         ) as ws:
-
-            async def sender(ws: WebSocketClientProtocol):  # sends audio to websocket
-                while not self._ended:
-                    try:
-                        data = await asyncio.wait_for(self.input_queue.get(), 5)
-                        if self.transcriber_config.voice_activity_detector_config:
-                            # when using WebRTC VAD, there are too many false positive that break the conversation flow
-                            try:
-                                # TODO: make this async
-                                start_time = time.time()
-                                if self.voice_activity_detector.should_interrupt(data):
-                                    self.logger.debug(f"VAD detected - took {time.time() - start_time:.3f} seconds")
-                                    self.output_queue.put_nowait(
-                                        Transcription(
-                                            message=HUMAN_ACTIVITY_DETECTED,
-                                            confidence=1,
-                                            is_final=True,
-                                        )
-                                    )
-                                
-                            except Exception as e:
-                                self.logger.debug(f"Error in voice activity detector: {repr(e)}")
-                    except asyncio.exceptions.TimeoutError:
-                        break
-                    num_channels = 1
-                    sample_width = 2
-                    self.audio_cursor += len(data) / (
-                        self.transcriber_config.sampling_rate
-                        * num_channels
-                        * sample_width
-                    )
-                    await ws.send(data)
-                self.logger.debug("Terminating Deepgram transcriber sender")
-
-            async def receiver(ws: WebSocketClientProtocol):
-                buffer = ""
-                buffer_avg_confidence = 0
-                num_buffer_utterances = 1
-                time_silent = 0
-                transcript_cursor = 0.0
-                sent_vad_transcription = False
-                while not self._ended:
-                    try:
-                        msg = await ws.recv()
-                    except Exception as e:
-                        self.logger.debug(f"Got error {e} in Deepgram receiver")
-                        break
-                    data = json.loads(msg)
-                    if (
-                        not "is_final" in data
-                    ):  # means we've finished receiving transcriptions
-                        break
-                    cur_max_latency = self.audio_cursor - transcript_cursor
-                    transcript_cursor = data["start"] + data["duration"]
-                    cur_min_latency = self.audio_cursor - transcript_cursor
-
-                    avg_latency_hist.record(
-                        (cur_min_latency + cur_max_latency) / 2 * data["duration"]
-                    )
-                    duration_hist.record(data["duration"])
-
-                    # Log max and min latencies
-                    max_latency_hist.record(cur_max_latency)
-                    min_latency_hist.record(max(cur_min_latency, 0))
-
-                    is_final = data["is_final"]
-                    speech_final = self.is_speech_final(buffer, data, time_silent)
-                    top_choice = data["channel"]["alternatives"][0]
-                    confidence = top_choice["confidence"]
-
-                    if top_choice["transcript"] and confidence > 0.0 and is_final:
-                        buffer = f"{buffer} {top_choice['transcript']}"
-                        if buffer_avg_confidence == 0:
-                            buffer_avg_confidence = confidence
-                        else:
-                            buffer_avg_confidence = (
-                                buffer_avg_confidence
-                                + confidence / (num_buffer_utterances)
-                            ) * (num_buffer_utterances / (num_buffer_utterances + 1))
-                        num_buffer_utterances += 1
-
-                    if speech_final:
-                        self.output_queue.put_nowait(
-                            Transcription(
-                                message=buffer,
-                                confidence=buffer_avg_confidence,
-                                is_final=True,
-                            )
-                        )
-                        buffer = ""
-                        buffer_avg_confidence = 0
-                        num_buffer_utterances = 1
-                        time_silent = 0
-                        sent_vad_transcription = False
-                    elif (
-                        data["duration"] > self.transcriber_config.minimum_speaking_duration_to_interrupt
-                        and len(top_choice["words"])> self.transcriber_config.interruption_word_threshold
-                        and not sent_vad_transcription
-                    ):
-                        self.logger.debug("Sending VAD transcription")
-                        self.output_queue.put_nowait(
-                            Transcription(
-                                message=HUMAN_ACTIVITY_DETECTED,
-                                confidence=1,
-                                is_final=False,
-                            )
-                        )
-                        sent_vad_transcription = True
-                        time_silent = self.calculate_time_silent(data)
-                    elif top_choice["transcript"] and confidence > 0.0:
-                        self.output_queue.put_nowait(
-                            Transcription(
-                                message=buffer,
-                                confidence=confidence,
-                                is_final=False,
-                            )
-                        )
-                        time_silent = self.calculate_time_silent(data)
-                    else:
-                        time_silent += data["duration"]
-                self.logger.debug("Terminating Deepgram transcriber receiver")
-
-            await asyncio.gather(sender(ws), receiver(ws))
+            self._task= asyncio.gather(self.sender(ws), self.receiver(ws))
+            await self._task

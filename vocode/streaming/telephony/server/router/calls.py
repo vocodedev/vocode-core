@@ -19,7 +19,7 @@ from vocode.streaming.telephony.conversation.vonage_call import VonageCall
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.base_router import BaseRouter
 from vocode.streaming.utils.events_manager import EventsManager
-
+from vocode.streaming.utils.cache import RedisRenewableTTLCache
 
 class CallsRouter(BaseRouter):
     def __init__(
@@ -29,6 +29,7 @@ class CallsRouter(BaseRouter):
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+        synthesizer_cache: Optional[RedisRenewableTTLCache] = None,
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
@@ -38,6 +39,7 @@ class CallsRouter(BaseRouter):
         self.transcriber_factory = transcriber_factory
         self.agent_factory = agent_factory
         self.synthesizer_factory = synthesizer_factory
+        self.synthesizer_cache = synthesizer_cache
         self.events_manager = events_manager
         self.logger = logger or logging.getLogger(__name__)
         self.router = APIRouter()
@@ -53,6 +55,7 @@ class CallsRouter(BaseRouter):
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+        synthesizer_cache: Optional[RedisRenewableTTLCache] = None,
         events_manager: Optional[EventsManager] = None,
     ):
         if isinstance(call_config, TwilioCallConfig):
@@ -71,6 +74,7 @@ class CallsRouter(BaseRouter):
                 transcriber_factory=transcriber_factory,
                 agent_factory=agent_factory,
                 synthesizer_factory=synthesizer_factory,
+                synthesizer_cache=synthesizer_cache,
                 events_manager=events_manager,
             )
         elif isinstance(call_config, VonageCallConfig):
@@ -89,6 +93,7 @@ class CallsRouter(BaseRouter):
                 transcriber_factory=transcriber_factory,
                 agent_factory=agent_factory,
                 synthesizer_factory=synthesizer_factory,
+                synthesizer_cache=synthesizer_cache,
                 events_manager=events_manager,
                 output_to_speaker=call_config.output_to_speaker,
             )
@@ -110,6 +115,7 @@ class CallsRouter(BaseRouter):
             transcriber_factory=self.transcriber_factory,
             agent_factory=self.agent_factory,
             synthesizer_factory=self.synthesizer_factory,
+            synthesizer_cache=self.synthesizer_cache,
             events_manager=self.events_manager,
             logger=self.logger,
         )

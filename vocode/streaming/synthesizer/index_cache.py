@@ -1,4 +1,3 @@
-from vocode.streaming.models.index_config import IndexConfig
 from typing import Dict, Any, List
 from langchain.docstore.document import Document
 from vocode.streaming.models.index_config import IndexConfig

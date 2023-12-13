@@ -25,6 +25,7 @@ from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils import create_conversation_id
+from vocode.streaming.utils.cache import RedisRenewableTTLCache
 
 TelephonyOutputDeviceType = TypeVar(
     "TelephonyOutputDeviceType", bound=Union[TwilioOutputDevice, VonageOutputDevice]
@@ -46,6 +47,7 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+        synthesizer_cache: RedisRenewableTTLCache = RedisRenewableTTLCache(),
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
@@ -63,7 +65,11 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
             output_device,
             transcriber_factory.create_transcriber(transcriber_config, logger=logger),
             agent_factory.create_agent(agent_config, logger=logger),
-            synthesizer_factory.create_synthesizer(synthesizer_config, logger=logger),
+            synthesizer_factory.create_synthesizer(
+                synthesizer_config, 
+                synthesizer_cache=synthesizer_cache,
+                logger=logger
+            ),
             conversation_id=conversation_id,
             per_chunk_allowance_seconds=0.01,
             events_manager=events_manager,

@@ -29,7 +29,7 @@ from vocode.streaming.utils.state_manager import (
     ConversationStateManager,
     VonageCallStateManager,
 )
-
+from vocode.streaming.utils.cache import RedisRenewableTTLCache
 
 class VonageCall(Call[VonageOutputDevice]):
     def __init__(
@@ -47,6 +47,7 @@ class VonageCall(Call[VonageOutputDevice]):
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+        synthesizer_cache: Optional[RedisRenewableTTLCache] = None,
         events_manager: Optional[EventsManager] = None,
         output_to_speaker: bool = False,
         logger: Optional[logging.Logger] = None,
@@ -65,6 +66,7 @@ class VonageCall(Call[VonageOutputDevice]):
             transcriber_factory=transcriber_factory,
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
+            synthesizer_cache=synthesizer_cache,
             logger=logger,
         )
         self.output_to_speaker = output_to_speaker

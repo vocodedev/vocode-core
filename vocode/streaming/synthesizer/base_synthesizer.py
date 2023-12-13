@@ -12,7 +12,7 @@ from typing import (
     Optional,
     Tuple,
     TypeVar,
-    Union,
+    Union
 )
 import math
 import io
@@ -24,6 +24,7 @@ from nltk.tokenize.treebank import TreebankWordDetokenizer
 from opentelemetry import trace
 from opentelemetry.trace import Span
 
+from vocode.streaming.utils.cache import RedisRenewableTTLCache
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.agent import FillerAudioConfig, FollowUpAudioConfig
 from vocode.streaming.models.message import BaseMessage
@@ -32,6 +33,7 @@ from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.synthesizer import SynthesizerConfig, TYPING_NOISE_PATH
 import logging
+import base64
 
 # Get the root logger
 logger = logging.getLogger()
@@ -138,10 +140,12 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
     def __init__(
         self,
         synthesizer_config: SynthesizerConfigType,
+        cache: Optional[RedisRenewableTTLCache] = None,
         logger: Optional[logging.Logger] = None,
         aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
         self.logger = logger or logging.getLogger(__name__)
+        self.cache: RedisRenewableTTLCache = cache
         self.synthesizer_config = synthesizer_config
         self.base_filler_audio_path = self.synthesizer_config.base_filler_audio_path
         self.base_follow_up_audio_path = self.synthesizer_config.base_follow_up_audio_path
@@ -237,6 +241,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         message: BaseMessage,
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
+        conversation_id: Optional[str] = None
     ) -> SynthesisResult:
         '''
         returns a chunk generator and a thunk that can tell you what part of the message was read given the number of seconds spoken
@@ -286,6 +291,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         response: aiohttp.ClientResponse,
         chunk_size: int,
         create_speech_span: Optional[Span],
+        message: Optional[BaseMessage] = None
     ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
         miniaudio_worker_input_queue: asyncio.Queue[
             Union[bytes, None]
@@ -305,16 +311,22 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
 
         # Create a task to send the mp3 chunks to the MiniaudioWorker's input queue in a separate loop
         async def send_chunks():
+            mp3_audio = b""
             try:
                 async for chunk in stream_reader.iter_any():
                     miniaudio_worker.consume_nonblocking(chunk)
+                    mp3_audio += chunk
             except asyncio.TimeoutError:
                 self.logger.debug("Timeout while reading chunks from stream_reader")
             finally:
                 miniaudio_worker.consume_nonblocking(None)  # sentinel
+                cache_key = self.get_cache_key(message.text)
+                self.logger.debug(f"Caching {cache_key} in experimental_mp3_streaming")
+                self.cache.set(cache_key, base64.b64encode(mp3_audio))
 
         try:
             asyncio.create_task(send_chunks())
+            # wav_audio = b""
 
             # Await the output queue of the MiniaudioWorker and yield the wav chunks in another loop
             while True:
@@ -322,12 +334,15 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
                 wav_chunk, is_last = await miniaudio_worker.output_queue.get()
                 if self.synthesizer_config.should_encode_as_wav:
                     wav_chunk = encode_as_wav(wav_chunk, self.synthesizer_config)
-
+                # wav_audio += wav_chunk
                 yield SynthesisResult.ChunkResult(wav_chunk, is_last)
                 # If this is the last chunk, break the loop
                 if is_last:
                     if create_speech_span is not None:
                         create_speech_span.end()
+                    # cache_key = self.get_cache_key(message.text)
+                    # self.logger.debug(f"Caching {cache_key}")
+                    # self.cache.set(cache_key, wav_audio)
                     self.logger.debug("Last chunk in MiniaudioWorker")
                     break
         except asyncio.TimeoutError:
@@ -341,3 +356,6 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
     async def tear_down(self):
         if self.should_close_session_on_tear_down:
             await self.aiohttp_session.close()
+
+    def get_cache_key(self, text: str) -> str:
+        return self.synthesizer_config.get_cache_key(text)

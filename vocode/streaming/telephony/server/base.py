@@ -37,6 +37,7 @@ from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils import create_conversation_id
 from vocode.streaming.utils.events_manager import EventsManager
+from vocode.streaming.utils.cache import RedisRenewableTTLCache
 
 
 class AbstractInboundCallConfig(BaseModel, abc.ABC):
@@ -69,6 +70,7 @@ class TelephonyServer:
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+        synthesizer_cache: Optional[RedisRenewableTTLCache] = None,
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
@@ -85,6 +87,7 @@ class TelephonyServer:
                 transcriber_factory=transcriber_factory,
                 agent_factory=agent_factory,
                 synthesizer_factory=synthesizer_factory,
+                synthesizer_cache=synthesizer_cache,
                 events_manager=self.events_manager,
                 logger=self.logger,
             ).get_router()

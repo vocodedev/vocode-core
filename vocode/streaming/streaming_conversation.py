@@ -146,22 +146,24 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                 )
 
-            # check interruption
+            # check interruption, if not checking interruption, transcription will always be considered 
             should_check_interrupt = (
                 self.conversation.is_bot_speaking 
-                # or not self.conversation.is_human_speaking 
+                # or not self.conversation.is_human_speaking # commented out because bot keeps ignoring small utterances even when there is silence
                 or self.conversation.is_synthesizing
+                or not self.conversation.sent_initial_message
             )
             # self.conversation.logger.debug(f"is_bot_speaking: {self.conversation.is_bot_speaking}")
             # self.conversation.logger.debug(f"is_synthesizing: {self.conversation.is_synthesizing}")
             if should_check_interrupt:
+                self.conversation.logger.debug(f"Checking interrupt for {transcription.message}")
                 if self.conversation.is_interrupt(transcription):
                     self.conversation.logger.debug("Conversation interrupted")
                     self.conversation.current_transcription_is_interrupt = (
                         self.conversation.broadcast_interrupt()
                     )
                     if self.conversation.current_transcription_is_interrupt:
-                        self.conversation.logger.debug("sending interrupt")
+                        self.conversation.logger.debug("Sending interrupt...")
                     self.conversation.logger.debug("Human started speaking")
 
                     # TODO: change from filler to back tracking audio
@@ -324,6 +326,17 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                     publish_to_events_manager=False,
                 )
+
+                # add a customizable deplay to the initial message
+                if (
+                    not self.conversation.sent_initial_message
+                    and not self.conversation.human_has_spoken
+                ):
+                    initial_delay = self.conversation.agent.get_agent_config().initial_message_delay_seconds
+                    if initial_delay:
+                        self.conversation.logger.debug("Delaying initial message by %s seconds", initial_delay)
+                        await asyncio.sleep(initial_delay)
+
                 # set flag for bot interruption
                 self.conversation.is_interrupted = False
                 
@@ -480,7 +493,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
     def create_state_manager(self) -> ConversationStateManager:
         return ConversationStateManager(conversation=self)
 
-    async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
+    async def start(
+            self, 
+            started_event: Optional[asyncio.Event] = None,
+            mark_ready: Optional[Callable[[], Awaitable[None]]] = None
+        ):
         self.transcriber.start()
         self.transcriptions_worker.start()
         self.agent_responses_worker.start()
@@ -495,10 +512,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
 
         self.agent.start()
+        self.agent.attach_transcript(self.transcript)
         initial_message = self.agent.get_agent_config().initial_message
         if initial_message:
-            asyncio.create_task(self.send_initial_message(initial_message))
-        self.agent.attach_transcript(self.transcript)
+            initial_message_task = asyncio.create_task(self.send_initial_message(initial_message))
+        self.active = True
+        if started_event:
+            started_event.set()
         if mark_ready:
             await mark_ready()
         # bluberry modification: added self.agent.get_agent_config().track_bot_sentiment 
@@ -508,7 +528,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             and self.agent.get_agent_config().track_bot_sentiment
         ):
             await self.update_bot_sentiment()
-        self.active = True
+       
         if (self.synthesizer.get_synthesizer_config().sentiment_config 
                 and self.agent.get_agent_config().track_bot_sentiment):
             self.track_bot_sentiment_task = asyncio.create_task(
@@ -517,26 +537,24 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.check_for_idle_task = asyncio.create_task(self.check_for_idle())
         if len(self.events_manager.subscriptions) > 0:
             self.events_task = asyncio.create_task(self.events_manager.start())
+        await initial_message_task if initial_message_task else None
 
     async def send_initial_message(self, initial_message: BaseMessage):
         try:
-            initial_delay = self.agent.get_agent_config().initial_message_delay_seconds
-            if initial_delay:
-                self.logger.debug("Delaying initial message by %s seconds", initial_delay)
-                await asyncio.sleep(initial_delay)
-            initial_message_tracker = asyncio.Event()
-            agent_response_event = (
-                self.interruptible_event_factory.create_interruptible_agent_response_event(
-                    AgentResponseMessage(message=initial_message),
-                    is_interruptible=self.agent.get_agent_config().interrupt_initial_message,
-                    agent_response_tracker=initial_message_tracker,
+            if not self.human_has_spoken:
+                initial_message_tracker = asyncio.Event()
+                agent_response_event = (
+                    self.interruptible_event_factory.create_interruptible_agent_response_event(
+                        AgentResponseMessage(message=initial_message),
+                        is_interruptible=self.agent.get_agent_config().interrupt_initial_message,
+                        agent_response_tracker=initial_message_tracker,
+                    )
                 )
-            )
-            self.agent_responses_worker.consume_nonblocking(agent_response_event)
-            self.sent_initial_message = await initial_message_tracker.wait()
+                self.agent_responses_worker.consume_nonblocking(agent_response_event)
+                self.sent_initial_message = await initial_message_tracker.wait()
         except asyncio.CancelledError:
             self.sent_initial_message = True
-            pass
+            return
 
     async def check_for_idle(self):
         """Terminates the conversation after allowed_idle_time_seconds seconds if no activity is detected"""
@@ -737,7 +755,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.debug("Terminating events Task")
             await self.events_manager.flush()
         self.logger.debug("Tearing down synthesizer")
-        await self.synthesizer.tear_down()
+        tear_down_synthesizer_task = asyncio.create_task(self.synthesizer.tear_down())
         self.logger.debug("Terminating agent")
         if (
             isinstance(self.agent, ChatGPTAgent)
@@ -752,7 +770,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.logger.debug("Terminating output device")
         self.output_device.terminate()
         self.logger.debug("Terminating speech transcriber")
-        self.transcriber.terminate()
+        terminate_transcriber_task = asyncio.create_task(self.transcriber.terminate())
         self.logger.debug("Terminating transcriptions worker")
         self.transcriptions_worker.terminate()
         self.logger.debug("Terminating final transcriptions worker")
@@ -764,6 +782,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.actions_worker is not None:
             self.logger.debug("Terminating actions worker")
             self.actions_worker.terminate()
+        await terminate_transcriber_task
+        await tear_down_synthesizer_task
         self.logger.debug("Successfully terminated")
 
     def is_active(self):

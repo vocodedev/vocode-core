@@ -1,5 +1,7 @@
 import os
 import __main__
+import hashlib
+from abc import abstractmethod
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
@@ -45,6 +47,13 @@ except Exception as e:
 TYPING_NOISE_PATH = "%s/typing-noise.wav" % FILLER_AUDIO_PATH
 
 
+def __hash__(instance) -> str:
+    hash = hashlib.sha256()
+    hash.update(bytes(getattr(instance, "type"), "utf-8"))
+    for _, value in vars(instance).items():
+        hash.update(bytes(str(value), "utf-8"))
+    return hash.hexdigest()
+
 class SynthesizerType(str, Enum):
     BASE = "synthesizer_base"
     AZURE = "synthesizer_azure"
@@ -79,8 +88,8 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
     audio_encoding: AudioEncoding
     should_encode_as_wav: bool = False
     sentiment_config: Optional[SentimentConfig] = None
-    # added by bluberry
     initial_bot_sentiment: Optional[BotSentiment] = None
+    index_config: Optional[IndexConfig] = None
     base_filler_audio_path: str = FILLER_AUDIO_PATH
     base_follow_up_audio_path: str = FOLLOW_UP_AUDIO_PATH
 
@@ -111,6 +120,12 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
             audio_encoding=output_audio_config.audio_encoding,
             **kwargs
         )
+    
+    def __hash__(self) -> str:
+        return __hash__(self)
+    
+    def get_cache_key(self, text: str) -> str:
+        return self.__hash__() + text
 
 
 AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME = "en-US-SteffanNeural"
@@ -122,7 +137,7 @@ class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE.value
     voice_name: str = AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME
     pitch: int = AZURE_SYNTHESIZER_DEFAULT_PITCH
     rate: int = AZURE_SYNTHESIZER_DEFAULT_RATE
-    language_code: str = "en-US"
+    language_code: str = "en-US"    
 
 
 DEFAULT_GOOGLE_LANGUAGE_CODE = "en-US"
@@ -153,8 +168,8 @@ class ElevenLabsSynthesizerConfig(
     stability: Optional[float]
     similarity_boost: Optional[float]
     model_id: Optional[str]
-    index_config: Optional[IndexConfig] = None
     index_cache: Optional[Dict[str, Any]] = None
+    use_cache: bool = True
 
     @validator("voice_id")
     def set_name(cls, voice_id):

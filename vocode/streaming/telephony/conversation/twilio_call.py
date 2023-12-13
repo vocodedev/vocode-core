@@ -27,7 +27,7 @@ from vocode.streaming.telephony.conversation.call import Call
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.state_manager import TwilioCallStateManager
-
+from vocode.streaming.utils.cache import RedisRenewableTTLCache
 
 class PhoneCallWebsocketAction(Enum):
     CLOSE_WEBSOCKET = 1
@@ -49,6 +49,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
         agent_factory: AgentFactory = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+        synthesizer_cache: Optional[RedisRenewableTTLCache] = None,
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
@@ -66,6 +67,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
             transcriber_factory=transcriber_factory,
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
+            synthesizer_cache=synthesizer_cache,
             logger=logger,
         )
         self.base_url = base_url
@@ -108,7 +110,6 @@ class TwilioCall(Call[TwilioOutputDevice]):
             twilio_call.update(status="completed")
         else:
             await self.wait_for_twilio_start(ws)
-            await super().start()
             self.events_manager.publish_event(
                 PhoneCallConnectedEvent(
                     conversation_id=self.id,
@@ -116,11 +117,22 @@ class TwilioCall(Call[TwilioOutputDevice]):
                     from_phone_number=self.from_phone,
                 )
             )
+            # await super().start()
+            started_event = asyncio.Event()
+            start_conversation_task = asyncio.create_task(
+                super().start(started_event=started_event)
+            )
+            self.logger.debug("Started Streaming Conversation...")
+            
+            await started_event.wait()
+            self.logger.debug("Started event set!")
             while self.active:
                 message = await ws.receive_text()
                 response = await self.handle_ws_message(message)
                 if response == PhoneCallWebsocketAction.CLOSE_WEBSOCKET:
                     break
+            await start_conversation_task
+
         await self.config_manager.delete_config(self.id)
         await self.tear_down()
 
