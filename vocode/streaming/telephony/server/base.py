@@ -1,14 +1,14 @@
 import abc
 import logging
 from functools import partial
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 from fastapi import APIRouter, Form, Request, Response
 from pydantic import BaseModel, Field
+
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import RecordingEvent
-from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.models.telephony import (
     TwilioCallConfig,
@@ -18,7 +18,6 @@ from vocode.streaming.models.telephony import (
 )
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.synthesizer.factory import SynthesizerFactory
-from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
 from vocode.streaming.telephony.client.vonage_client import VonageClient
 from vocode.streaming.telephony.config_manager.base_config_manager import (
@@ -63,6 +62,8 @@ class TelephonyServer:
             synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
             events_manager: Optional[EventsManager] = None,
             logger: Optional[logging.Logger] = None,
+            get_data: Optional[Callable] = None,
+            setup_agent_config: Optional[Callable] = None,
     ):
         self.base_url = base_url
         self.logger = logger or logging.getLogger(__name__)
@@ -70,6 +71,8 @@ class TelephonyServer:
         self.config_manager = config_manager
         self.templater = Templater()
         self.events_manager = events_manager
+        self.get_data = get_data
+        self.setup_agent_config = setup_agent_config
         self.router.include_router(
             CallsRouter(
                 base_url=base_url,
@@ -138,29 +141,29 @@ class TelephonyServer:
                 twilio_from: str = Form(alias="From"),
                 twilio_to: str = Form(alias="To"),
         ) -> Response:
-            dialog_state = await self.config_manager.get_inbound_dialog_state(twilio_from)
+            transcriber_config = inbound_call_config.transcriber_config or TwilioCallConfig.default_transcriber_config()
+            agent_config = inbound_call_config.agent_config
+            synthesizer_config = inbound_call_config.synthesizer_config or TwilioCallConfig.default_synthesizer_config()
+            dialog_state, prompt_template_filename = await self.get_data(twilio_from)
+            agent_config.prompt_template_filename = prompt_template_filename
+            synthesizer_config.prompt_template_filename = prompt_template_filename
             if dialog_state is None:
-                return self.get_reroute_twiml(number_to_dial="+420792212893")  # Ondra`s number, parametrize?
-            inbound_call_config.agent_config.dialog_state = dialog_state
-            initial_message = dialog_state.get(
-                "initial_message_NR_inbound") or inbound_call_config.agent_config.initial_message
-
-            if not isinstance(initial_message, BaseMessage):
-                initial_message = BaseMessage(text=initial_message)
-            inbound_call_config.agent_config.initial_message = initial_message
-
+                return self.get_reroute_twiml(number_to_dial="+420792212893")  # Real person number.
+            # agent_config = await self.setup_agent_config(phone_number=twilio_from,
+            #                                              synthesizer_config=synthesizer_config,
+            #                                              agent_config=agent_config,
+            #                                              dialog_state=dialog_state,
+            #                                              prompt_template_filename=prompt_template_filename)
             call_config = TwilioCallConfig(
-                transcriber_config=inbound_call_config.transcriber_config
-                                   or TwilioCallConfig.default_transcriber_config(),
-                agent_config=inbound_call_config.agent_config,
-                synthesizer_config=inbound_call_config.synthesizer_config
-                                   or TwilioCallConfig.default_synthesizer_config(),
+                transcriber_config=transcriber_config,
+                agent_config=agent_config,
+                synthesizer_config=synthesizer_config,
                 twilio_config=twilio_config,
                 twilio_sid=twilio_sid,
                 from_phone=twilio_from,
                 to_phone=twilio_to,
             )
-
+            #
             conversation_id = create_conversation_id()
             await self.config_manager.save_config(conversation_id, call_config)
             return self.templater.get_connection_twiml(
