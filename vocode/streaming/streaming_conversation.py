@@ -483,6 +483,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         self.check_for_idle_task: Optional[asyncio.Task] = None
         self.track_bot_sentiment_task: Optional[asyncio.Task] = None
+        self.initial_message_task: Optional[asyncio.Task] = None
 
         self.current_transcription_is_interrupt: bool = False
 
@@ -515,7 +516,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent.attach_transcript(self.transcript)
         initial_message = self.agent.get_agent_config().initial_message
         if initial_message:
-            initial_message_task = asyncio.create_task(self.send_initial_message(initial_message))
+            self.initial_message_task = asyncio.create_task(self.send_initial_message(initial_message))
         self.active = True
         if started_event:
             started_event.set()
@@ -537,7 +538,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.check_for_idle_task = asyncio.create_task(self.check_for_idle())
         if len(self.events_manager.subscriptions) > 0:
             self.events_task = asyncio.create_task(self.events_manager.start())
-        await initial_message_task if initial_message_task else None
 
     async def send_initial_message(self, initial_message: BaseMessage):
         try:
@@ -746,6 +746,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
             )
         self.mark_terminated()
+        if not self.initial_message_task.done():
+            self.logger.debug("Terminating initial_message Task")
+            self.initial_message_task.cancel()
         if self.check_for_idle_task:
             self.logger.debug("Terminating check_for_idle Task")
             self.check_for_idle_task.cancel()
@@ -754,6 +757,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.track_bot_sentiment_task.cancel()
         if self.events_manager and self.events_task:
             self.logger.debug("Terminating events Task")
+            self.events_task.cancel()
             await self.events_manager.flush()
         self.logger.debug("Tearing down synthesizer")
         tear_down_synthesizer_task = asyncio.create_task(self.synthesizer.tear_down())

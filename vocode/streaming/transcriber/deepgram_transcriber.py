@@ -101,7 +101,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         terminate_msg = json.dumps({"type": "CloseStream"})
         self.input_queue.put_nowait(terminate_msg)
         self._ended = True
-        await self._task
+        self._task.cancel()
         super().terminate()
 
     def get_deepgram_url(self):
@@ -218,7 +218,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     await ws.send(json.dumps({"type": "KeepAlive"}))
                     continue
                 if self._ended:
-                    self.logger.debug("Deepgram sender: sending KeepAlive")
+                    self.logger.debug("Deepgram sender: sending CloseStream")
                     terminate_msg = json.dumps({"type": "CloseStream"})
                     await ws.send(terminate_msg)
                     continue
@@ -335,11 +335,14 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         return
 
     async def process(self):
-        self.audio_cursor = 0.0
-        extra_headers = {"Authorization": f"Token {self.api_key}"}
+        try:
+            self.audio_cursor = 0.0
+            extra_headers = {"Authorization": f"Token {self.api_key}"}
 
-        async with websockets.connect(
-            self.get_deepgram_url(), extra_headers=extra_headers
-        ) as ws:
-            self._task= asyncio.gather(self.sender(ws), self.receiver(ws))
-            await self._task
+            async with websockets.connect(
+                self.get_deepgram_url(), extra_headers=extra_headers
+            ) as ws:
+                self._task= asyncio.gather(self.sender(ws), self.receiver(ws))
+                await self._task
+        except asyncio.CancelledError:
+            return

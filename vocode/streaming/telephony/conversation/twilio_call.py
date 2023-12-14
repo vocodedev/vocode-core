@@ -131,7 +131,8 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 response = await self.handle_ws_message(message)
                 if response == PhoneCallWebsocketAction.CLOSE_WEBSOCKET:
                     break
-            await start_conversation_task
+            if not start_conversation_task.done():
+                await start_conversation_task
 
         await self.config_manager.delete_config(self.id)
         await self.tear_down()
