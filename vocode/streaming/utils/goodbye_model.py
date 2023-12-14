@@ -47,12 +47,12 @@ class GoodbyeModel:
             f"{self.embeddings_cache_path}/goodbye_embeddings.npy"
         )
 
-    async def load_or_create_embeddings(self, path, key: str = None):
+    async def load_or_create_embeddings(self, path, key: str = "default"):
         if self.config_manager and key:
             return self._from_redis(key)
         return self._from_path(path)
 
-    async def _from_redis(self, key):
+    async def _from_redis(self, key: str = "default"):
         if self.config_manager is None:
             return None
         goodbye_embeddings = await self.config_manager.get_goodbye_embeddings(key)
