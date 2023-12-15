@@ -45,13 +45,16 @@ class RedisRenewableTTLCache:
             or isinstance(value, float)
         )
     
-    def get_total_items(self):
+    def get_total_items(self) -> int:
         return len(self._lru_cache)
     
     def get_keys(self):
         # Get keys from the LRU cache
         lru_keys = list(self._lru_cache.keys())
         return lru_keys
+    
+    def is_empty(self) -> bool:
+        return self.get_total_items() == 0
 
     
     async def load_from_index(
@@ -109,7 +112,6 @@ class RedisRenewableTTLCache:
             cache_key = synthesizer_config.get_cache_key(text_message)
             audio_encoded = cache.get(cache_key)
             if audio_encoded is not None:
-                logger.debug(f"Phrase: \"{text_message}\" already exists in cache")
                 return
             try:
                 audio_data = await load_from_s3_async(bucket_name, object_key, s3_client)
@@ -122,7 +124,6 @@ class RedisRenewableTTLCache:
 
         try:
             aiosession = get_session()
-            logger.debug(f"Loading cache")
             async with aiosession.create_client('s3', config=config) as _s3: 
                 tasks = [
                     load_from_s3_and_save_task(self, doc, _s3)
