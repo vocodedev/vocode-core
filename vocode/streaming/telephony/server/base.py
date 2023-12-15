@@ -141,6 +141,7 @@ class TelephonyServer:
                 twilio_from: str = Form(alias="From"),
                 twilio_to: str = Form(alias="To"),
         ) -> Response:
+            # TODO: rewrite it. Not generic.
             transcriber_config = inbound_call_config.transcriber_config or TwilioCallConfig.default_transcriber_config()
             agent_config = inbound_call_config.agent_config
             synthesizer_config = inbound_call_config.synthesizer_config or TwilioCallConfig.default_synthesizer_config()
@@ -149,11 +150,11 @@ class TelephonyServer:
             synthesizer_config.prompt_template_filename = prompt_template_filename
             if dialog_state is None:
                 return self.get_reroute_twiml(number_to_dial="+420792212893")  # Real person number.
-            # agent_config = await self.setup_agent_config(phone_number=twilio_from,
-            #                                              synthesizer_config=synthesizer_config,
-            #                                              agent_config=agent_config,
-            #                                              dialog_state=dialog_state,
-            #                                              prompt_template_filename=prompt_template_filename)
+            agent_config = await self.setup_agent_config(phone_number=twilio_from,
+                                                         synthesizer_config=synthesizer_config,
+                                                         agent_config=agent_config,
+                                                         dialog_state=dialog_state,
+                                                         inbound_call=True)
             call_config = TwilioCallConfig(
                 transcriber_config=transcriber_config,
                 agent_config=agent_config,
