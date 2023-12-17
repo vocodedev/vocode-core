@@ -58,7 +58,7 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
 
         # streaming not well supported by langchain, so we will connect directly
         self.anthropic_client = (
-            anthropic.Client(api_key=anthropic_api_key)
+            anthropic.AsyncAnthropic(api_key=anthropic_api_key)
             if agent_config.generate_responses
             else None
         )
@@ -98,25 +98,23 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
         self.memory.chat_memory.messages.append(bot_memory_message)
         prompt = self.llm._convert_messages_to_prompt(self.memory.chat_memory.messages)
 
-        streamed_response = await self.anthropic_client.acompletion_stream(
-            prompt=prompt,
-            max_tokens_to_sample=self.agent_config.max_tokens_to_sample,
-            model=self.agent_config.model_name,
-        )
+        if self.anthropic_client:
+            streamed_response = await self.anthropic_client.completions.create(
+                prompt=prompt,
+                max_tokens_to_sample=self.agent_config.max_tokens_to_sample,
+                model=self.agent_config.model_name,
+                stream=True,
+            )
 
-        buffer = ""
-        async for message in streamed_response:
-            completion = message["completion"]
-            delta = completion[len(bot_memory_message.content + buffer) :]
-            buffer += delta
-
-            sentence, remainder = get_sentence_from_buffer(buffer)
-
-            if sentence:
-                bot_memory_message.content = bot_memory_message.content + sentence
-                buffer = remainder
-                yield sentence, True
-            continue
+            buffer = ""
+            async for completion in streamed_response:
+                buffer += completion.completion
+                sentence, remainder = get_sentence_from_buffer(buffer)
+                if sentence:
+                    bot_memory_message.content = bot_memory_message.content + sentence
+                    buffer = remainder
+                    yield sentence, True
+                continue
 
     def update_last_bot_message_on_cut_off(self, message: str):
         for memory_message in self.memory.chat_memory.messages[::-1]:

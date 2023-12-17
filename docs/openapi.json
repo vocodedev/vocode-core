@@ -97,7 +97,13 @@
         "requestBody": {
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/BuyPhoneNumberRequest" }
+              "schema": {
+                "allOf": [
+                  { "$ref": "#/components/schemas/BuyPhoneNumberRequest" }
+                ],
+                "title": "Request",
+                "default": { "telephony_provider": "vonage" }
+              }
             }
           }
         },
@@ -177,6 +183,42 @@
             "in": "query"
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PhoneNumber" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/numbers/link": {
+      "post": {
+        "tags": ["numbers"],
+        "summary": "Link Number",
+        "operationId": "link_number",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkPhoneNumberRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -348,7 +390,7 @@
         "parameters": [
           {
             "required": true,
-            "schema": { "type": "string", "title": "Id" },
+            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
             "in": "query"
           }
@@ -1301,10 +1343,243 @@
         },
         "security": [{ "HTTPBearer": [] }]
       }
+    },
+    "/v1/account_connections": {
+      "get": {
+        "tags": ["account_connections"],
+        "summary": "Get Account Connection",
+        "operationId": "get_account_connection",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountConnectionResponseModel"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/account_connections/list": {
+      "get": {
+        "tags": ["account_connections"],
+        "summary": "List Account Connections",
+        "operationId": "list_account_connections",
+        "parameters": [
+          {
+            "required": false,
+            "schema": { "type": "integer", "title": "Page", "default": 1 },
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": { "type": "integer", "title": "Size", "default": 10 },
+            "name": "size",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountConnectionPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/account_connections/create": {
+      "post": {
+        "tags": ["account_connections"],
+        "summary": "Create Account Connection",
+        "operationId": "create_account_connection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountConnectionParamsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountConnectionResponseModel"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/account_connections/update": {
+      "post": {
+        "tags": ["account_connections"],
+        "summary": "Update Account Connection",
+        "operationId": "update_account_connection",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountConnectionUpdateParamsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountConnectionResponseModel"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
     }
   },
   "components": {
     "schemas": {
+      "AccountConnectionPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "oneOf": [
+                { "$ref": "#/components/schemas/TwilioAccountConnection" },
+                { "$ref": "#/components/schemas/OpenAIAccountConnection" }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "account_connection_twilio": "#/components/schemas/TwilioAccountConnection",
+                  "account_connection_openai": "#/components/schemas/OpenAIAccountConnection"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "page": { "type": "integer", "title": "Page" },
+          "size": { "type": "integer", "title": "Size" },
+          "has_more": { "type": "boolean", "title": "Has More" }
+        },
+        "type": "object",
+        "required": ["items", "page", "size", "has_more"],
+        "title": "AccountConnectionPage"
+      },
+      "AccountConnectionParamsRequest": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/TwilioAccountConnectionParams" },
+          { "$ref": "#/components/schemas/OpenAIAccountConnectionParams" }
+        ],
+        "title": "AccountConnectionParamsRequest",
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "account_connection_twilio": "#/components/schemas/TwilioAccountConnectionParams",
+            "account_connection_openai": "#/components/schemas/OpenAIAccountConnectionParams"
+          }
+        }
+      },
+      "AccountConnectionResponseModel": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/TwilioAccountConnection" },
+          { "$ref": "#/components/schemas/OpenAIAccountConnection" }
+        ],
+        "title": "AccountConnectionResponseModel",
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "account_connection_twilio": "#/components/schemas/TwilioAccountConnection",
+            "account_connection_openai": "#/components/schemas/OpenAIAccountConnection"
+          }
+        }
+      },
+      "AccountConnectionUpdateParamsRequest": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/TwilioAccountConnectionUpdateParams"
+          },
+          { "$ref": "#/components/schemas/OpenAIAccountConnectionUpdateParams" }
+        ],
+        "title": "AccountConnectionUpdateParamsRequest",
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "account_connection_twilio": "#/components/schemas/TwilioAccountConnectionUpdateParams",
+            "account_connection_openai": "#/components/schemas/OpenAIAccountConnectionUpdateParams"
+          }
+        }
+      },
       "ActionPage": {
         "properties": {
           "items": {
@@ -1435,7 +1710,7 @@
           },
           "interrupt_sensitivity": {
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
-            "default": "high"
+            "default": "low"
           },
           "context_endpoint": { "type": "string", "title": "Context Endpoint" },
           "noise_suppression": {
@@ -1445,7 +1720,7 @@
           },
           "endpointing_sensitivity": {
             "type": "string",
-            "enum": ["auto", "relaxed"],
+            "enum": ["auto", "relaxed", "sensitive"],
             "title": "Endpointing Sensitivity",
             "default": "auto"
           },
@@ -1459,6 +1734,28 @@
             "type": "number",
             "title": "Conversation Speed",
             "default": 1.0
+          },
+          "initial_message_delay": {
+            "type": "number",
+            "title": "Initial Message Delay",
+            "default": 0.0
+          },
+          "openai_model_name_override": {
+            "type": "string",
+            "title": "Openai Model Name Override"
+          },
+          "ask_if_human_present_on_idle": {
+            "type": "boolean",
+            "title": "Ask If Human Present On Idle",
+            "default": false
+          },
+          "openai_account_connection": {
+            "$ref": "#/components/schemas/OpenAIAccountConnection"
+          },
+          "run_do_not_call_detection": {
+            "type": "boolean",
+            "title": "Run Do Not Call Detection",
+            "default": false
           }
         },
         "type": "object",
@@ -1543,7 +1840,7 @@
           },
           "interrupt_sensitivity": {
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
-            "default": "high"
+            "default": "low"
           },
           "context_endpoint": { "type": "string", "title": "Context Endpoint" },
           "noise_suppression": {
@@ -1553,7 +1850,7 @@
           },
           "endpointing_sensitivity": {
             "type": "string",
-            "enum": ["auto", "relaxed"],
+            "enum": ["auto", "relaxed", "sensitive"],
             "title": "Endpointing Sensitivity",
             "default": "auto"
           },
@@ -1567,6 +1864,32 @@
             "type": "number",
             "title": "Conversation Speed",
             "default": 1.0
+          },
+          "initial_message_delay": {
+            "type": "number",
+            "title": "Initial Message Delay",
+            "default": 0.0
+          },
+          "openai_model_name_override": {
+            "type": "string",
+            "title": "Openai Model Name Override"
+          },
+          "ask_if_human_present_on_idle": {
+            "type": "boolean",
+            "title": "Ask If Human Present On Idle",
+            "default": false
+          },
+          "openai_account_connection": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/OpenAIAccountConnection" },
+              { "type": "string", "format": "uuid" }
+            ],
+            "title": "Openai Account Connection"
+          },
+          "run_do_not_call_detection": {
+            "type": "boolean",
+            "title": "Run Do Not Call Detection",
+            "default": false
           }
         },
         "type": "object",
@@ -1682,7 +2005,7 @@
           },
           "endpointing_sensitivity": {
             "anyOf": [
-              { "type": "string", "enum": ["auto", "relaxed"] },
+              { "type": "string", "enum": ["auto", "relaxed", "sensitive"] },
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Endpointing Sensitivity"
@@ -1700,6 +2023,42 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Conversation Speed"
+          },
+          "initial_message_delay": {
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Initial Message Delay"
+          },
+          "openai_model_name_override": {
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Openai Model Name Override"
+          },
+          "ask_if_human_present_on_idle": {
+            "anyOf": [
+              { "type": "boolean" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Ask If Human Present On Idle"
+          },
+          "openai_account_connection": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/OpenAIAccountConnection" },
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Openai Account Connection"
+          },
+          "run_do_not_call_detection": {
+            "anyOf": [
+              { "type": "boolean" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Run Do Not Call Detection"
           }
         },
         "type": "object",
@@ -1772,7 +2131,18 @@
       },
       "BuyPhoneNumberRequest": {
         "properties": {
-          "area_code": { "type": "string", "title": "Area Code" }
+          "area_code": { "type": "string", "title": "Area Code" },
+          "telephony_provider": {
+            "type": "string",
+            "enum": ["vonage", "twilio"],
+            "title": "Telephony Provider",
+            "default": "vonage"
+          },
+          "telephony_account_connection": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Telephony Account Connection"
+          }
         },
         "type": "object",
         "title": "BuyPhoneNumberRequest"
@@ -1801,9 +2171,15 @@
             "type": "boolean",
             "title": "Do Not Call Result"
           },
+          "telephony_id": { "type": "string", "title": "Telephony Id" },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "$ref": "#/components/schemas/Agent" },
+          "telephony_provider": {
+            "type": "string",
+            "enum": ["vonage", "twilio"],
+            "title": "Telephony Provider"
+          },
           "agent_phone_number": {
             "type": "string",
             "title": "Agent Phone Number"
@@ -1836,6 +2212,9 @@
           "run_do_not_call_detection": {
             "type": "boolean",
             "title": "Run Do Not Call Detection"
+          },
+          "telephony_account_connection": {
+            "$ref": "#/components/schemas/TwilioAccountConnection"
           }
         },
         "type": "object",
@@ -1845,6 +2224,7 @@
           "to_number",
           "from_number",
           "agent",
+          "telephony_provider",
           "agent_phone_number"
         ],
         "title": "Call"
@@ -1948,7 +2328,7 @@
           },
           "interrupt_sensitivity": {
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
-            "default": "high"
+            "default": "low"
           },
           "context_endpoint": { "type": "string", "title": "Context Endpoint" },
           "noise_suppression": {
@@ -1958,7 +2338,7 @@
           },
           "endpointing_sensitivity": {
             "type": "string",
-            "enum": ["auto", "relaxed"],
+            "enum": ["auto", "relaxed", "sensitive"],
             "title": "Endpointing Sensitivity",
             "default": "auto"
           },
@@ -1972,6 +2352,32 @@
             "type": "number",
             "title": "Conversation Speed",
             "default": 1.0
+          },
+          "initial_message_delay": {
+            "type": "number",
+            "title": "Initial Message Delay",
+            "default": 0.0
+          },
+          "openai_model_name_override": {
+            "type": "string",
+            "title": "Openai Model Name Override"
+          },
+          "ask_if_human_present_on_idle": {
+            "type": "boolean",
+            "title": "Ask If Human Present On Idle",
+            "default": false
+          },
+          "openai_account_connection": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/OpenAIAccountConnection" },
+              { "type": "string", "format": "uuid" }
+            ],
+            "title": "Openai Account Connection"
+          },
+          "run_do_not_call_detection": {
+            "type": "boolean",
+            "title": "Run Do Not Call Detection",
+            "default": false
           }
         },
         "type": "object",
@@ -1997,8 +2403,7 @@
           },
           "run_do_not_call_detection": {
             "type": "boolean",
-            "title": "Run Do Not Call Detection",
-            "default": false
+            "title": "Run Do Not Call Detection"
           },
           "hipaa_compliant": {
             "type": "boolean",
@@ -2074,7 +2479,12 @@
           "voice_id": { "type": "string", "title": "Voice Id" },
           "stability": { "type": "number", "title": "Stability" },
           "similarity_boost": { "type": "number", "title": "Similarity Boost" },
-          "api_key": { "type": "string", "title": "Api Key" }
+          "api_key": { "type": "string", "title": "Api Key" },
+          "optimize_streaming_latency": {
+            "type": "integer",
+            "title": "Optimize Streaming Latency"
+          },
+          "model_id": { "type": "string", "title": "Model Id" }
         },
         "type": "object",
         "required": ["id", "user_id", "type", "voice_id"],
@@ -2090,7 +2500,12 @@
           "voice_id": { "type": "string", "title": "Voice Id" },
           "stability": { "type": "number", "title": "Stability" },
           "similarity_boost": { "type": "number", "title": "Similarity Boost" },
-          "api_key": { "type": "string", "title": "Api Key" }
+          "api_key": { "type": "string", "title": "Api Key" },
+          "optimize_streaming_latency": {
+            "type": "integer",
+            "title": "Optimize Streaming Latency"
+          },
+          "model_id": { "type": "string", "title": "Model Id" }
         },
         "type": "object",
         "required": ["type", "voice_id"],
@@ -2130,6 +2545,20 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Api Key"
+          },
+          "optimize_streaming_latency": {
+            "anyOf": [
+              { "type": "integer" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Optimize Streaming Latency"
+          },
+          "model_id": {
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Model Id"
           }
         },
         "type": "object",
@@ -2227,9 +2656,39 @@
       },
       "Language": {
         "type": "string",
-        "enum": ["en", "es", "de"],
+        "enum": [
+          "en",
+          "es",
+          "de",
+          "hi",
+          "pt",
+          "fr",
+          "nl",
+          "id",
+          "it",
+          "ja",
+          "ko"
+        ],
         "title": "Language",
         "description": "An enumeration."
+      },
+      "LinkPhoneNumberRequest": {
+        "properties": {
+          "phone_number": { "type": "string", "title": "Phone Number" },
+          "telephony_account_connection": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Telephony Account Connection"
+          },
+          "outbound_only": {
+            "type": "boolean",
+            "title": "Outbound Only",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": ["phone_number", "telephony_account_connection"],
+        "title": "LinkPhoneNumberRequest"
       },
       "NormalizedAgent": {
         "properties": {
@@ -2263,7 +2722,7 @@
           },
           "interrupt_sensitivity": {
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
-            "default": "high"
+            "default": "low"
           },
           "context_endpoint": { "type": "string", "title": "Context Endpoint" },
           "noise_suppression": {
@@ -2273,7 +2732,7 @@
           },
           "endpointing_sensitivity": {
             "type": "string",
-            "enum": ["auto", "relaxed"],
+            "enum": ["auto", "relaxed", "sensitive"],
             "title": "Endpointing Sensitivity",
             "default": "auto"
           },
@@ -2287,6 +2746,32 @@
             "type": "number",
             "title": "Conversation Speed",
             "default": 1.0
+          },
+          "initial_message_delay": {
+            "type": "number",
+            "title": "Initial Message Delay",
+            "default": 0.0
+          },
+          "openai_model_name_override": {
+            "type": "string",
+            "title": "Openai Model Name Override"
+          },
+          "ask_if_human_present_on_idle": {
+            "type": "boolean",
+            "title": "Ask If Human Present On Idle",
+            "default": false
+          },
+          "openai_account_connection": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/OpenAIAccountConnection" },
+              { "type": "string", "format": "uuid" }
+            ],
+            "title": "Openai Account Connection"
+          },
+          "run_do_not_call_detection": {
+            "type": "boolean",
+            "title": "Run Do Not Call Detection",
+            "default": false
           }
         },
         "type": "object",
@@ -2317,9 +2802,15 @@
             "type": "boolean",
             "title": "Do Not Call Result"
           },
+          "telephony_id": { "type": "string", "title": "Telephony Id" },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "type": "string", "format": "uuid", "title": "Agent" },
+          "telephony_provider": {
+            "type": "string",
+            "enum": ["vonage", "twilio"],
+            "title": "Telephony Provider"
+          },
           "agent_phone_number": {
             "type": "string",
             "title": "Agent Phone Number"
@@ -2352,6 +2843,13 @@
           "run_do_not_call_detection": {
             "type": "boolean",
             "title": "Run Do Not Call Detection"
+          },
+          "telephony_account_connection": {
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/TwilioAccountConnection" }
+            ],
+            "title": "Telephony Account Connection"
           }
         },
         "type": "object",
@@ -2361,6 +2859,7 @@
           "to_number",
           "from_number",
           "agent",
+          "telephony_provider",
           "agent_phone_number"
         ],
         "title": "NormalizedCall"
@@ -2386,7 +2885,20 @@
             "type": "object",
             "title": "Example Context"
           },
-          "number": { "type": "string", "title": "Number" }
+          "number": { "type": "string", "title": "Number" },
+          "telephony_provider": {
+            "type": "string",
+            "enum": ["vonage", "twilio"],
+            "title": "Telephony Provider",
+            "default": "vonage"
+          },
+          "telephony_account_connection": {
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/TwilioAccountConnection" }
+            ],
+            "title": "Telephony Account Connection"
+          }
         },
         "type": "object",
         "required": ["id", "user_id", "inbound_agent", "number"],
@@ -2413,6 +2925,61 @@
         "required": ["id", "user_id"],
         "title": "NormalizedPrompt"
       },
+      "OpenAIAccountConnection": {
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "title": "Id" },
+          "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
+          "credentials": { "$ref": "#/components/schemas/OpenAICredentials" },
+          "type": {
+            "type": "string",
+            "enum": ["account_connection_openai"],
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": ["id", "user_id", "credentials", "type"],
+        "title": "OpenAIAccountConnection"
+      },
+      "OpenAIAccountConnectionParams": {
+        "properties": {
+          "credentials": { "$ref": "#/components/schemas/OpenAICredentials" },
+          "type": {
+            "type": "string",
+            "enum": ["account_connection_openai"],
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": ["credentials", "type"],
+        "title": "OpenAIAccountConnectionParams"
+      },
+      "OpenAIAccountConnectionUpdateParams": {
+        "properties": {
+          "credentials": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/OpenAICredentials" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Credentials"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["account_connection_openai"],
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": ["type"],
+        "title": "OpenAIAccountConnectionUpdateParams"
+      },
+      "OpenAICredentials": {
+        "properties": {
+          "openai_api_key": { "type": "string", "title": "Openai Api Key" }
+        },
+        "type": "object",
+        "required": ["openai_api_key"],
+        "title": "OpenAICredentials"
+      },
       "PhoneNumber": {
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
@@ -2430,7 +2997,16 @@
             "type": "object",
             "title": "Example Context"
           },
-          "number": { "type": "string", "title": "Number" }
+          "number": { "type": "string", "title": "Number" },
+          "telephony_provider": {
+            "type": "string",
+            "enum": ["vonage", "twilio"],
+            "title": "Telephony Provider",
+            "default": "vonage"
+          },
+          "telephony_account_connection": {
+            "$ref": "#/components/schemas/TwilioAccountConnection"
+          }
         },
         "type": "object",
         "required": ["id", "user_id", "inbound_agent", "number"],
@@ -2552,7 +3128,13 @@
             "title": "Version",
             "default": "2"
           },
-          "speed": { "type": "number", "title": "Speed" }
+          "speed": { "type": "number", "title": "Speed" },
+          "quality": {
+            "type": "string",
+            "enum": ["faster", "draft", "low", "medium", "high", "premium"],
+            "title": "Quality"
+          },
+          "temperature": { "type": "number", "title": "Temperature" }
         },
         "type": "object",
         "required": ["id", "user_id", "type", "voice_id"],
@@ -2574,7 +3156,13 @@
             "title": "Version",
             "default": "2"
           },
-          "speed": { "type": "number", "title": "Speed" }
+          "speed": { "type": "number", "title": "Speed" },
+          "quality": {
+            "type": "string",
+            "enum": ["faster", "draft", "low", "medium", "high", "premium"],
+            "title": "Quality"
+          },
+          "temperature": { "type": "number", "title": "Temperature" }
         },
         "type": "object",
         "required": ["type", "voice_id"],
@@ -2621,6 +3209,23 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Speed"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["faster", "draft", "low", "medium", "high", "premium"]
+              },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Quality"
+          },
+          "temperature": {
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Temperature"
           }
         },
         "type": "object",
@@ -2831,9 +3436,83 @@
         "required": ["phone_number"],
         "title": "TransferCallConfig"
       },
-      "Undefined": { "properties": {}, "type": "object", "title": "Undefined" },
+      "TwilioAccountConnection": {
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "title": "Id" },
+          "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
+          "credentials": { "$ref": "#/components/schemas/TwilioCredentials" },
+          "type": {
+            "type": "string",
+            "enum": ["account_connection_twilio"],
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": ["id", "user_id", "credentials", "type"],
+        "title": "TwilioAccountConnection"
+      },
+      "TwilioAccountConnectionParams": {
+        "properties": {
+          "credentials": { "$ref": "#/components/schemas/TwilioCredentials" },
+          "type": {
+            "type": "string",
+            "enum": ["account_connection_twilio"],
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": ["credentials", "type"],
+        "title": "TwilioAccountConnectionParams"
+      },
+      "TwilioAccountConnectionUpdateParams": {
+        "properties": {
+          "credentials": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/TwilioCredentials" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Credentials"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["account_connection_twilio"],
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": ["type"],
+        "title": "TwilioAccountConnectionUpdateParams"
+      },
+      "TwilioCredentials": {
+        "properties": {
+          "twilio_account_sid": {
+            "type": "string",
+            "title": "Twilio Account Sid"
+          },
+          "twilio_auth_token": {
+            "type": "string",
+            "title": "Twilio Auth Token"
+          }
+        },
+        "type": "object",
+        "required": ["twilio_account_sid", "twilio_auth_token"],
+        "title": "TwilioCredentials"
+      },
+      "Undefined": {
+        "properties": {},
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Undefined"
+      },
       "UpdateNumberRequest": {
         "properties": {
+          "outbound_only": {
+            "anyOf": [
+              { "type": "boolean" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Outbound Only"
+          },
           "label": {
             "anyOf": [
               { "type": "string" },

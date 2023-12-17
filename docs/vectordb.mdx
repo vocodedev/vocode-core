@@ -27,15 +27,17 @@ To add your vector database to your agent, you need to add a vector database con
 <CodeGroup>
 
 ```python update_agent.py
-from vocode import PineconeVectorDatabaseUpdateParams
+from vocode import AgentUpdateParams, PineconeVectorDatabaseUpdateParams
 
 agent = vocode_client.agents.update_agent(
     id="AGENT_ID",
-    request=PineconeVectorDatabaseUpdateParams(
-        type="vector_database_pinecone",
-        index="PINECONE_INDEX",
-        api_key="PINECONE_API_KEY",
-        api_environment="PINECONE_API_ENVIRONMENT",
+    request=AgentUpdateParams(
+        vector_database=PineconeVectorDatabaseUpdateParams(
+            type="vector_database_pinecone",
+            index="PINECONE_INDEX",
+            api_key="PINECONE_API_KEY",
+            api_environment="PINECONE_API_ENVIRONMENT",
+        )
     ),
 )
 ```
