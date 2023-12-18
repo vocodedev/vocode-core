@@ -33,7 +33,7 @@ vector_db_config = PineconeConfig(
     index=os.getenv('PINECONE_INDEX_NAME')
 )
 
-INITIAL_MESSAGE="Hello, Let's discuss the architecture of the next application!"
+INITIAL_MESSAGE="Hello!"
 PROMPT_PREAMBLE='''
 I want you to act as an IT Architect. 
 I will provide some details about the functionality of an application or other 
@@ -73,7 +73,9 @@ conversation_router = ConversationRouter(
             initial_message=BaseMessage(text=INITIAL_MESSAGE),
             prompt_preamble=PROMPT_PREAMBLE,
             vector_db_config=vector_db_config,
-        )
+            logger=logger,
+        ),
+        logger=logger
     ),
     synthesizer_thunk=AZURE_SYNTHESIZER_THUNK,
     transcriber_thunk=DEEPGRAM_TRANSCRIBER_THUNK,
