@@ -2,6 +2,8 @@ import logging
 import os
 import wave
 
+import numpy as np
+
 from vocode.streaming.input_device.silero_vad import SileroVAD
 from vocode.streaming.transcriber import BaseTranscriber
 from vocode.streaming.utils import prepare_audio_for_vad
@@ -10,6 +12,7 @@ from vocode.streaming.utils import prepare_audio_for_vad
 class AudioStreamHandler:
     VAD_SAMPLE_RATE = 8000
     VAD_FRAME_SIZE = 256
+    VAD_SPEECH_PAD_MS = 192
 
     def __init__(self, conversation_id: str, transcriber: BaseTranscriber):
         self.conversation_id = conversation_id
@@ -20,10 +23,18 @@ class AudioStreamHandler:
         self.frame_buffer = bytearray()
         if transcriber.transcriber_config.denoise:
             self.logger.info("Using Silero for VAD.")
-            self.vad_wrapper = SileroVAD(sample_rate=self.VAD_SAMPLE_RATE, window_size=self.VAD_FRAME_SIZE)
+            self.vad_wrapper = SileroVAD(
+                sample_rate=self.VAD_SAMPLE_RATE,
+                window_size=self.VAD_FRAME_SIZE,
+                speech_pad_ms=self.VAD_SPEECH_PAD_MS
+            )
+            self.n_padding_frames = int(self.vad_wrapper.speech_pad_samples / (self.VAD_FRAME_SIZE * 2))
+            self.padding_frames_left = self.n_padding_frames
+            self.frame_buffer_is_speech = np.ones(self.padding_frames_left + 1)
         else:
             self.logger.info("Not using VAD.")
             self.vad_wrapper = None
+        self.vad_triggered = False
 
     def receive_audio(self, chunk: bytes):
         # TODO: this might be blocking as hell(even though it is fast). Consider using a thread?
@@ -37,15 +48,30 @@ class AudioStreamHandler:
                 output_sample_rate=self.VAD_SAMPLE_RATE,
             )
             self.frame_buffer.extend(prepared_chunk)
-            while len(self.frame_buffer) >= self.VAD_FRAME_SIZE * 2:  # 2 bytes per 16-bit sample
-                frame = self.frame_buffer[:self.VAD_FRAME_SIZE * 2]
-                self.audio_buffer.append(frame)
-                del self.frame_buffer[:self.VAD_FRAME_SIZE * 2]
-                if self.vad_wrapper:
-                    frame = self.vad_wrapper.process_chunk(frame)
-                    self.audio_buffer_denoised.append(frame)
+            speech_pad_samples = self.vad_wrapper.speech_pad_samples * 2
+            while len(self.frame_buffer) >= self.VAD_FRAME_SIZE * 2 + speech_pad_samples:  # 2 bytes per 16-bit sample
+                frame_to_process = self.frame_buffer[speech_pad_samples:speech_pad_samples + self.VAD_FRAME_SIZE * 2]
+                is_speech = self.vad_wrapper.process_chunk(frame_to_process)
+                if is_speech:
+                    self.vad_triggered = True
+                    self.frame_buffer_is_speech[:] = True
+                    self.padding_frames_left = self.n_padding_frames
+                else:
+                    if self.vad_triggered and self.padding_frames_left > 0:
+                        self.frame_buffer_is_speech = np.concatenate([self.frame_buffer_is_speech[1:], [True]])
+                        self.padding_frames_left -= 1
+                    else:
+                        self.vad_triggered = False
+                        self.frame_buffer_is_speech = np.concatenate([self.frame_buffer_is_speech[1:], [False]])
 
-                self.transcriber.send_audio(frame)
+                frame_to_send = self.frame_buffer[:self.VAD_FRAME_SIZE * 2]
+                self.audio_buffer.append(frame_to_send)
+                del self.frame_buffer[:self.VAD_FRAME_SIZE * 2]
+
+                if not self.frame_buffer_is_speech[0]:
+                    frame_to_send = bytearray(len(frame_to_send))
+                self.audio_buffer_denoised.append(frame_to_send)
+                self.transcriber.send_audio(frame_to_send)
 
     def __save_audio(self, audio_buffer, output_path):
         with wave.open(output_path, 'wb') as wf:
