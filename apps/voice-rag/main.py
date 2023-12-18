@@ -21,10 +21,16 @@ from vocode.streaming.models.transcriber import (
 
 from dotenv import load_dotenv
 
-PINECONE_INDEX_NAME = os.getenv('PINECONE_INDEX_NAME')
+load_dotenv()
+
+app = FastAPI(docs_url=None)
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 vector_db_config = PineconeConfig(
-    index=PINECONE_INDEX_NAME
+    index=os.getenv('PINECONE_INDEX_NAME')
 )
 
 INITIAL_MESSAGE="Hello, Let's discuss the architecture of the next application!"
@@ -43,14 +49,6 @@ You are an expert in these technologies:
 - Fastapi
 - Vocode.
 '''
-
-load_dotenv()
-
-app = FastAPI(docs_url=None)
-
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 TIME_ENDPOINTING_CONFIG = TimeEndpointingConfig()
 TIME_ENDPOINTING_CONFIG.time_cutoff_seconds = 2
