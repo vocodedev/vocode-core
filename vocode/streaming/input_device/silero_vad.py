@@ -1,9 +1,4 @@
-import io
-import logging
-
-import numpy as np
 import torch
-from scipy.io.wavfile import write
 
 
 class SileroVAD:
@@ -14,7 +9,7 @@ class SileroVAD:
         sample_rate: int,
         window_size: int,
         threshold: float = 0.5,
-        soft_threshold: float = 0.2,
+        speech_pad_ms: int = 192,
         use_onnx: bool = False
     ):
         # Silero VAD is optimized for performance on single CPU thread
@@ -30,37 +25,17 @@ class SileroVAD:
         self.model = model
         self.sample_rate = sample_rate
         self.threshold = threshold
-        self.soft_threshold = soft_threshold
         self.window_size = window_size
-        self.logger = logging.getLogger(__name__)  # Set up logging
+        self.speech_pad_samples = int(sample_rate * speech_pad_ms / 1000)
 
-    def process_chunk(self, chunk: bytes) -> bytes:
+    def process_chunk(self, chunk: bytes) -> bool:
+        if len(chunk) != self.window_size * 2:
+            raise ValueError(f"Chunk size must be {self.window_size * 2} bytes")
         chunk_array = torch.frombuffer(chunk, dtype=torch.int16).to(torch.float32) / self.INT16_NORM_CONST
-        chunk_array_len = len(chunk_array)
-
-        # Run VAD on chunks of data
-        mask = np.zeros(chunk_array_len)
-        for i in range(0, chunk_array_len, self.window_size):
-            frame = chunk_array[i:i + self.window_size]
-            if len(frame) < self.window_size:
-                break
-            speech_prob = self.model(frame, self.sample_rate).item()
-            if speech_prob > self.threshold:
-                mask[i:i + self.window_size] = 1.0
-            elif speech_prob > self.soft_threshold:
-                # Soft mask to make transitions smoother
-                # and avoid cutting off speech segments
-                mask[i:i + self.window_size] = speech_prob
-
-        # Mask audio chunk and convert back to bytes
-        masked_chunk = chunk_array.numpy() * mask
-        chunk_array = (masked_chunk * self.INT16_NORM_CONST).astype(np.int16)
-        bytes_wav = bytes()
-        byte_io = io.BytesIO(bytes_wav)
-        write(byte_io, self.sample_rate, chunk_array)
-        chunk_bytes = byte_io.read()[-len(chunk):]
-
-        return chunk_bytes
+        speech_prob = self.model(chunk_array, self.sample_rate).item()
+        if speech_prob > self.threshold:
+            return True
+        return False
 
     def reset_states(self) -> None:
         self.model.reset_states()
