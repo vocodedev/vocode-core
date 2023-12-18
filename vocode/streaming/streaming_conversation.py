@@ -876,6 +876,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.logger.info("Saving audio")
         self.audio_stream_handler.save_debug_audios()
         self.logger.info("audio saved")
+        if self.audio_stream_handler.vad_wrapper:
+            self.audio_stream_handler.vad_wrapper.reset_states()
+            self.logger.info("Reset VAD model states")
         if self.redis_event_manger is not None:
             self.redis_event_manger.publish_event(
                 TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript))

@@ -70,15 +70,15 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
         return v
 
     @classmethod
-    def from_input_device_config_rnn(
+    def from_input_device_config_vad(
             cls,
             input_device: BaseInputDevice,
             endpointing_config: Optional[EndpointingConfig] = None,
             **kwargs,
     ):
         return cls(
-            sampling_rate=48000,
-            audio_encoding=AudioEncoding.LINEAR16,  # This is for rnn 48k and 16bit linear pcm
+            sampling_rate=8000,
+            audio_encoding=AudioEncoding.LINEAR16,  # This is for VAD 8k and 16bit linear pcm
             chunk_size=input_device.chunk_size,
             endpointing_config=endpointing_config,
             denoise=True,

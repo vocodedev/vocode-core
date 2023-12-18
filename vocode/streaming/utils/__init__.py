@@ -18,19 +18,20 @@ def create_loop_in_thread(loop: asyncio.AbstractEventLoop, long_running_task=Non
         loop.run_forever()
 
 
-def prepare_audio_for_rnnnoise(
+def prepare_audio_for_vad(
         input_audio: bytes,
         input_sample_rate: int,
+        output_sample_rate: int,
         input_encoding: str
 ):
     # Decode mu-law to PCM if necessary
     if input_encoding == AudioEncoding.MULAW:
         input_audio = audioop.ulaw2lin(input_audio, 2)
 
-    # Resample the audio to 48kHz if necessary
-    if input_sample_rate != 48000:
+    # Resample the audio to 8kHz if necessary
+    if input_sample_rate != output_sample_rate:
         input_audio, _ = audioop.ratecv(
-            input_audio, 2, 1, input_sample_rate, 48000, None
+            input_audio, 2, 1, input_sample_rate, output_sample_rate, None
         )
 
     return input_audio

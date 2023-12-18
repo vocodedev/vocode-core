@@ -14,7 +14,7 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 
 class MicrophoneInput(BaseInputDevice):
     DEFAULT_SAMPLING_RATE = 44100
-    DEFAULT_CHUNK_SIZE = 2048
+    DEFAULT_CHUNK_SIZE = 3072
 
     def __init__(
         self,
