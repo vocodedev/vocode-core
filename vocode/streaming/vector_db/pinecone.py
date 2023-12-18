@@ -68,48 +68,53 @@ class PineconeDB(VectorDB):
 
         return ids
 
-    async def similarity_search_with_score(
-        self,
-        query: str,
-        filter: Optional[dict] = None,
-        namespace: Optional[str] = None,
-    ) -> List[Tuple[Document, float]]:
-        """Return pinecone documents most similar to query, along with scores.
+async def similarity_search_with_score(
+    self,
+    query: str,
+    filter: Optional[dict] = None,
+    namespace: Optional[str] = None,
+) -> List[Tuple[Document, float]]:
+    """Return pinecone documents most similar to query, along with scores.
 
-        Args:
-            query: Text to look up documents similar to.
-            filter: Dictionary of argument(s) to filter on metadata
-            namespace: Namespace to search in. Default will search in '' namespace.
+    Args:
+        query: Text to look up documents similar to.
+        filter: Dictionary of argument(s) to filter on metadata
+        namespace: Namespace to search in. Default will search in '' namespace.
 
-        Returns:
-            List of Documents most similar to the query and score for each
-        """
-        # Adapted from: langchain/vectorstores/pinecone.py. Made langchain implementation async.
-        if namespace is None:
-            namespace = ""
-        query_obj = await self.create_openai_embedding(query)
-        docs = []
-        async with self.aiohttp_session.post(
-            f"{self.pinecone_url}/query",
-            headers={"Api-Key": self.pinecone_api_key},
-            json={
-                "top_k": self.config.top_k,
-                "namespace": namespace,
-                "filter": filter,
-                "vector": query_obj,
-                "includeMetadata": True,
-            },
-        ) as response:
+    Returns:
+        List of Documents most similar to the query and score for each
+    """
+    # Adapted from: langchain/vectorstores/pinecone.py. Made langchain implementation async.
+    if namespace is None:
+        namespace = ""
+    query_obj = await self.create_openai_embedding(query)
+    docs = []
+    async with self.aiohttp_session.post(
+        f"{self.pinecone_url}/query",
+        headers={"Api-Key": self.pinecone_api_key},
+        json={
+            "top_k": self.config.top_k,
+            "namespace": namespace,
+            "filter": filter,
+            "vector": query_obj,
+            "includeMetadata": True,
+        },
+    ) as response:
+        if response.headers['Content-Type'] == 'application/json':
             results = await response.json()
+        else:
+            logger.error(f"Unexpected response format: {response.headers['Content-Type']}")
+            return []
 
-        for res in results["matches"]:
-            metadata = res["metadata"]
-            if self._text_key in metadata:
-                text = metadata.pop(self._text_key)
-                score = res["score"]
-                docs.append((Document(page_content=text, metadata=metadata), score))
-            else:
-                logger.warning(
-                    f"Found document with no `{self._text_key}` key. Skipping."
-                )
-        return docs
+    for res in results["matches"]:
+        metadata = res["metadata"]
+        if self._text_key in metadata:
+            text = metadata.pop(self._text_key)
+            score = res["score"]
+            docs.append((Document(page_content=text, metadata=metadata), score))
+        else:
+            logger.warning(
+                f"Found document with no `{self._text_key}` key. Skipping."
+            )
+    logger.debug(f"Found {len(docs)} documents similar to `{query}`")
+    return docs
