@@ -75,7 +75,12 @@ from vocode.streaming.utils.worker import (
 )
 from vocode.streaming.response_worker.random_response import RandomAudioManager
 
-
+from opentelemetry import trace, metrics
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.trace import TracerProvider, Span
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+tracer = trace.get_tracer(__name__)
+meter = metrics.get_meter(__name__)
 
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
 
@@ -272,6 +277,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     AgentResponseMessage, agent_response
                 )
 
+                self.conversation.first_synthesis_span = tracer.start_span(
+                    "conversation.synthesizer.create_first_speech"
+                )
                 self.conversation.logger.debug("Synthesizing speech for message")
                 self.conversation.is_synthesizing = True
                 synthesis_results = await self.conversation.synthesizer.create_speech(
@@ -490,6 +498,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # tracing
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
+        self.first_synthesis_span: Optional[Span] = None
 
     def create_state_manager(self) -> ConversationStateManager:
         return ConversationStateManager(conversation=self)
@@ -690,7 +699,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         chunk_idx = 0
         seconds_spoken = 0
+        first_chunk_flag = True
         async for chunk_result in synthesis_result.chunk_generator:
+            if first_chunk_flag:
+                first_chunk_flag = False
+                self.first_synthesis_span.end()
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
                 len(chunk_result.chunk) / chunk_size
