@@ -1,17 +1,14 @@
 import asyncio
 import audioop
 import hashlib
-import io
 import logging
 import os
 from io import BytesIO
-from typing import Optional, List, AsyncGenerator, Union, Tuple, Dict, Any
-
-from pydub import AudioSegment
-from pydub.playback import play
+from typing import Optional, List, AsyncGenerator, Union, Tuple, Any
 
 import aiohttp
 from opentelemetry.trace import Span
+from pydub import AudioSegment
 
 from vocode import getenv
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
@@ -42,6 +39,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             logger: Optional[logging.Logger] = None,
             aiohttp_session: Optional[aiohttp.ClientSession] = None,
             filler_picker: Optional[Any] = None,
+            ignore_cache=False
             # FIXME: consider unifying it. For now it has Any to prevent circular imports.
     ):
         super().__init__(synthesizer_config, aiohttp_session)
@@ -64,7 +62,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.logger = logger or logging.getLogger(__name__)
         self.fillers_cache = None
         self.filler_picker = filler_picker
-
+        self.ignore_cache = ignore_cache
     @property
     def cache_path(self):
         return os.path.join(FILLER_AUDIO_PATH, "elevenlabs", self.model_id, self.voice_id, self.output_format)
@@ -74,7 +72,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         hash_object = hashlib.sha1(message_text.encode())
         hashed_text = hash_object.hexdigest()
         return hashed_text
-    
+
     def speed_up_audio(input_stream, speed_factor):
         # USAGE: audio_data = self.speed_up_audio(audio_data, 1.20)
         # Load the audio file from the byte stream
@@ -86,7 +84,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         # Create a byte stream for the output
         output_stream = BytesIO()
         sped_up_audio.export(output_stream, format="mp3")
-    
+
         # Reset stream position to the beginning
         output_stream.seek(0)
 
@@ -164,7 +162,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             self.set_fillers_cache()
         return self.fillers_cache.get(hash_val, None)  # FIXME: what should we do on cache miss?
 
-    def create_synthesis_result_from_bytes(self, audio_data: bytes, message: BaseMessage, chunk_size: Optional[int] = None) -> SynthesisResult:
+    def create_synthesis_result_from_bytes(self, audio_data: bytes, message: BaseMessage,
+                                           chunk_size: Optional[int] = None) -> SynthesisResult:
         if self.synthesizer_config.output_format_to_cache_file_extension() == 'mulaw':
             if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
                 audio_data = audioop.ulaw2lin(audio_data, 2)
@@ -193,7 +192,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
         return result
 
-    async def experimental_direct_streaming_output_generator(self, response: aiohttp.ClientResponse, message: BaseMessage) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
+    async def experimental_direct_streaming_output_generator(self, response: aiohttp.ClientResponse,
+                                                             message: BaseMessage) -> AsyncGenerator[
+        SynthesisResult.ChunkResult, None]:
         accumulated_audio_chunks = []
         response: aiohttp.ClientResponse
         stream_reader = response.content
@@ -267,7 +268,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         voice = self.elevenlabs.Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
             voice.settings = self.elevenlabs.VoiceSettings(
-                stability=self.stability, similarity_boost=self.similarity_boost, use_speaker_boost=self.use_speaker_boost
+                stability=self.stability, similarity_boost=self.similarity_boost,
+                use_speaker_boost=self.use_speaker_boost
             )
         url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
 
@@ -314,20 +316,20 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             chunk_size: int,
             bot_sentiment: Optional[BotSentiment] = None
     ) -> SynthesisResult:
+        if not self.ignore_cache:
+            cached_audio = self.get_cached_audio(message.text)
+            if cached_audio is not None:
+                self.logger.info(f"Using cached audio for message: {message.text}")
 
-        cached_audio = self.get_cached_audio(message.text)
-        if cached_audio is not None:
-            self.logger.info(f"Using cached audio for message: {message.text}")
+                async def generator():
+                    yield SynthesisResult.ChunkResult(cached_audio, True)
 
-            async def generator():
-                yield SynthesisResult.ChunkResult(cached_audio, True)
-
-            return SynthesisResult(
-                generator(),  # should be wav
-                lambda seconds: self.get_message_cutoff_from_voice_speed(
-                    message, seconds, self.words_per_minute
-                ),
-            )
+                return SynthesisResult(
+                    generator(),  # should be wav
+                    lambda seconds: self.get_message_cutoff_from_voice_speed(
+                        message, seconds, self.words_per_minute
+                    ),
+                )
 
         response = await self.__send_request(message)
         create_speech_span = tracer.start_span(
