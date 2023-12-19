@@ -1,6 +1,7 @@
 import logging
 import queue
 from typing import Optional
+import json
 
 from azure.cognitiveservices.speech.audio import (
     PushAudioInputStream,
@@ -51,7 +52,8 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
             subscription=getenv("AZURE_SPEECH_KEY"),
             region=getenv("AZURE_SPEECH_REGION"),
         )
-
+        # set detailed output format to get confidence
+        speech_config.output_format = speechsdk.OutputFormat.Detailed
         speech_params = {
             "speech_config": speech_config,
             "audio_config": config,
@@ -86,8 +88,11 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
         self.is_ready = False
 
     def recognized_sentence_final(self, evt):
+        json_result = json.loads(evt.result.json)
+        message = json_result["DisplayText"]
+        confidence = json_result["NBest"][0]["Confidence"]
         self.output_janus_queue.sync_q.put_nowait(
-            Transcription(message=evt.result.text, confidence=1.0, is_final=True)
+            Transcription(message=message, confidence=confidence, is_final=True)
         )
 
     def recognized_sentence_stream(self, evt):
@@ -157,7 +162,7 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
 
             yield b"".join(data)
 
-    def terminate(self):
+    async def terminate(self):
         self._ended = True
         self.speech.stop_continuous_recognition_async()
         super().terminate()
