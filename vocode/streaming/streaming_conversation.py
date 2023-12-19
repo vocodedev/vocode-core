@@ -280,6 +280,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.first_synthesis_span = tracer.start_span(
                     "conversation.synthesizer.create_first_speech"
                 )
+                self.conversation.first_chunk_flag = True
+
                 self.conversation.logger.debug("Synthesizing speech for message")
                 self.conversation.is_synthesizing = True
                 synthesis_results = await self.conversation.synthesizer.create_speech(
@@ -361,7 +363,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 # set flag to indicate whether bot was interrupted
                 self.conversation.is_interrupted = cut_off
                 # set flag to check if there is more to say
-                self.conversation.is_bot_speaking = not self.input_queue.empty()
+                self.conversation.is_bot_speaking = (
+                    not self.input_queue.empty()
+                    and not self.conversation.is_interrupted
+                )
                 # publish the transcript message now that it includes what was said during send_speech_to_output
                 self.conversation.transcript.maybe_publish_transcript_event_from_message(
                     message=transcript_message,
@@ -629,6 +634,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent.cancel_current_task()
         self.agent_responses_worker.cancel_current_task()
         self.random_audio_manager.stop_all_audios()
+        self.is_bot_speaking = False
+        self.is_synthesizing = False
         return num_interrupts > 0
 
     def is_interrupt(self, transcription: Transcription) -> bool:  
@@ -699,10 +706,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         chunk_idx = 0
         seconds_spoken = 0
-        first_chunk_flag = True
         async for chunk_result in synthesis_result.chunk_generator:
-            if first_chunk_flag:
-                first_chunk_flag = False
+            if self.first_chunk_flag:
+                self.first_chunk_flag = False
                 self.first_synthesis_span.end()
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
