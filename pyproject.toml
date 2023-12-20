@@ -24,7 +24,7 @@ six = "^1.16.0"
 opentelemetry-sdk = "^1.17.0"
 janus = "^1.0.0"
 scipy = "^1.10.1"
-anthropic = "^0.2.9"
+anthropic = "^0.7.1"
 
 elevenlabs = "^0.2.6"
 # elevenlabs = {version = "^0.2.6", optional = true}

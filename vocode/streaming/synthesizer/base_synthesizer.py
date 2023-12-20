@@ -41,7 +41,7 @@ logger = logging.getLogger()
 FILLER_KEY: Dict = {
     'question': ["Um...","Uh...","Uhm...","Hmm..."],
     'confirm': ["Mmhmm.","Yeah.","Cool.","Ok."],
-    'interrupt': ["Go on, go on."]
+    'interrupt': ["Go ahead."]
 }
 
 FILLERS = [] 

@@ -1,0 +1,70 @@
+---
+title: "[Enterprise] Bring Your Own Telephony"
+description: "Use your own Twilio account and phone numbers with Vocode"
+---
+
+You can connect your own external Twilio accounts with Vocode, enabling you to send and receive calls on your own phone numbers and store recordings in your Twilio account.
+
+***NOTE:** This feature is only enabled for users on an Enterprise plan.*
+
+## Step 1: Add a Twilio account connection
+
+Vocode uses account connections to manage your account parameters and associate them with phone numbers and calls. You can add multiple account connections if you have multiple Twilio accounts you would like to integrate. You can quickly add an account connection [via our API](https://api.vocode.dev/docs#/account_connections/create_account_connection) by providing your account SID and an auth token.
+
+
+```python
+from vocode.client import Vocode
+
+vocode_client.account_connections.create_account_connection(
+    request={
+        "type": "account_connection_twilio",
+        "credentials": {
+            "twilio_account_sid": "YOUR_ACCOUNT_SID",
+            "twilio_auth_token": "YOUR_AUTH_TOKEN",
+        },
+    }
+)
+```
+
+`create_account_connection` will return the parameters for your new account connection, including an `id`, which is necessary for the following steps.
+
+## Step 2: Link existing Twilio numbers to Vocode
+
+Vocode now can make calls with your Twilio account, but our system needs to know which numbers to configure and use. We provide the `/v1/numbers/link` [endpoint](https://api.vocode.dev/docs#/numbers/link_number) to add these numbers to our system. You simply need to provide the phone number, your account connection id, and whether or not the phone number should be outbound only.
+
+```python Python
+vocode_client.numbers.link_number(
+    phone_number="1234567890",
+    telephony_account_connection="YOUR_ACCOUNT_CONNECTION_ID",
+    outbound_only=True
+)
+```
+
+You can now use this phone number for outbound calls (and inbound if you have it configured).
+
+
+## Step 3: View your call objects
+
+After making a call with your newly added number, you can see two new fields in your call object:
+- **Telephony Account Connection:** The account connection object associated with the call
+- **Telephony ID:** The Twilio call SID corresponding to the Vocode call
+
+```json
+{
+    id: 'call_id',
+    userId: 'user_id',
+    toNumber: '123456789',
+    fromNumber: '123456789',
+    ...
+    telephonyId: 'telephony_id',
+    telephonyAccountConnection: {
+        'id': 'account_connection_id', 
+        'user_id': 'user_id', 
+        'credentials': {
+            'twilio_account_sid': 'YOUR_TWILIO_ACCOUNT_SID',
+            'twilio_auth_token': 'YOUR_TWILIO_AUTH_TOKEN'
+        }, 
+        'type': 'account_connection_twilio'
+    }
+}
+```

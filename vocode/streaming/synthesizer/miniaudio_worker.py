@@ -1,4 +1,5 @@
 from __future__ import annotations
+import io
 import queue
 
 from typing import Optional, Tuple, Union
@@ -10,6 +11,45 @@ from vocode.streaming.utils import convert_wav
 from vocode.streaming.utils.mp3_helper import decode_mp3
 from vocode.streaming.utils.worker import ThreadAsyncWorker, logger
 import logging
+
+class ID3TagProcessor:
+    def __init__(self):
+        self.buffer = bytearray()
+        self.id3_tag_size = 0
+        self.id3_tag_processed = False
+
+    def process_chunk(self, chunk):
+        self.buffer += chunk
+
+        if not self.id3_tag_processed:
+            if self.buffer.startswith(b"ID3"):
+                if len(self.buffer) >= 10:
+                    self.id3_tag_size = self.calculate_id3_size(self.buffer[:10])
+                    if len(self.buffer) >= self.id3_tag_size:
+                        # Skip the ID3 tag
+                        self.buffer = self.buffer[self.id3_tag_size :]
+                        self.id3_tag_processed = True
+            else:
+                self.id3_tag_processed = True
+
+        if self.id3_tag_processed:
+            # Return the audio data and clear the buffer
+            audio_data = self.buffer
+            self.buffer = bytearray()
+            return audio_data
+
+        return bytearray()  # Return an empty bytearray if still processing the tag
+
+    def calculate_id3_size(self, header):
+        # Extract the four bytes that represent the size
+        size_bytes = header[6:10]
+        # Calculate the size (each byte is only 7 bits)
+        tag_size = 0
+        for byte in size_bytes:
+            tag_size = (tag_size << 7) | (byte & 0x7F)
+
+        # The size does not include the 10-byte header
+        return tag_size + 10
 
 
 class MiniaudioWorker(ThreadAsyncWorker[Union[bytes, None]]):
@@ -31,6 +71,7 @@ class MiniaudioWorker(ThreadAsyncWorker[Union[bytes, None]]):
     def _run_loop(self):
         try:
             # tracks the mp3 so far
+            id3_processor = ID3TagProcessor()
             current_mp3_buffer = bytearray()
             # tracks the wav so far
             current_wav_buffer = bytearray()
@@ -51,8 +92,21 @@ class MiniaudioWorker(ThreadAsyncWorker[Union[bytes, None]]):
                     current_wav_output_buffer.clear()
                     continue
                 try:
-                    current_mp3_buffer.extend(mp3_chunk)
-                    output_bytes = decode_mp3(bytes(current_mp3_buffer))
+                    processed_chunk = id3_processor.process_chunk(mp3_chunk)
+                    if processed_chunk:
+                        current_mp3_buffer.extend(processed_chunk)
+                        output_bytes_io = io.BytesIO(bytes(current_mp3_buffer))
+                        # Ensure the stream is at the start
+                        output_bytes_io.seek(0)
+                        # Check if there is data in the stream
+                        if output_bytes_io.getbuffer().nbytes > 0:
+                            output_bytes = decode_mp3(output_bytes_io.read())
+                        else:
+                            # Handle the case where there is no data
+                            continue
+                    else:
+                        # Handle empty processed_chunk
+                        continue
                 except miniaudio.DecodeError as e:
                     # TODO: better logging
                     self.logger.exception("MiniaudioWorker error: " + str(e), exc_info=True)

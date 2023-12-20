@@ -1,0 +1,90 @@
+---
+title: "[Enterprise] Bring Your Own OpenAI API Keys"
+description: "Use your own OpenAI keys and models with Vocode"
+---
+
+You can connect your own OpenAI account with Vocode. With your own OpenAI account, you can use your own OpenAI models including custom, fine-tuned models!
+
+***NOTE:** This feature is only enabled for users on an Enterprise plan.*
+
+## Step 1: Add an OpenAI account connection
+
+Vocode uses account connections to manage your account parameters and associate them with phone numbers and calls. You can add multiple account connections if you have multiple OpenAI accounts you would like to integrate. You can quickly add an account connection [via our API](https://api.vocode.dev/docs#/account_connections/create_account_connection) by providing an OpenAI API key.
+
+
+```python
+from vocode.client import Vocode
+
+vocode_client.account_connections.create_account_connection(
+    request={
+        "type": "account_connection_openai",
+        "credentials": {
+            "openai_api_key": "YOUR_OPENAI_API_KEY",
+        },
+    }
+)
+```
+
+`create_account_connection` will return the parameters for your new account connection, including an `id`, which is necessary for the following steps.
+
+## Step 2: Use the OpenAI account connection with your agent
+
+To use the new account connection with your calls, you need to configure your agents with the account connection. You can do so when you create a new agent or update an existing agent via the `openai_account_connection` parameter.
+
+<CodeGroup>
+```python Create Agent
+vocode_client.agents.create_agent(
+    voice="...",
+    prompt={
+        "content": "...",
+    },
+    openai_account_connection="YOUR_ACCOUNT_CONNECTION_ID",
+)
+```
+
+```python Update Agent
+from vocode import AgentUpdateParams
+
+vocode_client.agents.update_agent(
+    id="YOUR_AGENT_ID",
+    request=AgentUpdateParams(
+        openai_account_connection="YOUR_ACCOUNT_CONNECTION_ID",
+    ),
+)
+```
+</CodeGroup>
+
+Any calls with this agent will now use your OpenAI account.
+
+### Use your own OpenAI models
+
+You can add your own OpenAI models to your agents using the `openai_model_name_override` parameter when creating or updating your agents. These models can be the base OpenAI models (e.g. gpt-3.5-turbo-1106, gpt-4) or your own fine-tuned models.
+
+***NOTE:** A model name override can only be used if you add your own OpenAI account connection to the agent. Model overrides do not work when using Vocode's OpenAI system.*
+
+<CodeGroup>
+```python Create Agent
+vocode_client.agents.create_agent(
+    voice="...",
+    prompt={
+        "content": "...",
+    },
+    openai_account_connection="YOUR_ACCOUNT_CONNECTION_ID",
+    openai_model_name_override="ft:your_ft_model_name"
+)
+```
+
+```python Update Agent
+from vocode import AgentUpdateParams
+
+vocode_client.agents.update_agent(
+    id="YOUR_AGENT_ID",
+    request=AgentUpdateParams(
+        openai_account_connection="YOUR_ACCOUNT_CONNECTION_ID", # if not already updated
+        openai_model_name_override="gpt-4-1106-preview"
+    ),
+)
+```
+</CodeGroup>
+
+Now, your Vocode calls with this agent will use your own OpenAI account and your own OpenAI models!
