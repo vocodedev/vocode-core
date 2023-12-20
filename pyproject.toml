@@ -45,8 +45,14 @@ miniaudio = "^1.59"
 boto3 = "^1.28.28"
 pandas = "2.0.3"
 tiktoken = "^0.5.1"
-torch = "2.1.1"
-torchaudio = "2.1.1"
+torch = [
+    { platform = "darwin", url = "https://download.pytorch.org/whl/cpu/torch-2.1.1-cp39-none-macosx_11_0_arm64.whl"},
+    { platform = "linux", url = "https://download.pytorch.org/whl/cpu/torch-2.1.1%2Bcpu-cp39-cp39-linux_x86_64.whl"}
+]
+torchaudio = [
+    { platform = "darwin", url = "https://download.pytorch.org/whl/cpu/torchaudio-2.1.1-cp39-cp39-macosx_11_0_arm64.whl"},
+    { platform = "linux", url = "https://download.pytorch.org/whl/cpu/torchaudio-2.1.1%2Bcpu-cp39-cp39-linux_x86_64.whl"}
+]
 
 [tool.poetry.group.lint.dependencies]
 black = "^23.1.0"
