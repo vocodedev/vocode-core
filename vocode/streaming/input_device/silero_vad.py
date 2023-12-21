@@ -1,3 +1,5 @@
+import logging
+
 import torch
 
 
@@ -10,23 +12,34 @@ class SileroVAD:
         window_size: int,
         threshold: float = 0.5,
         speech_pad_ms: int = 192,
-        use_onnx: bool = False
     ):
         # Silero VAD is optimized for performance on single CPU thread
         torch.set_num_threads(1)
 
-        model, (*_, VADIterator, _) = torch.hub.load(
-            # TODO: load from local
-            repo_or_dir='snakers4/silero-vad',
-            model='silero_vad',
-            force_reload=True,
-            onnx=use_onnx
-        )
-        self.model = model
+        self.logger = logging.getLogger(__name__)
+        self.model = self._load_model(use_onnx=False)
         self.sample_rate = sample_rate
         self.threshold = threshold
         self.window_size = window_size
         self.speech_pad_samples = int(sample_rate * speech_pad_ms / 1000)
+
+    def _load_model(self, use_onnx: bool = False) -> torch.nn.Module:
+        try:
+            model, _ = torch.hub.load(
+                repo_or_dir='silero-vad',
+                model='silero_vad',
+                source='local',
+                onnx=use_onnx
+            )
+        except FileNotFoundError:
+            self.logger.warning("Could not find local VAD model, downloading from GitHub!")
+            model, _ = torch.hub.load(
+                repo_or_dir='snakers4/silero-vad',
+                model='silero_vad',
+                source='github',
+                onnx=use_onnx
+            )
+        return model
 
     def process_chunk(self, chunk: bytes) -> bool:
         if len(chunk) != self.window_size * 2:
