@@ -21,7 +21,7 @@ class AudioStreamHandler:
         self.transcriber = transcriber
         self.audio_buffer_denoised = []
         self.frame_buffer = bytearray()
-        if transcriber.transcriber_config.denoise:
+        if transcriber.transcriber_config.vad:
             self.logger.info("Using Silero for VAD.")
             self.vad_wrapper = SileroVAD(
                 sample_rate=self.VAD_SAMPLE_RATE,

@@ -61,7 +61,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     min_interrupt_confidence: Optional[float] = None
     mute_during_speech: bool = False
     input_device_config: Optional[InputDeviceConfig] = None
-    denoise: bool = False
+    vad: bool = False
 
     @validator("min_interrupt_confidence")
     def min_interrupt_confidence_must_be_between_0_and_1(cls, v):
@@ -81,7 +81,7 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
             audio_encoding=AudioEncoding.LINEAR16,  # This is for VAD 8k and 16bit linear pcm
             chunk_size=input_device.chunk_size,
             endpointing_config=endpointing_config,
-            denoise=True,
+            vad=True,
             # this is used for mapping the input device to the transcriber
             input_device_config=InputDeviceConfig(
                 sampling_rate=input_device.sampling_rate,
