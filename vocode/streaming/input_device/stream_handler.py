@@ -28,7 +28,7 @@ class AudioStreamHandler:
                 window_size=self.VAD_FRAME_SIZE,
                 speech_pad_ms=self.VAD_SPEECH_PAD_MS
             )
-            self.n_padding_frames = int(self.vad_wrapper.speech_pad_samples / (self.VAD_FRAME_SIZE * 2))
+            self.n_padding_frames = int(self.vad_wrapper.speech_pad_samples / self.VAD_FRAME_SIZE)
             self.padding_frames_left = self.n_padding_frames
             self.frame_buffer_is_speech = np.ones(self.padding_frames_left + 1)
         else:
