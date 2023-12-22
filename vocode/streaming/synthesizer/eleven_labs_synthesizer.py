@@ -6,7 +6,8 @@ import io
 from typing import List, Any, AsyncGenerator, Optional, Tuple, Union, Dict
 import wave
 import aiohttp
-from opentelemetry.trace import Span
+from opentelemetry import trace
+from opentelemetry.trace import Span, set_span_in_context
 from pydub import AudioSegment
 from langchain.docstore.document import Document
 import base64
@@ -201,7 +202,10 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             chunk_size=chunk_size,
         )
         return result
-
+    
+    # @tracer.start_as_current_span(
+    #     f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.index",
+    # )
     async def get_result_from_index(
             self,
             message: BaseMessage,
@@ -215,10 +219,16 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 "similarity_boost": self.similarity_boost,
                 "voice_id": self.voice_id
             }
+
+        query_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.query"
+        )
         result_embeds: List[Tuple[Document, float]] = await self.vector_db.similarity_search_with_score(
             query=message.text,
             filter=index_filter
         )
+        query_span.end()
+        
         if result_embeds:
             doc, score = result_embeds[0] # top result
             if score > SIMILARITY_THRESHOLD:
@@ -227,12 +237,16 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 self.logger.debug(f"Found similar synthesized text in vector_db: {text_message}")
                 self.logger.debug(f"Original text: {message.text}")
                 try:
+                    s3_span = tracer.start_span(
+                        f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.s3"
+                    )
                     async with self.aiobotocore_session.create_client('s3', config=s3_config) as _s3:
                         audio_data = await load_from_s3_async(
                             bucket_name=self.bucket_name, 
                             object_key=object_id,
                             s3_client=_s3
                         )
+                    s3_span.end()
                 except Exception as e:
                     self.logger.debug(f"Error loading object from S3: {str(e)}")
                     audio_data = None
@@ -253,6 +267,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             else:
                 return None
 
+    @tracer.start_as_current_span(
+        f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_speech",
+    )
     async def create_speech(
         self,
         message: BaseMessage,
@@ -279,17 +296,13 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     return result, BaseMessage(text=message.text)
                 else:
                     return result
-
+            
         # check vector db
         if self.vector_db and self.bucket_name:
-            create_index_span = tracer.start_span(
-            f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.index",
-            )
             result: SynthesisResult = await self.get_result_from_index(
                 message,
                 chunk_size
             )
-            create_index_span.end()
             if result is not None:
                 if return_tuple:
                     return result, BaseMessage(text=message.text)
@@ -313,11 +326,12 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         if self.model_id:
             body["model_id"] = self.model_id
 
-        create_speech_span = tracer.start_span(
-            f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_total",
-        )
 
+        create_speech_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_first",
+        )
         session = self.aiohttp_session
+
         response = await self.make_request(session, url, body, headers)
 
         if self.experimental_streaming:

@@ -311,11 +311,16 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
 
         # Create a task to send the mp3 chunks to the MiniaudioWorker's input queue in a separate loop
         async def send_chunks():
+            got_first = False
             mp3_audio = b""
             try:
                 async for chunk in stream_reader.iter_any():
                     miniaudio_worker.consume_nonblocking(chunk)
                     mp3_audio += chunk
+                    if not got_first:
+                        got_first = True
+                        if create_speech_span is not None:
+                            create_speech_span.end()
             except asyncio.TimeoutError:
                 self.logger.debug("Timeout while reading chunks from stream_reader")
             finally:
@@ -338,8 +343,6 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
                 yield SynthesisResult.ChunkResult(wav_chunk, is_last)
                 # If this is the last chunk, break the loop
                 if is_last:
-                    if create_speech_span is not None:
-                        create_speech_span.end()
                     # cache_key = self.get_cache_key(message.text)
                     # self.logger.debug(f"Caching {cache_key}")
                     # self.cache.set(cache_key, wav_audio)
