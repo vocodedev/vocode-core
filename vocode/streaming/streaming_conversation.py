@@ -636,6 +636,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.random_audio_manager.stop_all_audios()
         self.is_bot_speaking = False
         self.is_synthesizing = False
+
+        self.logger.info(f"Broadcasting interrupt. Cancelled {num_interrupts} interruptible events.")
+        # Clearing these queues cuts time from finishing interruption talking to bot talking cut by 1 second
+        self.clear_queue(self.agent.output_queue, 'agent.output_queue')
+        self.clear_queue(self.agent_responses_worker.output_queue, 'agent_responses_worker.output_queue')
+        self.clear_queue(self.agent_responses_worker.input_queue, 'agent_responses_worker.input_queue')
+        self.clear_queue(self.output_device.queue, 'output_device.queue')
+        
+        
         return num_interrupts > 0
 
     def is_interrupt(self, transcription: Transcription) -> bool:  
@@ -672,7 +681,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
         else:
             return False
 
-
+    @staticmethod
+    def clear_queue(q: asyncio.Queue, queue_name: str):
+        while not q.empty():
+            logging.debug(f'Clearing queue {queue_name} with size {q.qsize()}')
+            try:
+                q.get_nowait()
+            except asyncio.QueueEmpty:
+                continue
 
     async def send_speech_to_output(
         self,

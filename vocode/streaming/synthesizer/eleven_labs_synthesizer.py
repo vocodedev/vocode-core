@@ -282,10 +282,14 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
         # check vector db
         if self.vector_db and self.bucket_name:
+            create_index_span = tracer.start_span(
+            f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.index",
+            )
             result: SynthesisResult = await self.get_result_from_index(
                 message,
                 chunk_size
             )
+            create_index_span.end()
             if result is not None:
                 if return_tuple:
                     return result, BaseMessage(text=message.text)

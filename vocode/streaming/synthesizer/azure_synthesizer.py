@@ -27,7 +27,7 @@ from vocode.streaming.models.synthesizer import (
     FOLLOW_UP_AUDIO_PATH
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
-
+from vocode.streaming.utils.cache import RedisRenewableTTLCache
 import azure.cognitiveservices.speech as speechsdk
 
 
@@ -64,6 +64,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: AzureSynthesizerConfig,
+        cache: Optional[RedisRenewableTTLCache] = None,
         logger: Optional[logging.Logger] = None,
         azure_speech_key: Optional[str] = None,
         azure_speech_region: Optional[str] = None,

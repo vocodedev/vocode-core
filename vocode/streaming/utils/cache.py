@@ -12,12 +12,15 @@ from vocode.streaming.vector_db.pinecone import PineconeDB
 from vocode.streaming.utils.aws_s3 import load_from_s3_async
 import logging
 
+DAYS_TO_KEEP = 4
+SECONDS_PER_DAY = 60 * 60 * 24
+
 class RedisRenewableTTLCache:
     _redis_client = Redis(
         host=os.environ.get("REDISHOST", "localhost"),
         port=int(os.environ.get("REDISPORT", 6379)))
     _lru_cache = LRUCache(maxsize=2048)
-    _ttl_in_seconds = int(os.environ.get("REDIS_TTL_IN_SECONDS", 60 * 60 * 24))
+    _ttl_in_seconds = int(os.environ.get("REDIS_TTL_IN_SECONDS", SECONDS_PER_DAY * DAYS_TO_KEEP))
 
     def get(self, key):
         if key in self._lru_cache:

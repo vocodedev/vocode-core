@@ -29,6 +29,13 @@ from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.state_manager import TwilioCallStateManager
 from vocode.streaming.utils.cache import RedisRenewableTTLCache
 
+
+BUFFER_DURATION_MS = 100
+TWILIO_CHUNK_DURATION_MS = 20
+# each twilio chunk is 20ms at 8000Hz with 8 bits (1 byte) per sample: 160 bytes
+TWILIO_BYTES_PER_CHUNK = 160
+BUFFER_SIZE = int(BUFFER_DURATION_MS/TWILIO_CHUNK_DURATION_MS) * 160
+
 class PhoneCallWebsocketAction(Enum):
     CLOSE_WEBSOCKET = 1
 
@@ -126,9 +133,10 @@ class TwilioCall(Call[TwilioOutputDevice]):
             
             await started_event.wait()
             self.logger.debug("Started event set!")
+            twilio_buffer = bytearray(b"")
             while self.active:
                 message = await ws.receive_text()
-                response = await self.handle_ws_message(message)
+                response = await self.handle_ws_message(message, twilio_buffer)
                 if response == PhoneCallWebsocketAction.CLOSE_WEBSOCKET:
                     break
             if not start_conversation_task.done():
@@ -151,10 +159,15 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 self.output_device.stream_sid = data["start"]["streamSid"]
                 break
 
-    async def handle_ws_message(self, message) -> Optional[PhoneCallWebsocketAction]:
+    async def handle_ws_message(
+            self, 
+            message,
+            twilio_buffer: bytearray
+        ) -> Optional[PhoneCallWebsocketAction]:
         if message is None:
             return PhoneCallWebsocketAction.CLOSE_WEBSOCKET
 
+        # check https://github.com/deepgram-devs/deepgram-twilio-streaming-python/blob/master/twilio.py        
         data = json.loads(message)
         if data["event"] == "media":
             media = data["media"]
@@ -163,11 +176,19 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 bytes_to_fill = 8 * (
                     int(media["timestamp"]) - (self.latest_media_timestamp + 20)
                 )
-                # self.logger.debug(f"Filling {bytes_to_fill} bytes of silence")
                 # NOTE: 0xff is silence for mulaw audio
-                self.receive_audio(b"\xff" * bytes_to_fill)
+                # and there are 8 bytes per ms of data for our format (8 bit, 8000 Hz)
+                # self.receive_audio(b"\xff" * bytes_to_fill)
+                # self.logger.debug(f"Filling {bytes_to_fill} bytes of silence")
+                twilio_buffer.extend(b"\xff" * bytes_to_fill)
             self.latest_media_timestamp = int(media["timestamp"])
-            self.receive_audio(chunk)
+            twilio_buffer.extend(chunk)
+            # self.receive_audio(chunk)
+
+            while len(twilio_buffer) >= BUFFER_SIZE:
+                self.receive_audio(bytes(twilio_buffer[:BUFFER_SIZE]))
+                twilio_buffer[:] = twilio_buffer[BUFFER_SIZE:]
+
         elif data["event"] == "stop":
             self.logger.debug(f"Media WS: Received event 'stop': {message}")
             self.logger.debug("Stopping...")

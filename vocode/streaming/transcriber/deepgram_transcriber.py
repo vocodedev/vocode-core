@@ -12,6 +12,7 @@ from vocode import getenv
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
     Transcription,
+    tracer,
     meter,
     HUMAN_ACTIVITY_DETECTED
 )
@@ -197,6 +198,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 self.received_first_audio = True
                 if self.transcriber_config.voice_activity_detector_config:
                     # when using WebRTC VAD, there are too many false positive that break the conversation flow
+                    self.logger.debug(f"Using voice activity detector.")
                     try:
                         # TODO: make this async
                         start_time = time.time()
@@ -262,7 +264,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             ):  # means we've finished receiving transcriptions
                 self.logger.debug(f"Deepgram: received final transcription - _ended:{self._ended}")
                 self._ended = True
-                continue
+                break
             cur_max_latency = self.audio_cursor - transcript_cursor
             transcript_cursor = data["start"] + data["duration"]
             cur_min_latency = self.audio_cursor - transcript_cursor
