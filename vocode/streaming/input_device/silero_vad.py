@@ -12,6 +12,7 @@ class SileroVAD:
         window_size: int,
         threshold: float = 0.5,
         speech_pad_ms: int = 192,
+        speech_min_duration_ms: int = 64,
     ):
         # Silero VAD is optimized for performance on single CPU thread
         torch.set_num_threads(1)
@@ -22,6 +23,7 @@ class SileroVAD:
         self.threshold = threshold
         self.window_size = window_size
         self.speech_pad_samples = int(sample_rate * speech_pad_ms / 1000)
+        self.speech_min_samples = int(sample_rate * speech_min_duration_ms / 1000)
 
     def _load_model(self, use_onnx: bool = False) -> torch.nn.Module:
         try:
