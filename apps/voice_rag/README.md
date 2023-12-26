@@ -1,4 +1,4 @@
-# client_backend
+# voice_rag
 
 ## Docker
 
