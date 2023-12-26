@@ -1,5 +1,6 @@
 ---
 name: Bug Report
+description: Use this template for reporting bugs.
 title: "[Bug]: "
 labels: ["bug", "triage"]
 assignees: []

@@ -1,9 +1,9 @@
 ---
 name: Documentation Issue
-about: Use this template for reporting issues with the documentation.
+description: Use this template for reporting issues with the documentation.
 title: '[Docs]:'
 labels: 'documentation'
-assignees: ''
+assignees: []
 body:
   - type: markdown
     attributes:

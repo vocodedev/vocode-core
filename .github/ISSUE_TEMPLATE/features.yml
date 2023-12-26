@@ -1,9 +1,9 @@
 ---
 name: Feature Request
-about: Use this template for proposing new features.
+description: Use this template for proposing new features.
 title: "[Feature]: "
 labels: ["feature", "triage"]
-assignees: ''
+assignees: []
 body:
   - type: markdown
     attributes:
