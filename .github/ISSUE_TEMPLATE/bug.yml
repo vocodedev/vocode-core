@@ -1,9 +1,8 @@
 ---
 name: Bug Report
-about: Use this template for reporting bugs.
 title: "[Bug]: "
 labels: ["bug", "triage"]
-assignees: ''
+assignees: []
 body:
   - type: markdown
     attributes:
