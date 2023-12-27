@@ -122,6 +122,13 @@ class Transcript(BaseModel):
         for idx, message in enumerate(self.event_logs[::-1]):
             if message.sender == Sender.HUMAN:
                 return -1 * (idx + 1), message.to_string()
+    
+    def count_human_messages(self):
+        count = 0
+        for message in self.event_logs:
+            if message.sender == Sender.HUMAN:
+                count += 1
+        return count
 
     def add_action_start_log(self, action_input: ActionInput, conversation_id: str):
         timestamp = time.time()

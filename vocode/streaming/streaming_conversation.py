@@ -171,8 +171,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         self.conversation.logger.debug("Sending interrupt...")
                     self.conversation.logger.debug("Human started speaking")
 
-                    # TODO: change from filler to back tracking audio
-                    if self.conversation.transcript_has_human_message:
+                    # TODO: change from filler audio to back tracking audio
+                    if (
+                        (self.conversation.human_messages_in_transcript > self.conversation.min_human_messages_in_transcript)
+                        and self.conversation.bot_has_spoken
+                    ):
+                        self.conversation.logger.debug("Sending filler audio in TranscriptionsWorker")
                         self.conversation.random_audio_manager.sync_send_filler_audio(asyncio.Event())
                 else:    
                     self.conversation.logger.debug(f"Ignoring human utterance - text didn't trigger interruption: {transcription.message}")
@@ -253,14 +257,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 agent_response = item.payload
                 self.conversation.logger.debug("Got agent response: {}".format(agent_response))
                 if isinstance(agent_response, AgentResponseFillerAudio):
-                    if not self.conversation.transcript_has_human_message:
-                        self.conversation.transcript_has_human_message = bool(self.conversation.transcript.get_last_user_message())
+                    if not (self.conversation.human_messages_in_transcript > self.conversation.min_human_messages_in_transcript):
+                        self.conversation.human_messages_in_transcript = self.conversation.transcript.count_human_messages()
                     should_send_filler_audio = (  
-                        self.conversation.transcript_has_human_message                 
+                        self.conversation.bot_has_spoken
+                        and (self.conversation.human_messages_in_transcript > self.conversation.min_human_messages_in_transcript)                
                         and not self.conversation.is_bot_speaking
                         and self.conversation.synthesis_results_queue.empty()
                     )
                     if should_send_filler_audio:
+                        self.conversation.logger.debug("Sending filler audio in AgentResponsesWorker")
                         self.conversation.random_audio_manager.sync_send_filler_audio(item.agent_response_tracker)
                     return
                 
@@ -337,15 +343,19 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     publish_to_events_manager=False,
                 )
 
-                # add a customizable deplay to the initial message
+                # add a customizable delay to the initial message
                 if (
                     not self.conversation.sent_initial_message
                     and not self.conversation.human_has_spoken
                 ):
                     initial_delay = self.conversation.agent.get_agent_config().initial_message_delay_seconds
                     if initial_delay:
-                        self.conversation.logger.debug("Delaying initial message by %s seconds", initial_delay)
-                        await asyncio.sleep(initial_delay)
+                        elapsed_time = time.time() - self.conversation.call_start_time
+                        remaining_time = initial_delay - elapsed_time
+                        # if the remaining time is positive, delay the initial message by that amount of time
+                        if remaining_time > 0:
+                            self.conversation.logger.debug(f"Delaying initial message by {remaining_time:.2f} seconds")
+                            await asyncio.sleep(remaining_time)
 
                 # set flag for bot interruption
                 self.conversation.is_interrupted = False
@@ -367,6 +377,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     not self.input_queue.empty()
                     and not self.conversation.is_interrupted
                 )
+                if not self.conversation.bot_has_spoken:
+                    if (not cut_off) or (len(message_sent) > 5):
+                        self.conversation.bot_has_spoken = True
                 # publish the transcript message now that it includes what was said during send_speech_to_output
                 self.conversation.transcript.maybe_publish_transcript_event_from_message(
                     message=transcript_message,
@@ -486,12 +499,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # set up flags to better handle interruptions
         self.is_human_speaking = False
         self.human_has_spoken = False
-        self.transcript_has_human_message = False
+        self.human_messages_in_transcript = 0
+        self.min_human_messages_in_transcript = 2
         self.is_bot_speaking = False
+        self.bot_has_spoken = False
         self.sent_initial_message = False
         self.is_interrupted = False
         self.is_synthesizing = False
         self.active = False
+        self.call_start_time: Optional[float] = None
         self.mark_last_action_timestamp()
 
         self.check_for_idle_task: Optional[asyncio.Task] = None
@@ -513,6 +529,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             started_event: Optional[asyncio.Event] = None,
             mark_ready: Optional[Callable[[], Awaitable[None]]] = None
         ):
+        self.call_start_time = time.time()
         self.transcriber.start()
         self.transcriptions_worker.start()
         self.agent_responses_worker.start()
@@ -567,6 +584,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.agent_responses_worker.consume_nonblocking(agent_response_event)
                 self.sent_initial_message = await initial_message_tracker.wait()
         except asyncio.CancelledError:
+            self.logger.debug("Initial message task cancelled")
             self.sent_initial_message = True
             return
 
