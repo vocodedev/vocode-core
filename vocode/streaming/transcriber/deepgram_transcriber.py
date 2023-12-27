@@ -340,10 +340,12 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         try:
             self.audio_cursor = 0.0
             extra_headers = {"Authorization": f"Token {self.api_key}"}
-
+            self.logger.debug(f"Connecting to Deepgram...")
+            start_time = time.time()
             async with websockets.connect(
                 self.get_deepgram_url(), extra_headers=extra_headers
             ) as ws:
+                self.logger.debug(f"Connected to Deepgram! Connection took {time.time()-start_time:.2f} sec.")
                 self._task= asyncio.gather(self.sender(ws), self.receiver(ws))
                 await self._task
         except asyncio.CancelledError:
