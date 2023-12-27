@@ -4,7 +4,7 @@ import base64
 from enum import Enum
 import json
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 from vocode import getenv
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
@@ -30,8 +30,9 @@ from vocode.streaming.utils.state_manager import TwilioCallStateManager
 from vocode.streaming.utils.cache import RedisRenewableTTLCache
 
 
-BUFFER_DURATION_MS = 100
 TWILIO_CHUNK_DURATION_MS = 20
+
+BUFFER_DURATION_MS = 60
 # each twilio chunk is 20ms at 8000Hz with 8 bits (1 byte) per sample: 160 bytes
 TWILIO_BYTES_PER_CHUNK = 160
 BUFFER_SIZE = int(BUFFER_DURATION_MS/TWILIO_CHUNK_DURATION_MS) * 160
@@ -134,9 +135,15 @@ class TwilioCall(Call[TwilioOutputDevice]):
             await started_event.wait()
             self.logger.debug("Started event set!")
             twilio_buffer = bytearray(b"")
+            twilio_audio_time_ms: float = 0.0
+            new_twilio_audio_time_ms: float = 0.0
+            interval_to_log_ms = 3000
             while self.active:
                 message = await ws.receive_text()
-                response = await self.handle_ws_message(message, twilio_buffer)
+                response, new_twilio_audio_time_ms = await self.handle_ws_message(message, twilio_buffer, twilio_audio_time_ms)
+                if (int(twilio_audio_time_ms) // interval_to_log_ms) != (int(new_twilio_audio_time_ms) // interval_to_log_ms):
+                    self.logger.debug(f"Received {new_twilio_audio_time_ms/1000} seconds of Twilio audio.")   
+                twilio_audio_time_ms = new_twilio_audio_time_ms
                 if response == PhoneCallWebsocketAction.CLOSE_WEBSOCKET:
                     break
             if not start_conversation_task.done():
@@ -162,27 +169,29 @@ class TwilioCall(Call[TwilioOutputDevice]):
     async def handle_ws_message(
             self, 
             message,
-            twilio_buffer: bytearray
-        ) -> Optional[PhoneCallWebsocketAction]:
+            twilio_buffer: bytearray,
+            twilio_audio_time_ms: float
+        ) -> Tuple[Optional[PhoneCallWebsocketAction], float]:
         if message is None:
-            return PhoneCallWebsocketAction.CLOSE_WEBSOCKET
+            return PhoneCallWebsocketAction.CLOSE_WEBSOCKET, twilio_audio_time_ms
 
         # check https://github.com/deepgram-devs/deepgram-twilio-streaming-python/blob/master/twilio.py        
         data = json.loads(message)
         if data["event"] == "media":
             media = data["media"]
             chunk = base64.b64decode(media["payload"])
-            if self.latest_media_timestamp + 20 < int(media["timestamp"]):
-                bytes_to_fill = 8 * (
-                    int(media["timestamp"]) - (self.latest_media_timestamp + 20)
-                )
+            ms_to_fill = int(media["timestamp"]) - (self.latest_media_timestamp + TWILIO_CHUNK_DURATION_MS)
+            if ms_to_fill > 0:
+                bytes_to_fill = 8 * ms_to_fill
                 # NOTE: 0xff is silence for mulaw audio
                 # and there are 8 bytes per ms of data for our format (8 bit, 8000 Hz)
                 # self.receive_audio(b"\xff" * bytes_to_fill)
                 # self.logger.debug(f"Filling {bytes_to_fill} bytes of silence")
                 twilio_buffer.extend(b"\xff" * bytes_to_fill)
+                twilio_audio_time_ms += ms_to_fill
             self.latest_media_timestamp = int(media["timestamp"])
             twilio_buffer.extend(chunk)
+            twilio_audio_time_ms += TWILIO_CHUNK_DURATION_MS
             # self.receive_audio(chunk)
 
             while len(twilio_buffer) >= BUFFER_SIZE:
@@ -192,5 +201,5 @@ class TwilioCall(Call[TwilioOutputDevice]):
         elif data["event"] == "stop":
             self.logger.debug(f"Media WS: Received event 'stop': {message}")
             self.logger.debug("Stopping...")
-            return PhoneCallWebsocketAction.CLOSE_WEBSOCKET
-        return None
+            return PhoneCallWebsocketAction.CLOSE_WEBSOCKET, twilio_audio_time_ms
+        return None, twilio_audio_time_ms
