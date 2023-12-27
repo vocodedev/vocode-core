@@ -25,7 +25,7 @@ from vocode.streaming.agent.utils import (
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.vector_db.factory import VectorDBFactory
-from vocode.streaming.agent.utils import replace_map_symbols
+from vocode.streaming.agent.utils import replace_map_symbols, replace_username_with_spelling_pattern
 
 TIMEOUT_SECONDS = 5
 TIMEOUT_SECONDS_BACKUP = 10
@@ -250,11 +250,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 logger=self.logger
             ):
                 if isinstance(message, str):
+                    # before we replace characters, such as `@`, we run the email spelling function for the regex to identify the email
+                    message = replace_username_with_spelling_pattern(message)
                     if self.agent_config.character_replacement_map:
                         message = replace_map_symbols(message, self.agent_config.character_replacement_map)
-                    if self.agent_config.remove_exclamation:
-                        # replace ! by . because it sounds better when speaking.
-                        message = message.replace('!','.')
                     if self.agent_config.add_disfluencies:
                         # artificially add disfluencies to message
                         message = make_disfluency(message)

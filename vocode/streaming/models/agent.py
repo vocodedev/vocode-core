@@ -107,7 +107,6 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     stop_tokens: Optional[List[str]] = ["\n"]
     frequency_penalty: float = 0.0
     cut_off_response: Optional[CutOffResponse] = None
-    remove_exclamation: bool = False
     add_disfluencies: bool = False
     azure_params: Optional[AzureOpenAIConfig] = None
     vector_db_config: Optional[VectorDBConfig] = None
