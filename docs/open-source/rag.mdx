@@ -1,0 +1,57 @@
+---
+title: "Retrieval-augmented generation (RAG)."
+description: "use agents knowledge via embeddings in Open Spurce library"
+---
+# Vocode Retrieval-augmented generation (RAG).
+## Introduction
+
+For Open Source developers building advanced conversational AI models, one challenge looms large: 
+limited context windows in prompts. Past interactions quickly vanish, forcing bots to rely on incomplete 
+information. Vocode introduces a novel solution: retrieval-augmented generation (RAG) powered by vector databases.
+
+## Here's how it works:
+
+- **Pre-computed embeddings:** Vocode leverages vector databases like Pinecone to store concise representations 
+  of relevant knowledge. These bite-sized "memory chunks" efficiently encode factual details, 
+  contexts, and even emotional nuances.
+- **Dynamic retrieval:** As your bot interacts, Vocode queries the database for embeddings most similar to the
+  current conversation. Think of it as a smart librarian fetching the most relevant books on the fly.
+- **Contextual guidance:** The retrieved embeddings are then fed to the language model, enriching its 
+  understanding of the ongoing dialogue. This enables the bot to generate more informed, contextually rich, 
+  and ultimately **smarter responses.**
+
+## Benefits for builders:
+- **Scalability:** Vector databases grow seamlessly with your needs, accommodating vast knowledge 
+  repositories without straining your system.
+- **Efficiency:** Say goodbye to bloated prompts filled with redundant information. Vocode delivers precise 
+  relevance with minimal data overhead.
+- **Openness:** Built on open-source principles, Vocode empowers developers to contribute, customize, and 
+  build upon its foundation.
+- **Transparency:** Explore the reasoning behind retrieved embeddings and gain valuable insights into your 
+  bot's decision-making process.
+
+## How to set up your Pinecone database
+
+In this guide, we'll get your Pinecone database fired up and ready to fuel your retrieval-augmented 
+chatbot with a robust knowledge base. Buckle up, developers!
+
+### 1. Create Your Vector Index:
+
+1. Navigate to the Pinecone dashboard and grab the "Create Index" button.
+2. Name your index something meaningful, like "vocode-documentation-vector" for our Vocode-documentation bot.
+3. Set the dimensions to 1536 for compatibility with your chosen OpenAI model.
+4. Stick with cosine metric for consistency.
+5. Hit "Create Index" and let the magic happen!
+
+![Setup](images/vectodb/pinecone-create-index.png)
+
+
+## Document loading script
+
+You can manaully add documents to Pinecone any way you like as long as you include the required metadata.
+If you have a folder of PDFs, docx files, text files, etc. that you want to add to pinecone, you can use
+the below script which uses [Unstructured](https://github.com/Unstructured-IOVector/unstructured) to parse
+many kinds of files types, extract the text, and add it to pinecone.
+
+`apps/voice-rag/manual_pinecone_ingestor.ipynb`
+
