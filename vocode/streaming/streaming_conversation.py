@@ -56,9 +56,11 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     SynthesisResult,
     FillerAudio,
 )
-from vocode.streaming.utils import (create_conversation_id, 
-                                    get_chunk_size_per_second,
-                                    convert_wav)
+from vocode.streaming.utils import (
+    create_conversation_id, 
+    get_chunk_size_per_second,
+    convert_wav
+)
 from vocode.streaming.transcriber.base_transcriber import (
     Transcription,
     BaseTranscriber,
@@ -73,6 +75,7 @@ from vocode.streaming.utils.worker import (
     InterruptibleAgentResponseEvent,
     InterruptibleWorker,
 )
+from vocode.streaming.utils.duration_from_message import should_finish_sentence
 from vocode.streaming.response_worker.random_response import RandomAudioManager
 
 from opentelemetry import trace, metrics
@@ -738,6 +741,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.synthesizer.get_synthesizer_config().audio_encoding,
             self.synthesizer.get_synthesizer_config().sampling_rate,
         )
+
         chunk_idx = 0
         seconds_spoken = 0
         async for chunk_result in synthesis_result.chunk_generator:
@@ -749,15 +753,21 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 len(chunk_result.chunk) / chunk_size
             )
             seconds_spoken = chunk_idx * seconds_per_chunk
-            if stop_event.is_set():
-                self.logger.debug(
-                    "Interrupted, stopping text to speech after {} chunks".format(
-                        chunk_idx
+            if stop_event.is_set() and (not cut_off):
+                self.logger.debug("Stop event triggered, checking if bot should finish sentence.")
+                if should_finish_sentence(message, seconds_spoken):
+                    self.logger.debug("Bot should finish sentence.")
+                    cut_off = True
+                else:
+                    self.logger.debug(
+                        "Interrupted, stopping text to speech after {} chunks".format(
+                            chunk_idx
+                        )
                     )
-                )
-                message_sent = f"{synthesis_result.get_message_up_to(seconds_spoken)}-"
-                cut_off = True
-                break
+                    message_sent = f"{synthesis_result.get_message_up_to(seconds_spoken)}-"
+                    cut_off = True
+                    break
+
             if chunk_idx == 0:
                 if started_event:
                     started_event.set()
