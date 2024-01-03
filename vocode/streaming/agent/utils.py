@@ -258,3 +258,50 @@ def replace_username_with_spelling_pattern(text) -> str:
         return formatted_text
     else:
         return text
+    
+def get_time_from_text(text: str) -> str:
+    """
+    Extracts time strings in the format "HH:MM AM/PM" from the given text.
+
+    Parameters:
+    - text (str): The input text from which to extract time strings.
+
+    Returns:
+    - List[str]: A list of time strings found in the input text.
+    """
+    pattern = re.compile(r'\b(?:1[0-2]|0?[1-9]):[0-5][0-9] (?:AM|PM)\b')
+    return pattern.findall(text)
+
+def format_time(time_string: str) -> str:
+    """
+    Formats a time string in the "HH:MM AM/PM" format to a more readable format.
+
+    Parameters:
+    - time_string (str): The time string to be formatted.
+
+    Returns:
+    - str: The formatted time string in the "HH MM AM/PM" format.
+    """
+    time, am_pm = time_string.split(" ")
+    hours, minutes = time.split(":")
+    minutes_part = "" if minutes == "00" else f" {minutes}"
+    modified_time = f"{hours}{minutes_part} {am_pm}"
+    return modified_time
+
+def format_time_in_text(text: str) -> str:
+    """
+    Replaces time strings in the format "HH:MM AM/PM" with a more readable format "HH MM AM/PM" in the given text.
+    If no time strings are found in the input text, the function returns the original text without any replacements.
+
+    Parameters:
+    - text (str): The input text in which to replace time strings.
+
+    Returns:
+    - str: The modified text with formatted time strings.
+    """
+    matches = get_time_from_text(text)
+    if matches:
+        for match in matches:
+            reformatted_time = format_time(match)
+            text = text.replace(match, reformatted_time)
+    return text
