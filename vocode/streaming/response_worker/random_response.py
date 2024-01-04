@@ -8,7 +8,11 @@ from typing import Optional, Union, TYPE_CHECKING
 if TYPE_CHECKING:
     from vocode.streaming.streaming_conversation import StreamingConversation
 
-from vocode.streaming.models.agent import FollowUpAudioConfig, FillerAudioConfig
+from vocode.streaming.models.agent import (
+    FollowUpAudioConfig, 
+    FillerAudioConfig,
+    BacktrackAudioConfig
+)
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import (
     Message,
@@ -52,7 +56,7 @@ class RandomResponseAudioWorker(InterruptibleAgentResponseWorker):
             or not self.filler_audio_started_event.set()
         ):
             self.logger.debug(
-                "Not waiting for filler audio to finish since we didn't send any chunks"
+                f"Not waiting for {self.name} to finish since we didn't send any chunks"
             )
             return
         if self.interruptible_event and isinstance(
@@ -76,6 +80,8 @@ class RandomResponseAudioWorker(InterruptibleAgentResponseWorker):
                 self.config.silence_threshold_seconds
             )
             await asyncio.sleep(silence_threshold)
+            # self.logger.debug(f"Is bot speaking: {self.conversation.is_bot_speaking}")
+            # self.logger.debug(f"Is queue empty: {self.conversation.synthesis_results_queue.empty()}")
             should_send_random_audio = (
                 not self.conversation.is_bot_speaking
                 and self.conversation.synthesis_results_queue.empty()
@@ -125,6 +131,16 @@ class FollowUpAudioWorker(RandomResponseAudioWorker):
     ):
         super().__init__(input_queue, conversation, follow_up_audio_config)
 
+class BacktrackAudioWorker(RandomResponseAudioWorker):
+    name = "BacktrackAudio"
+
+    def __init__(
+            self,
+            input_queue: asyncio.Queue,
+            conversation,
+            backtrack_audio_config: BacktrackAudioConfig,
+    ):
+        super().__init__(input_queue, conversation, backtrack_audio_config)
 
 
 class RandomAudioManager:
@@ -132,13 +148,18 @@ class RandomAudioManager:
         self.conversation = conversation
         self.agent_config = self.conversation.agent.get_agent_config()
         self.logger = self.conversation.logger
+        
         self.filler_audio_config: Optional[FillerAudioConfig] = None
         self.follow_up_audio_config: Optional[FollowUpAudioConfig] = None
+        self.backtrack_audio_config: Optional[BacktrackAudioConfig] = None
+
         self.filler_audio_worker: Optional[FillerAudioWorker] = None
         self.follow_up_worker: Optional[FollowUpAudioWorker] = None
+        self.backtrack_worker: Optional[BacktrackAudioWorker] = None
 
         self.filler_audio_queue: asyncio.Queue[InterruptibleAgentResponseEvent[FillerAudio]] = asyncio.Queue()
         self.follow_up_queue: asyncio.Queue[InterruptibleAgentResponseEvent[FillerAudio]] = asyncio.Queue()
+        self.backtrack_queue: asyncio.Queue[InterruptibleAgentResponseEvent[FillerAudio]] = asyncio.Queue()
 
         if self.agent_config.send_filler_audio:
             if not isinstance(
@@ -171,6 +192,24 @@ class RandomAudioManager:
                 conversation=self.conversation,
                 follow_up_audio_config=self.follow_up_audio_config
             )
+        
+        if self.agent_config.send_backtrack_audio:
+            if not isinstance(
+                    self.agent_config.send_backtrack_audio,
+                    BacktrackAudioConfig,
+            ):
+                self.logger.debug("Using default backtrack audio")
+                self.backtrack_audio_config = BacktrackAudioConfig()
+            else:
+                self.backtrack_audio_config = typing.cast(
+                    BacktrackAudioConfig,
+                    self.agent_config.send_backtrack_audio,
+                )
+            self.backtrack_worker = BacktrackAudioWorker(
+                input_queue=self.backtrack_queue,
+                conversation=self.conversation,
+                backtrack_audio_config=self.backtrack_audio_config
+            )
 
     async def start(self):
         
@@ -184,6 +223,11 @@ class RandomAudioManager:
                 self.conversation.synthesizer.set_follow_up_audios(self.follow_up_audio_config)
             )
             self.follow_up_worker.start()
+        if self.backtrack_worker is not None and self.backtrack_audio_config is not None:
+            asyncio.create_task( 
+                self.conversation.synthesizer.set_backtrack_audios(self.backtrack_audio_config)
+            )
+            self.backtrack_worker.start()
 
     async def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
         self.stop_all_audios()
@@ -227,7 +271,6 @@ class RandomAudioManager:
             )
 
     async def send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
-        self.stop_all_audios()
         if self.follow_up_worker is None:
             return
         self.logger.debug("Sending follow up audio")
@@ -244,6 +287,25 @@ class RandomAudioManager:
             self.follow_up_worker.consume_nonblocking(event)
         else:
             self.logger.debug("No follow up audio available")
+    
+    async def send_backtrack_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+        self.stop_all_audios()
+        if self.backtrack_worker is None:
+            return
+        self.logger.debug("Sending backtrack audio")
+        assert self.backtrack_worker is not None
+        backtrack_audios = self.conversation.synthesizer.backtrack_audios
+        if backtrack_audios:
+            backtrack_audio: FillerAudio = random.choice(backtrack_audios)
+            self.logger.debug(f"Chose backtrack audio, {backtrack_audio.message.text}")
+            event = self.conversation.interruptible_event_factory.create_interruptible_agent_response_event(
+                backtrack_audio,
+                is_interruptible=backtrack_audio.is_interruptible,
+                agent_response_tracker=agent_response_tracker,
+            )
+            self.backtrack_worker.consume_nonblocking(event)
+        else:
+            self.logger.debug("No backtrack audio available")
 
     async def stop_filler_audio(self):
         if self.filler_audio_worker:
@@ -254,6 +316,11 @@ class RandomAudioManager:
         if self.follow_up_worker:
             if self.follow_up_worker.interrupt_current_random_audio():
                 await self.follow_up_worker.wait_for_random_audio_to_finish()
+    
+    async def stop_backtrack_audio(self):
+        if self.backtrack_worker:
+            if self.backtrack_worker.interrupt_current_random_audio():
+                await self.backtrack_worker.wait_for_random_audio_to_finish()
 
     def terminate(self):
         if self.filler_audio_worker is not None:
@@ -262,12 +329,23 @@ class RandomAudioManager:
         if self.follow_up_worker is not None:
             self.logger.debug("Terminating follow up worker")
             self.follow_up_worker.terminate()
+        if self.backtrack_worker is not None:
+            self.logger.debug("Terminating backtrack worker")
+            self.backtrack_worker.terminate()
+
+    def sync_stop_follow_up_audio(self):
+        try:
+            loop = asyncio.get_event_loop()
+            loop.create_task(self.stop_follow_up_audio())
+        except Exception as e:
+            self.logger.debug(f"Exception while stopping follow up audio: {repr(e)}")
 
     def stop_all_audios(self):
         try:
             loop = asyncio.get_event_loop()
             loop.create_task(self.stop_follow_up_audio())
             loop.create_task(self.stop_filler_audio())
+            loop.create_task(self.stop_backtrack_audio())
         except Exception as e:
             self.logger.debug(f"Exception while stopping all audios: {repr(e)}")
 
@@ -278,3 +356,7 @@ class RandomAudioManager:
     def sync_send_follow_up_audio(self, agent_response_tracker: Optional[asyncio.Event]):
         loop = asyncio.get_event_loop()
         loop.create_task(self.send_follow_up_audio(agent_response_tracker))
+
+    def sync_send_backtrack_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.send_backtrack_audio(agent_response_tracker))

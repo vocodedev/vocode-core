@@ -26,7 +26,11 @@ from opentelemetry.trace import Span
 
 from vocode.streaming.utils.cache import RedisRenewableTTLCache
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
-from vocode.streaming.models.agent import FillerAudioConfig, FollowUpAudioConfig
+from vocode.streaming.models.agent import (
+    FillerAudioConfig, 
+    FollowUpAudioConfig,
+    BacktrackAudioConfig
+)
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
@@ -41,7 +45,7 @@ logger = logging.getLogger()
 FILLER_KEY: Dict = {
     'question': ["Um...","Uh...","Uhm...","Hmm..."],
     'confirm': ["Mmhmm.","Yeah.","Cool.","Ok."],
-    'interrupt': ["Go ahead."]
+    'interrupt': ["Gotcha."]
 }
 
 FILLERS = [] 
@@ -57,6 +61,10 @@ FOLLOW_UP_PHRASES = [
     BaseMessage(text="Can you hear me?"),
     BaseMessage(text="Are you with me?"),
     BaseMessage(text="Are you still with me?"),
+]
+
+BACKTRACK_PHRASES = [
+    BaseMessage(text="Go ahead."),
 ]
 
 def encode_as_wav(chunk: bytes, synthesizer_config: SynthesizerConfig) -> bytes:
@@ -147,14 +155,20 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         self.logger = logger or logging.getLogger(__name__)
         self.cache: RedisRenewableTTLCache = cache
         self.synthesizer_config = synthesizer_config
-        self.base_filler_audio_path = self.synthesizer_config.base_filler_audio_path
-        self.base_follow_up_audio_path = self.synthesizer_config.base_follow_up_audio_path
+
         if synthesizer_config.audio_encoding == AudioEncoding.MULAW:
             assert (
                 synthesizer_config.sampling_rate == 8000
             ), "MuLaw encoding only supports 8kHz sampling rate"
+
+        self.base_filler_audio_path = self.synthesizer_config.base_filler_audio_path
+        self.base_follow_up_audio_path = self.synthesizer_config.base_follow_up_audio_path
+        self.base_backtrack_audio_path = self.synthesizer_config.base_backtrack_audio_path
+        
         self.filler_audios: Dict[str,List[FillerAudio]] = {}
         self.follow_up_audios: List[FillerAudio] = []
+        self.backtrack_audios: List[FillerAudio] = []
+
         if aiohttp_session:
             # the caller is responsible for closing the session
             self.aiohttp_session = aiohttp_session
@@ -200,6 +214,16 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
                 )
             else:
                 self.follow_up_audios = await self.get_phrase_follow_up_audios()
+    
+    async def set_backtrack_audios(self, backtrack_audio_config: BacktrackAudioConfig):
+        self.logger.debug(f"Setting backtrack audios...")
+        if backtrack_audio_config:
+            if backtrack_audio_config.backtrack_phrases:
+                self.backtrack_audios = await self.get_phrase_backtrack_audios(
+                    backtrack_audio_config.backtrack_phrases
+                )
+            else:
+                self.backtrack_audios = await self.get_phrase_backtrack_audios()
         
 
 
@@ -208,6 +232,10 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
     
     async def get_phrase_follow_up_audios(self) -> List[FillerAudio]:
         return []
+    
+    async def get_phrase_backtrack_audios(self) -> List[FillerAudio]:
+        return []
+
 
     def ready_synthesizer(self):
         pass

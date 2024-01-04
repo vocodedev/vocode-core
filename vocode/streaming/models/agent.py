@@ -12,6 +12,8 @@ from .vector_db import VectorDBConfig
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
 FILLER_AUDIO_DEFAULT_PROBABILITY = 0.5
 FOLLOW_UP_DEFAULT_SILENCE_THRESHOLD_SECONDS = 3
+BACKTRACK_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.1
+
 LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
 LLM_AGENT_DEFAULT_MAX_TOKENS = 256
 LLM_AGENT_DEFAULT_MODEL_NAME = "text-curie-001"
@@ -58,6 +60,10 @@ class FollowUpAudioConfig(BaseModel):
     silence_threshold_seconds: float = FOLLOW_UP_DEFAULT_SILENCE_THRESHOLD_SECONDS
     follow_up_phrases: Optional[List[BaseMessage]] = None
 
+class BacktrackAudioConfig(BaseModel):
+    silence_threshold_seconds: float = BACKTRACK_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
+    backtrack_phrases: Optional[List[BaseMessage]] = None
+
 
 class WebhookConfig(BaseModel):
     url: str
@@ -79,6 +85,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     end_conversation_on_goodbye: bool = False
     send_filler_audio: Union[bool, FillerAudioConfig] = False
     send_follow_up_audio: Union[bool, FollowUpAudioConfig] = False
+    send_backtrack_audio: Union[bool, BacktrackAudioConfig] = False
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
     actions: Optional[List[ActionConfig]] = None

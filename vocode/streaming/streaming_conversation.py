@@ -136,15 +136,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
             self.conversation.current_transcription_is_interrupt = transcription.is_interrupt
-            self.conversation.logger.debug(f"Stopping random audios")
-            self.conversation.random_audio_manager.stop_all_audios()
+            # self.conversation.logger.debug(f"Stopping follow up audio")
+            self.conversation.random_audio_manager.sync_stop_follow_up_audio()
 
             if transcription.message.strip() == "":
                 self.conversation.logger.info("Ignoring empty transcription")
                 return
             if transcription.message == HUMAN_ACTIVITY_DETECTED:
                 self.conversation.logger.info("Got transcription: Human activity detected")
-                
+            if not transcription.is_final:
+                self.conversation.logger.debug("Got partial transcription: {}".format(transcription.message))
             if transcription.is_final:
                 if not self.conversation.human_has_spoken:
                     self.conversation.human_has_spoken = True
@@ -170,8 +171,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.current_transcription_is_interrupt = (
                         self.conversation.broadcast_interrupt()
                     )
-                    if self.conversation.current_transcription_is_interrupt:
-                        self.conversation.logger.debug("Sending interrupt...")
+                    # if self.conversation.current_transcription_is_interrupt:
+                    #     self.conversation.logger.debug("Sending interrupt...")
                     self.conversation.logger.debug("Human started speaking")
 
                     # TODO: change from filler audio to back tracking audio
@@ -179,8 +180,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         (self.conversation.human_messages_in_transcript > self.conversation.min_human_messages_in_transcript)
                         and self.conversation.bot_has_spoken
                     ):
-                        self.conversation.logger.debug("Sending filler audio in TranscriptionsWorker")
-                        self.conversation.random_audio_manager.sync_send_filler_audio(asyncio.Event())
+                        self.conversation.logger.debug("Waiting for bot to stop speaking after interruption")
+                        bot_finished_speaking_event: InterruptibleAgentResponseEvent = self.conversation.synthesis_results_worker.interruptible_event
+                        await bot_finished_speaking_event.agent_response_tracker.wait()
+                        self.conversation.logger.debug("Sending backtrack audio in TranscriptionsWorker")
+                        self.conversation.random_audio_manager.sync_send_backtrack_audio(asyncio.Event())
+                        # TODO: try sending the message to the agent instead of directly to the worker
+                        # something like the following:
+                        # self.conversation.agent.produce_interruptible_agent_response_event_nonblocking(
+                        #   AgentResponseBacktrackAudio()
+                        # )
                 else:    
                     self.conversation.logger.debug(f"Ignoring human utterance - text didn't trigger interruption: {transcription.message}")
                     return
@@ -655,7 +664,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent.cancel_current_task()
         self.agent_responses_worker.cancel_current_task()
         self.random_audio_manager.stop_all_audios()
-        self.is_bot_speaking = False
+        # self.is_bot_speaking = False
         self.is_synthesizing = False
 
         self.logger.info(f"Broadcasting interrupt. Cancelled {num_interrupts} interruptible events.")

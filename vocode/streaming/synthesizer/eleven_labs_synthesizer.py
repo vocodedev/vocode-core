@@ -19,6 +19,7 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     FILLER_PHRASES,
     FILLER_KEY,
     FOLLOW_UP_PHRASES,
+    BACKTRACK_PHRASES,
     FillerAudio,
     encode_as_wav,
     tracer,
@@ -187,6 +188,17 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             self.base_follow_up_audio_path
         )
         return follow_up_audios
+    
+    async def get_phrase_backtrack_audios(
+            self,
+            backtrack_phrases: List[BaseMessage] = BACKTRACK_PHRASES
+        ) -> List[FillerAudio]:
+        self.logger.debug(f"Generating backtrack audios for {backtrack_phrases}")
+        backtrack_audios = await self.get_audios_from_messages(
+            backtrack_phrases, 
+            self.base_backtrack_audio_path
+        )
+        return backtrack_audios
 
     def get_result_from_mp3_audio_data(
             self, 
