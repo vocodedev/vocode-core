@@ -175,16 +175,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     # if self.conversation.current_transcription_is_interrupt:
                     #     self.conversation.logger.debug("Sending interrupt...")
                     self.conversation.logger.debug("Human started speaking")
-
-                    if (
-                        (self.conversation.human_messages_in_transcript > self.conversation.min_human_messages_in_transcript)
-                        and self.conversation.bot_has_spoken
-                    ):
-                        
-                        self.conversation.logger.debug("Sending Backtrack audio to AgentResponseWorker.")
-                        self.conversation.agent.produce_interruptible_agent_response_event_nonblocking(
-                            AgentResponseBacktrackAudio()
-                        )
+                    self.conversation.logger.debug("Sending Backtrack audio to AgentResponseWorker.")
+                    self.conversation.agent.produce_interruptible_agent_response_event_nonblocking(
+                        AgentResponseBacktrackAudio()
+                    )
                 else:    
                     self.conversation.logger.debug(f"Ignoring human utterance - text didn't trigger interruption: {transcription.message}")
                     return
@@ -284,8 +278,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.logger.debug("Waiting for bot to stop speaking after interruption")
                     bot_finished_speaking_event: InterruptibleAgentResponseEvent = self.conversation.synthesis_results_worker.interruptible_event
                     await bot_finished_speaking_event.agent_response_tracker.wait()
-                    self.conversation.logger.debug("Sending backtrack audio in AgentResponsesWorker")
-                    self.conversation.random_audio_manager.sync_send_backtrack_audio(asyncio.Event())
+                    should_send_backtrack_audio = (
+                        (self.conversation.human_messages_in_transcript > self.conversation.min_human_messages_in_transcript)
+                        and self.conversation.bot_has_spoken
+                        and self.conversation.is_human_speaking
+                    )                    
+                                        
+                    if should_send_backtrack_audio:
+                        self.conversation.logger.debug("Sending backtrack audio in AgentResponsesWorker")
+                        self.conversation.random_audio_manager.sync_send_backtrack_audio(asyncio.Event())
                     return
 
                 if isinstance(agent_response, AgentResponseStop):
