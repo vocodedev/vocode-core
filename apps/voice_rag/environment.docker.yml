@@ -1,0 +1,21 @@
+name: vocode-rag
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.10
+  - openssl=1.1.1w
+  - portaudio
+  - ffmpeg
+  - git
+  - pip
+  - pip:
+    # Installing vocode from the git repository
+    - git+https://github.com/ArtisanLabs/vocode-python/@461-VectorDB-OpenSource-Documentation#egg=vocode
+    - azure-cognitiveservices-speech==1.31.0
+    - python-dotenv
+    - ipython
+    - deepgram-sdk
+    - uvicorn
+    - pinecone-client
+    - poetry
