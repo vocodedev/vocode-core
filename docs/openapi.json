@@ -2305,8 +2305,6 @@
             "title": "Do Not Call Result"
           },
           "telephony_id": { "type": "string", "title": "Telephony Id" },
-<<<<<<< HEAD
-=======
           "stage": {
             "type": "string",
             "enum": [
@@ -2328,7 +2326,6 @@
             ],
             "title": "Stage Outcome"
           },
->>>>>>> eb25e88ab9325bd4a4425e98b0e8b9acf1a6b46d
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "$ref": "#/components/schemas/Agent" },
@@ -3070,8 +3067,6 @@
             "title": "Do Not Call Result"
           },
           "telephony_id": { "type": "string", "title": "Telephony Id" },
-<<<<<<< HEAD
-=======
           "stage": {
             "type": "string",
             "enum": [
@@ -3093,7 +3088,6 @@
             ],
             "title": "Stage Outcome"
           },
->>>>>>> eb25e88ab9325bd4a4425e98b0e8b9acf1a6b46d
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "type": "string", "format": "uuid", "title": "Agent" },

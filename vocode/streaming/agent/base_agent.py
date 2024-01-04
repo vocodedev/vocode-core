@@ -90,6 +90,7 @@ class AgentResponseType(str, Enum):
     STOP = "agent_response_stop"
     FILLER_AUDIO = "agent_response_filler_audio"
     FOLLOW_UP_AUDIO = "agent_response_follow_up_audio"
+    BACKTRACK_AUDIO = "agent_response_backtrack_audio"
 
 
 class AgentResponse(TypedModel, type=AgentResponseType.BASE.value):
@@ -119,6 +120,10 @@ class AgentResponseFollowUpAudio(
 ):
     seconds_spoken: float = 0
 
+class AgentResponseBacktrackAudio(
+    AgentResponse, type=AgentResponseType.BACKTRACK_AUDIO.value
+):
+    pass
 
 
 AgentConfigType = TypeVar("AgentConfigType", bound=AgentConfig)
