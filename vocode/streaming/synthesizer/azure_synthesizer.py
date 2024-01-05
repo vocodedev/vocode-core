@@ -3,7 +3,8 @@ from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 import re
-from typing import Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple
+import wave
 from xml.etree import ElementTree
 import aiohttp
 from vocode import getenv
@@ -15,7 +16,6 @@ from vocode.streaming.models.message import BaseMessage, SSMLMessage
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
-    FILLER_PHRASES,
     FillerAudio,
     encode_as_wav,
     tracer,
@@ -25,6 +25,9 @@ from vocode.streaming.models.synthesizer import (
     SynthesizerType,
     FILLER_AUDIO_PATH,
     FOLLOW_UP_AUDIO_PATH
+)
+from vocode.streaming.models.agent import (
+    FillerAudioConfig
 )
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.utils.cache import RedisRenewableTTLCache
@@ -120,9 +123,69 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
         self.logger = logger or logging.getLogger(__name__)
 
-    async def get_phrase_filler_audios(self) -> List[FillerAudio]:
-        filler_phrase_audios = []
-        for filler_phrase in FILLER_PHRASES:
+
+    async def get_audio_data_from_cache_or_download(
+        self, phrase: BaseMessage, base_path: str
+    ) -> str:
+        cache_key = "-".join(
+            (
+                str(phrase.text),
+                str(self.synthesizer_config.type),
+                str(self.synthesizer_config.audio_encoding),
+                str(self.synthesizer_config.sampling_rate),
+                str(self.voice_name),
+                str(self.pitch),
+                str(self.rate),
+            )
+        )
+        filler_audio_path = os.path.join(base_path, f"{cache_key}.wav")
+        if not os.path.exists(filler_audio_path):
+            self.logger.debug(f"Generating cached audio for {phrase.text}")
+            ssml = self.create_ssml(phrase.text)
+            result = await asyncio.get_event_loop().run_in_executor(
+                self.thread_pool_executor, self.synthesizer.speak_ssml, ssml
+            )
+            offset = self.synthesizer_config.sampling_rate * self.OFFSET_MS // 1000
+            audio_data = result.audio_data[offset:]
+            with open(filler_audio_path, "wb") as wav:
+                wav.write(audio_data)
+            
+        return filler_audio_path
+
+    async def get_audios_from_messages(
+        self,
+        phrases: List[BaseMessage],
+        base_path: str,
+        audio_is_interruptible: bool = True,
+    ) -> List[FillerAudio]:
+        if not os.path.exists(base_path):
+            os.makedirs(base_path)
+        audios = []
+        for phrase in phrases:
+            audio_path = await self.get_audio_data_from_cache_or_download(
+                phrase, base_path
+            )
+            audio_data = open(audio_path, "rb").read()
+            audio = FillerAudio(
+                phrase,
+                audio_data=audio_data,
+                synthesizer_config=self.synthesizer_config,
+                is_interruptible=audio_is_interruptible,
+                seconds_per_chunk=2,
+            )
+            audios.append(audio)
+        return audios
+
+    async def get_phrase_filler_audios(
+            self, filler_audio_config: FillerAudioConfig
+    ) -> Dict[str, List[FillerAudio]]:
+        
+        language = filler_audio_config.language
+        filler_dict: Dict[str, List[str]] = filler_audio_config.filler_phrases.get(language)
+        filler_phrase_list: List[BaseMessage] = self.make_filler_phrase_list(filler_dict)
+        audios: List[FillerAudio] = []
+        filler_phrase_audios: Dict[str, List[FillerAudio]] = {}
+        for filler_phrase in filler_phrase_list:
             cache_key = "-".join(
                 (
                     str(filler_phrase.text),
@@ -134,7 +197,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                     str(self.rate),
                 )
             )
-            filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.bytes")
+            filler_audio_path = os.path.join(self.base_filler_audio_path, f"{cache_key}.bytes")
             if os.path.exists(filler_audio_path):
                 audio_data = open(filler_audio_path, "rb").read()
             else:
@@ -147,13 +210,23 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 audio_data = result.audio_data[offset:]
                 with open(filler_audio_path, "wb") as f:
                     f.write(audio_data)
-            filler_phrase_audios.append(
-                FillerAudio(
-                    filler_phrase,
-                    audio_data,
-                    self.synthesizer_config,
-                )
+        
+            audio = FillerAudio(
+                message=filler_phrase,
+                audio_data=audio_data,
+                synthesizer_config=self.synthesizer_config,
+                is_interruptible=True,
+                seconds_per_chunk=2
             )
+            audios.append(audio)
+
+        for key, phrase_text_list in filler_dict.items():
+            filler_phrase_audios[key]: List = []
+            for phrase_text in phrase_text_list:
+                for audio in audios:
+                    if audio.message.text == phrase_text:
+                        filler_phrase_audios[key].append(audio)
+
         return filler_phrase_audios
 
     def add_marks(self, message: str, index=0) -> str:

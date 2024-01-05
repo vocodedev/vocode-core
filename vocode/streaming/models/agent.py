@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Dict, Optional, Union
 from enum import Enum
 from langchain.prompts import PromptTemplate
 
@@ -45,8 +45,10 @@ class AgentType(str, Enum):
 class FillerAudioConfig(BaseModel):
     silence_threshold_seconds: float = FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
     use_phrases: bool = True
+    filler_phrases: Optional[Dict[str, Dict[str, List[str]]]] = None
     use_typing_noise: bool = False
     probability: float = FILLER_AUDIO_DEFAULT_PROBABILITY
+    language: str = "en-US"
 
     @validator("use_typing_noise")
     def typing_noise_excludes_phrases(cls, v, values):
@@ -58,11 +60,13 @@ class FillerAudioConfig(BaseModel):
 
 class FollowUpAudioConfig(BaseModel):
     silence_threshold_seconds: float = FOLLOW_UP_DEFAULT_SILENCE_THRESHOLD_SECONDS
-    follow_up_phrases: Optional[List[BaseMessage]] = None
+    follow_up_phrases: Optional[Dict[str, List[BaseMessage]]] = None
+    language: str = "en-US"
 
 class BacktrackAudioConfig(BaseModel):
     silence_threshold_seconds: float = BACKTRACK_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
-    backtrack_phrases: Optional[List[BaseMessage]] = None
+    backtrack_phrases: Optional[Dict[str, List[BaseMessage]]] = None
+    language: str = "en-US"
 
 
 class WebhookConfig(BaseModel):

@@ -18,6 +18,9 @@ GOODBYE_PHRASES = [
     "talk to you soon",
     "have a good day",
     "have a good night",
+    "resto de dia feliz",
+    "com licença",
+    "até breve"
 ]
 
 

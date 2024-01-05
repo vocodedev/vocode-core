@@ -42,31 +42,6 @@ import base64
 # Get the root logger
 logger = logging.getLogger()
 
-FILLER_KEY: Dict = {
-    'question': ["Um...","Uh...","Uhm...","Hmm..."],
-    'confirm': ["Mmhmm.","Yeah.","Cool.","Ok."],
-    'interrupt': ["Gotcha."]
-}
-
-FILLERS = [] 
-for key in FILLER_KEY:
-    FILLERS += FILLER_KEY[key]
-FILLERS = list(set(FILLERS))
-
-FILLER_PHRASES = [BaseMessage(text=filler) 
-                  for filler in FILLERS]
-
-FOLLOW_UP_PHRASES = [
-    BaseMessage(text="Hello?"),
-    BaseMessage(text="Can you hear me?"),
-    BaseMessage(text="Are you with me?"),
-    BaseMessage(text="Are you still with me?"),
-]
-
-BACKTRACK_PHRASES = [
-    BaseMessage(text="Go ahead."),
-]
-
 def encode_as_wav(chunk: bytes, synthesizer_config: SynthesizerConfig) -> bytes:
     output_bytes_io = io.BytesIO()
     in_memory_wav = wave.open(output_bytes_io, "wb")
@@ -198,10 +173,24 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             seconds_per_chunk=2,
         )
 
+    def make_filler_phrase_list(
+            self, filler_dict: Dict[str, List[str]]
+    ) -> List[BaseMessage]:
+        filler_list = [] 
+        for key in filler_dict:
+            filler_list += filler_dict[key]
+        filler_list = list(set(filler_list))
+
+        filler_phrase_list = [
+            BaseMessage(text=filler) for filler in filler_list
+        ]
+        return filler_phrase_list
+
+
     async def set_filler_audios(self, filler_audio_config: FillerAudioConfig):
         self.logger.debug(f"Setting filler audios...")
         if filler_audio_config.use_phrases:
-            self.filler_audios = await self.get_phrase_filler_audios()
+            self.filler_audios = await self.get_phrase_filler_audios(filler_audio_config)
         elif filler_audio_config.use_typing_noise:
             self.filler_audios = {"typing": [self.get_typing_noise_filler_audio()]}
 
@@ -210,7 +199,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         if follow_up_audio_config:
             if follow_up_audio_config.follow_up_phrases:
                 self.follow_up_audios = await self.get_phrase_follow_up_audios(
-                    follow_up_audio_config.follow_up_phrases
+                    follow_up_audio_config
                 )
             else:
                 self.follow_up_audios = await self.get_phrase_follow_up_audios()
@@ -220,22 +209,45 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         if backtrack_audio_config:
             if backtrack_audio_config.backtrack_phrases:
                 self.backtrack_audios = await self.get_phrase_backtrack_audios(
-                    backtrack_audio_config.backtrack_phrases
+                    backtrack_audio_config
                 )
             else:
                 self.backtrack_audios = await self.get_phrase_backtrack_audios()
         
 
 
-    async def get_phrase_filler_audios(self) -> Dict[str, List[FillerAudio]]:
+    async def get_phrase_filler_audios(self, filler_audio_config) -> Dict[str, List[FillerAudio]]:
         return []
     
-    async def get_phrase_follow_up_audios(self) -> List[FillerAudio]:
-        return []
+    async def get_phrase_follow_up_audios(
+        self, follow_up_audio_config: FollowUpAudioConfig
+    ) -> List[FillerAudio]:
+        language = follow_up_audio_config.language
+        follow_up_phrases = follow_up_audio_config.follow_up_phrases.get(language)
+        self.logger.debug(f"Generating follow up audios: {follow_up_phrases}")
+        follow_up_audios = await self.get_audios_from_messages(
+            follow_up_phrases, self.base_follow_up_audio_path
+        )
+        return follow_up_audios
     
-    async def get_phrase_backtrack_audios(self) -> List[FillerAudio]:
-        return []
+    async def get_phrase_backtrack_audios(
+        self, backtrack_audio_config: BacktrackAudioConfig
+    ) -> List[FillerAudio]:
+        language = backtrack_audio_config.language
+        backtrack_phrases = backtrack_audio_config.backtrack_phrases.get(language)
+        self.logger.debug(f"Generating backtrack audios for {backtrack_phrases}")
+        backtrack_audios = await self.get_audios_from_messages(
+            backtrack_phrases, self.base_backtrack_audio_path
+        )
+        return backtrack_audios
 
+    async def get_audios_from_messages(
+            self, 
+            phrases: List[BaseMessage],
+            base_path: str,
+            audio_is_interruptible: bool = True,
+    ) -> List[FillerAudio]:
+        return []
 
     def ready_synthesizer(self):
         pass

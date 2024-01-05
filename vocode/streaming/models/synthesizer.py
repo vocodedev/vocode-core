@@ -182,7 +182,6 @@ class ElevenLabsSynthesizerConfig(
     stability: Optional[float]
     similarity_boost: Optional[float]
     model_id: Optional[str]
-    index_cache: Optional[Dict[str, Any]] = None # this will be deprecated
     use_cache: bool = True
 
     @validator("voice_id")

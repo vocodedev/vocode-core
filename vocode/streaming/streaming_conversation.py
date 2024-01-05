@@ -137,12 +137,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
             self.conversation.current_transcription_is_interrupt = transcription.is_interrupt
-            # self.conversation.logger.debug(f"Stopping follow up audio")
-            self.conversation.random_audio_manager.sync_stop_follow_up_audio()
-
             if transcription.message.strip() == "":
                 self.conversation.logger.info("Ignoring empty transcription")
                 return
+            
+            self.conversation.random_audio_manager.sync_stop_follow_up_audio()
             if transcription.message == HUMAN_ACTIVITY_DETECTED:
                 self.conversation.logger.info("Got transcription: Human activity detected")
             if not transcription.is_final:
