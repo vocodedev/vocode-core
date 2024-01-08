@@ -9,7 +9,6 @@ from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import PhoneCallEndedEvent
 from vocode.streaming.output_device.vonage_output_device import VonageOutputDevice
-from vocode.streaming.scalevoice_config import get_scalevoice_conversation_config
 
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
@@ -72,7 +71,6 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
             per_chunk_allowance_seconds=0.01,
             events_manager=events_manager,
             logger=logger,
-            **get_scalevoice_conversation_config(logger)
         )
 
     def attach_ws(self, ws: WebSocket):
@@ -91,9 +89,6 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
             timestamp = self.transcript.event_logs[0].timestamp
             with open(logs_path / f"{timestamp}_conversation.txt", "w") as f:
                 f.write(self.transcript.to_string(include_timestamps=True))
-            # if self.summary is not None:
-            #     with open(logs_path / f"{timestamp}_summary.txt", "w") as f:
-            #         f.write(self.summary)
             return
         self.logger.warning("Transcript is empty, not saving to file")
     async def tear_down(self):
