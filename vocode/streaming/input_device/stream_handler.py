@@ -11,7 +11,7 @@ from vocode.streaming.utils import prepare_audio_for_vad
 
 class AudioStreamHandler:
     VAD_SAMPLE_RATE = 8000
-    VAD_FRAME_SIZE = 256
+    VAD_FRAME_SIZE = 512
     VAD_SPEECH_PAD_MS = 192
     VAD_SPEECH_MIN_DURATION_MS = 64
 
@@ -27,14 +27,14 @@ class AudioStreamHandler:
             self.vad_wrapper = SileroVAD(
                 sample_rate=self.VAD_SAMPLE_RATE,
                 window_size=self.VAD_FRAME_SIZE,
-                speech_pad_ms=self.VAD_SPEECH_PAD_MS,
-                speech_min_duration_ms=self.VAD_SPEECH_MIN_DURATION_MS,
             )
-            self.n_padding_frames = int(self.vad_wrapper.speech_pad_samples / self.VAD_FRAME_SIZE)
-            self.n_min_speech_frames = int(self.vad_wrapper.speech_min_samples / self.VAD_FRAME_SIZE)
+            speech_pad_samples = int(self.VAD_SAMPLE_RATE * self.VAD_SPEECH_PAD_MS / 1000) * 2
+            speech_min_samples = int(self.VAD_SAMPLE_RATE * self.VAD_SPEECH_MIN_DURATION_MS / 1000) * 2
+            self.speech_pad_frames = int(speech_pad_samples / self.VAD_FRAME_SIZE)
+            self.speech_min_frames = int(speech_min_samples / self.VAD_FRAME_SIZE)
             self.padding_frames_left = 0
-            self.offset = self.vad_wrapper.speech_pad_samples * 2 + self.vad_wrapper.speech_min_samples * 2
-            self.frame_buffer_is_speech = np.zeros(self.n_padding_frames + self.n_min_speech_frames).astype(np.bool_)
+            self.offset_samples = speech_pad_samples + speech_min_samples
+            self.frame_buffer_is_speech = np.zeros(self.speech_pad_frames + self.speech_min_frames).astype(np.bool_)
         else:
             self.logger.info("Not using VAD.")
             self.vad_wrapper = None
@@ -51,55 +51,58 @@ class AudioStreamHandler:
                 input_encoding=self.transcriber.transcriber_config.input_device_config.audio_encoding.value,
                 output_sample_rate=self.VAD_SAMPLE_RATE,
             )
-            # TODO: move to SileroVAD
             self.frame_buffer.extend(prepared_chunk)
-            while len(self.frame_buffer) >= self.VAD_FRAME_SIZE * 2 + self.offset:  # 2 bytes per 16-bit sample
-                frame_to_process = self.frame_buffer[self.offset:self.offset + self.VAD_FRAME_SIZE * 2]
-                is_speech = self.vad_wrapper.process_chunk(frame_to_process)
-                if is_speech:
-                    if self.n_min_speech_frames < 2 or self.frame_buffer_is_speech[-(self.n_min_speech_frames - 1):].all():
-                        # If the speech segment is long enough, trigger VAD and pad preceding frames with ones
-                        self.frame_buffer_is_speech[-(self.n_padding_frames + self.n_min_speech_frames):] = True
-                        self.padding_frames_left = self.n_padding_frames
-                        self.vad_triggered = True
-                    else:
-                        self.vad_triggered = False
+            processed_chunk = self.process_frame_buffer()
+            self.transcriber.send_audio(processed_chunk)
+
+    def process_frame_buffer(self) -> bytearray:
+        while len(self.frame_buffer) >= self.VAD_FRAME_SIZE + self.offset_samples:  # 2 bytes per 16-bit sample
+            frame_to_process = self.frame_buffer[self.offset_samples:self.offset_samples + self.VAD_FRAME_SIZE]
+            is_speech = self.vad_wrapper.process_chunk(frame_to_process)
+            if is_speech:
+                if self.speech_min_frames < 2 or self.frame_buffer_is_speech[-(self.speech_min_frames - 1):].all():
+                    # If the speech segment is long enough, trigger VAD and pad preceding frames with ones
+                    self.frame_buffer_is_speech[-(self.speech_pad_frames + self.speech_min_frames):] = True
+                    self.padding_frames_left = self.speech_pad_frames
+                    self.vad_triggered = True
+                else:
+                    self.vad_triggered = False
+                self.frame_buffer_is_speech = np.concatenate([self.frame_buffer_is_speech, [True]])
+            else:
+                if self.vad_triggered and self.padding_frames_left > 0:
+                    # If VAD is triggered, pad the following speech frames with ones
                     self.frame_buffer_is_speech = np.concatenate([self.frame_buffer_is_speech, [True]])
+                    self.padding_frames_left -= 1
                 else:
-                    if self.vad_triggered and self.padding_frames_left > 0:
-                        # If VAD is triggered, pad the following speech frames with ones
-                        self.frame_buffer_is_speech = np.concatenate([self.frame_buffer_is_speech, [True]])
-                        self.padding_frames_left -= 1
-                    else:
-                        self.vad_triggered = False
-                        self.frame_buffer_is_speech = np.concatenate([self.frame_buffer_is_speech, [False]])
+                    self.vad_triggered = False
+                    self.frame_buffer_is_speech = np.concatenate([self.frame_buffer_is_speech, [False]])
 
-                # Remove speech segments shorter than minimal required duration
-                if self.n_min_speech_frames > 1:
-                    frame_buffer_is_speech_filtered = self._remove_short_speech_segments(self.frame_buffer_is_speech)
-                else:
-                    frame_buffer_is_speech_filtered = self.frame_buffer_is_speech
+            # Remove speech segments shorter than minimal required duration
+            if self.speech_min_frames > 1:
+                frame_buffer_is_speech_filtered = self._remove_short_speech_segments(self.frame_buffer_is_speech)
+            else:
+                frame_buffer_is_speech_filtered = self.frame_buffer_is_speech
 
-                frame_to_send = self.frame_buffer[:self.VAD_FRAME_SIZE * 2]
-                self.audio_buffer.append(frame_to_send)
-                del self.frame_buffer[:self.VAD_FRAME_SIZE * 2]
+            frame_to_send = self.frame_buffer[:self.VAD_FRAME_SIZE]
+            self.audio_buffer.append(frame_to_send)
+            del self.frame_buffer[:self.VAD_FRAME_SIZE]
 
-                if not frame_buffer_is_speech_filtered[0]:
-                    frame_to_send = bytearray(len(frame_to_send))
-                self.frame_buffer_is_speech = self.frame_buffer_is_speech[1:]
-                self.audio_buffer_denoised.append(frame_to_send)
-                self.transcriber.send_audio(frame_to_send)
+            if not frame_buffer_is_speech_filtered[0]:
+                frame_to_send = bytearray(len(frame_to_send))
+            self.frame_buffer_is_speech = self.frame_buffer_is_speech[1:]
+            self.audio_buffer_denoised.append(frame_to_send)
+            return frame_to_send
 
     def _remove_short_speech_segments(self, frame_buffer: np.array) -> np.array:
         """Remove detected speech frames shorter than minimal required duration"""
-        result = np.zeros(self.n_padding_frames + 1).astype(np.bool_)
+        result = np.zeros(self.speech_pad_frames + 1).astype(np.bool_)
         frame_buffer_windows = np.lib.stride_tricks.as_strided(
             frame_buffer,
-            shape=(frame_buffer.size - (self.n_min_speech_frames - 1), self.n_min_speech_frames),
+            shape=(frame_buffer.size - (self.speech_min_frames - 1), self.speech_min_frames),
             strides=(1, 1)
         )
         for i in np.where(frame_buffer_windows.all(axis=1))[0]:
-            result[i:i + self.n_min_speech_frames] = True
+            result[i:i + self.speech_min_frames] = True
         return result
 
     def __save_audio(self, audio_buffer, output_path):
