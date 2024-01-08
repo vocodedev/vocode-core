@@ -52,10 +52,9 @@ class AudioStreamHandler:
                 output_sample_rate=self.VAD_SAMPLE_RATE,
             )
             self.frame_buffer.extend(prepared_chunk)
-            processed_chunk = self.process_frame_buffer()
-            self.transcriber.send_audio(processed_chunk)
+            self.process_frame_buffer()
 
-    def process_frame_buffer(self) -> bytearray:
+    def process_frame_buffer(self) -> None:
         while len(self.frame_buffer) >= self.VAD_FRAME_SIZE + self.offset_samples:  # 2 bytes per 16-bit sample
             frame_to_process = self.frame_buffer[self.offset_samples:self.offset_samples + self.VAD_FRAME_SIZE]
             is_speech = self.vad_wrapper.process_chunk(frame_to_process)
@@ -91,7 +90,7 @@ class AudioStreamHandler:
                 frame_to_send = bytearray(len(frame_to_send))
             self.frame_buffer_is_speech = self.frame_buffer_is_speech[1:]
             self.audio_buffer_denoised.append(frame_to_send)
-            return frame_to_send
+            self.transcriber.send_audio(frame_to_send)
 
     def _remove_short_speech_segments(self, frame_buffer: np.array) -> np.array:
         """Remove detected speech frames shorter than minimal required duration"""
