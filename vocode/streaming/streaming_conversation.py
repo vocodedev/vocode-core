@@ -32,12 +32,10 @@ from vocode.streaming.constants import (
 from vocode.streaming.ignored_while_talking_fillers_fork import OpenAIEmbeddingOverTalkingFillerDetector
 from vocode.streaming.input_device.stream_handler import AudioStreamHandler
 from vocode.streaming.models.agent import FillerAudioConfig
-from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.events import Sender, EventType
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
-    SentimentConfig, ELEVEN_LABS_MULAW_8000,
-)
+    SentimentConfig, )
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.models.transcript import (
     Message,
@@ -133,7 +131,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             # Prevent interrupt.
             since_last_filler_time = time.time() - self.conversation.last_filler_timestamp
             silence_since_last_action = time.time() - self.conversation.last_action_timestamp
-            if (since_last_filler_time < self.conversation.filler_audio_config.silence_threshold_seconds + BOT_TALKING_SINCE_LAST_FILLER_TIME_LIMIT
+            if (
+                    since_last_filler_time < self.conversation.filler_audio_config.silence_threshold_seconds + BOT_TALKING_SINCE_LAST_FILLER_TIME_LIMIT
                     or silence_since_last_action < BOT_TALKING_SINCE_LAST_ACTION_TIME_LIMIT):
                 # I could clear since_last_filler_time after first response is generated in the synthesizer, but this is complicated to detect, which audio is which.
                 bot_still_talking = True
@@ -576,7 +575,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         with open(initial_audio_path, 'rb') as f:
             audio_data = f.read()
 
-        synth_result = self.synthesizer.create_synthesis_result_from_bytes(audio_data, initial_message, self.agent_responses_worker.chunk_size)
+        synth_result = self.synthesizer.create_synthesis_result_from_bytes(audio_data, initial_message,
+                                                                           self.agent_responses_worker.chunk_size)
 
         self.transcriber.mute()
         elapsed_time = time.time() - self.call_start
@@ -685,7 +685,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.logger.info("Conversation idle for too long")
                 # TODO: parametrize this message.
                 transcription = Transcription(
-                    message="THIS IS SYSTEM MESSAGE: Conversation idle for too long. SAY: Slyšíme se? Jste ještě na lince?",
+                    message="THIS IS SYSTEM MESSAGE: Conversation idle for too long. If conversation is in czech " + \
+                            "SAY: Slyšíme se? Jste ještě na lince?" + \
+                            "If conversation is in english SAY: Are you still there?",
                     confidence=1.0,
                     is_final=True,
                     is_interrupt=True)
