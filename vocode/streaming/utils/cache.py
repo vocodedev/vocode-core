@@ -8,7 +8,9 @@ from vocode.streaming.models.synthesizer import (
     SynthesizerConfig,
     ElevenLabsSynthesizerConfig
 )
-from vocode.streaming.vector_db.pinecone import PineconeDB
+from vocode.streaming.vector_db.factory import VectorDBFactory
+from vocode.streaming.vector_db.base_vector_db import VectorDB
+
 from vocode.streaming.utils.aws_s3 import load_from_s3_async
 import logging
 
@@ -21,6 +23,7 @@ class RedisRenewableTTLCache:
         port=int(os.environ.get("REDISPORT", 6379)))
     _lru_cache = LRUCache(maxsize=2048)
     _ttl_in_seconds = int(os.environ.get("REDIS_TTL_IN_SECONDS", SECONDS_PER_DAY * DAYS_TO_KEEP))
+    _factory = VectorDBFactory()
 
     def get(self, key):
         if key in self._lru_cache:
@@ -80,7 +83,7 @@ class RedisRenewableTTLCache:
         logger.setLevel(logging.DEBUG)
         
         index_config: IndexConfig = synthesizer_config.index_config
-        vector_db = PineconeDB(index_config.pinecone_config)
+        vector_db: VectorDB = self._factory.create_vector_db(index_config.vector_db_config)
         bucket_name = index_config.bucket_name
         
         filters = {}
@@ -90,7 +93,6 @@ class RedisRenewableTTLCache:
                 "stability": synthesizer_config.stability,
                 "similarity_boost": synthesizer_config.similarity_boost,
             }
-
 
         # preloaded_vectors is a Dict [ voice_id : List of Documents]
         preloaded_vectors: Dict[str: List[Document]] = {}
@@ -139,7 +141,8 @@ class RedisRenewableTTLCache:
 
 
 if __name__ == "__main__":
-    from vocode.streaming.models.vector_db import PineconeConfig
+
+    from vocode.streaming.models.vector_db import PineconeConfig, ChromaDBConfig
     import os
     from dotenv import load_dotenv
     import time
@@ -152,8 +155,15 @@ if __name__ == "__main__":
         api_environment=os.getenv("PINECONE_ENVIRONMENT"),
         top_k=10
     )
+    chromadb_config = ChromaDBConfig(
+        collection=os.getenv("CHROMA_COLLECTION_NAME"),
+        host=os.getenv("CHROMA_HOSTNAME"),
+        port=os.getenv("CHROMA_PORT"),
+        api_key=os.getenv("CHROMA_API_KEY"),
+        top_k=10
+    )
     index_config = IndexConfig(
-        pinecone_config=pinecone_config, 
+        vector_db_config=pinecone_config, 
         bucket_name="bluberry-synthesizer"
     )
     synthesizer_config = ElevenLabsSynthesizerConfig.from_telephone_output_device(

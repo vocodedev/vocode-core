@@ -53,6 +53,9 @@ class VoiceSettingsObject(BaseModel):
     id: str
     filters: dict
 
+"""
+    DEPRECATED
+"""
 async def load_index_cache(
           index_config: IndexConfig, 
           vector_db_cache: VoiceCacheModel,
@@ -73,7 +76,7 @@ async def load_index_cache(
     logger = logger or logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     
-    vector_db = PineconeDB(index_config.pinecone_config)
+    vector_db = PineconeDB(index_config.vector_db_config)
     bucket_name = index_config.bucket_name
     
     # preloaded_vectors is a Dict [ voice_id : List of Documents]
@@ -131,34 +134,35 @@ async def load_index_cache(
         logger.debug(f"Error loading cache: {str(e)}")
 
 if __name__ == "__main__":
-    from vocode.streaming.models.vector_db import PineconeConfig
-    import os
-    from dotenv import load_dotenv
-    import time
-    import asyncio
+    pass
+    # from vocode.streaming.models.vector_db import PineconeConfig
+    # import os
+    # from dotenv import load_dotenv
+    # import time
+    # import asyncio
 
-    load_dotenv()
-    pinecone_config = PineconeConfig(
-        index=os.getenv("PINECONE_INDEX_NAME_URL"),
-        api_key=os.getenv("PINECONE_API_KEY"),
-        api_environment=os.getenv("PINECONE_ENVIRONMENT"),
-        top_k=10
-    )
-    index_config = IndexConfig(
-        pinecone_config=pinecone_config, 
-        bucket_name="bluberry-synthesizer"
-    )
-    vector_db_cache = {}
-    cache_size = 2000
-    loop = asyncio.get_event_loop()
-    start = time.time()
-    loop.run_until_complete(
-        load_index_cache(
-            index_config,
-            vector_db_cache,
-            cache_size=cache_size
-        )
-    )
-    print(vector_db_cache.keys())
-    print(len(vector_db_cache))
-    print(time.time() - start)
+    # load_dotenv()
+    # pinecone_config = PineconeConfig(
+    #     index=os.getenv("PINECONE_INDEX_NAME_URL"),
+    #     api_key=os.getenv("PINECONE_API_KEY"),
+    #     api_environment=os.getenv("PINECONE_ENVIRONMENT"),
+    #     top_k=10
+    # )
+    # index_config = IndexConfig(
+    #     vector_db_config=pinecone_config, 
+    #     bucket_name="bluberry-synthesizer"
+    # )
+    # vector_db_cache = {}
+    # cache_size = 2000
+    # loop = asyncio.get_event_loop()
+    # start = time.time()
+    # loop.run_until_complete(
+    #     load_index_cache(
+    #         index_config,
+    #         vector_db_cache,
+    #         cache_size=cache_size
+    #     )
+    # )
+    # print(vector_db_cache.keys())
+    # print(len(vector_db_cache))
+    # print(time.time() - start)
