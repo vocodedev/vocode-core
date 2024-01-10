@@ -34,7 +34,7 @@ def should_finish_sentence(
         seconds_spoken: float,
         threshold: float = 0.8
     ):
-    min_words_to_interrupt = 4
+    min_words_to_interrupt = 5
     if count_words_in_text(message) < min_words_to_interrupt:
         return True
     else:

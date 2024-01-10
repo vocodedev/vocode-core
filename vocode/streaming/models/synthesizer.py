@@ -26,22 +26,32 @@ try:
     else:
         main_dir = os.path.dirname(__main__.__file__)
 
-    FILLER_AUDIO_PATH = os.path.join(
+    RANDOM_AUDIO_DIR = os.path.join(
         main_dir, "_submodules","vocode-python",
-        "vocode", "streaming", "synthesizer",
+        "vocode", "streaming", "synthesizer"
+    )
+
+    FILLER_AUDIO_PATH = os.path.join(
+        RANDOM_AUDIO_DIR,
         "filler_audio"
     )
     FOLLOW_UP_AUDIO_PATH = os.path.join(
-        main_dir, "_submodules", "vocode-python",
-        "vocode", "streaming", "synthesizer",
+        RANDOM_AUDIO_DIR,
         "follow_up_audio"
     )
+    BACKTRACK_AUDIO_PATH = os.path.join(
+        RANDOM_AUDIO_DIR,
+        "backtrack_audio"
+    )
+
     os.makedirs(FILLER_AUDIO_PATH, exist_ok=True)
     os.makedirs(FOLLOW_UP_AUDIO_PATH, exist_ok=True)
+    os.makedirs(BACKTRACK_AUDIO_PATH, exist_ok=True)
 except Exception as e:
     print(f"Error: {e}")
     FILLER_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "filler_audio")
     FOLLOW_UP_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "follow_up_audio")
+    BACKTRACK_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "backtrack_audio")
 
 
 TYPING_NOISE_PATH = "%s/typing-noise.wav" % FILLER_AUDIO_PATH
@@ -92,6 +102,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
     index_config: Optional[IndexConfig] = None
     base_filler_audio_path: str = FILLER_AUDIO_PATH
     base_follow_up_audio_path: str = FOLLOW_UP_AUDIO_PATH
+    base_backtrack_audio_path: str = BACKTRACK_AUDIO_PATH
 
     class Config:
         arbitrary_types_allowed = True
@@ -171,7 +182,6 @@ class ElevenLabsSynthesizerConfig(
     stability: Optional[float]
     similarity_boost: Optional[float]
     model_id: Optional[str]
-    index_cache: Optional[Dict[str, Any]] = None # this will be deprecated
     use_cache: bool = True
 
     @validator("voice_id")

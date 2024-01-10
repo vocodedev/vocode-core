@@ -1587,14 +1587,18 @@
               "oneOf": [
                 { "$ref": "#/components/schemas/TransferCallAction" },
                 { "$ref": "#/components/schemas/EndConversationAction" },
-                { "$ref": "#/components/schemas/DTMFAction" }
+                { "$ref": "#/components/schemas/DTMFAction" },
+                { "$ref": "#/components/schemas/AddToConferenceAction" },
+                { "$ref": "#/components/schemas/SetHoldAction" }
               ],
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
                   "action_transfer_call": "#/components/schemas/TransferCallAction",
                   "action_end_conversation": "#/components/schemas/EndConversationAction",
-                  "action_dtmf": "#/components/schemas/DTMFAction"
+                  "action_dtmf": "#/components/schemas/DTMFAction",
+                  "action_add_to_conference": "#/components/schemas/AddToConferenceAction",
+                  "action_set_hold": "#/components/schemas/SetHoldAction"
                 }
               }
             },
@@ -1613,7 +1617,9 @@
         "oneOf": [
           { "$ref": "#/components/schemas/TransferCallActionParams" },
           { "$ref": "#/components/schemas/EndConversationActionParams" },
-          { "$ref": "#/components/schemas/DTMFActionParams" }
+          { "$ref": "#/components/schemas/DTMFActionParams" },
+          { "$ref": "#/components/schemas/AddToConferenceActionParams" },
+          { "$ref": "#/components/schemas/SetHoldActionParams" }
         ],
         "title": "ActionParamsRequest",
         "discriminator": {
@@ -1621,7 +1627,9 @@
           "mapping": {
             "action_transfer_call": "#/components/schemas/TransferCallActionParams",
             "action_end_conversation": "#/components/schemas/EndConversationActionParams",
-            "action_dtmf": "#/components/schemas/DTMFActionParams"
+            "action_dtmf": "#/components/schemas/DTMFActionParams",
+            "action_add_to_conference": "#/components/schemas/AddToConferenceActionParams",
+            "action_set_hold": "#/components/schemas/SetHoldActionParams"
           }
         }
       },
@@ -1629,7 +1637,9 @@
         "oneOf": [
           { "$ref": "#/components/schemas/TransferCallAction" },
           { "$ref": "#/components/schemas/EndConversationAction" },
-          { "$ref": "#/components/schemas/DTMFAction" }
+          { "$ref": "#/components/schemas/DTMFAction" },
+          { "$ref": "#/components/schemas/AddToConferenceAction" },
+          { "$ref": "#/components/schemas/SetHoldAction" }
         ],
         "title": "ActionResponseModel",
         "discriminator": {
@@ -1637,7 +1647,9 @@
           "mapping": {
             "action_transfer_call": "#/components/schemas/TransferCallAction",
             "action_end_conversation": "#/components/schemas/EndConversationAction",
-            "action_dtmf": "#/components/schemas/DTMFAction"
+            "action_dtmf": "#/components/schemas/DTMFAction",
+            "action_add_to_conference": "#/components/schemas/AddToConferenceAction",
+            "action_set_hold": "#/components/schemas/SetHoldAction"
           }
         }
       },
@@ -1645,7 +1657,9 @@
         "oneOf": [
           { "$ref": "#/components/schemas/TransferCallActionUpdateParams" },
           { "$ref": "#/components/schemas/EndConversationActionUpdateParams" },
-          { "$ref": "#/components/schemas/DTMFActionUpdateParams" }
+          { "$ref": "#/components/schemas/DTMFActionUpdateParams" },
+          { "$ref": "#/components/schemas/AddToConferenceActionUpdateParams" },
+          { "$ref": "#/components/schemas/SetHoldActionUpdateParams" }
         ],
         "title": "ActionUpdateParamsRequest",
         "discriminator": {
@@ -1653,9 +1667,114 @@
           "mapping": {
             "action_transfer_call": "#/components/schemas/TransferCallActionUpdateParams",
             "action_end_conversation": "#/components/schemas/EndConversationActionUpdateParams",
-            "action_dtmf": "#/components/schemas/DTMFActionUpdateParams"
+            "action_dtmf": "#/components/schemas/DTMFActionUpdateParams",
+            "action_add_to_conference": "#/components/schemas/AddToConferenceActionUpdateParams",
+            "action_set_hold": "#/components/schemas/SetHoldActionUpdateParams"
           }
         }
+      },
+      "AddToConferenceAction": {
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "title": "Id" },
+          "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
+          "type": {
+            "type": "string",
+            "enum": ["action_add_to_conference"],
+            "title": "Type"
+          },
+          "config": { "$ref": "#/components/schemas/AddToConferenceConfig" },
+          "action_trigger": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            ],
+            "title": "Action Trigger",
+            "default": { "type": "action_trigger_function_call", "config": {} },
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": ["id", "user_id", "type", "config"],
+        "title": "AddToConferenceAction"
+      },
+      "AddToConferenceActionParams": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["action_add_to_conference"],
+            "title": "Type"
+          },
+          "config": { "$ref": "#/components/schemas/AddToConferenceConfig" },
+          "action_trigger": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            ],
+            "title": "Action Trigger",
+            "default": { "type": "action_trigger_function_call", "config": {} },
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": ["type", "config"],
+        "title": "AddToConferenceActionParams"
+      },
+      "AddToConferenceActionUpdateParams": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["action_add_to_conference"],
+            "title": "Type"
+          },
+          "config": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/AddToConferenceConfig" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Config"
+          },
+          "action_trigger": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+                  { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+                ]
+              },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Action Trigger",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": ["type"],
+        "title": "AddToConferenceActionUpdateParams"
+      },
+      "AddToConferenceConfig": {
+        "properties": {
+          "phone_number": { "type": "string", "title": "Phone Number" },
+          "place_primary_on_hold": {
+            "type": "boolean",
+            "title": "Place Primary On Hold",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": ["phone_number"],
+        "title": "AddToConferenceConfig"
       },
       "Agent": {
         "properties": {
@@ -1671,14 +1790,18 @@
               "oneOf": [
                 { "$ref": "#/components/schemas/TransferCallAction" },
                 { "$ref": "#/components/schemas/EndConversationAction" },
-                { "$ref": "#/components/schemas/DTMFAction" }
+                { "$ref": "#/components/schemas/DTMFAction" },
+                { "$ref": "#/components/schemas/AddToConferenceAction" },
+                { "$ref": "#/components/schemas/SetHoldAction" }
               ],
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
                   "action_transfer_call": "#/components/schemas/TransferCallAction",
                   "action_end_conversation": "#/components/schemas/EndConversationAction",
-                  "action_dtmf": "#/components/schemas/DTMFAction"
+                  "action_dtmf": "#/components/schemas/DTMFAction",
+                  "action_add_to_conference": "#/components/schemas/AddToConferenceAction",
+                  "action_set_hold": "#/components/schemas/SetHoldAction"
                 }
               }
             },
@@ -1800,7 +1923,11 @@
                     {
                       "$ref": "#/components/schemas/EndConversationActionParams"
                     },
-                    { "$ref": "#/components/schemas/DTMFActionParams" }
+                    { "$ref": "#/components/schemas/DTMFActionParams" },
+                    {
+                      "$ref": "#/components/schemas/AddToConferenceActionParams"
+                    },
+                    { "$ref": "#/components/schemas/SetHoldActionParams" }
                   ]
                 }
               ]
@@ -1929,6 +2056,12 @@
                         },
                         {
                           "$ref": "#/components/schemas/DTMFActionUpdateParams"
+                        },
+                        {
+                          "$ref": "#/components/schemas/AddToConferenceActionUpdateParams"
+                        },
+                        {
+                          "$ref": "#/components/schemas/SetHoldActionUpdateParams"
                         }
                       ]
                     }
@@ -2172,6 +2305,27 @@
             "title": "Do Not Call Result"
           },
           "telephony_id": { "type": "string", "title": "Telephony Id" },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "created",
+              "picked_up",
+              "transfer_started",
+              "transfer_successful"
+            ],
+            "title": "Stage"
+          },
+          "stage_outcome": {
+            "type": "string",
+            "enum": [
+              "human_unanswered",
+              "human_disconnected",
+              "bot_disconnected",
+              "transfer_unanswered",
+              "transfer_disconnected"
+            ],
+            "title": "Stage Outcome"
+          },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "$ref": "#/components/schemas/Agent" },
@@ -2288,7 +2442,11 @@
                     {
                       "$ref": "#/components/schemas/EndConversationActionParams"
                     },
-                    { "$ref": "#/components/schemas/DTMFActionParams" }
+                    { "$ref": "#/components/schemas/DTMFActionParams" },
+                    {
+                      "$ref": "#/components/schemas/AddToConferenceActionParams"
+                    },
+                    { "$ref": "#/components/schemas/SetHoldActionParams" }
                   ]
                 }
               ]
@@ -2429,7 +2587,22 @@
             "enum": ["action_dtmf"],
             "title": "Type"
           },
-          "config": { "$ref": "#/components/schemas/EmptyActionConfig" }
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" },
+          "action_trigger": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            ],
+            "title": "Action Trigger",
+            "default": { "type": "action_trigger_function_call", "config": {} },
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+              }
+            }
+          }
         },
         "type": "object",
         "required": ["id", "user_id", "type"],
@@ -2442,7 +2615,22 @@
             "enum": ["action_dtmf"],
             "title": "Type"
           },
-          "config": { "$ref": "#/components/schemas/EmptyActionConfig" }
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" },
+          "action_trigger": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            ],
+            "title": "Action Trigger",
+            "default": { "type": "action_trigger_function_call", "config": {} },
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+              }
+            }
+          }
         },
         "type": "object",
         "required": ["type"],
@@ -2461,6 +2649,19 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Config"
+          },
+          "action_trigger": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+                  { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+                ]
+              },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Action Trigger",
+            "default": {}
           }
         },
         "type": "object",
@@ -2579,7 +2780,22 @@
             "enum": ["action_end_conversation"],
             "title": "Type"
           },
-          "config": { "$ref": "#/components/schemas/EmptyActionConfig" }
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" },
+          "action_trigger": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            ],
+            "title": "Action Trigger",
+            "default": { "type": "action_trigger_function_call", "config": {} },
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+              }
+            }
+          }
         },
         "type": "object",
         "required": ["id", "user_id", "type"],
@@ -2592,7 +2808,22 @@
             "enum": ["action_end_conversation"],
             "title": "Type"
           },
-          "config": { "$ref": "#/components/schemas/EmptyActionConfig" }
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" },
+          "action_trigger": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            ],
+            "title": "Action Trigger",
+            "default": { "type": "action_trigger_function_call", "config": {} },
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+              }
+            }
+          }
         },
         "type": "object",
         "required": ["type"],
@@ -2611,6 +2842,19 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Config"
+          },
+          "action_trigger": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+                  { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+                ]
+              },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Action Trigger",
+            "default": {}
           }
         },
         "type": "object",
@@ -2630,6 +2874,26 @@
         ],
         "title": "EventType",
         "description": "An enumeration."
+      },
+      "FunctionCallActionTrigger": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["action_trigger_function_call"],
+            "title": "Type"
+          },
+          "config": {
+            "$ref": "#/components/schemas/FunctionCallActionTriggerConfig"
+          }
+        },
+        "type": "object",
+        "required": ["type"],
+        "title": "FunctionCallActionTrigger"
+      },
+      "FunctionCallActionTriggerConfig": {
+        "properties": {},
+        "type": "object",
+        "title": "FunctionCallActionTriggerConfig"
       },
       "HTTPMethod": {
         "type": "string",
@@ -2803,6 +3067,27 @@
             "title": "Do Not Call Result"
           },
           "telephony_id": { "type": "string", "title": "Telephony Id" },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "created",
+              "picked_up",
+              "transfer_started",
+              "transfer_successful"
+            ],
+            "title": "Stage"
+          },
+          "stage_outcome": {
+            "type": "string",
+            "enum": [
+              "human_unanswered",
+              "human_disconnected",
+              "bot_disconnected",
+              "transfer_unanswered",
+              "transfer_disconnected"
+            ],
+            "title": "Stage Outcome"
+          },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "type": "string", "format": "uuid", "title": "Agent" },
@@ -3026,6 +3311,49 @@
         "type": "object",
         "required": ["items", "page", "size", "has_more"],
         "title": "PhoneNumberPage"
+      },
+      "PhraseBasedActionTrigger": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["action_trigger_phrase_based"],
+            "title": "Type"
+          },
+          "config": {
+            "$ref": "#/components/schemas/PhraseBasedActionTriggerConfig"
+          }
+        },
+        "type": "object",
+        "required": ["type", "config"],
+        "title": "PhraseBasedActionTrigger"
+      },
+      "PhraseBasedActionTriggerConfig": {
+        "properties": {
+          "phrase_triggers": {
+            "items": { "$ref": "#/components/schemas/PhraseTrigger" },
+            "type": "array",
+            "title": "Phrase Triggers"
+          }
+        },
+        "type": "object",
+        "required": ["phrase_triggers"],
+        "title": "PhraseBasedActionTriggerConfig"
+      },
+      "PhraseTrigger": {
+        "properties": {
+          "phrase": { "type": "string", "title": "Phrase" },
+          "conditions": {
+            "items": {
+              "type": "string",
+              "enum": ["phrase_condition_type_contains"]
+            },
+            "type": "array",
+            "title": "Conditions"
+          }
+        },
+        "type": "object",
+        "required": ["phrase", "conditions"],
+        "title": "PhraseTrigger"
       },
       "PineconeVectorDatabase": {
         "properties": {
@@ -3381,6 +3709,96 @@
         "required": ["type"],
         "title": "RimeVoiceUpdateParams"
       },
+      "SetHoldAction": {
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "title": "Id" },
+          "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
+          "type": {
+            "type": "string",
+            "enum": ["action_set_hold"],
+            "title": "Type"
+          },
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" },
+          "action_trigger": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            ],
+            "title": "Action Trigger",
+            "default": { "type": "action_trigger_function_call", "config": {} },
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": ["id", "user_id", "type"],
+        "title": "SetHoldAction"
+      },
+      "SetHoldActionParams": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["action_set_hold"],
+            "title": "Type"
+          },
+          "config": { "$ref": "#/components/schemas/EmptyActionConfig" },
+          "action_trigger": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            ],
+            "title": "Action Trigger",
+            "default": { "type": "action_trigger_function_call", "config": {} },
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": ["type"],
+        "title": "SetHoldActionParams"
+      },
+      "SetHoldActionUpdateParams": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["action_set_hold"],
+            "title": "Type"
+          },
+          "config": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/EmptyActionConfig" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Config"
+          },
+          "action_trigger": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+                  { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+                ]
+              },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Action Trigger",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": ["type"],
+        "title": "SetHoldActionUpdateParams"
+      },
       "TransferCallAction": {
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
@@ -3390,7 +3808,22 @@
             "enum": ["action_transfer_call"],
             "title": "Type"
           },
-          "config": { "$ref": "#/components/schemas/TransferCallConfig" }
+          "config": { "$ref": "#/components/schemas/TransferCallConfig" },
+          "action_trigger": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            ],
+            "title": "Action Trigger",
+            "default": { "type": "action_trigger_function_call", "config": {} },
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+              }
+            }
+          }
         },
         "type": "object",
         "required": ["id", "user_id", "type", "config"],
@@ -3403,7 +3836,22 @@
             "enum": ["action_transfer_call"],
             "title": "Type"
           },
-          "config": { "$ref": "#/components/schemas/TransferCallConfig" }
+          "config": { "$ref": "#/components/schemas/TransferCallConfig" },
+          "action_trigger": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            ],
+            "title": "Action Trigger",
+            "default": { "type": "action_trigger_function_call", "config": {} },
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+              }
+            }
+          }
         },
         "type": "object",
         "required": ["type", "config"],
@@ -3422,6 +3870,19 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Config"
+          },
+          "action_trigger": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
+                  { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+                ]
+              },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Action Trigger",
+            "default": {}
           }
         },
         "type": "object",

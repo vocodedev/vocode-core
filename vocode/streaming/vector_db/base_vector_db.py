@@ -28,7 +28,7 @@ class VectorDB:
         elif os.getenv("OPENAI_API_KEY") is not None:
             self.openai_client = AsyncOpenAI()
         else:
-            raise ValueError("Missing Azure/OpenAI API key in GoodbyeModel!")
+            raise ValueError("Missing Azure/OpenAI API key in VectorDB!")
 
     async def create_openai_embedding(
         self, text, model=DEFAULT_OPENAI_EMBEDDING_MODEL

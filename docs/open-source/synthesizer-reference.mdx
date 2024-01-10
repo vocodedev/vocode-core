@@ -1,80 +1,207 @@
 ---
 title: "Synthesizer Reference"
-description: "🚧 Under construction"
 ---
 
 # `SynthesizerConfig`
 
 <ParamField body="sampling_rate" type="int">
-  placeholder
+  The sampling rate of the audio in Hz.
 </ParamField>
+
 <ParamField body="audio_encoding" type="AudioEncoding">
-  placeholder
+  The encoding format for the audio data.
 </ParamField>
-<ParamField body="should_encode_as_wav" type="bool ">
-  placeholder
+
+<ParamField body="should_encode_as_wav" type="bool">
+  Whether the audio chunks returned should be encoded as WAV format. Defaults to False.
 </ParamField>
-= False
-<ParamField body="sentiment_config" type="Optional[SentimentConfig] ">
-  placeholder
+
+<ParamField body="sentiment_config" type="Optional[SentimentConfig]">
+  Optional configuration for controlling sentiment/emotion in the synthesized speech.
 </ParamField>
+
 
 # `AzureSynthesizerConfig`
 
 <ParamField body="voice_name" type="str">
-  placeholder
-</ParamField>
-<ParamField body="pitch" type="int">
-  placeholder
-</ParamField>
-<ParamField body="rate" type="int">
-  placeholder
+  The name of the voice to use. Defaults to "en-US-SteffanNeural".
 </ParamField>
 
-# `GoogleSynthesizerConfig`
+<ParamField body="pitch" type="int">
+  The pitch of the voice, as a percentage adjustment. Defaults to 0.
+</ParamField>
+
+<ParamField body="rate" type="int">
+  The speaking rate of the voice, as a percentage adjustment. Defaults to 15.
+</ParamField>
 
 <ParamField body="language_code" type="str">
-  placeholder
+  The language code to use. Defaults to "en-US".
 </ParamField>
+
+
+# `GoogleSynthesizerConfig` 
+
+<ParamField body="language_code" type="str">
+  The language code to use for synthesis. Defaults to "en-US".
+</ParamField>
+
 <ParamField body="voice_name" type="str">
-  placeholder
+  The name of the Google Cloud Text-to-Speech voice to use. Defaults to "en-US-Neural2-I".
 </ParamField>
+
 <ParamField body="pitch" type="float">
-  placeholder
+  The pitch of the voice. Defaults to 0.
 </ParamField>
+
 <ParamField body="speaking_rate" type="float">
-  placeholder
+  The speaking rate of the voice. Defaults to 1.2
 </ParamField>
+
 
 # `ElevenLabsSynthesizerConfig`
 
 <ParamField body="api_key" type="Optional[str]">
-  placeholder
+  The API key for accessing the ElevenLabs API.
 </ParamField>
+
 <ParamField body="voice_id" type="Optional[str]">
-  placeholder
+  The ID of the voice to use. Defaults to Adam voice.
 </ParamField>
+
+<ParamField body="optimize_streaming_latency" type="Optional[int]">
+  Level of latency optimization between 0-4.
+</ParamField>
+
+<ParamField body="experimental_streaming" type="Optional[bool]">
+  Whether to use experimental streaming.
+</ParamField>
+
 <ParamField body="stability" type="Optional[float]">
-  placeholder
+  Stability level for voice. Used with similarity_boost.
 </ParamField>
+
 <ParamField body="similarity_boost" type="Optional[float]">
-  placeholder
+  Similarity boost level for voice. Used with stability.
 </ParamField>
+
+<ParamField body="model_id" type="Optional[str]">
+  Custom model ID to use.
+</ParamField>
+
 
 # `RimeSynthesizerConfig`
 
 <ParamField body="speaker" type="str">
-  placeholder
+  Name of Rime speaker to use. Defaults to "young_male_unmarked-1".
 </ParamField>
+
+<ParamField body="sampling_rate" type="int">
+  Sampling rate of generated audio. Defaults to 22050.
+</ParamField>
+
+<ParamField body="base_url" type="str">
+  Base URL for Rime API. Defaults to "https://rjmopratfrdjgmfmaios.functions.supabase.co/rime-tts"
+</ParamField>
+
+<ParamField body="speed_alpha" type="Optional[float]">
+  Speed adjustment factor. Defaults to None.
+</ParamField>
+
 
 # `PlayHtSynthesizerConfig`
 
+<ParamField body="api_key" type="Optional[str]">
+  API key for Play.ht API.
+</ParamField>
+
+<ParamField body="user_id" type="Optional[str]">
+  User ID for Play.ht API.
+</ParamField>
+
+<ParamField body="speed" type="Optional[int]">
+  Speed adjustment.
+</ParamField>
+
+<ParamField body="seed" type="Optional[int]">
+  Random seed for stochastic models.
+</ParamField>
+
+<ParamField body="temperature" type="Optional[int]">
+  Sampling temperature for stochastic models.
+</ParamField>
+
 <ParamField body="voice_id" type="str">
-  placeholder
+  ID of voice to use. Defaults to "larry"
 </ParamField>
-<ParamField body="speed" type="Optional[str]">
-  placeholder
+
+<ParamField body="experimental_streaming" type="bool">
+  Whether to use experimental streaming. Defaults to False.
 </ParamField>
-<ParamField body="preset" type="Optional[str]">
-  placeholder
+
+
+# `StreamElementsSynthesizerConfig`
+
+<ParamField body="voice" type="str">
+  Name of StreamElements voice to use. Defaults to "Brian".
+</ParamField>
+
+
+# `CoquiTTSSynthesizerConfig`
+
+<ParamField body="tts_kwargs" type="dict">
+  Keyword arguments for Coqui TTS model.
+</ParamField>
+
+<ParamField body="speaker" type="Optional[str]">
+  Speaker ID for multi-speaker models. Defaults to None.
+</ParamField>
+
+<ParamField body="language" type="Optional[str]">
+  Language code for multi-lingual models. Defaults to None.
+</ParamField>
+
+
+# `CoquiSynthesizerConfig`
+
+<ParamField body="api_key" type="Optional[str]">
+  API key for Coqui API.
+</ParamField>
+
+<ParamField body="voice_id" type="Optional[str]">
+  ID of voice to use. Defaults to "ebe2db86-62a6-49a1-907a-9a1360d4416e"
+</ParamField>
+
+<ParamField body="voice_prompt" type="Optional[str]">
+  Voice prompt to use instead of voice ID.
+</ParamField>
+
+<ParamField body="use_xtts" type="Optional[bool]">
+  Whether to use X-Tts voices.
+</ParamField>
+
+
+# `BarkSynthesizerConfig`
+
+<ParamField body="preload_kwargs" type="Dict[str, Any]">
+  Kwargs for Bark model preloading.
+</ParamField>
+
+<ParamField body="generate_kwargs" type="Dict[str, Any]">
+  Kwargs for Bark audio generation.
+</ParamField>
+
+
+# `PollySynthesizerConfig`
+
+<ParamField body="language_code" type="str">
+  Language code to use. Defaults to "en-US".
+</ParamField>
+
+<ParamField body="voice_id" type="str">
+  Voice ID of the Polly voice to use. Defaults to "Matthew".
+</ParamField>
+
+<ParamField body="sampling_rate" type="int">
+  Sampling rate of generated audio. Defaults to 16000.
 </ParamField>

@@ -1,0 +1,35 @@
+---
+name: Documentation Issue
+description: Use this template for reporting issues with the documentation.
+title: '[Docs]:'
+labels: 'documentation'
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this documentation issue!
+  - type: textarea
+    id: brief-description
+    attributes:
+      label: Brief Description
+      description: Please summarize the issue, specifying where in the documentation it occurs (e.g., section, paragraph).
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: If applicable, list the steps to reproduce the issue, especially for incorrect instructions.
+    validations:
+      required: false
+  - type: textarea
+    id: suggested-fix
+    attributes:
+      label: Suggested Fix
+      description: If possible, provide a proposed solution or improvement, such as text rewrites, clarifications, or new examples.
+    validations:
+      required: false
+---
+
+
