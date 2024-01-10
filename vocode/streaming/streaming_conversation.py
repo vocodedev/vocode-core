@@ -286,7 +286,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.logger.info(f"Chose {filler_audio.message.text}")
             event = self.interruptible_event_factory.create_interruptible_agent_response_event(
                 filler_audio,
-                is_interruptible=True,
+                is_interruptible=filler_audio.is_interruptible,
                 agent_response_tracker=agent_response_tracker,
             )
             self.conversation.filler_audio_worker.consume_nonblocking(event)

@@ -110,7 +110,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                     BaseMessage(text=pick),
                     audio_data=audio_data,
                     synthesizer_config=self.synthesizer_config,
-                    is_interruptible=False
+                    is_interruptible=True
                 )
             self.logger.warning(f"Filler picker returned None for {bot_message} and {user_message}")
         return None
