@@ -20,10 +20,10 @@ class PineconeConfig(VectorDBConfig, type=VectorDBType.PINECONE.value):
     api_environment: Optional[str]
     top_k: int = 3
 
-class ChromaDBConfig(VectorDBConfig, type=VectorDBType.PINECONE.value):
+class ChromaDBConfig(VectorDBConfig, type=VectorDBType.CHROMA.value):
     collection: str
     host: str
-    port: Optional[int]
+    port: Optional[str]
     api_key: Optional[str]
     top_k: int = 3
     embeddings_function: Optional[Callable] = None # default is OpenAIEmbeddingFunction

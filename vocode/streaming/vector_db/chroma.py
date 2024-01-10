@@ -20,11 +20,13 @@ class ChromaDB(VectorDB):
         super().__init__(*args, **kwargs)
         self.config = config
         self.collection_name = self.config.collection
+        self.chroma_api_key = self.config.api_key or getenv("CHROMA_API_KEY")
+        self.port = config.port or getenv("CHROMA_SERVER_HTTP_PORT", "8000")
+        self.host = config.host or getenv("CHROMA_SERVER_HOST", "localhost")
 
-        self.chroma_api_key = getenv("CHROMA_API_KEY") or self.config.api_key
         self.client = chromadb.HttpClient(
-            host=getenv("CHROMA_HOSTNAME", "localhost"), 
-            port=getenv("CHROMA_PORT", 8000),
+            host=self.host, 
+            port=self.port,
             headers={
                 "X-Chroma-Token": f"{self.chroma_api_key}"
             }
@@ -44,7 +46,7 @@ class ChromaDB(VectorDB):
         )
         return default_embedding_fn
 
-    def _create_AND_eq_filter(input_data: dict) -> dict:
+    def _create_AND_eq_filter(self, input_data: dict) -> dict:
         and_query = {"$and": []}
 
         for key, value in input_data.items():
@@ -97,11 +99,12 @@ class ChromaDB(VectorDB):
             List of Documents most similar to the query and score for each
         """
         docs = []
+        filters = self._create_AND_eq_filter(input_data=filter) if filter else None
         results = self.collection.query(
             query_texts=[query],
             n_results=self.config.top_k,
             include=["metadatas", "distances"],
-            where=self._create_AND_eq_filter(filter) if filter else None,
+            where=filters,
         )
 
         metadatas = results["metadatas"]
@@ -147,7 +150,9 @@ class ChromaDB(VectorDB):
             List of Documents where each document is a vector and metadata.
         """
         query_embedding = [1] + [0] * (EMBEDDING_DIMENSION - 1)
-
+        logger.debug(f"filters: {filters}")
+        assert isinstance(filters, dict)
+        logger.debug(f"type(filters): {type(filters)}")
         docs = []
         results = self.collection.query(
             query_embeddings=[query_embedding],

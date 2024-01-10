@@ -157,8 +157,8 @@ if __name__ == "__main__":
     )
     chromadb_config = ChromaDBConfig(
         collection=os.getenv("CHROMA_COLLECTION_NAME"),
-        host=os.getenv("CHROMA_HOSTNAME"),
-        port=os.getenv("CHROMA_PORT"),
+        host=os.getenv("CHROMA_SERVER_HOST"),
+        port=os.getenv("CHROMA_SERVER_HTTP_PORT"),
         api_key=os.getenv("CHROMA_API_KEY"),
         top_k=10
     )

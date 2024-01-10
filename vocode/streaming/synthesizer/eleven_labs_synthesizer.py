@@ -79,7 +79,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         if synthesizer_config.index_config:
             # from vocode.streaming.vector_db.pinecone import PineconeDB
             from vocode.streaming.vector_db.factory import VectorDBFactory
-            self.vector_db = VectorDBFactory.create_vector_db(synthesizer_config.index_config.vector_db_config)
+            _factory = VectorDBFactory()
+            self.vector_db = _factory.create_vector_db(vector_db_config=synthesizer_config.index_config.vector_db_config)
             self.bucket_name = synthesizer_config.index_config.bucket_name
         if self.vector_db_cache:
             self.logger.debug(f"Vector DB CACHE size: {len(self.vector_db_cache)}")
