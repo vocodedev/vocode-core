@@ -9,6 +9,7 @@ import logging
 import time
 import typing
 import os
+import re
 
 from vocode.streaming.action.worker import ActionsWorker
 
@@ -315,7 +316,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 # When we receive stop messages, message.text is "" but somehow we still reach the
                 # "Synthesizing message" line below. So we double check and exit on empty messages.
-                if not (agent_response_message.message and agent_response_message.message.text):
+                if agent_response_message.message and not re.search(r"\w", agent_response_message.message.text):
                     self.conversation.logger.warning(
                         "Ignoring empty agent response message"
                     )

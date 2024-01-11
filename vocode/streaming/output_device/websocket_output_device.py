@@ -29,7 +29,8 @@ class WebsocketOutputDevice(BaseOutputDevice):
     async def process(self):
         while self.active:
             message = await self.queue.get()
-            await self.ws.send_text(message)
+            if self.active and self.ws.client_state != WebSocket.CLOSED:
+                await self.ws.send_text(message)
 
     def consume_nonblocking(self, chunk: bytes):
         if self.active:

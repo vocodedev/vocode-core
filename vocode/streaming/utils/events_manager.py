@@ -21,9 +21,11 @@ class EventsManager:
         while self.active:
             try:
                 event = await self.queue.get()
+                await self.handle_event(event)
             except asyncio.QueueEmpty:
                 await asyncio.sleep(1)
-            await self.handle_event(event)
+            except asyncio.CancelledError:
+                break
 
     async def handle_event(self, event: Event):
         pass
