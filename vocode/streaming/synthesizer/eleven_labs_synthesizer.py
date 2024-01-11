@@ -37,6 +37,7 @@ from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 
 from vocode.streaming.utils.aws_s3 import load_from_s3, load_from_s3_async
+from vocode.streaming.vector_db.base_vector_db import VectorDB
 from vocode.streaming.utils.cache import RedisRenewableTTLCache
 
 ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
@@ -75,13 +76,14 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.words_per_minute = 150
         self.experimental_streaming = synthesizer_config.experimental_streaming
         self.logger = logger or logging.getLogger(__name__)
-        self.vector_db = None
+        self.vector_db: VectorDB = None
         self.bucket_name = None
 
         if synthesizer_config.index_config:
-            from vocode.streaming.vector_db.pinecone import PineconeDB
-
-            self.vector_db = PineconeDB(synthesizer_config.index_config.pinecone_config)
+            # from vocode.streaming.vector_db.pinecone import PineconeDB
+            from vocode.streaming.vector_db.factory import VectorDBFactory
+            _factory = VectorDBFactory()
+            self.vector_db = _factory.create_vector_db(vector_db_config=synthesizer_config.index_config.vector_db_config)
             self.bucket_name = synthesizer_config.index_config.bucket_name
 
     async def download_filler_audio_data(self, filler_phrase: BaseMessage) -> bytes:

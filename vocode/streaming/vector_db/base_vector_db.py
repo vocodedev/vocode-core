@@ -65,6 +65,14 @@ class VectorDB:
         namespace: Optional[str] = None,
     ) -> List[Tuple[Document, float]]:
         raise NotImplementedError
+    
+    async def retrieve_k_vectors_with_filter(
+        self,
+        filters: Optional[dict] = None,
+        k: Optional[int] = 50,
+        namespace: Optional[str] = None,
+    ) -> List[Document]:
+        raise NotImplementedError
 
     async def tear_down(self):
         if self.should_close_session_on_tear_down:
