@@ -77,7 +77,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.experimental_streaming = synthesizer_config.experimental_streaming
         self.logger = logger or logging.getLogger(__name__)
         self.vector_db: VectorDB = None
-        self.vector_db_cache = synthesizer_config.index_cache
         self.bucket_name = None
 
         if synthesizer_config.index_config:
