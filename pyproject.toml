@@ -46,7 +46,7 @@ boto3 = "^1.28.28"
 urllib3 = "<2"
 webrtcvad = "^2.0.10"
 
-chromadb = "^0.4.22"
+chromadb-client = "^0.4.23.dev0"
 
 [tool.poetry.group.lint.dependencies]
 black = "^23.1.0"
