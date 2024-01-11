@@ -15,14 +15,8 @@ class PGVector(VectorDB):
     def __init__(self, config: PGVectorConfig, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.config = config
-        self.password = (
-            getenv("PG_VECTOR_PASSWORD") or self.config.password or "3RQ&D!h34d8rbGu"
-        )
-        self.host = (
-            getenv("PG_VECTOR_HOST")
-            or self.config.host
-            or "db.wanqiiptqkundxqgetqt.supabase.co"
-        )
+        self.password = getenv("PG_VECTOR_PASSWORD") or self.config.password
+        self.host = getenv("PG_VECTOR_HOST") or self.config.host
         self.database_name = (
             getenv("PG_VECTOR_DATABASE_NAME") or self.config.database_name
         )
@@ -65,7 +59,8 @@ class PGVector(VectorDB):
         self.docs = self.vecs.get_or_create_collection(
             name=namespace, dimension=self.dimension
         )
-        response = self.docs.upsert(records=docs)
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, self.docs.upsert, docs)
         return ids
 
     async def similarity_search_with_score(
@@ -90,12 +85,16 @@ class PGVector(VectorDB):
         self.docs = self.vecs.get_or_create_collection(
             name=namespace, dimension=self.dimension
         )
-        results = self.docs.query(
-            data=query_obj,
-            filters=filter,
-            limit=5,
-            include_value=True,
-            include_metadata=True,
+        loop = asyncio.get_event_loop()
+        results = await loop.run_in_executor(
+            None,
+            lambda: self.docs.query(
+                data=query_obj,
+                filters=filter,
+                limit=5,
+                include_value=True,
+                include_metadata=True,
+            ),
         )
         docs = []
         for id, score, metadata in results:
@@ -107,15 +106,3 @@ class PGVector(VectorDB):
                     f"Found document with no `{self._text_key} key. Skipping"
                 )
         return docs
-
-
-# config = PGVectorConfig(collection_name="docs", dimension=1536)
-# vector = PGVector(config=config)
-# # async def
-# asyncio.run(
-#     vector.add_texts(texts=["Hello How are you?"])
-# )
-# asyncio.run(
-#     vector.similarity_search_with_score(query = "How r you?")
-# )
-# vector.add_texts(texts=["Hello How are you"])
