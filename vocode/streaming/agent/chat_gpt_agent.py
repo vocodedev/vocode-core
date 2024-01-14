@@ -152,7 +152,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
                 has_vector_config_namespace = getattr(self.agent_config.vector_db_config, 'namespace', None)
                 if has_vector_config_namespace:
-                    vector_db_search_args["namespace"] = self.agent_config.vector_db_config.namespace
+                    vector_db_search_args["namespace"] = \
+                        self.agent_config.vector_db_config.namespace.lower().replace(" ", "_")
 
                 docs_with_scores = await self.vector_db.similarity_search_with_score(
                     **vector_db_search_args
