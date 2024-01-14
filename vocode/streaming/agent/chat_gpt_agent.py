@@ -146,8 +146,16 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters = {}
         if self.agent_config.vector_db_config:
             try:
+                vector_db_search_args = {
+                    "query": self.transcript.get_last_user_message()[1],
+                }
+
+                has_vector_config_namespace = getattr(self.agent_config.vector_db_config, 'namespace', None)
+                if has_vector_config_namespace:
+                    vector_db_search_args["namespace"] = self.agent_config.vector_db_config.namespace
+
                 docs_with_scores = await self.vector_db.similarity_search_with_score(
-                    self.transcript.get_last_user_message()[1]
+                    **vector_db_search_args
                 )
                 docs_with_scores_str = "\n\n".join(
                     [
