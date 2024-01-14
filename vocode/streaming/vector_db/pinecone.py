@@ -15,12 +15,13 @@ class PineconeDB(VectorDB):
         self.config = config
 
         self.index_name = self.config.index
+        self.project_id = self.config.project_id
         self.pinecone_api_key = getenv("PINECONE_API_KEY") or self.config.api_key
         self.pinecone_environment = (
             getenv("PINECONE_ENVIRONMENT") or self.config.api_environment
         )
         self.pinecone_url = (
-            f"https://{self.index_name}.svc.{self.pinecone_environment}.pinecone.io"
+            f"https://{self.index_name}-{self.project_id}.svc.{self.pinecone_environment}.pinecone.io"
         )
         self._text_key = "text"
 

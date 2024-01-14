@@ -20,3 +20,4 @@ class PineconeConfig(VectorDBConfig, type=VectorDBType.PINECONE.value):
     api_environment: Optional[str]
     top_k: int = 3
     namespace: Optional[str]
+    project_id: Optional[str]
