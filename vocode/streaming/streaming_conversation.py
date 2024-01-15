@@ -155,6 +155,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                 )
 
+            self.conversation.logger.debug(f"Transcription latency: {transcription.latency:.3f} seconds")
             # check interruption, if not checking interruption, transcription will always be considered 
             should_check_interrupt = (
                 self.conversation.is_bot_speaking 
@@ -188,18 +189,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         f"Ignoring low confidence transcription: {transcription.message}, {transcription.confidence}"
                     )
                     return
+                # TODO: handle low confidence transcriptions in general
 
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
-                
-                detected_human_voice = (
-                    transcription.message == HUMAN_ACTIVITY_DETECTED
-                )
-                if detected_human_voice:
-                    return
                 # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
                 event = self.interruptible_event_factory.create_interruptible_event(
                     TranscriptionAgentInput(

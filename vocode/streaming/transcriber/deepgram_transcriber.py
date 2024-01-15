@@ -2,6 +2,9 @@ import asyncio
 import json
 import logging
 import time
+from io import BytesIO
+from pydub import AudioSegment
+import struct
 from typing import Optional
 import websockets
 from websockets.client import WebSocketClientProtocol
@@ -14,7 +17,7 @@ from vocode.streaming.transcriber.base_transcriber import (
     Transcription,
     tracer,
     meter,
-    HUMAN_ACTIVITY_DETECTED
+    HUMAN_ACTIVITY_DETECTED,
 )
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
@@ -121,8 +124,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             extra_params["language"] = self.transcriber_config.language
         if self.transcriber_config.model:
             extra_params["model"] = self.transcriber_config.model
-        if self.transcriber_config.tier:
-            extra_params["tier"] = self.transcriber_config.tier
         if self.transcriber_config.version:
             extra_params["version"] = self.transcriber_config.version
         if self.transcriber_config.filler_words:
@@ -140,7 +141,9 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         url_params.update(extra_params)
 
         # Encode the "keywords" field first
-        encoded_keywords = "&".join([f"keywords={quote(kw)}" for kw in url_params["keywords"]])
+        encoded_keywords = "&".join(
+            [f"keywords={quote(kw)}" for kw in url_params["keywords"]]
+        )
         del url_params["keywords"]
         final_url = f"wss://api.deepgram.com/v1/listen?{urlencode(url_params)}&{encoded_keywords}"
         return final_url
@@ -162,21 +165,29 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             return (
                 not transcript
                 and current_buffer
-                and (time_silent + deepgram_response["duration"])
+                and time_silent
                 > self.transcriber_config.endpointing_config.time_cutoff_seconds
             )
         elif isinstance(
             self.transcriber_config.endpointing_config, PunctuationEndpointingConfig
         ):
             return (
-                transcript
-                and deepgram_response["speech_final"]
-                and transcript.strip()[-1] in PUNCTUATION_TERMINATORS
-            ) or (
-                not transcript
-                and current_buffer
-                and (time_silent + deepgram_response["duration"])
-                > self.transcriber_config.endpointing_config.time_cutoff_seconds
+                (
+                    transcript
+                    and deepgram_response["speech_final"]
+                    and transcript.strip()[-1] in PUNCTUATION_TERMINATORS
+                )
+                or (
+                    not transcript
+                    and current_buffer
+                    and time_silent
+                    > self.transcriber_config.endpointing_config.time_cutoff_seconds
+                )
+                or (
+                    transcript
+                    and time_silent
+                    > self.transcriber_config.endpointing_config.time_cutoff_seconds
+                )
             )
         raise Exception("Endpointing config not supported")
 
@@ -186,7 +197,16 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         if words:
             return end - words[-1]["end"]
         return data["duration"]
-    
+
+    def update_time_silent(self, data: dict, time_silent: float):
+        transcript = data["channel"]["alternatives"][0]["transcript"]
+        if transcript:
+            time_silent = self.calculate_time_silent(data)
+            return time_silent
+        else:
+            time_silent = time_silent + self.calculate_time_silent(data)
+            return time_silent
+
     async def sender(self, ws: WebSocketClientProtocol):  # sends audio to websocket
         while not self._ended:
             try:
@@ -203,17 +223,21 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         # TODO: make this async
                         start_time = time.time()
                         if self.voice_activity_detector.should_interrupt(data):
-                            self.logger.debug(f"VAD detected - took {time.time() - start_time:.3f} seconds")
+                            self.logger.debug(
+                                f"VAD detected - took {time.time() - start_time:.3f} seconds"
+                            )
                             self.output_queue.put_nowait(
                                 Transcription(
                                     message=HUMAN_ACTIVITY_DETECTED,
                                     confidence=1,
-                                    is_final=True,
+                                    is_final=False,
                                 )
                             )
-                        
+
                     except Exception as e:
-                        self.logger.debug(f"Error in voice activity detector: {repr(e)}")
+                        self.logger.debug(
+                            f"Error in voice activity detector: {repr(e)}"
+                        )
             except asyncio.exceptions.TimeoutError:
                 if not self.received_first_audio:
                     self.logger.debug("Deepgram sender: sending KeepAlive")
@@ -226,11 +250,10 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     continue
                 break
             num_channels = 1
-            sample_width = 2
+            # mulaw sample width is 1, linear16 is 2
+            sample_width = 1
             self.audio_cursor += len(data) / (
-                self.transcriber_config.sampling_rate
-                * num_channels
-                * sample_width
+                self.transcriber_config.sampling_rate * num_channels * sample_width
             )
             await ws.send(data)
         self.logger.debug("Terminating Deepgram transcriber sender")
@@ -242,6 +265,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         num_buffer_utterances = 1
         time_silent = 0
         transcript_cursor = 0.0
+        total_duration = 0.0
         sent_vad_transcription = False
         while not self._ended:
             try:
@@ -251,7 +275,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 break
             except asyncio.TimeoutError:
                 if self._ended:
-                    self.logger.debug("Deepgram receiver timeout error")                    
+                    self.logger.debug("Deepgram receiver timeout error")
                     break
             except Exception as e:
                 self.logger.debug(f"Got error {e} in Deepgram receiver")
@@ -259,10 +283,10 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             data = json.loads(msg)
             if not self.received_first_audio:
                 self.logger.debug(f"Deepgram receiver: got message {data}")
-            if (
-                not "is_final" in data
-            ):  # means we've finished receiving transcriptions
-                self.logger.debug(f"Deepgram: received final transcription - _ended:{self._ended}")
+            if not "is_final" in data:  # means we've finished receiving transcriptions
+                self.logger.debug(
+                    f"Deepgram: received final transcription - _ended:{self._ended}"
+                )
                 self._ended = True
                 break
             cur_max_latency = self.audio_cursor - transcript_cursor
@@ -279,18 +303,24 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             min_latency_hist.record(max(cur_min_latency, 0))
 
             is_final = data["is_final"]
+            time_silent = self.update_time_silent(data, time_silent)
             speech_final = self.is_speech_final(buffer, data, time_silent)
             top_choice = data["channel"]["alternatives"][0]
             confidence = top_choice["confidence"]
 
+            if is_final:
+                total_duration += data["duration"]
+                transcript_duration = total_duration
+            else:
+                transcript_duration = total_duration + data["duration"]
+            
             if top_choice["transcript"] and confidence > 0.0 and is_final:
                 buffer = f"{buffer} {top_choice['transcript']}"
                 if buffer_avg_confidence == 0:
                     buffer_avg_confidence = confidence
                 else:
                     buffer_avg_confidence = (
-                        buffer_avg_confidence
-                        + confidence / (num_buffer_utterances)
+                        buffer_avg_confidence + confidence / (num_buffer_utterances)
                     ) * (num_buffer_utterances / (num_buffer_utterances + 1))
                 num_buffer_utterances += 1
 
@@ -300,37 +330,52 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         message=buffer,
                         confidence=buffer_avg_confidence,
                         is_final=True,
+                        latency=cur_min_latency,
+                        time_silent=time_silent,
+                        duration=transcript_duration,
                     )
                 )
+                # reset quantities
                 buffer = ""
+                total_duration = 0.0
                 buffer_avg_confidence = 0
                 num_buffer_utterances = 1
                 time_silent = 0
                 sent_vad_transcription = False
             elif (
-                data["duration"] > self.transcriber_config.minimum_speaking_duration_to_interrupt
-                and len(top_choice["words"])> self.transcriber_config.interruption_word_threshold
+                data["duration"]
+                > self.transcriber_config.minimum_speaking_duration_to_interrupt
+                and len(top_choice["words"])
+                > self.transcriber_config.interruption_word_threshold
                 and not sent_vad_transcription
             ):
+                # time_silent = self.calculate_time_silent(data)
                 self.logger.debug("Sending VAD transcription")
                 self.output_queue.put_nowait(
                     Transcription(
                         message=HUMAN_ACTIVITY_DETECTED,
                         confidence=1,
                         is_final=False,
+                        latency=cur_min_latency,
+                        time_silent=time_silent,
+                        duration=transcript_duration,
                     )
                 )
                 sent_vad_transcription = True
-                time_silent = self.calculate_time_silent(data)
+
             elif top_choice["transcript"] and confidence > 0.0:
+                # time_silent = self.calculate_time_silent(data)
                 self.output_queue.put_nowait(
                     Transcription(
                         message=buffer,
                         confidence=confidence,
                         is_final=False,
+                        latency=cur_min_latency,
+                        time_silent=time_silent,
+                        duration=transcript_duration,
                     )
                 )
-                time_silent = self.calculate_time_silent(data)
+
             else:
                 time_silent += data["duration"]
         self.logger.debug("Terminating Deepgram transcriber receiver")
@@ -345,8 +390,10 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             async with websockets.connect(
                 self.get_deepgram_url(), extra_headers=extra_headers
             ) as ws:
-                self.logger.debug(f"Connected to Deepgram! Connection took {time.time()-start_time:.2f} sec.")
-                self._task= asyncio.gather(self.sender(ws), self.receiver(ws))
+                self.logger.debug(
+                    f"Connected to Deepgram! Connection took {time.time()-start_time:.2f} sec."
+                )
+                self._task = asyncio.gather(self.sender(ws), self.receiver(ws))
                 await self._task
         except asyncio.CancelledError:
             return
