@@ -1,6 +1,5 @@
 ---
 title: "Transcriber Reference"
-description: "🚧 Under construction"
 ---
 
 # `TranscriberConfig`
@@ -10,18 +9,24 @@ description: "🚧 Under construction"
   rate provides better audio quality but may increase processing time and data
   size.
 </ParamField>
+
 <ParamField body="audio_encoding" type="AudioEncoding">
   The encoding format of the audio data. Options include: LINEAR16, MULAW.
 </ParamField>
+
 <ParamField body="chunk_size" type="int">
   The size of each chunk of audio data sent to the transcriber, in bytes. A
   larger chunk size can reduce network overhead but may increase latency.
 </ParamField>
+
 <ParamField body="endpointing_config" type="Optional[EndpointingConfig]">
-  Optional configuration for endpointing, which determines when to split the
-  transcript based on criteria such as time or punctuation. If not provided, the
-  default endpointing behavior will be used.
+  Optional endpointing configuration to determine when a transcription segment should end. If not provided, default endpointing behavior will be used.
 </ParamField>
+
+<ParamField body="downsampling" type="Optional[int]">
+  Optional downsampling factor to reduce the sampling rate of the audio before sending to the transcriber. Can be used to reduce bandwidth usage.
+</ParamField>
+
 <ParamField body="min_interrupt_confidence" type="Optional[float]">
   Optional minimum confidence threshold for interrupting the transcription.
   Confidence values range from 0 to 1, with higher values indicating greater
@@ -30,56 +35,84 @@ description: "🚧 Under construction"
   behavior will be used.
 </ParamField>
 
-The `TranscriberConfig` class provides helper methods to abstract away some fields to the user.
+<ParamField body="mute_during_speech" type="bool">
+  If true, silence audio chunks will be sent to the transcriber while a transcription is in progress. Can be used to prevent echo during live transcription.
+</ParamField>
 
-For example, when using an input device like `MicrophoneInput`, you can use:
-
-```
-TranscriberConfig.from_input_device(MicrophoneInput())
-```
-
-You can also do this for telephone calls, which all share the same sampling rate, chunk size and audio encoding:
-
-```
-TranscriberConfig.from_telephone_input_device()
-```
 
 # `DeepgramTranscriberConfig`
 
 <ParamField body="language" type="Optional[str]">
-  The language code for the transcription, e.g., 'en-US' for American English.
-  If not provided, the default language will be used.
+  Optional language code to use for transcription.
 </ParamField>
+
 <ParamField body="model" type="Optional[str]">
-  The model used for transcription. For Deepgram, it can be 'phonecall',
-  'voicemail'.
+  Optional Deepgram model to use for transcription. Defaults to "nova".
 </ParamField>
+
 <ParamField body="tier" type="Optional[str]">
-  The tier of the Deepgram API to use for the transcription, e.g., 'enhanced'.
-  If not provided, the default tier will be used.
+  Optional Deepgram tier to use for transcription.
 </ParamField>
+
 <ParamField body="version" type="Optional[str]">
-  The version of the Deepgram API to use for the transcription. If not provided,
-  the latest version will be used.
+  Optional Deepgram version to use for transcription. Defaults to latest version if not provided.
 </ParamField>
-<ParamField body="keywords" type="Optional[list]">
-  A list of keywords to be used for keyword spotting during transcription with
-  the Deepgram API. If not provided, no keyword spotting will be performed.
+
+<ParamField body="keywords" type="Optional[List[str]]">
+  Optional list of keywords to boost in the transcription results.
 </ParamField>
+
 
 # `GoogleTranscriberConfig`
 
-<ParamField body="language_code" type="str">
-  The language code for the transcription, e.g., 'en-US' for American English.
-  Defaults to 'en-US'.
-</ParamField>
 <ParamField body="model" type="Optional[str]">
-  The model used for transcription. For Google, it can be 'default', 'video', or
-  'phone_call'. If not provided, the default model will be used.
+  Optional Google Cloud Speech model to use for transcription.
 </ParamField>
+
+<ParamField body="language_code" type="str">
+  Language code to use for transcription. Defaults to "en-US".
+</ParamField>
+
 
 # `AssemblyAITranscriberConfig`
 
+<ParamField body="buffer_size_seconds" type="float">
+  Buffer duration in seconds to accumulate audio before sending to AssemblyAI. Defaults to 0.1s.
+</ParamField>
+
+<ParamField body="word_boost" type="Optional[List[str]]">
+  Optional list of words to boost in the transcription results.
+</ParamField>
+
+
 # `WhisperCPPTranscriberConfig`
 
-# `RevAITranscriberConfig`
+<ParamField body="buffer_size_seconds" type="float">
+  Buffer duration in seconds to accumulate audio before sending to WhisperCPP. Defaults to 1.0s.
+</ParamField>
+
+<ParamField body="libname" type="str">
+  Filename of the WhisperCPP shared library.
+</ParamField>
+
+<ParamField body="fname_model" type="str">
+  Filename of the WhisperCPP model.
+</ParamField>
+
+
+# `AzureTranscriberConfig`
+
+<ParamField body="language" type="str">
+  Language code to use for transcription. Defaults to "en-US".
+</ParamField>
+
+<ParamField body="candidate_languages" type="Optional[List[str]]">
+  Optional list of candidate languages to auto-detect from the audio.
+</ParamField>
+
+
+# `GladiaTranscriberConfig`
+
+<ParamField body="buffer_size_seconds" type="float">
+  Buffer duration in seconds to accumulate audio before sending to Gladia. Defaults to 0.1s.
+</ParamField>
