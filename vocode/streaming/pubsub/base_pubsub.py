@@ -1,7 +1,7 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from time import time
 import audioop
 
@@ -79,7 +79,7 @@ class PubSubManager:
     """Manages subscribers and publishers."""
 
     def __init__(self):
-        self.subscribers: Dict[str, List[AsyncWorker]] = {}
+        self.subscribers = {}
 
     def subscribe(self, subscriber: AsyncWorker, topic: str):
         """Subscriber subscribes to a specific topic."""
@@ -110,7 +110,7 @@ class Publisher:
         payload: Any,
         payload_type: str,
         topic: str = "audio",
-        pubsub: PubSubManager = None,
+        pubsub: Optional[PubSubManager] = None,
     ):
         """Publish an event to a specific topic."""
 
