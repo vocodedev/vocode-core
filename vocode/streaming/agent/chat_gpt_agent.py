@@ -43,9 +43,15 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             openai.api_key = getenv("AZURE_OPENAI_API_KEY")
         else:
             openai.api_type = "open_ai"
-            openai.api_base = "https://api.openai.com/v1"
+            openai.api_base = "https://25b701a03eb80b61.ngrok.app/v1"
             openai.api_version = None
-            openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
+            openai.api_key = "EMPTY"
+
+            # openai.api_type = "open_ai"
+            # openai.api_base = "https://api.openai.com/v1"
+            # openai.api_version = None
+            # openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
+
         if not openai.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
         self.first_response = (
