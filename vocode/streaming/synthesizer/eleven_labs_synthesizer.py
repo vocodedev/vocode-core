@@ -337,7 +337,11 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
                 f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_first",
             )
             session = self.aiohttp_session
-            response = await self.make_request(session, url, body, headers)
+            try:
+                response = await self.make_request(session, url, body, headers)
+            except Exception as e:
+                self.logger.debug(f"Error creating speech: {str(e)}")
+                return None, None
             if self.experimental_streaming:
                 result = SynthesisResult(
                     self.experimental_mp3_streaming_output_generator(

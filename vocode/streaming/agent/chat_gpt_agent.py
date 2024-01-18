@@ -200,8 +200,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     async def generate_response(
         self,
-        human_input: str,
-        conversation_id: str,
+        human_input: Optional[str] = None,
+        conversation_id: Optional[str] = None,
         is_interrupt: bool = False,
     ) -> AsyncGenerator[Tuple[Union[str, FunctionCall], bool], None]:
         if is_interrupt and self.agent_config.cut_off_response:
@@ -241,7 +241,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters["stream"] = True
         self.logger.debug(f"Starting LLM stream...")
         stream = await self.get_stream_response(chat_parameters)
-        # stream = await self.aclient.chat.completions.create(**chat_parameters)
         self.logger.debug(f"Got LLM stream...")
         try:
             async for message in collate_response_async(

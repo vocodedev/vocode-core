@@ -8,6 +8,7 @@ from azure.cognitiveservices.speech.audio import (
     AudioStreamFormat,
     AudioStreamWaveFormat,
 )
+import azure.cognitiveservices.speech as speechsdk
 
 from vocode import getenv
 
@@ -41,8 +42,6 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
                 samples_per_second=self.transcriber_config.sampling_rate,
                 wave_stream_format=AudioStreamWaveFormat.MULAW,
             )
-
-        import azure.cognitiveservices.speech as speechsdk
 
         self.push_stream = PushAudioInputStream(format)
 
@@ -87,17 +86,53 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
         self._ended = False
         self.is_ready = False
 
+    def calculate_time_silent(self, json_result: dict) -> float:
+        ticks_in_second = 1e7
+        end  = json_result["Offset"] + json_result["Duration"]
+        words = json_result["NBest"][0]["Words"]
+        if words:
+            last_word_end = words[-1]["Offset"] + words[-1]["Duration"]
+            return (end - last_word_end)/ticks_in_second
+        return json_result["Duration"]/ticks_in_second
+
+
     def recognized_sentence_final(self, evt):
         json_result = json.loads(evt.result.json)
         message = json_result["DisplayText"]
         confidence = json_result["NBest"][0]["Confidence"]
+        duration = json_result["Duration"]
+        ms_in_second = 1000
+        latency = evt.result.properties[
+            speechsdk.PropertyId.SpeechServiceResponse_RecognitionLatencyMs
+        ]/ms_in_second
+        time_silent = self.calculate_time_silent(json_result)
         self.output_janus_queue.sync_q.put_nowait(
-            Transcription(message=message, confidence=confidence, is_final=True)
+            Transcription(
+                message=message,
+                confidence=confidence,
+                is_final=True,
+                latency=latency,
+                time_silent=time_silent,
+                duration=duration,
+            )
         )
 
     def recognized_sentence_stream(self, evt):
+        json_result = json.loads(evt.result.json)
+        message = json_result["Text"]
+        duration = json_result["Duration"]
+        ms_in_second = 1000
+        latency = evt.result.properties[
+            speechsdk.PropertyId.SpeechServiceResponse_RecognitionLatencyMs
+        ]/1000
         self.output_janus_queue.sync_q.put_nowait(
-            Transcription(message=evt.result.text, confidence=1.0, is_final=False)
+            Transcription(
+                message=message,
+                confidence=1.0,
+                is_final=False,
+                latency=latency,
+                duration=duration,
+            )
         )
 
     def _run_loop(self):
@@ -155,9 +190,7 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
                 num_channels = 1
                 sample_width = 2
                 self.audio_cursor += len(chunk) / (
-                    self.transcriber_config.sampling_rate
-                    * num_channels
-                    * sample_width
+                    self.transcriber_config.sampling_rate * num_channels * sample_width
                 )
 
             yield b"".join(data)

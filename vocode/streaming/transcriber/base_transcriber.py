@@ -23,9 +23,11 @@ class Transcription(BaseModel):
     confidence: float
     is_final: bool
     is_interrupt: bool = False
+    latency: Optional[float] = None
+    time_silent: Optional[float] = None
 
     def __str__(self):
-        return f"Transcription({self.message}, {self.confidence}, {self.is_final})"
+        return f"Transcription({self.message}, {self.confidence}, {self.is_final}, {self.is_interrupt}, {self.latency}, {self.time_silent})"
 
 
 TranscriberConfigType = TypeVar("TranscriberConfigType", bound=TranscriberConfig)
