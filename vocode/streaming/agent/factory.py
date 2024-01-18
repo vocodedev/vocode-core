@@ -7,6 +7,7 @@ from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.agent.echo_agent import EchoAgent
 from vocode.streaming.agent.information_retrieval_agent import InformationRetrievalAgent
 from vocode.streaming.agent.llm_agent import LLMAgent
+from vocode.streaming.agent.mistral_agent import MistralAgent
 from vocode.streaming.agent.restful_user_implemented_agent import (
     RESTfulUserImplementedAgent,
 )
@@ -20,7 +21,8 @@ from vocode.streaming.models.agent import (
     InformationRetrievalAgentConfig,
     LLMAgentConfig,
     RESTfulUserImplementedAgentConfig,
-    LlamacppAgentConfig
+    LlamacppAgentConfig,
+    MistralAgentConfig
 )
 
 
@@ -42,4 +44,6 @@ class AgentFactory:
             return ChatAnthropicAgent(agent_config=agent_config, logger=logger)
         elif isinstance(agent_config, LlamacppAgentConfig):
             return LlamacppAgent(agent_config=agent_config, logger=logger)
+        elif isinstance(agent_config, MistralAgentConfig):
+            return MistralAgent(agent_config=agent_config, logger=logger)
         raise Exception("Invalid agent config", agent_config.type)
