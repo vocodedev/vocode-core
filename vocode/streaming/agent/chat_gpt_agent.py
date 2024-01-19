@@ -42,11 +42,13 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             openai.api_version = agent_config.azure_params.api_version
             openai.api_key = getenv("AZURE_OPENAI_API_KEY")
         else:
+            # mistral configs
             openai.api_type = "open_ai"
-            openai.api_base = "https://25b701a03eb80b61.ngrok.app/v1"
+            openai.api_base = getenv("MISTRAL_API_BASE")
             openai.api_version = None
             openai.api_key = "EMPTY"
 
+            # chat gpt configs
             # openai.api_type = "open_ai"
             # openai.api_base = "https://api.openai.com/v1"
             # openai.api_version = None
@@ -87,6 +89,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             "messages": messages,
             "max_tokens": self.agent_config.max_tokens,
             "temperature": self.agent_config.temperature,
+            "stop": ["User:", "\n", "<|im_end|>"],
         }
 
         if self.agent_config.azure_params is not None:
