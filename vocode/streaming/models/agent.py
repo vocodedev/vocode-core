@@ -5,6 +5,7 @@ from langchain.prompts import PromptTemplate
 from pydantic import validator
 from vocode.streaming.models.actions import ActionConfig
 
+from vocode.streaming.models.call_type import CallType
 from vocode.streaming.models.message import BaseMessage
 from .model import TypedModel, BaseModel
 from .vector_db import VectorDBConfig
@@ -77,6 +78,10 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
     actions: Optional[List[ActionConfig]] = None
+    current_call_id: Optional[int] = None
+    call_type: Optional[CallType] = None
+    from_phone_number: Optional[str] = None
+    to_phone_number: Optional[str] = None
 
 
 class CutOffResponse(BaseModel):
