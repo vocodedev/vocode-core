@@ -23,6 +23,8 @@ from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.vector_db.factory import VectorDBFactory
 
+from telephony_app.utils.call_information_handler import update_call_transcripts
+
 
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def __init__(
@@ -191,7 +193,17 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
+        all_messages = []
         async for message in collate_response_async(
             openai_get_tokens(stream), get_functions=True
         ):
+            all_messages.append(f"{message} ")
             yield message, True
+
+        complete_message = ''.join(all_messages)
+        await update_call_transcripts(
+            call_id=self.agent_config.current_call_id,
+            transcript_extension=f"Lead: {human_input} Agent: {complete_message}",
+            machine_transcript_extension=f"Lead: {human_input} Agent: {complete_message}",
+            call_type=self.agent_config.call_type,
+        )
