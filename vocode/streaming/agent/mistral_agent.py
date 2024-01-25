@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import openai
 from openai import AzureOpenAI, AsyncAzureOpenAI, AsyncOpenAI, OpenAI
-
 from typing import AsyncGenerator, Optional, Tuple
 
 import logging
