@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import validator
+from pydantic import validator, Field
 from vocode.streaming.models.client_backend import OutputAudioConfig
 
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
@@ -26,6 +26,7 @@ class SynthesizerType(str, Enum):
     COQUI = "synthesizer_coqui"
     BARK = "synthesizer_bark"
     POLLY = "synthesizer_polly"
+    OPENAI = "synthesizer_openai"
 
 
 class SentimentConfig(BaseModel):
@@ -132,6 +133,26 @@ class ElevenLabsSynthesizerConfig(
         ):
             raise ValueError("optimize_streaming_latency must be between 0 and 4.")
         return optimize_streaming_latency
+
+
+class OpenAISynthesizerConfig(SynthesizerConfig, type=SynthesizerType.OPENAI.value):
+    api_key: Optional[str] = None
+    voice: Optional[str] = Field(default="alloy", description="Voice to be used for TTS")
+    model: Optional[str] = Field(default="tts-1", description="TTS model to be used")
+
+    @validator("voice")
+    def validate_voice(cls, voice):
+        allowed_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+        if voice not in allowed_voices:
+            raise ValueError(f"Voice '{voice}' is not supported. Choose from {allowed_voices}.")
+        return voice
+
+    @validator("model")
+    def validate_model(cls, model):
+        allowed_models = ["tts-1", "tts-1-hd"]
+        if model not in allowed_models:
+            raise ValueError(f"Model '{model}' is not supported. Choose from {allowed_models}.")
+        return model
 
 
 RIME_DEFAULT_SPEAKER = "young_male_unmarked-1"
