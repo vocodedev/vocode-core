@@ -46,7 +46,6 @@ class OpenAISynthesizer(BaseSynthesizer[OpenAISynthesizerConfig]):
             model=self.model,
             voice=self.voice,
             input=message.text,
-            speed=1.15,
             # response_format='opus'
         )
 
