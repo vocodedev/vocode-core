@@ -144,7 +144,7 @@ class TelephonyServer:
             transcriber_config = inbound_call_config.transcriber_config or TwilioCallConfig.default_transcriber_config()
             agent_config = inbound_call_config.agent_config
             synthesizer_config = inbound_call_config.synthesizer_config or TwilioCallConfig.default_synthesizer_config()
-            dialog_state, prompt_template_filename, last_id = await self.get_data(twilio_from)
+            dialog_state, prompt_template_filename, _ = await self.get_data(twilio_from)
             agent_config.prompt_template_filename = prompt_template_filename
             synthesizer_config.prompt_template_filename = prompt_template_filename
             if dialog_state is None:
@@ -166,7 +166,6 @@ class TelephonyServer:
             #
             conversation_id = create_conversation_id()
             await self.config_manager.save_config(conversation_id, call_config)
-            await self.config_manager.create_id_router(last_id, twilio_sid, is_inbound=True)
             return self.templater.get_connection_twiml(
                 base_url=self.base_url, call_id=conversation_id
             )

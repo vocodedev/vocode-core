@@ -114,23 +114,6 @@ class RedisConfigManager(BaseConfigManager):
                 raise
             await asyncio.sleep(0.5)
 
-    async def create_id_router(self, internal_id: str, telephony_id: str, is_inbound: bool = False):
-        suffix = "_inbound" if is_inbound else ""
-        for attempt in range(3):  # Retry up to 3 times
-            try:
-                await self.redis.set(f"internal_id{suffix}:{internal_id}", json.dumps({"twilio_id": telephony_id}))
-            except ConnectionError as e:
-                self.logger.warning(f"Attempt {attempt + 1}: Connection error: {e}")
-                if attempt < 2:
-                    await self._reconnect_redis()
-                else:
-                    self.logger.error("Final attempt failed. Unable to get config.")
-                    raise
-            except Exception as e:
-                self.logger.error(f"An unexpected error occurred: {e}")
-                raise
-            await asyncio.sleep(0.5)
-
     async def log_call_state(self, telephony_id: str, state: str, **kwargs):
 
         for attempt in range(3):  # Retry up to 3 times
