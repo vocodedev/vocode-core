@@ -3,6 +3,8 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import openai
+from openai import AzureOpenAI, AsyncAzureOpenAI, OpenAI, AsyncOpenAI
+
 from typing import AsyncGenerator, Optional, Tuple
 
 import logging
@@ -28,27 +30,32 @@ from telephony_app.utils.call_information_handler import update_call_transcripts
 
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def __init__(
-        self,
-        agent_config: ChatGPTAgentConfig,
-        action_factory: ActionFactory = ActionFactory(),
-        logger: Optional[logging.Logger] = None,
-        openai_api_key: Optional[str] = None,
-        vector_db_factory=VectorDBFactory(),
+            self,
+            agent_config: ChatGPTAgentConfig,
+            action_factory: ActionFactory = ActionFactory(),
+            logger: Optional[logging.Logger] = None,
+            openai_api_key: Optional[str] = None,
+            vector_db_factory=VectorDBFactory(),
     ):
         super().__init__(
             agent_config=agent_config, action_factory=action_factory, logger=logger
         )
+
         if agent_config.azure_params:
-            openai.api_type = agent_config.azure_params.api_type
-            openai.api_base = getenv("AZURE_OPENAI_API_BASE")
-            openai.api_version = agent_config.azure_params.api_version
-            openai.api_key = getenv("AZURE_OPENAI_API_KEY")
+            self.aclient = AsyncAzureOpenAI(api_version=agent_config.azure_params.api_version,
+                                            api_key=getenv("AZURE_OPENAI_API_KEY"),
+                                            azure_endpoint=getenv("AZURE_OPENAI_API_BASE"))
+
+            self.client = AzureOpenAI(api_version=agent_config.azure_params.api_version,
+                                      api_key=getenv("AZURE_OPENAI_API_KEY"),
+                                      azure_endpoint=getenv("AZURE_OPENAI_API_BASE"))
         else:
             # mistral configs
-            openai.api_type = "open_ai"
-            openai.api_base = getenv("MISTRAL_API_BASE")
-            openai.api_version = None
-            openai.api_key = "EMPTY"
+            self.aclient = AsyncOpenAI(api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE"))
+            self.client = OpenAI(api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE"))
+
+            # openai.api_type = "open_ai"
+            # openai.api_version = None
 
             # chat gpt configs
             # openai.api_type = "open_ai"
@@ -56,7 +63,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # openai.api_version = None
             # openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
 
-        if not openai.api_key:
+        if not self.client.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
         self.first_response = (
             self.create_first_response(agent_config.expected_first_prompt)
@@ -80,7 +87,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         ]
 
     def get_chat_parameters(
-        self, messages: Optional[List] = None, use_functions: bool = True
+            self, messages: Optional[List] = None, use_functions: bool = True
     ):
         assert self.transcript is not None
         messages = messages or format_openai_chat_messages_from_transcript(
@@ -115,16 +122,16 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         ]
 
         parameters = self.get_chat_parameters(messages)
-        return openai.ChatCompletion.create(**parameters)
+        return self.client.chat.completions.create(**parameters)
 
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript
 
     async def respond(
-        self,
-        human_input,
-        conversation_id: str,
-        is_interrupt: bool = False,
+            self,
+            human_input,
+            conversation_id: str,
+            is_interrupt: bool = False,
     ) -> Tuple[str, bool]:
         assert self.transcript is not None
         if is_interrupt and self.agent_config.cut_off_response:
@@ -137,16 +144,16 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             text = self.first_response
         else:
             chat_parameters = self.get_chat_parameters()
-            chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
+            chat_completion = await self.aclient.chat.completions.create(**chat_parameters)
             text = chat_completion.choices[0].message.content
         self.logger.debug(f"LLM response: {text}")
         return text, False
 
     async def generate_response(
-        self,
-        human_input: str,
-        conversation_id: str,
-        is_interrupt: bool = False,
+            self,
+            human_input: str,
+            conversation_id: str,
+            is_interrupt: bool = False,
     ) -> AsyncGenerator[Tuple[Union[str, FunctionCall], bool], None]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
@@ -192,7 +199,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         else:
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
-        stream = await openai.ChatCompletion.acreate(**chat_parameters)
+        stream = await self.aclient.chat.completions.create(**chat_parameters)
         all_messages = []
         async for message in collate_response_async(
             openai_get_tokens(stream), get_functions=True
