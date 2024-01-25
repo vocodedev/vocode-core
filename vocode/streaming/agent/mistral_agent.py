@@ -3,6 +3,8 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import openai
+from openai import AzureOpenAI, AsyncAzureOpenAI, AsyncOpenAI, OpenAI
+
 from typing import AsyncGenerator, Optional, Tuple
 
 import logging
@@ -36,16 +38,18 @@ class MistralAgent(RespondAgent[MistralAgentConfig]):
         super().__init__(
             agent_config=agent_config, action_factory=action_factory, logger=logger
         )
+
         if agent_config.azure_params:
-            openai.api_type = agent_config.azure_params.api_type
-            openai.api_base = getenv("AZURE_OPENAI_API_BASE")
-            openai.api_version = agent_config.azure_params.api_version
-            openai.api_key = getenv("AZURE_OPENAI_API_KEY")
+            self.client = AzureOpenAI(api_version=agent_config.azure_params.api_version,
+                                      api_key=getenv("AZURE_OPENAI_API_KEY"),
+                                      azure_endpoint=getenv("MISTRAL_API_BASE")
+                                      )
+            self.aclient = AsyncAzureOpenAI(api_version=agent_config.azure_params.api_version,
+                                            api_key=getenv("AZURE_OPENAI_API_KEY"),
+                                            azure_endpoint=getenv("MISTRAL_API_BASE"))
         else:
-            openai.api_type = "open_ai"
-            openai.api_base = "https://25b701a03eb80b61.ngrok.app/v1"
-            openai.api_version = None
-            openai.api_key = "EMPTY"
+            self.aclient = AsyncOpenAI(api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE"))
+            self.client = OpenAI(api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE"))
 
         if not openai.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
@@ -105,7 +109,7 @@ class MistralAgent(RespondAgent[MistralAgentConfig]):
         ]
 
         parameters = self.get_chat_parameters(messages)
-        return openai.ChatCompletion.create(**parameters)
+        return self.client.chat.completions.create(**parameters)
 
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript
@@ -127,7 +131,7 @@ class MistralAgent(RespondAgent[MistralAgentConfig]):
             text = self.first_response
         else:
             chat_parameters = self.get_chat_parameters()
-            chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
+            chat_completion = await self.aclient.chat.completions.create(**chat_parameters)
             text = chat_completion.choices[0].message.content
         self.logger.debug(f"LLM response: {text}")
         return text, False
@@ -182,7 +186,7 @@ class MistralAgent(RespondAgent[MistralAgentConfig]):
         else:
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
-        stream = await openai.ChatCompletion.acreate(**chat_parameters)
+        stream = await self.aclient.chat.completions.create(**chat_parameters)
         async for message in collate_response_async(
                 openai_get_tokens(stream), get_functions=True
         ):

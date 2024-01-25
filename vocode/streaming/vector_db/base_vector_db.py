@@ -1,7 +1,9 @@
 import os
 from typing import Iterable, List, Optional, Tuple
 import aiohttp
-import openai
+from openai import AsyncOpenAI
+
+aclient = AsyncOpenAI()
 from langchain.docstore.document import Document
 
 DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-ada-002"
@@ -33,7 +35,7 @@ class VectorDB:
         else:
             params["model"] = model
 
-        return list((await openai.Embedding.acreate(**params))["data"][0]["embedding"])
+        return list((await aclient.embeddings.create(**params))["data"][0]["embedding"])
 
     async def add_texts(
         self,
