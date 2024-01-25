@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from fastapi import WebSocket
+from fastapi.websockets import WebSocketState
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.models.websocket import AudioMessage
@@ -29,7 +30,7 @@ class WebsocketOutputDevice(BaseOutputDevice):
     async def process(self):
         while self.active:
             message = await self.queue.get()
-            if self.active and self.ws.client_state != WebSocket.CLOSED:
+            if self.active and self.ws.client_state != WebSocketState.DISCONNECTED:
                 await self.ws.send_text(message)
 
     def consume_nonblocking(self, chunk: bytes):
