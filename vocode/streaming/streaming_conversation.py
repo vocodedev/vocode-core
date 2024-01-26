@@ -68,6 +68,8 @@ from vocode.streaming.utils.worker import (
     InterruptibleWorker,
 )
 
+from telephony_app.utils.call_information_handler import update_call_transcripts
+
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
 
 
@@ -517,6 +519,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
         )
         self.agent_responses_worker.consume_nonblocking(agent_response_event)
+        await update_call_transcripts(
+            call_id=self.agent.agent_config.current_call_id,
+            transcript_extension=f"Agent: {initial_message.text}",
+            machine_transcript_extension=f"Agent: {initial_message.text}",
+            call_type=self.agent.agent_config.call_type,
+        )
         await initial_message_tracker.wait()
         self.transcriber.unmute()
 
