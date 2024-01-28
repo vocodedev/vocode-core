@@ -127,7 +127,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             if transcription.is_final:
                 self.conversation.logger.info(f"Got transcription with confidence: {transcription.confidence} "
-                                              f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead: {transcription.message}")
+                                              f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{transcription.message}")
             if (
                 not self.conversation.is_human_speaking
                 and self.conversation.is_interrupt(transcription)
