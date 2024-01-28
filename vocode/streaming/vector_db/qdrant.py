@@ -1,6 +1,7 @@
 import logging
 from typing import Iterable, List, Optional, Tuple
 import uuid
+import os
 from langchain.docstore.document import Document
 from vocode import getenv
 from vocode.streaming.models.vector_db import QdrantConfig
@@ -19,7 +20,7 @@ class QdrantDB(VectorDB):
         self.config = config
         self.collection_name = self.config.index
         self.top_k = self.config.top_k or 1
-        self.client = QdrantClient('localhost', port=6333)
+        self.client = QdrantClient(os.getenv('QDRANT_HOST','localhost'), port=os.getenv('QDRANT_PORT','6333'))
         self._text_key = "text"
        
     async def add_texts(
