@@ -2,7 +2,9 @@ import time
 import argparse
 from typing import Optional
 import aiohttp
+import sounddevice as sd
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
+from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
@@ -30,10 +32,10 @@ if __name__ == "__main__":
     seconds_per_chunk = 1
 
     async def speak(
-        synthesizer: BaseSynthesizer,
-        output_device: BaseOutputDevice,
-        message: BaseMessage,
-        bot_sentiment: Optional[BotSentiment] = None,
+            synthesizer: BaseSynthesizer,
+            output_device: BaseOutputDevice,
+            message: BaseMessage,
+            bot_sentiment: Optional[BotSentiment] = None,
     ):
         message_sent = message.text
         cut_off = False
@@ -53,7 +55,7 @@ if __name__ == "__main__":
             try:
                 start_time = time.time()
                 speech_length_seconds = seconds_per_chunk * (
-                    len(chunk_result.chunk) / chunk_size
+                        len(chunk_result.chunk) / chunk_size
                 )
                 output_device.consume_nonblocking(chunk_result.chunk)
                 end_time = time.time()
@@ -61,7 +63,7 @@ if __name__ == "__main__":
                     max(
                         speech_length_seconds - (end_time - start_time),
                         0,
-                    )
+                        )
                 )
                 print(
                     "Sent chunk {} with size {}".format(
@@ -95,11 +97,70 @@ if __name__ == "__main__":
             print("Interrupted, exiting")
         await synthesizer.tear_down()
 
-    speaker_output = SpeakerOutput.from_default_device()
-
     # replace with the synthesizer you want to test
     # Note: --trace will not work with AzureSynthesizer
-    synthesizer = AzureSynthesizer(
-        AzureSynthesizerConfig.from_output_device(speaker_output)
+
+    # speaker_output = SpeakerOutput.from_default_device()
+    # synthesizer = AzureSynthesizer(
+    #     AzureSynthesizerConfig.from_output_device(speaker_output)
+    # )
+
+    # synthesizer = ElevenLabsSynthesizer(
+    #     synthesizer_config=ElevenLabsSynthesizerConfig.from_telephone_output_device()
+    # )
+    #
+    # speaker_output = SpeakerOutput(
+    #     sampling_rate=8000,
+    #     audio_encoding=AudioEncoding.MULAW,
+    #     device_info=sd.query_devices(kind="output"),
+    # )
+
+    # synthesizer = ElevenLabsSynthesizer(
+    #     synthesizer_config=ElevenLabsSynthesizerConfig(
+    #         experimental_streaming=True,
+    #         optimize_streaming_latency=4,
+    #         sampling_rate=8000,
+    #         audio_encoding=AudioEncoding.MULAW,
+    #     )
+    # )
+    #
+    # speaker_output = SpeakerOutput(
+    #     sampling_rate=8000,
+    #     audio_encoding=AudioEncoding.MULAW,
+    #     device_info=sd.query_devices(kind="output"),
+    # )
+
+    # synthesizer = ElevenLabsSynthesizer(
+    #     synthesizer_config=ElevenLabsSynthesizerConfig(
+    #         experimental_streaming=True,
+    #         optimize_streaming_latency=0,
+    #         sampling_rate=16000,
+    #         audio_encoding=AudioEncoding.LINEAR16,
+    #     )
+    # )
+    #
+    # speaker_output = SpeakerOutput(
+    #     sampling_rate=16000,
+    #     audio_encoding=AudioEncoding.LINEAR16,
+    #     device_info=sd.query_devices(kind="output"),
+    # )
+
+    synthesizer = ElevenLabsSynthesizer(
+        synthesizer_config=ElevenLabsSynthesizerConfig(
+            experimental_streaming=False,
+            stability=0.0,
+            similarity_boost=0.0,
+            model_id="nova",
+            optimize_streaming_latency=0,
+            sampling_rate=8000,
+            audio_encoding=AudioEncoding.MULAW,
+        )
     )
+
+    speaker_output = SpeakerOutput(
+        sampling_rate=8000,
+        audio_encoding=AudioEncoding.MULAW,
+        device_info=sd.query_devices(kind="output"),
+    )
+
     asyncio.run(main())

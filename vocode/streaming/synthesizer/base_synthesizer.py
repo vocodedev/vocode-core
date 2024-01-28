@@ -16,6 +16,8 @@ import math
 import io
 import wave
 import aiohttp
+import nltk
+nltk.download('punkt')
 from nltk.tokenize import word_tokenize
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 from opentelemetry import trace
