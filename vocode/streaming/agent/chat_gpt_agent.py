@@ -76,6 +76,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 self.agent_config.vector_db_config
             )
 
+        if self.logger:
+            self.logger.setLevel(logging.INFO)
+
     def get_functions(self):
         assert self.agent_config.actions
         if not self.action_factory:
@@ -207,9 +210,5 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             yield message, True
 
         complete_message = ''.join(all_messages)
-        await update_call_transcripts(
-            call_id=self.agent_config.current_call_id,
-            transcript_extension=f"Lead: {human_input} Agent: {complete_message}",
-            machine_transcript_extension=f"Lead: {human_input} Agent: {complete_message}",
-            call_type=self.agent_config.call_type,
-        )
+
+        self.logger.info(f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {complete_message}")

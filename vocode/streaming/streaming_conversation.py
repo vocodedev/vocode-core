@@ -111,12 +111,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
             output_queue: asyncio.Queue[InterruptibleEvent[AgentInput]],
             conversation: "StreamingConversation",
             interruptible_event_factory: InterruptibleEventFactory,
+            agent: BaseAgent
         ):
             super().__init__(input_queue, output_queue)
             self.input_queue = input_queue
             self.output_queue = output_queue
             self.conversation = conversation
             self.interruptible_event_factory = interruptible_event_factory
+            self.agent = agent
 
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
@@ -124,11 +126,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.info("Ignoring empty transcription")
                 return
             if transcription.is_final:
-                self.conversation.logger.debug(
-                    "Got transcription: {}, confidence: {}".format(
-                        transcription.message, transcription.confidence
-                    )
-                )
+                self.conversation.logger.info(f"Got transcription with confidence: {transcription.confidence} "
+                                              f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead: {transcription.message}")
             if (
                 not self.conversation.is_human_speaking
                 and self.conversation.is_interrupt(transcription)
@@ -406,6 +405,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             output_queue=self.agent.get_input_queue(),
             conversation=self,
             interruptible_event_factory=self.interruptible_event_factory,
+            agent=self.agent,
         )
         self.agent.attach_conversation_state_manager(self.state_manager)
         self.agent_responses_worker = self.AgentResponsesWorker(
@@ -519,12 +519,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
         )
         self.agent_responses_worker.consume_nonblocking(agent_response_event)
-        await update_call_transcripts(
-            call_id=self.agent.agent_config.current_call_id,
-            transcript_extension=f"Agent: {initial_message.text}",
-            machine_transcript_extension=f"Agent: {initial_message.text}",
-            call_type=self.agent.agent_config.call_type,
-        )
+        self.logger.info(f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {initial_message.text}")
         await initial_message_tracker.wait()
         self.transcriber.unmute()
 
