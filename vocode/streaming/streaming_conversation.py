@@ -308,7 +308,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if isinstance(agent_response, AgentResponseStop):
                     self.conversation.logger.debug("Agent requested to stop")
                     item.agent_response_tracker.set()
-                    await self.conversation.terminate()
+                    # Shield the call, because when we terminate, a brodacast_interrupt is sent
+                    # which in turn cancels this process task
+                    await asyncio.shield(self.conversation.terminate())
                     return
 
                 agent_response_message = typing.cast(
