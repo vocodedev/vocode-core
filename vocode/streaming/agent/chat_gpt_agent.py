@@ -100,7 +100,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             "messages": messages,
             "max_tokens": self.agent_config.max_tokens,
             "temperature": self.agent_config.temperature,
-            "stop": ["User:", "\n", "<|im_end|>"],
+            "stop": ["User:", "\n", "<|im_end|>", "?"],
         }
 
         if self.agent_config.azure_params is not None:
