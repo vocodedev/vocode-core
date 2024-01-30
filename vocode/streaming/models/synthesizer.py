@@ -108,7 +108,7 @@ class ElevenLabsSynthesizerConfig(
     optimize_streaming_latency: Optional[int] = None
     experimental_streaming: Optional[bool] = False
     stability: Optional[float] = None
-    similarity_boost: Field(default=None, validate_default=True)
+    similarity_boost: Optional[float] = Field(default=None, validate_default=True)
     model_id: Optional[str] = None
 
     @field_validator("voice_id")
