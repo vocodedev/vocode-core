@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 from enum import Enum
 from langchain.prompts import PromptTemplate
 
-from pydantic import field_validator
+from pydantic import field_validator, Field
 from vocode.streaming.models.actions import ActionConfig
 
 from vocode.streaming.models.message import BaseMessage
@@ -103,9 +103,12 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
 
 
 class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):
+    # The preamble for the prompt
     prompt_preamble: str
-    model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
-    max_tokens_to_sample: int = 200
+    # The name of the model, default is CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
+    model_name: str = Field(default=CHAT_ANTHROPIC_DEFAULT_MODEL_NAME)
+    # The maximum number of tokens to sample, default is 200
+    max_tokens_to_sample: int = Field(default=200)
 
 
 class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):

@@ -24,7 +24,7 @@ from langchain.prompts import (
     HumanMessagePromptTemplate,
     PromptTemplate,
 )
-from langchain.prompts.base import DEFAULT_FORMATTER_MAPPING
+from langchain_core.prompts.string import DEFAULT_FORMATTER_MAPPING
 
 ALPACA_TEMPLATE_WITH_HISTORY = """### Instruction:
 Your previous conversation history:
