@@ -54,7 +54,8 @@ async def collate_response_async(
                 else sentence_endings_pattern,
                 token,
             ):
-                if not ends_with_money:
+                # Check if the last word in the buffer is longer than 3 letters
+                if not ends_with_money and len(buffer.strip().split()[-1]) >= 4:
                     to_return = buffer.strip()
                     if to_return:
                         yield to_return
