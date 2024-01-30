@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import field_validator, ConfigDict, validator
+from pydantic import field_validator, ConfigDict
 from vocode.streaming.models.client_backend import OutputAudioConfig
 
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
@@ -116,9 +116,8 @@ class ElevenLabsSynthesizerConfig(
     def set_name(cls, voice_id):
         return voice_id or ELEVEN_LABS_ADAM_VOICE_ID
 
-    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
-    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
-    @validator("similarity_boost", always=True)
+    @field_validator("similarity_boost", always=True)
+    @classmethod
     def stability_and_similarity_boost_check(cls, similarity_boost, values):
         stability = values.get("stability")
         if (stability is None) != (similarity_boost is None):
@@ -158,10 +157,14 @@ class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value
     voice_prompt: Optional[str] = None
     use_xtts: Optional[bool] = True
 
-    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
+    # Pydantic v2 uses field_validator instead of validator
     # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
-    @validator("voice_id", always=True)
+    @field_validator("voice_id", always=True)
     def override_voice_id_with_prompt(cls, voice_id, values):
+        """
+        This method checks if a voice prompt is present in the values.
+        If it is, it returns None, otherwise it returns the voice_id or the default speaker id.
+        """
         if values.get("voice_prompt"):
             return None
         return voice_id or COQUI_DEFAULT_SPEAKER_ID
