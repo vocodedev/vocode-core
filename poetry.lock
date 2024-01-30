@@ -166,13 +166,13 @@ typing-extensions = {version = ">=4.0.0", markers = "python_version < \"3.9\""}
 
 [[package]]
 name = "anthropic"
-version = "0.7.8"
+version = "0.12.0"
 description = "The official Python library for the anthropic API"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "anthropic-0.7.8-py3-none-any.whl", hash = "sha256:268db974578e34d1449cd0d22389394f0c61795ace9a101dcde4eab4b98439bf"},
-    {file = "anthropic-0.7.8.tar.gz", hash = "sha256:61bc698553b24bc7721cf71db8de50703f3025ea2d14fa4bcb5b1d2bf37f9e40"},
+    {file = "anthropic-0.12.0-py3-none-any.whl", hash = "sha256:d2f706c8dc95c7974e71c901c55245eeda5f129e78c3e3e6752411d4aecfe416"},
+    {file = "anthropic-0.12.0.tar.gz", hash = "sha256:f61bc5f83d195a0b1b5d92d4e5d9a131cab196bfdf9c8f69b73a815a40665e12"},
 ]
 
 [package.dependencies]
@@ -182,7 +182,10 @@ httpx = ">=0.23.0,<1"
 pydantic = ">=1.9.0,<3"
 sniffio = "*"
 tokenizers = ">=0.13.0"
-typing-extensions = ">=4.5,<5"
+typing-extensions = ">=4.7,<5"
+
+[package.extras]
+vertex = ["google-auth (>=2,<3)"]
 
 [[package]]
 name = "anyio"
@@ -3782,4 +3785,4 @@ transcribers = ["google-cloud-speech"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<3.12"
-content-hash = "be72924db814f9c2e405ba3799d1d3682845f0c9038f8f7b33c2397f09dab884"
+content-hash = "ebfd9215a548eb6f093b962e7fd46e7ba6c88cf2ba4e55eaf3192e4b9eef039a"
