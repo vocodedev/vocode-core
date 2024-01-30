@@ -76,7 +76,7 @@ class DialIntoZoomCall(BaseModel):
     recipient: CallEntity
     caller: CallEntity
     zoom_meeting_id: str
-    zoom_meeting_password: Optional[str]
+    zoom_meeting_password: Optional[str] = None
     transcriber_config: Optional[TranscriberConfig] = None
     agent_config: AgentConfig
     synthesizer_config: Optional[SynthesizerConfig] = None

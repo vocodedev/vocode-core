@@ -16,6 +16,6 @@ class VectorDBConfig(TypedModel, type=VectorDBType.BASE.value):
 
 class PineconeConfig(VectorDBConfig, type=VectorDBType.PINECONE.value):
     index: str
-    api_key: Optional[str]
-    api_environment: Optional[str]
+    api_key: Optional[str] = None
+    api_environment: Optional[str] = None
     top_k: int = 3

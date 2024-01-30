@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import validator
+from pydantic import field_validator
 
 from vocode.streaming.input_device.base_input_device import BaseInputDevice
 from vocode.streaming.models.client_backend import InputAudioConfig
@@ -56,7 +56,8 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
     min_interrupt_confidence: Optional[float] = None
     mute_during_speech: bool = False
 
-    @validator("min_interrupt_confidence")
+    @field_validator("min_interrupt_confidence")
+    @classmethod
     def min_interrupt_confidence_must_be_between_0_and_1(cls, v):
         if v is not None and (v < 0 or v > 1):
             raise ValueError("must be between 0 and 1")

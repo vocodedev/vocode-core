@@ -1,7 +1,7 @@
 import asyncio
 from enum import Enum
 from typing import Generic, Optional, TypeVar
-from pydantic import BaseModel
+from pydantic import ConfigDict, BaseModel
 from vocode.streaming.models.model import TypedModel
 
 
@@ -23,10 +23,7 @@ class ActionInput(BaseModel, Generic[ParametersType]):
     conversation_id: str
     params: ParametersType
     user_message_tracker: Optional[asyncio.Event] = None
-
-    class Config:
-        arbitrary_types_allowed = True
-
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class FunctionFragment(BaseModel):

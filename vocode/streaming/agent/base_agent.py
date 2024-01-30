@@ -48,6 +48,7 @@ from vocode.streaming.utils.worker import (
     InterruptibleEventFactory,
     InterruptibleWorker,
 )
+from pydantic import ConfigDict
 
 if TYPE_CHECKING:
     from vocode.streaming.utils.state_manager import ConversationStateManager
@@ -64,12 +65,10 @@ class AgentInputType(str, Enum):
 
 class AgentInput(TypedModel, type=AgentInputType.BASE.value):
     conversation_id: str
-    vonage_uuid: Optional[str]
-    twilio_sid: Optional[str]
+    vonage_uuid: Optional[str] = None
+    twilio_sid: Optional[str] = None
     agent_response_tracker: Optional[asyncio.Event] = None
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class TranscriptionAgentInput(AgentInput, type=AgentInputType.TRANSCRIPTION.value):

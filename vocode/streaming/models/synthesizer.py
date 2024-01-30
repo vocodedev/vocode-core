@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import validator
+from pydantic import field_validator, ConfigDict, validator
 from vocode.streaming.models.client_backend import OutputAudioConfig
 
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
@@ -31,7 +31,8 @@ class SynthesizerType(str, Enum):
 class SentimentConfig(BaseModel):
     emotions: List[str] = ["angry", "friendly", "sad", "whispering"]
 
-    @validator("emotions")
+    @field_validator("emotions")
+    @classmethod
     def emotions_must_not_be_empty(cls, v):
         if len(v) == 0:
             raise ValueError("must have at least one emotion")
@@ -43,9 +44,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
     audio_encoding: AudioEncoding
     should_encode_as_wav: bool = False
     sentiment_config: Optional[SentimentConfig] = None
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @classmethod
     def from_output_device(cls, output_device: BaseOutputDevice, **kwargs):
@@ -106,16 +105,19 @@ class ElevenLabsSynthesizerConfig(
 ):
     api_key: Optional[str] = None
     voice_id: Optional[str] = ELEVEN_LABS_ADAM_VOICE_ID
-    optimize_streaming_latency: Optional[int]
+    optimize_streaming_latency: Optional[int] = None
     experimental_streaming: Optional[bool] = False
-    stability: Optional[float]
-    similarity_boost: Optional[float]
-    model_id: Optional[str]
+    stability: Optional[float] = None
+    similarity_boost: Optional[float] = None
+    model_id: Optional[str] = None
 
-    @validator("voice_id")
+    @field_validator("voice_id")
+    @classmethod
     def set_name(cls, voice_id):
         return voice_id or ELEVEN_LABS_ADAM_VOICE_ID
 
+    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
     @validator("similarity_boost", always=True)
     def stability_and_similarity_boost_check(cls, similarity_boost, values):
         stability = values.get("stability")
@@ -125,7 +127,8 @@ class ElevenLabsSynthesizerConfig(
             )
         return similarity_boost
 
-    @validator("optimize_streaming_latency")
+    @field_validator("optimize_streaming_latency")
+    @classmethod
     def optimize_streaming_latency_check(cls, optimize_streaming_latency):
         if optimize_streaming_latency is not None and not (
             0 <= optimize_streaming_latency <= 4
@@ -155,6 +158,8 @@ class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value
     voice_prompt: Optional[str] = None
     use_xtts: Optional[bool] = True
 
+    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
     @validator("voice_id", always=True)
     def override_voice_id_with_prompt(cls, voice_id, values):
         if values.get("voice_prompt"):
