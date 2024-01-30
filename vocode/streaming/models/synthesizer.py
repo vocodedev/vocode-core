@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import field_validator, ConfigDict
+from pydantic import field_validator, ConfigDict, Field
 from vocode.streaming.models.client_backend import OutputAudioConfig
 
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
@@ -109,6 +109,7 @@ class ElevenLabsSynthesizerConfig(
     experimental_streaming: Optional[bool] = False
     stability: Optional[float] = None
     similarity_boost: Optional[float] = None
+    similarity_boost: Field(default=None, validate_default=True)
     model_id: Optional[str] = None
 
     @field_validator("voice_id")
@@ -116,7 +117,7 @@ class ElevenLabsSynthesizerConfig(
     def set_name(cls, voice_id):
         return voice_id or ELEVEN_LABS_ADAM_VOICE_ID
 
-    @field_validator("similarity_boost", always=True)
+    @field_validator("similarity_boost")
     @classmethod
     def stability_and_similarity_boost_check(cls, similarity_boost, values):
         stability = values.get("stability")
@@ -153,13 +154,15 @@ COQUI_DEFAULT_SPEAKER_ID = "ebe2db86-62a6-49a1-907a-9a1360d4416e"
 
 class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value):
     api_key: Optional[str] = None
-    voice_id: Optional[str] = COQUI_DEFAULT_SPEAKER_ID
+    voice_id: Optional[str] = Field(
+        default=COQUI_DEFAULT_SPEAKER_ID, validate_default=True
+    )
     voice_prompt: Optional[str] = None
     use_xtts: Optional[bool] = True
 
     # Pydantic v2 uses field_validator instead of validator
     # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
-    @field_validator("voice_id", always=True)
+    @field_validator("voice_id")
     def override_voice_id_with_prompt(cls, voice_id, values):
         """
         This method checks if a voice prompt is present in the values.
