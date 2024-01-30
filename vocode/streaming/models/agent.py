@@ -43,9 +43,11 @@ class FillerAudioConfig(BaseModel):
     use_phrases: bool = True
     use_typing_noise: bool = False
 
-    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
-    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
-    @validator("use_typing_noise")
+    # In Pydantic V2, the `validator` decorator is replaced by `field_validator`.
+    # The `field_validator` decorator is used to validate the values of the fields.
+    # In this case, it checks if either `use_typing_noise` or `use_phrases` is True.
+    # If both are False, it raises a ValueError.
+    @field_validator("use_typing_noise")
     def typing_noise_excludes_phrases(cls, v, values):
         if v and values.get("use_phrases"):
             values["use_phrases"] = False

@@ -116,9 +116,8 @@ class ElevenLabsSynthesizerConfig(
     def set_name(cls, voice_id):
         return voice_id or ELEVEN_LABS_ADAM_VOICE_ID
 
-    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
-    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
-    @validator("similarity_boost", always=True)
+    @field_validator("similarity_boost", always=True)
+    @classmethod
     def stability_and_similarity_boost_check(cls, similarity_boost, values):
         stability = values.get("stability")
         if (stability is None) != (similarity_boost is None):
