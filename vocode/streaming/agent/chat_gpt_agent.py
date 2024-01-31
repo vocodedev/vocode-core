@@ -175,27 +175,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         self.logger.debug(f"LLM response: {text}")
         return text, False
     
-    async def check_conditions(self, stringified_messages: str, conditions: List[str]) -> List[str]:
-        true_conditions = []
-        user_message = {"role": "user", "content": stringified_messages}
-
-        tasks = []
-        for condition in conditions:
-            preamble = "You will be provided a condition. Please classify if that condition applies (True), or does not apply (False).\n\nCondition:\n"
-            system_message = {"role": "system", "content": preamble + condition}
-            combined_messages = [system_message] + user_message
-            chat_parameters = self.get_chat_parameters(combined_messages)
-            task = self.aclient.chat.completions.create(**chat_parameters)
-            tasks.append(task)
-
-        responses = await asyncio.gather(*tasks)
-
-        for response, condition in zip(responses, conditions):
-            if response.choices[0].message.content.strip().lower() == "true":
-                true_conditions.append(condition)
-
-        return true_conditions
-    
     async def generate_response(
             self,
             human_input: str,
