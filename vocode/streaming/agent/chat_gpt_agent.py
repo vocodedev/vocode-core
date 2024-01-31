@@ -6,7 +6,7 @@ import openai
 from typing import AsyncGenerator, Optional, Tuple
 
 import logging
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from vocode import getenv
 from vocode.streaming.action.factory import ActionFactory

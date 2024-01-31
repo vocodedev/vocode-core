@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import validator
+from pydantic.v1 import validator
 from vocode.streaming.models.client_backend import OutputAudioConfig
 
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice

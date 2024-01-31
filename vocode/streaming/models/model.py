@@ -1,8 +1,8 @@
 from typing import Any, List, Tuple
-import pydantic
+from pydantic.v1 import BaseModel as PydanticBaseModel
 
 
-class BaseModel(pydantic.BaseModel):
+class BaseModel(PydanticBaseModel):
     def __init__(self, **data):
         for key, value in data.items():
             if isinstance(value, dict):
@@ -16,7 +16,7 @@ class BaseModel(pydantic.BaseModel):
         super().__init__(**data)
 
 
-# Adapted from https://github.com/pydantic/pydantic/discussions/3091
+# Adapted from https://github.com/pydantic.v1/pydantic.v1/discussions/3091
 class TypedModel(BaseModel):
     _subtypes_: List[Tuple[Any, Any]] = []
 

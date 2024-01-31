@@ -1,6 +1,6 @@
 import time
 from typing import Any, Dict, List, Optional, Union
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from enum import Enum
 from vocode.streaming.models.actions import ActionInput, ActionOutput
 from vocode.streaming.models.events import ActionEvent, Sender, Event, EventType
