@@ -1,3 +1,5 @@
+import asyncio
+import json
 import logging
 
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -129,6 +131,28 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript
 
+    async def check_conditions(self, stringified_messages: str, conditions: List[str]) -> List[str]:
+        true_conditions = []
+
+        tasks = []
+        for condition in conditions:
+            user_message = {"role": "user", "content": stringified_messages + "\n\nNow, return either 'True' or 'False' depending on whether the condition: <" + condition.strip() + "> applies (True) to the conversation or not (False)."}
+
+            preamble = "You will be provided a condition and a conversation. Please classify if that condition applies (True), or does not apply (False) to the provided conversation.\n\nCondition:\n"
+            system_message = {"role": "system", "content": preamble + condition}
+            combined_messages = [system_message, user_message]
+            chat_parameters = self.get_chat_parameters(messages = combined_messages)
+            task = self.aclient.chat.completions.create(**chat_parameters)
+            tasks.append(task)
+
+        responses = await asyncio.gather(*tasks)
+
+        for response, condition in zip(responses, conditions):
+            if "true" in response.choices[0].message.content.strip().lower():
+                true_conditions.append(condition)
+
+        return true_conditions  
+    
     async def respond(
             self,
             human_input,
@@ -150,7 +174,28 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             text = chat_completion.choices[0].message.content
         self.logger.debug(f"LLM response: {text}")
         return text, False
+    
+    async def check_conditions(self, stringified_messages: str, conditions: List[str]) -> List[str]:
+        true_conditions = []
+        user_message = {"role": "user", "content": stringified_messages}
 
+        tasks = []
+        for condition in conditions:
+            preamble = "You will be provided a condition. Please classify if that condition applies (True), or does not apply (False).\n\nCondition:\n"
+            system_message = {"role": "system", "content": preamble + condition}
+            combined_messages = [system_message] + user_message
+            chat_parameters = self.get_chat_parameters(combined_messages)
+            task = self.aclient.chat.completions.create(**chat_parameters)
+            tasks.append(task)
+
+        responses = await asyncio.gather(*tasks)
+
+        for response, condition in zip(responses, conditions):
+            if response.choices[0].message.content.strip().lower() == "true":
+                true_conditions.append(condition)
+
+        return true_conditions
+    
     async def generate_response(
             self,
             human_input: str,
@@ -210,5 +255,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             yield message, True
 
         complete_message = ''.join(all_messages)
+
+        # do another openai call this time feeding in the whole convo in string form 
 
         self.logger.info(f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {complete_message}")
