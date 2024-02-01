@@ -3,7 +3,7 @@ from typing import Optional
 from pydub import AudioSegment
 from vocode import getenv
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
-from google.cloud import texttospeech_v1beta1 as tts
+from google.cloud import texttospeech as tts
 
 DEFAULT_LANGUAGE_CODE = "en-US"
 DEFAULT_VOICE_NAME = "en-US-Neural2-I"
