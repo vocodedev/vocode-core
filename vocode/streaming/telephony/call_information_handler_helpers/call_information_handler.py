@@ -128,7 +128,7 @@ async def get_transfer_conference_sid(telephony_id: str):
 # so, in our DB we also call it telephony_id; subject to change in the future
 async def execute_status_update_by_telephony_id(telephony_id: str, call_status: str):
     mutation = """
-    mutation executeStatusUpdateByTelephonyId($telephony_id: String!, $latest_status: String) {
+    mutation executeStatusUpdateByTelephonyId($telephony_id: String!, $status: String) {
       update_calls(
         where: {
           telephony_id: {
@@ -136,7 +136,7 @@ async def execute_status_update_by_telephony_id(telephony_id: str, call_status: 
           }
         },
         _set: {
-          latest_status: $latest_status
+          status: $status
         }
       ) {
         affected_rows
@@ -145,7 +145,7 @@ async def execute_status_update_by_telephony_id(telephony_id: str, call_status: 
     """
     variables = {
         "telephony_id": telephony_id,
-        "latest_status": call_status
+        "status": call_status
     }
     return await execute_graphql_query(mutation, variables)
 
