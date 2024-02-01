@@ -228,7 +228,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     should_stop = True
 
                 # Only send onward if we have text
-                elif re.search(r"\w", response.text):
+                if re.search(r"\w", response.text):
                     self.produce_interruptible_agent_response_event_nonblocking(
                         AgentResponseMessage(message=response),
                         is_interruptible=self.agent_config.allow_agent_to_be_cut_off and not should_stop,
@@ -321,12 +321,13 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     transcription, agent_input.conversation_id
                 )
 
-            if should_stop:
-                self.logger.debug("Agent requested to stop")
-                self.produce_interruptible_agent_response_event_nonblocking(
-                    AgentResponseStop()
-                )
-                return
+            # Don't use AgentResponseStop, we stop from SynthesisResultWorker instead
+            # if should_stop:
+            #     self.logger.debug("Agent requested to stop")
+            #     self.produce_interruptible_agent_response_event_nonblocking(
+            #         AgentResponseStop()
+            #     )
+            #     return
             if goodbye_detected_task:
                 try:
                     goodbye_detected = await asyncio.wait_for(

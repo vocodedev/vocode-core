@@ -134,7 +134,7 @@ class StaticAgentConfig(
     AgentConfig, type=AgentType.STATIC.value
 ):
     script: List[str]
-    generate_responses: bool = False
+    generate_responses: bool = True
 
 class GPT4AllAgentConfig(AgentConfig, type=AgentType.GPT4ALL.value):
     prompt_preamble: str

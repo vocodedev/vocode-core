@@ -305,24 +305,19 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if isinstance(agent_response, AgentResponseFillerAudio):
                     self.send_filler_audio(item.agent_response_tracker)
                     return
-                if isinstance(agent_response, AgentResponseStop):
-                    self.conversation.logger.debug("Agent requested to stop")
-                    item.agent_response_tracker.set()
-                    # Shield the call, because when we terminate, a brodacast_interrupt is sent
-                    # which in turn cancels this process task
-                    await asyncio.shield(self.conversation.terminate())
-                    return
+                # We don't use AgentResponseStop to handle stops, we check
+                # for metadata['stop'] and do it in SynthesisResultsWorker
+                # if isinstance(agent_response, AgentResponseStop):
+                #     self.conversation.logger.debug("Agent requested to stop")
+                #     item.agent_response_tracker.set()
+                #     # Shield the call, because when we terminate, a brodacast_interrupt is sent
+                #     # which in turn cancels this process task
+                #     await asyncio.shield(self.conversation.terminate())
+                #     return
 
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
                 )
-                # When we receive stop messages, message.text is "" but somehow we still reach the
-                # "Synthesizing message" line below. So we double check and exit on empty messages.
-                if agent_response_message.message and not re.search(r"\w", agent_response_message.message.text):
-                    self.conversation.logger.warning(
-                        "Ignoring empty agent response message"
-                    )
-                    return
 
                 if self.conversation.filler_audio_worker is not None:
                     if (
@@ -330,7 +325,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     ):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
 
-                self.conversation.logger.debug("Synthesizing speech for message")
+                self.conversation.logger.debug(f"Synthesizing speech for message '{agent_response_message.message}'")
                 synthesis_result = await self.conversation.synthesizer.create_speech(
                     agent_response_message.message,
                     self.chunk_size,
@@ -410,10 +405,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                 )
                 item.agent_response_tracker.set()
-                self.conversation.logger.debug(
-                    "Bot reponse sent: {}".format(message_sent)
-                )
-
+                self.conversation.logger.debug("Bot response sent: {}".format(message_sent))
+                
+                if metadata.get("stop"):
+                    self.conversation.logger.debug("Agent requested to stop")
+                    # Shield the call, because when we terminate, a brodacast_interrupt is sent
+                    # which in turn cancels this process task
+                    await asyncio.shield(self.conversation.terminate())
+                    return
+                    
                 if self.conversation.agent.agent_config.end_conversation_on_goodbye:
                     goodbye_detected_task = (
                         self.conversation.agent.create_goodbye_detection_task(
@@ -423,13 +423,17 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     try:
                         if await asyncio.wait_for(goodbye_detected_task, 0.1):
                             self.conversation.logger.debug(
-                                "Agent said goodbye, ending call"
+                                "Human said goodbye, ending call"
                             )
                             await self.conversation.terminate()
                     except asyncio.TimeoutError:
                         pass
-            except asyncio.CancelledError:
-                pass
+            except Exception:
+                self.conversation.logger.exception("Exception in SynthesisResultsWorker")
+            # Removed this, because it would make the synthesis to keep running even if we
+            # cancelled it, e.g. from termination
+            # except asyncio.CancelledError:
+            #     pass
 
     def __init__(
         self,
