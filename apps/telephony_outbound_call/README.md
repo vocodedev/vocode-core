@@ -14,7 +14,38 @@ Before running the code, make sure you have the following:
 - [Deepgram API key](https://www.deepgram.com/) - Sign up for a Deepgram account and obtain the API key.
 - [Together API key](https://together.ai/) - Sign up for a Together account and obtain the API key.
 - [Azure Speech key](https://azure.microsoft.com/en-us/services/cognitive-services/speech-to-text/) - Sign up for an Azure Speech account and obtain the API key.
+- [Redis](https://redis.io/download) - Download and install Redis on your machine.
+- [PortAudio](http://www.portaudio.com/download.html) - 
+PortAudio is a cross-platform audio I/O library. Follow these steps to install PortAudio:
+For linux
+Run the following command to install PortAudio using the package manager:
+```
+sudo apt-get install portaudio19-dev
+```
+For macOS
+Run the following command to install PortAudio using Homebrew:
+```
+brew install portaudio
+```
+For Windows
+1. Download the PortAudio binaries from the [PortAudio website](http://www.portaudio.com/download.html).
+2. Extract the downloaded ZIP file.
+3. Copy the `portaudio_x86.dll` or `portaudio_x64.dll` file (depending on your system architecture) to your system's `System32` folder (typically located at `C:\Windows\System32`).
 
+- [ffmpeg](https://ffmpeg.org/documentation.html) 
+For linux
+```
+sudo apt install ffmpeg
+```
+For macos
+```
+brew install ffmpeg
+```
+
+For Windows
+```
+Download the FFmpeg binaries from the FFmpeg website and add the extracted directory containing the FFmpeg executables to your system's PATH environment variable.
+```
 
 ## Installation
 
