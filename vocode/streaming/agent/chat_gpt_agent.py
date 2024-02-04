@@ -26,7 +26,11 @@ from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.vector_db.factory import VectorDBFactory
 
-from telephony_app.utils.call_information_handler import update_call_transcripts
+from telephony_app.models.call_type import CallType
+from telephony_app.utils.call_information_handler import update_call_transcripts, get_company_primary_phone_number, \
+    get_telephony_id_from_internal_id
+from telephony_app.utils.transfer_call_handler import transfer_call
+from telephony_app.utils.twilio_call_helper import hangup_twilio_call
 
 
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
@@ -151,7 +155,36 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             if "true" in response.choices[0].message.content.strip().lower():
                 true_conditions.append(condition)
 
-        return true_conditions  
+        return true_conditions
+
+    async def run_nonblocking_checks(self):
+        if self.agent_config.transcript_analyzer_func == 'check for spam':
+            telephony_id = await get_telephony_id_from_internal_id(
+                call_id=self.agent_config.current_call_id,
+                call_type=self.agent_config.call_type,
+            )
+            try:
+                preamble = "You will be given a transcript between a caller and the receiver's assistant. Please classify if the call is a spam or an important conversation that should be transferred to the intended recipient. If it's spam, say 'HANGUP'. If you should transfer, say 'TRANSFER'. If you're not sure, or there's not enough data, say 'NOT SURE'"
+                system_message = {"role": "system", "content": preamble}
+                transcript_message = {"role": "user", "content": self.transcript.to_string()}
+
+                combined_messages = [system_message, transcript_message]
+                chat_parameters = self.get_chat_parameters(messages=combined_messages)
+                response = await self.aclient.chat.completions.create(**chat_parameters)
+
+                spam_classification = response.choices[0].message.content
+
+                if "TRANSFER" in spam_classification:
+                    self.logger.info("I am now transferring the call")
+                    await self.transfer_call(telephony_id=telephony_id)
+                elif "HANGUP" in spam_classification:
+                    self.logger.info(f"I am now hanging up because this call {self.agent_config.current_call_id} is spam")
+                    await hangup_twilio_call(call_sid=telephony_id)
+                else:
+                    self.logger.info("I'm not sure if this call is spam yet")
+            except Exception as e:
+                self.logger.error(f"An error occurred: {e}")
+        return
     
     async def respond(
             self,
@@ -233,8 +266,27 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             all_messages.append(f"{message} ")
             yield message, True
 
-        complete_message = ''.join(all_messages)
+        latest_agent_response = ''.join(all_messages)
+        await self.run_nonblocking_checks()
+        self.logger.info(f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {latest_agent_response}")
 
-        # do another openai call this time feeding in the whole convo in string form 
+    async def transfer_call(self, telephony_id):
+        if self.agent_config.call_type == CallType.INBOUND:
+            company_phone_number = self.agent_config.to_phone_number
+        elif self.agent_config.call_type == CallType.OUTBOUND:
+            company_phone_number = self.agent_config.from_phone_number
+        else:
+            raise ValueError(
+                f"There is no assigned call type for call {self.agent_config.current_call_id}"
+            )
 
-        self.logger.info(f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {complete_message}")
+        phone_number_transfer_to = await get_company_primary_phone_number(
+            phone_number=company_phone_number
+        )
+
+        # transfer to the primary number associated with each company; the phone number being called into is
+        # associated to a singular assigned company
+        await transfer_call(
+            telephony_call_sid=telephony_id,
+            phone_number_transfer_to=phone_number_transfer_to,
+        )

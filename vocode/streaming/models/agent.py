@@ -82,6 +82,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     call_type: Optional[CallType] = None
     from_phone_number: Optional[str] = None
     to_phone_number: Optional[str] = None
+    transcript_analyzer_func: Optional[str] = None
 
 
 class CutOffResponse(BaseModel):
