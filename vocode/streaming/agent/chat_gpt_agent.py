@@ -3,6 +3,7 @@ import json
 import logging
 
 from typing import Any, Dict, List, Optional, Tuple, Union
+import aiohttp
 
 import openai
 from openai import AzureOpenAI, AsyncAzureOpenAI, OpenAI, AsyncOpenAI
@@ -184,7 +185,32 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     self.logger.info("I'm not sure if this call is spam yet")
             except Exception as e:
                 self.logger.error(f"An error occurred: {e}")
-        return
+        elif self.agent_config.transcript_analyzer_func == 'check for availability':
+            try:
+                preamble = "You will be given a transcript between a caller and the assistant. Please classify if the assistant has offered to check availability for the caller. If the assistant has offered to check availability, say 'YES'. If the assistant has not offered to check availability, say 'NO'. If you're not sure, or there's not enough data, say 'NOT SURE'"
+                system_message = {"role": "system", "content": preamble}
+                transcript_message = {"role": "user", "content": self.transcript.to_string()}
+                combined_messages = [system_message, transcript_message]
+                chat_parameters = self.get_chat_parameters(messages=combined_messages)
+                response = await self.aclient.chat.completions.create(**chat_parameters)
+
+                availability_classification = response.choices[0].message.content
+
+                if "yes" in availability_classification.lower():
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get("http://127.0.0.1:27120/get_busy_periods?start_date=2024-02-05&end_date=2024-02-12") as response:
+                            if response.status == 200:
+                                self.logger.info("The assistant has offered to check availability")
+                                return await response.json()
+                            else:
+                                self.logger.error(f"Failed to check availability: HTTP {response.status}")
+                elif "no" in availability_classification.lower():
+                    self.logger.info("The assistant has not offered to check availability")
+                else:
+                    self.logger.info("I'm not sure if the assistant has offered to check availability yet")
+            except Exception as e:
+                self.logger.error(f"An error occurred: {e}")
+        return None
     
     async def respond(
             self,
@@ -267,7 +293,19 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             yield message, True
 
         latest_agent_response = ''.join(all_messages)
-        await self.run_nonblocking_checks()
+        api_response = await self.run_nonblocking_checks()
+        if api_response:
+            #call the model with the api response to get the final response
+            preamble = "You will be given a transcript between a caller and the assistant. You will also be provided an API response. Write the assistant's latest message based on the API response."
+            system_message = {"role": "system", "content": preamble}
+            transcript_message = {"role": "user", "content": self.transcript.to_string()}
+            api_response_message = {"role": "user", "content": api_response}
+            combined_messages = [system_message, transcript_message, api_response_message]
+            chat_parameters = self.get_chat_parameters(messages=combined_messages)
+            response = await self.aclient.chat.completions.create(**chat_parameters)
+            output = response.choices[0].message.content
+            yield output, False 
+            
         self.logger.info(f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {latest_agent_response}")
 
     async def transfer_call(self, telephony_id):
