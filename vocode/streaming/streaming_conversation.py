@@ -540,6 +540,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         self.is_human_speaking = False
         self.active = False
+        self.terminate_called = False
 
         self.last_action_timestamp = 0.0
         self.mark_last_action_timestamp()
@@ -870,7 +871,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.active = False
 
     async def terminate(self):
+        if self.terminate_called:
+            self.logger.warning("Terminate already called. Ignoring.")
+            return
         self.mark_terminated()
+        self.terminate_called = True
         self.broadcast_interrupt()
         self.events_manager.publish_event(
             TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
