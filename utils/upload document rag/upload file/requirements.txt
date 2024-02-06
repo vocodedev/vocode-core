@@ -1,0 +1,8 @@
+langchain==0.0.237
+spacy==3.6.0
+unstructured==0.8.1
+layoutparser==0.3.4
+pinecone-client==2.2.2
+openai==0.27.8
+torch>=2.0.0,!=2.0.1
+tiktoken==0.4.0

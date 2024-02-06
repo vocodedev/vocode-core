@@ -10,18 +10,28 @@ from vocode.streaming.telephony.config_manager.redis_config_manager import (
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgentConfig
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 from vocode.streaming.models.transcriber import DeepgramTranscriberConfig
-
+from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.audio_encoding import AudioEncoding
+from vocode.streaming.vector_db.factory import VectorDBFactory
+from vocode.streaming.vector_db.pinecone import PineconeConfig
 
 BASE_URL = os.environ["BASE_URL"]
 
 async def main():
     config_manager = RedisConfigManager()
+    vector_db_config = PineconeConfig(
+    index=os.getenv('PINECONE_INDEX_NAME')
+    )
 
     agent_config = ChatGPTAgentConfig(
         max_tokens=100,
         temperature=0.7,
-        prompt_preamble="Hello, how can i help you today?"
+        initial_message=BaseMessage(text="Hello!, I am Jonathan Arcadia."),
+        vector_db_config=vector_db_config,
+        prompt_preamble="""
+                I want you to act as an IT Architect. 
+            Who answers to user's ML doubts based on the book field guide to data science.
+"""
     )
 
     synthesizer_config = AzureSynthesizerConfig(
