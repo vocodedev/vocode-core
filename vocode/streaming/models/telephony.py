@@ -17,6 +17,7 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_SAMPLING_RATE,
+    DEEPGRAM_DEFAULT_MODEL,
     VONAGE_CHUNK_SIZE,
     VONAGE_AUDIO_ENCODING,
     VONAGE_SAMPLING_RATE,
@@ -118,8 +119,7 @@ class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):
             sampling_rate=DEFAULT_SAMPLING_RATE,
             audio_encoding=DEFAULT_AUDIO_ENCODING,
             chunk_size=DEFAULT_CHUNK_SIZE,
-            model="phonecall",
-            tier="nova",
+            model=DEEPGRAM_DEFAULT_MODEL,
             endpointing_config=TimeEndpointingConfig(),
         )
 
@@ -142,8 +142,7 @@ class VonageCallConfig(BaseCallConfig, type=CallConfigType.VONAGE.value):
             sampling_rate=VONAGE_SAMPLING_RATE,
             audio_encoding=VONAGE_AUDIO_ENCODING,
             chunk_size=VONAGE_CHUNK_SIZE,
-            model="phonecall",
-            tier="nova",
+            model=DEEPGRAM_DEFAULT_MODEL,
             endpointing_config=PunctuationEndpointingConfig(),
         )
 
