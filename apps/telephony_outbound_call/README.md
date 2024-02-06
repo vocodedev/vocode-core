@@ -104,7 +104,7 @@ Download the FFmpeg binaries from the FFmpeg website and add the extracted direc
 To start the server, run the following command:
 
 ```bash
-poetry run uvicorn main:app --port=8000
+poetry run uvicorn main:app --host=0.0.0.0 --port=3000
 ```
 To make an outbound call, run the following command:
 ```bash
