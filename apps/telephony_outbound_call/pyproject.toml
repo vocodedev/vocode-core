@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "telephony-outbound-call"
+version = "0.1.0"
+description = "Outbound Call with Chatgpt"
+authors = ["apoorv nag <apoorv@rapidinnovation.dev>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+vocode = "^0.1.111"
+pyngrok = "^7.0.5"
+redis = "^5.0.1"
+twilio = "^8.12.0"
+python-dotenv = "^1.0.1"
+vonage = "3.5.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
