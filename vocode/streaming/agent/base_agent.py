@@ -227,6 +227,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 if response.metadata.get("stop") == True:
                     should_stop = True
 
+                if response.text == '' and response.metadata.get("stop") == True:
+                    response.text = "Adios"
+
                 # Only send onward if we have text
                 if re.search(r"\w", response.text):
                     self.produce_interruptible_agent_response_event_nonblocking(
