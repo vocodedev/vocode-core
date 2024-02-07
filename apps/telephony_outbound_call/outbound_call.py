@@ -15,7 +15,14 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.vector_db.factory import VectorDBFactory
 from vocode.streaming.vector_db.pinecone import PineconeConfig
 
-BASE_URL = os.environ["BASE_URL"]
+
+BASE_URL = os.getenv('BASE_URL')
+
+# create logger object
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 async def main():
     config_manager = RedisConfigManager()
@@ -28,6 +35,7 @@ async def main():
         temperature=0.7,
         initial_message=BaseMessage(text="Hello!, I am Jonathan Arcadia."),
         vector_db_config=vector_db_config,
+        end_conversation_on_goodbye=True,
         prompt_preamble="""
                 I want you to act as an IT Architect. 
             Who answers to user's ML doubts based on the book field guide to data science.
@@ -55,7 +63,8 @@ async def main():
         config_manager=config_manager,
         agent_config=agent_config,
         synthesizer_config=synthesizer_config,
-        transcriber_config=transcriber_config
+        transcriber_config=transcriber_config,
+        logger=logger
     )
 
     try:

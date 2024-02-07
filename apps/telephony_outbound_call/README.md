@@ -47,6 +47,10 @@ For Windows
 Download the FFmpeg binaries from the FFmpeg website and add the extracted directory containing the FFmpeg executables to your system's PATH environment variable.
 ```
 
+- spacy model en_core_web_sm
+```
+poetry run python -m spacy download en_core_web_sm
+```
 ## Installation
 
 1. Clone the repository:
