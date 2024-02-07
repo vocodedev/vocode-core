@@ -109,7 +109,7 @@ class OutboundCall:
         else:
             raise ValueError("No telephony config provided")
 
-    async def start(self, internal_id: Optional[str] = None):
+    async def start(self):
         self.logger.debug("Starting outbound call")
         await self.telephony_client.initialize_client()  # FIXME: ugly hack, to make it async.
         # FIXME: not compatible with Vonage
@@ -149,8 +149,6 @@ class OutboundCall:
         else:
             raise ValueError("Unknown telephony client")
         await self.config_manager.save_config(self.conversation_id, call_config)
-        if internal_id is not None:
-            await self.config_manager.create_id_router(internal_id, self.telephony_id)
 
     async def end(self):
         return await self.telephony_client.end_call(self.telephony_id)

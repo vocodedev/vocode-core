@@ -78,7 +78,10 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     actions: Optional[List[ActionConfig]] = None
 
     initial_audio_path: Optional[str] = None  # path to audio file.
-    prompt_template_filename: Optional[str] = None
+    # Filler picker specials
+    language: Optional[str] = None  # Language of the fillers to be used (determines the folder)
+    prompt_template: Optional[
+        dict] = None  # Prompt template to be used for filler generation (SAY part mostly). Passed as dict.
 
 
 class CutOffResponse(BaseModel):
