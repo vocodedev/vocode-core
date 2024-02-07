@@ -47,6 +47,10 @@ For Windows
 Download the FFmpeg binaries from the FFmpeg website and add the extracted directory containing the FFmpeg executables to your system's PATH environment variable.
 ```
 
+- spacy model en_core_web_sm
+```
+poetry run python -m spacy download en_core_web_sm
+```
 ## Installation
 
 1. Clone the repository:
@@ -104,7 +108,7 @@ Download the FFmpeg binaries from the FFmpeg website and add the extracted direc
 To start the server, run the following command:
 
 ```bash
-poetry run uvicorn main:app --port=8000
+poetry run uvicorn main:app --host=0.0.0.0 --port=3000
 ```
 To make an outbound call, run the following command:
 ```bash
