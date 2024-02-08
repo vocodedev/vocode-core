@@ -164,7 +164,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
             self.logger.debug(f"Media WS: Received event 'stop': {message}")
             self.logger.debug("Stopping...")
             await execute_status_update_by_telephony_id(telephony_id=data['stop']['callSid'],
-                                                        call_status=CallStatus.ENDED_BEFORE_TRANSFER.value,
+                                                        call_status=CallStatus.ENDED_BEFORE_TRANSFER,
                                                         call_type=self.agent.agent_config.call_type)
             self.logger.debug("Updated call status to have ended")
             return PhoneCallWebsocketAction.CLOSE_WEBSOCKET
