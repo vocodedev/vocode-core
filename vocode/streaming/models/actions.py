@@ -9,6 +9,7 @@ class ActionType(str, Enum):
     BASE = "action_base"
     NYLAS_SEND_EMAIL = "action_nylas_send_email"
     TRANSFER_CALL = "action_transfer_call"
+    HANGUP_CALL = "hangup_call"
 
 
 class ActionConfig(TypedModel, type=ActionType.BASE):
