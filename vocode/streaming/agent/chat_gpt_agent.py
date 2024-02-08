@@ -179,7 +179,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     await self.transfer_call(telephony_id=telephony_id)
                 elif "HANGUP" in spam_classification:
                     self.logger.info(f"I am now hanging up because this call {self.agent_config.current_call_id} is spam")
-                    await hangup_twilio_call(call_sid=telephony_id)
+                    await hangup_twilio_call(call_sid=telephony_id, call_type=self.agent_config.call_type)
                 else:
                     self.logger.info("I'm not sure if this call is spam yet")
             except Exception as e:
