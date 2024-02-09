@@ -11,9 +11,9 @@ Agents on phone calls can take three actions:
 
 ```python Python
 vocode_client.actions.create_action(
-  request=CreateActionRequest(
-      type="action_end_conversation",
-  )
+  request={
+      "type": "action_end_conversation",
+  }
 )
 ```
 
@@ -41,9 +41,9 @@ curl --request POST \
 
 ```python Python
 vocode_client.actions.create_action(
-  request=CreateActionRequest(
-      type="action_dtmf",
-  )
+  request={
+      "type":"action_dtmf",
+  }
 )
 ```
 
@@ -71,12 +71,12 @@ curl --request POST \
 
 ```python Python
 vocode_client.actions.create_action(
-  request=CreateActionRequest(
-      type="action_transfer_call",
-      config=TransferCallActionUpdateParamsConfig(
-          phone_number="11234567890"
-      )
-  )
+  request={
+      "type":"action_transfer_call",
+      "config":{
+          "phone_number":"11234567890"
+      }
+  }
 )
 ```
 
@@ -109,9 +109,11 @@ You can attach these as IDs to your phone number agent as follows:
   <CodeGroup>
 
 ```python Python
+from vocode import AgentUpdateParams
+
 vocode_client.numbers.update_number(
   phone_number="11234567890",
-  inbound_agent=UpdateNumberRequestInboundAgent(
+  inbound_agent=AgentUpdateParams(
       actions=["<ACTION UUID>"]
   )
 )
@@ -145,14 +147,16 @@ You can also add these as actions as raw payloads as follows:
   <CodeGroup>
 
 ```python Python
+from vocode import AgentUpdateParams, TransferCallActionUpdateParams
+
 vocode_client.numbers.update_number(
   phone_number="11234567890",
-  inbound_agent=UpdateNumberRequestInboundAgent(
+  inbound_agent=AgentUpdateParams(
       actions=[TransferCallActionUpdateParams(
           type="action_transfer_call",
-          config=TransferCallActionUpdateParamsConfig(
-              phone_number="11234567890"
-          )
+          config={
+              "phone_number":"11234567890"
+          }
       )]
   )
 )
