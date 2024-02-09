@@ -1,0 +1,106 @@
+---
+name: Bug Report
+description: Use this template for reporting bugs.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: brief-description
+    attributes:
+      label: Brief Description
+      description: Please summarize the bug, specifying where it occurs (e.g., in which part of the code or when performing a specific action).
+    validations:
+      required: true
+  - type: dropdown
+    id: llm
+    attributes:
+      label: LLM
+      description: Please specify the LLM you are using.
+      options:
+        - ChatGPT
+        - GPT-4
+        - Anthropic
+        - GPT4All
+    validations:
+      required: false
+  - type: dropdown
+    id: transcription-services
+    attributes:
+      label: Transcription Services
+      description: Please specify the Transcription service you are using.
+      options:
+        - AssemblyAI
+        - Deepgram
+        - Gladia
+        - Google Cloud
+        - Microsoft Azure
+        - RevAI
+        - Whisper
+        - Whisper.cpp
+    validations:
+      required: false
+  - type: dropdown
+    id: synthesis-services
+    attributes:
+      label: Synthesis Services
+      description: Please specify the Synthesis service you are using.
+      options:
+        - Rime.ai
+        - Microsoft Azure
+        - Google Cloud
+        - Play.ht
+        - Eleven Labs
+        - Coqui
+        - Coqui (OSS)
+        - gTTS
+        - StreamElements
+        - Bark
+        - AWS Polly
+    validations:
+      required: false
+  - type: dropdown
+    id: telephony-services
+    attributes:
+      label: Telephony Services
+      description: Please specify the Telephony service you are using.
+      options:
+        - Twilio
+        - Vonage
+    validations:
+      required: false
+  - type: textarea
+    id: conversation-type-and-platform
+    attributes:
+      label: Conversation Type and Platform
+      description: Please specify the type of conversation (turn-based or real-time streaming), and the platform (Phone with Twilio or Vonage, Web, or Meeting).
+    validations:
+      required: false
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: List the steps to reproduce the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: Describe what should happen instead of the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain the problem.
+    validations:
+      required: false
+---
+
+

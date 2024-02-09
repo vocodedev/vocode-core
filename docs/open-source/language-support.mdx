@@ -3,4 +3,59 @@ title: "Multilingual support"
 description: "How to configure different languages"
 ---
 
-# 🚧 Under construction
+# Multilingual Support
+
+The vocode project can be configured to support multiple languages for speech synthesis and automatic speech recognition (ASR).
+
+## Speech Synthesis
+
+The speech synthesizer used in vocode is configurable. By default, the `AzureSynthesizer` is used which supports [over 75 voices across over 45 languages](https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support?tabs=tts).
+
+To configure a different language, modify the `SynthesizerConfig` when initializing the conversation:
+
+```python
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+
+synthesizer_config = AzureSynthesizerConfig(
+    voice_name="de-DE-KatjaNeural" # German voice
+    language_code="de-DE" # Language of text to be synthesized
+)
+```
+
+See the [full list of supported voices](https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support?tabs=tts).
+
+## Transcription
+
+The transcriber used in vocode is also configurable. By default, `DeepgramTranscriber` is used which supports [over 25 languages](https://developers.deepgram.com/docs/languages-overview).
+
+To configure a different language model, modify the language code passed to `TranscriberConfig` when initializing the config object (`en-US` is the default):
+
+```python
+from vocode.streaming.models.transcriber import DeepgramTranscriberConfig
+
+transcriber_config = DeepgramTranscriberConfig(
+    language="es" # Spanish
+)
+```
+
+See the [Deepgram docs](https://developers.deepgram.com/docs/languages-overview) for the list of supported lamguages.
+
+Other transcription services like Google Cloud Speech or Assembly AI could also be used by configuring the appropriate `TranscriberConfig`.
+
+## Language Configuration
+
+It is recommended to load the speech synthesizer voice and transcription model from environment variables or configuration to avoid hard-coding language choices:
+
+```python
+import os
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.models.transcriber import DeepgramTranscriberConfig
+
+SYNTHESIZER_VOICE = os.getenv("SYNTHESIZER_VOICE", default="en-US-AriaNeural")
+ASR_MODEL = os.getenv("DEEPGRAM_MODEL", default="en-US")
+
+synthesizer_config = AzureSynthesizerConfig(voice=SYNTHESIZER_VOICE)
+transcriber_config = DeepgramTranscriberConfig(model=DEEPGRAM_MODEL)
+```
+
+This allows dynamically configuring the speech language without code changes.

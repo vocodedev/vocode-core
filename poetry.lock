@@ -152,23 +152,22 @@ frozenlist = ">=1.1.0"
 
 [[package]]
 name = "anthropic"
-version = "0.2.10"
-description = "Library for accessing the anthropic API"
+version = "0.7.1"
+description = "The official Python library for the anthropic API"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.7"
 files = [
-    {file = "anthropic-0.2.10-py3-none-any.whl", hash = "sha256:a007496207fd186b0bcb9592b00ca130069d2a427f3d6f602a61dbbd1ac6316e"},
-    {file = "anthropic-0.2.10.tar.gz", hash = "sha256:e4da061a86d8ffb86072c0b0feaf219a3a4f7dfddd4224df9ba769e469498c19"},
+    {file = "anthropic-0.7.1-py3-none-any.whl", hash = "sha256:116d009f1a01fa46f3213e1f0b57b79a5ce3f3c0b2bf14441f96c8de6399a4b4"},
+    {file = "anthropic-0.7.1.tar.gz", hash = "sha256:c5559be61dc74499e713669ee9efc0da6f190870f32c9606d7ad989dea5bde82"},
 ]
 
 [package.dependencies]
-aiohttp = "*"
-httpx = "*"
-requests = "*"
-tokenizers = "*"
-
-[package.extras]
-dev = ["black (>=22.3.0)", "pytest"]
+anyio = ">=3.5.0,<4"
+distro = ">=1.7.0,<2"
+httpx = ">=0.23.0,<1"
+pydantic = ">=1.9.0,<3"
+tokenizers = ">=0.13.0"
+typing-extensions = ">=4.5,<5"
 
 [[package]]
 name = "anyio"

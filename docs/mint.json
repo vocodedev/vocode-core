@@ -162,11 +162,21 @@
       ]
     },
     {
+      "group": "Account Connections",
+      "pages": [
+        "api-reference/account_connections/get-account-connection",
+        "api-reference/account_connections/list-account-connections",
+        "api-reference/account_connections/create-account-connection",
+        "api-reference/account_connections/update-account-connection"
+      ]
+    },
+    {
       "group": "Hosted Walkthrough",
       "pages": [
         "getting-number",
         "configuring-number",
         "retrieve-call-data",
+        "conversational-dials",
         "setting-up-webhook",
         "using-actions",
         "vectordb",
@@ -175,7 +185,9 @@
         "machine-detection",
         "ivr-navigation",
         "hipaa-compliance",
-        "do-not-call-detection"
+        "do-not-call-detection",
+        "bring-your-own-telephony",
+        "bring-your-own-openai"
       ]
     }
   ],
