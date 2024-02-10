@@ -65,6 +65,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
         self.audio_cursor = 0.0
+        self.openai_client = OpenAI(api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE"))
 
     async def _run_loop(self):
         restarts = 0
@@ -130,7 +131,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
     # This function will return how long the time silence for endpointing should be
     def classify_endpointing_duration(self, transcript: str):
-        self.client = OpenAI(api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE"))
         preamble = "Your task is to classify whether a provided user message is complete or the user is still typing. Regardless of grammatical correctness, the message should be considered complete if it is a full thought or question. If the message is incomplete, the user is 'typing'. If the message complete the user is 'sending'. If the message completeness if ambiguous, the user is 'thinking'. Based on which is demonstrated in the provided message, return either 'typing', 'sending', or 'thinking'."
         user_message = f"The user message is: {transcript}"
         messages = [
@@ -148,9 +148,13 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             "messages": messages,
             "max_tokens": 5,
             "temperature": 0,
-            "stop": ["User:", "\n", "<|im_end|>", "?"],
+            "stop": ["User:", "\n", "", "?"],
         }
-        response = self.client.chat.completions.create(**parameters)
+
+        response = self.openai_client.chat.completions.create(**parameters)
+        return self._get_classified_time_cutoff_seconds(response)
+
+    def _get_classified_time_cutoff_seconds(self, response):
         parsed = response.choices[0].message.content.lower().strip()
         if "typing" in parsed:
             self.logger.info("It is typing")
@@ -200,19 +204,18 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         elif isinstance(
             self.transcriber_config.endpointing_config, ClassifierEndpointingConfig
         ):
-            # same as punctuation based, but we need to classify the transcript and not use the punctuation at all or the is_final
+            # If there's no transcript, check if the buffer is non-empty and the silence duration exceeds the threshold
             if not transcript:
-                return (current_buffer and
-                        (time_silent + deepgram_response["duration"]) > self.transcriber_config.endpointing_config.time_cutoff_seconds)
+                silence_exceeds_threshold = (time_silent + deepgram_response["duration"]) > self.transcriber_config.endpointing_config.time_cutoff_seconds
+                return current_buffer and silence_exceeds_threshold
 
-            if transcript and len(transcript) >= 2:
+            # For non-empty transcripts with more than just the start of a sentence
+            if len(transcript) >= 2:
                 classified_endpoint_duration = self.classify_endpointing_duration(transcript)
                 return time_silent > classified_endpoint_duration
-            else:
-                if time_silent and deepgram_response["duration"]:
-                    return (time_silent + deepgram_response["duration"]) > 0.4
-                else:
-                    return False
+
+            # For shorter transcripts, check if the combined silence duration exceeds a fixed threshold
+            return time_silent + deepgram_response["duration"] > 0.4 if time_silent and deepgram_response["duration"] else False
 
         raise Exception("Endpointing config not supported")
 

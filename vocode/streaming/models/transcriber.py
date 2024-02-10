@@ -31,6 +31,7 @@ class EndpointingType(str, Enum):
     BASE = "endpointing_base"
     TIME_BASED = "endpointing_time_based"
     PUNCTUATION_BASED = "endpointing_punctuation_based"
+    CLASSIFIER_BASED = "endpointing_classifier_based"
 
 
 class EndpointingConfig(TypedModel, type=EndpointingType.BASE):
