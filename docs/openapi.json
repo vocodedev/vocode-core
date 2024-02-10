@@ -3974,6 +3974,16 @@
             ],
             "title": "Outbound Only"
           },
+          "example_context": {
+            "anyOf": [
+              {
+                "additionalProperties": { "type": "string" },
+                "type": "object"
+              },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Example Context"
+          },
           "label": {
             "anyOf": [
               { "type": "string" },
