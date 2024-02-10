@@ -31,10 +31,18 @@ class EndpointingType(str, Enum):
     BASE = "endpointing_base"
     TIME_BASED = "endpointing_time_based"
     PUNCTUATION_BASED = "endpointing_punctuation_based"
+    CLASSIFIER_BASED = "endpointing_classifier_based"
 
 
 class EndpointingConfig(TypedModel, type=EndpointingType.BASE):
     pass
+
+
+class ClassifierEndpointingConfig(EndpointingConfig, type=EndpointingType.CLASSIFIER_BASED):
+    time_cutoff_seconds: float = 0.3
+    instructions: Optional[str]
+    base_url: Optional[str]
+    model_name: Optional[str]
 
 
 class TimeEndpointingConfig(EndpointingConfig, type=EndpointingType.TIME_BASED):

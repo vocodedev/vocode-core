@@ -8,6 +8,7 @@ from vocode.streaming.models.synthesizer import (
     SynthesizerConfig,
 )
 from vocode.streaming.models.transcriber import (
+    ClassifierEndpointingConfig,
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
     TimeEndpointingConfig,
@@ -120,7 +121,7 @@ class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):
             audio_encoding=DEFAULT_AUDIO_ENCODING,
             chunk_size=DEFAULT_CHUNK_SIZE,
             model=DEEPGRAM_DEFAULT_MODEL,
-            endpointing_config=TimeEndpointingConfig(),
+            endpointing_config=ClassifierEndpointingConfig(),
         )
 
     @staticmethod

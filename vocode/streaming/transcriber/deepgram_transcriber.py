@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 from typing import Optional
+
+from openai import AsyncOpenAI, OpenAI
 import websockets
 from websockets.client import WebSocketClientProtocol
 import audioop
@@ -14,6 +16,7 @@ from vocode.streaming.transcriber.base_transcriber import (
     meter,
 )
 from vocode.streaming.models.transcriber import (
+    ClassifierEndpointingConfig,
     DeepgramTranscriberConfig,
     EndpointingConfig,
     EndpointingType,
@@ -62,6 +65,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
         self.audio_cursor = 0.0
+        self.openai_client = OpenAI(api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE"))
 
     async def _run_loop(self):
         restarts = 0
@@ -125,6 +129,45 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         url_params.update(extra_params)
         return f"wss://api.deepgram.com/v1/listen?{urlencode(url_params)}"
 
+    # This function will return how long the time silence for endpointing should be
+    def classify_endpointing_duration(self, transcript: str):
+        preamble = "Your task is to classify whether a provided user message is complete or the user is still typing. Regardless of grammatical correctness, the message should be considered complete if it is a full thought or question. If the message is incomplete, the user is 'typing'. If the message complete the user is 'sending'. If the message completeness if ambiguous, the user is 'thinking'. Based on which is demonstrated in the provided message, return either 'typing', 'sending', or 'thinking'."
+        user_message = f"The user message is: {transcript}"
+        messages = [
+            {
+                "role": "system",
+                "content": preamble
+            },
+            {
+                "role": "user",
+                "content": user_message
+            }
+        ]
+        parameters = {
+            "model": "TheBloke/Nous-Hermes-2-Mixtral-8x7B-DPO-AWQ",
+            "messages": messages,
+            "max_tokens": 5,
+            "temperature": 0,
+            "stop": ["User:", "\n", "", "?"],
+        }
+
+        response = self.openai_client.chat.completions.create(**parameters)
+        return self._get_classified_time_cutoff_seconds(response)
+
+    def _get_classified_time_cutoff_seconds(self, response):
+        parsed = response.choices[0].message.content.lower().strip()
+        if "typing" in parsed:
+            self.logger.info("It is typing")
+            return 3.0
+        elif "sending" in parsed:
+            self.logger.info("It is sending")
+            return 0
+        elif "thinking" in parsed:
+            self.logger.info("It is thinking")
+            return 0.2
+        else:
+            return 0.1
+
     def is_speech_final(
         self, current_buffer: str, deepgram_response: dict, time_silent: float
     ):
@@ -158,6 +201,23 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 and (time_silent + deepgram_response["duration"])
                 > self.transcriber_config.endpointing_config.time_cutoff_seconds
             )
+        elif isinstance(
+            self.transcriber_config.endpointing_config, ClassifierEndpointingConfig
+        ):
+            # If there's no transcript, check if the buffer is non-empty and the silence duration exceeds the threshold
+            if not transcript:
+                silence_exceeds_threshold = (time_silent + deepgram_response["duration"]) > self.transcriber_config.endpointing_config.time_cutoff_seconds
+                return current_buffer and silence_exceeds_threshold
+
+            # For non-empty transcripts with more than just the start of a sentence
+            if len(transcript) >= 2:
+                classified_endpoint_duration = self.classify_endpointing_duration(transcript)
+                return time_silent > classified_endpoint_duration
+
+            # For shorter transcripts, check if the combined silence duration exceeds a fixed threshold
+            return time_silent + deepgram_response["duration"] > self.transcriber_config.endpointing_config.time_cutoff_seconds \
+                if time_silent and deepgram_response["duration"] else False
+
         raise Exception("Endpointing config not supported")
 
     def calculate_time_silent(self, data: dict):
@@ -222,6 +282,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     min_latency_hist.record(max(cur_min_latency, 0))
 
                     is_final = data["is_final"]
+                    time_silent = self.calculate_time_silent(data)
                     speech_final = self.is_speech_final(buffer, data, time_silent)
                     top_choice = data["channel"]["alternatives"][0]
                     confidence = top_choice["confidence"]
