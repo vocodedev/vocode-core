@@ -215,7 +215,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 return time_silent > classified_endpoint_duration
 
             # For shorter transcripts, check if the combined silence duration exceeds a fixed threshold
-            return time_silent + deepgram_response["duration"] > 0.4 if time_silent and deepgram_response["duration"] else False
+            return time_silent + deepgram_response["duration"] > self.transcriber_config.endpointing_config.time_cutoff_seconds \
+                if time_silent and deepgram_response["duration"] else False
 
         raise Exception("Endpointing config not supported")
 
