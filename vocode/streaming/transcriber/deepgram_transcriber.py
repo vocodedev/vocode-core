@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 from typing import Optional
+
+from openai import AsyncOpenAI, OpenAI
 import websockets
 from websockets.client import WebSocketClientProtocol
 import audioop
@@ -14,6 +16,7 @@ from vocode.streaming.transcriber.base_transcriber import (
     meter,
 )
 from vocode.streaming.models.transcriber import (
+    ClassifierEndpointingConfig,
     DeepgramTranscriberConfig,
     EndpointingConfig,
     EndpointingType,
@@ -125,6 +128,42 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         url_params.update(extra_params)
         return f"wss://api.deepgram.com/v1/listen?{urlencode(url_params)}"
 
+    # This function will return how long the time silence for endpointing should be
+    def classify_endpointing_duration(self, transcript: str):
+        self.client = OpenAI(api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE"))
+        preamble = "Your task is to classify whether a provided user message is complete or the user is still typing. Regardless of grammatical correctness, the message should be considered complete if it is a full thought or question. If the message is incomplete, the user is 'typing'. If the message complete the user is 'sending'. If the message completeness if ambiguous, the user is 'thinking'. Based on which is demonstrated in the provided message, return either 'typing', 'sending', or 'thinking'."
+        user_message = f"The user message is: {transcript}"
+        messages = [
+            {
+                "role": "system",
+                "content": preamble
+            },
+            {
+                "role": "user",
+                "content": user_message
+            }
+        ]
+        parameters = {
+            "model": "TheBloke/Nous-Hermes-2-Mixtral-8x7B-DPO-AWQ",
+            "messages": messages,
+            "max_tokens": 5,
+            "temperature": 0,
+            "stop": ["User:", "\n", "<|im_end|>", "?"],
+        }
+        response = self.client.chat.completions.create(**parameters)
+        parsed = response.choices[0].message.content.lower().strip()
+        if "typing" in parsed:
+            self.logger.info("It is typing")
+            return 3.0
+        elif "sending" in parsed:
+            self.logger.info("It is sending")
+            return 0
+        elif "thinking" in parsed:
+            self.logger.info("It is thinking")
+            return 0.2
+        else:
+            return 0.1
+
     def is_speech_final(
         self, current_buffer: str, deepgram_response: dict, time_silent: float
     ):
@@ -158,6 +197,23 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 and (time_silent + deepgram_response["duration"])
                 > self.transcriber_config.endpointing_config.time_cutoff_seconds
             )
+        elif isinstance(
+            self.transcriber_config.endpointing_config, ClassifierEndpointingConfig
+        ):
+            # same as punctuation based, but we need to classify the transcript and not use the punctuation at all or the is_final
+            if not transcript:
+                return (current_buffer and
+                        (time_silent + deepgram_response["duration"]) > self.transcriber_config.endpointing_config.time_cutoff_seconds)
+
+            if transcript and len(transcript) >= 2:
+                classified_endpoint_duration = self.classify_endpointing_duration(transcript)
+                return time_silent > classified_endpoint_duration
+            else:
+                if time_silent and deepgram_response["duration"]:
+                    return (time_silent + deepgram_response["duration"]) > 0.4
+                else:
+                    return False
+
         raise Exception("Endpointing config not supported")
 
     def calculate_time_silent(self, data: dict):
@@ -222,6 +278,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                     min_latency_hist.record(max(cur_min_latency, 0))
 
                     is_final = data["is_final"]
+                    time_silent = self.calculate_time_silent(data)
                     speech_final = self.is_speech_final(buffer, data, time_silent)
                     top_choice = data["channel"]["alternatives"][0]
                     confidence = top_choice["confidence"]
