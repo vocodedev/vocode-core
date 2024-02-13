@@ -295,11 +295,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         async for message in collate_response_async(
             openai_get_tokens(stream), get_functions=True
         ):
-            if message is None:
+            if not message:
                 continue
             yield message, True
             all_messages.append(message)
 
+        # add in a question mark if the last message doesn't end with a punctuation
         if not any(all_messages[-1].endswith(punct) for punct in ".!?"):
             all_messages[-1] += "?"
 
