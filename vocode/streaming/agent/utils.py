@@ -49,13 +49,20 @@ async def collate_response_async(
             possible_list_item = bool(re.match(r"^\d+[ .]", buffer))
             ends_with_money = bool(re.findall(r"\$\d+.$", buffer))
             if re.findall(
-                list_item_ending_pattern
-                if possible_list_item
-                else sentence_endings_pattern,
+                (
+                    list_item_ending_pattern
+                    if possible_list_item
+                    else sentence_endings_pattern
+                ),
                 token,
             ):
                 # Check if the last word in the buffer is longer than 3 letters
                 if not ends_with_money and len(buffer.strip().split()[-1]) >= 4:
+                    # also check that the buffer is longer than 2 words
+                    # prevents clicking from when the audio plays faster than the next chunk returns
+                    # either has a gap in the playback or closes altogether because the chunk is played too quickly
+                    if len(buffer.strip().split()) <= 2:
+                        continue
                     to_return = buffer.strip()
                     if to_return:
                         yield to_return
@@ -81,21 +88,27 @@ async def openai_get_tokens(gen) -> AsyncGenerator[Union[str, FunctionFragment],
             break
         delta = choice.delta
 
-        if hasattr(delta, 'text') and delta.text:
+        if hasattr(delta, "text") and delta.text:
             token = delta.text
             yield token
-        if hasattr(delta, 'content') and delta.content:
+        if hasattr(delta, "content") and delta.content:
             token = delta.content
             yield token
-        elif hasattr(delta, 'function_call') and delta.function_call:
+        elif hasattr(delta, "function_call") and delta.function_call:
             yield FunctionFragment(
-                name=delta.function_call.name
-                if hasattr(delta.function_call, 'name') and delta.function_call.name
-                else "",
-                arguments=delta.function_call.arguments
-                if hasattr(delta.function_call, 'arguments') and delta.function_call.arguments
-                else "",
+                name=(
+                    delta.function_call.name
+                    if hasattr(delta.function_call, "name") and delta.function_call.name
+                    else ""
+                ),
+                arguments=(
+                    delta.function_call.arguments
+                    if hasattr(delta.function_call, "arguments")
+                    and delta.function_call.arguments
+                    else ""
+                ),
             )
+
 
 def find_last_punctuation(buffer: str) -> Optional[int]:
     indices = [buffer.rfind(ending) for ending in SENTENCE_ENDINGS]

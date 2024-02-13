@@ -27,36 +27,45 @@ from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.vector_db.factory import VectorDBFactory
 
 from telephony_app.models.call_type import CallType
-from telephony_app.utils.call_information_handler import update_call_transcripts, get_company_primary_phone_number, \
-    get_telephony_id_from_internal_id
+from telephony_app.utils.call_information_handler import (
+    update_call_transcripts,
+    get_company_primary_phone_number,
+    get_telephony_id_from_internal_id,
+)
 from telephony_app.utils.transfer_call_handler import transfer_call
 from telephony_app.utils.twilio_call_helper import hangup_twilio_call
 
 
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def __init__(
-            self,
-            agent_config: ChatGPTAgentConfig,
-            action_factory: ActionFactory = ActionFactory(),
-            logger: Optional[logging.Logger] = None,
-            openai_api_key: Optional[str] = None,
-            vector_db_factory=VectorDBFactory(),
+        self,
+        agent_config: ChatGPTAgentConfig,
+        action_factory: ActionFactory = ActionFactory(),
+        logger: Optional[logging.Logger] = None,
+        openai_api_key: Optional[str] = None,
+        vector_db_factory=VectorDBFactory(),
     ):
         super().__init__(
             agent_config=agent_config, action_factory=action_factory, logger=logger
         )
 
         if agent_config.azure_params:
-            self.aclient = AsyncAzureOpenAI(api_version=agent_config.azure_params.api_version,
-                                            api_key=getenv("AZURE_OPENAI_API_KEY"),
-                                            azure_endpoint=getenv("AZURE_OPENAI_API_BASE"))
+            self.aclient = AsyncAzureOpenAI(
+                api_version=agent_config.azure_params.api_version,
+                api_key=getenv("AZURE_OPENAI_API_KEY"),
+                azure_endpoint=getenv("AZURE_OPENAI_API_BASE"),
+            )
 
-            self.client = AzureOpenAI(api_version=agent_config.azure_params.api_version,
-                                      api_key=getenv("AZURE_OPENAI_API_KEY"),
-                                      azure_endpoint=getenv("AZURE_OPENAI_API_BASE"))
+            self.client = AzureOpenAI(
+                api_version=agent_config.azure_params.api_version,
+                api_key=getenv("AZURE_OPENAI_API_KEY"),
+                azure_endpoint=getenv("AZURE_OPENAI_API_BASE"),
+            )
         else:
             # mistral configs
-            self.aclient = AsyncOpenAI(api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE"))
+            self.aclient = AsyncOpenAI(
+                api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE")
+            )
             self.client = OpenAI(api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE"))
 
             # openai.api_type = "open_ai"
@@ -95,7 +104,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         ]
 
     def get_chat_parameters(
-            self, messages: Optional[List] = None, use_functions: bool = True
+        self, messages: Optional[List] = None, use_functions: bool = True
     ):
         assert self.transcript is not None
         messages = messages or format_openai_chat_messages_from_transcript(
@@ -135,17 +144,25 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript
 
-    async def check_conditions(self, stringified_messages: str, conditions: List[str]) -> List[str]:
+    async def check_conditions(
+        self, stringified_messages: str, conditions: List[str]
+    ) -> List[str]:
         true_conditions = []
 
         tasks = []
         for condition in conditions:
-            user_message = {"role": "user", "content": stringified_messages + "\n\nNow, return either 'True' or 'False' depending on whether the condition: <" + condition.strip() + "> applies (True) to the conversation or not (False)."}
+            user_message = {
+                "role": "user",
+                "content": stringified_messages
+                + "\n\nNow, return either 'True' or 'False' depending on whether the condition: <"
+                + condition.strip()
+                + "> applies (True) to the conversation or not (False).",
+            }
 
             preamble = "You will be provided a condition and a conversation. Please classify if that condition applies (True), or does not apply (False) to the provided conversation.\n\nCondition:\n"
             system_message = {"role": "system", "content": preamble + condition}
             combined_messages = [system_message, user_message]
-            chat_parameters = self.get_chat_parameters(messages = combined_messages)
+            chat_parameters = self.get_chat_parameters(messages=combined_messages)
             task = self.aclient.chat.completions.create(**chat_parameters)
             tasks.append(task)
 
@@ -158,7 +175,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         return true_conditions
 
     async def run_nonblocking_checks(self):
-        if self.agent_config.transcript_analyzer_func == 'check for spam':
+        if self.agent_config.transcript_analyzer_func == "check for spam":
             telephony_id = await get_telephony_id_from_internal_id(
                 call_id=self.agent_config.current_call_id,
                 call_type=self.agent_config.call_type,
@@ -166,7 +183,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             try:
                 preamble = "You will be given a transcript between a caller and the receiver's assistant. Please classify if the call is a spam or an important conversation that should be transferred to the intended recipient. If it's spam, say 'HANGUP'. If you should transfer, say 'TRANSFER'. If you're not sure, or there's not enough data, say 'NOT SURE'"
                 system_message = {"role": "system", "content": preamble}
-                transcript_message = {"role": "user", "content": self.transcript.to_string()}
+                transcript_message = {
+                    "role": "user",
+                    "content": self.transcript.to_string(),
+                }
 
                 combined_messages = [system_message, transcript_message]
                 chat_parameters = self.get_chat_parameters(messages=combined_messages)
@@ -178,19 +198,23 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     self.logger.info("I am now transferring the call")
                     await self.transfer_call(telephony_id=telephony_id)
                 elif "HANGUP" in spam_classification:
-                    self.logger.info(f"I am now hanging up because this call {self.agent_config.current_call_id} is spam")
-                    await hangup_twilio_call(call_sid=telephony_id, call_type=self.agent_config.call_type)
+                    self.logger.info(
+                        f"I am now hanging up because this call {self.agent_config.current_call_id} is spam"
+                    )
+                    await hangup_twilio_call(
+                        call_sid=telephony_id, call_type=self.agent_config.call_type
+                    )
                 else:
                     self.logger.info("I'm not sure if this call is spam yet")
             except Exception as e:
                 self.logger.error(f"An error occurred: {e}")
         return
-    
+
     async def respond(
-            self,
-            human_input,
-            conversation_id: str,
-            is_interrupt: bool = False,
+        self,
+        human_input,
+        conversation_id: str,
+        is_interrupt: bool = False,
     ) -> Tuple[str, bool]:
         assert self.transcript is not None
         if is_interrupt and self.agent_config.cut_off_response:
@@ -203,16 +227,18 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             text = self.first_response
         else:
             chat_parameters = self.get_chat_parameters()
-            chat_completion = await self.aclient.chat.completions.create(**chat_parameters)
+            chat_completion = await self.aclient.chat.completions.create(
+                **chat_parameters
+            )
             text = chat_completion.choices[0].message.content
         self.logger.debug(f"LLM response: {text}")
         return text, False
-    
+
     async def generate_response(
-            self,
-            human_input: str,
-            conversation_id: str,
-            is_interrupt: bool = False,
+        self,
+        human_input: str,
+        conversation_id: str,
+        is_interrupt: bool = False,
     ) -> AsyncGenerator[Tuple[Union[str, FunctionCall], bool], None]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
@@ -227,10 +253,15 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     "query": self.transcript.get_last_user_message()[1],
                 }
 
-                has_vector_config_namespace = getattr(self.agent_config.vector_db_config, 'namespace', None)
+                has_vector_config_namespace = getattr(
+                    self.agent_config.vector_db_config, "namespace", None
+                )
                 if has_vector_config_namespace:
-                    vector_db_search_args["namespace"] = \
-                        self.agent_config.vector_db_config.namespace.lower().replace(" ", "_")
+                    vector_db_search_args[
+                        "namespace"
+                    ] = self.agent_config.vector_db_config.namespace.lower().replace(
+                        " ", "_"
+                    )
 
                 docs_with_scores = await self.vector_db.similarity_search_with_score(
                     **vector_db_search_args
@@ -260,15 +291,25 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters["stream"] = True
         stream = await self.aclient.chat.completions.create(**chat_parameters)
         all_messages = []
+
         async for message in collate_response_async(
             openai_get_tokens(stream), get_functions=True
         ):
-            all_messages.append(f"{message} ")
+            if not message:
+                continue
             yield message, True
+            all_messages.append(message)
 
-        latest_agent_response = ''.join(all_messages)
-        await self.run_nonblocking_checks()
-        self.logger.info(f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {latest_agent_response}")
+        # add in a question mark if the last message doesn't end with a punctuation
+        if not any(all_messages[-1].endswith(punct) for punct in ".!?"):
+            all_messages[-1] += "?"
+
+        if len(all_messages) > 0:
+            latest_agent_response = " ".join(filter(None, all_messages))
+            await self.run_nonblocking_checks()
+            self.logger.info(
+                f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {latest_agent_response}"
+            )
 
     async def transfer_call(self, telephony_id):
         if self.agent_config.call_type == CallType.INBOUND:
