@@ -291,15 +291,29 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters["stream"] = True
         stream = await self.aclient.chat.completions.create(**chat_parameters)
         all_messages = []
+        cached_message = None
+        first_message = True
         async for message in collate_response_async(
             openai_get_tokens(stream), get_functions=True
         ):
-            all_messages.append(f"{message} ")
-            yield message, True
+            if first_message:
+                yield message, True
+                first_message = False
+                all_messages.append(message)
+            elif cached_message is not None:
+                yield cached_message, True
+                cached_message = None
+                all_messages.append(cached_message)
+            else:
+                cached_message = message
 
-        latest_agent_response = "".join(all_messages)
-        if latest_agent_response[-1] not in ["?", ".", "!"]:
-            latest_agent_response += "?"
+        if cached_message:
+            if not any(cached_message.endswith(punct) for punct in ".!?"):
+                cached_message += "?"
+            yield cached_message, True
+            all_messages.append(cached_message)
+
+        latest_agent_response = "".join(all_messages).strip()
         await self.run_nonblocking_checks()
         self.logger.info(
             f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {latest_agent_response}"
