@@ -296,6 +296,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         async for message in collate_response_async(
             openai_get_tokens(stream), get_functions=True
         ):
+            if message is None:
+                continue
             if first_message:
                 yield message, True
                 first_message = False
@@ -312,12 +314,16 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 cached_message += "?"
             yield cached_message, True
             all_messages.append(cached_message)
+        else:
+            if not any(all_messages[-1].endswith(punct) for punct in ".!?"):
+                all_messages[-1] += "?"
 
-        latest_agent_response = "".join(all_messages).strip()
-        await self.run_nonblocking_checks()
-        self.logger.info(
-            f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {latest_agent_response}"
-        )
+        if len(all_messages) > 0:
+            latest_agent_response = " ".join(filter(None, all_messages))
+            await self.run_nonblocking_checks()
+            self.logger.info(
+                f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {latest_agent_response}"
+            )
 
     async def transfer_call(self, telephony_id):
         if self.agent_config.call_type == CallType.INBOUND:
