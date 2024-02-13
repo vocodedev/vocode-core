@@ -108,6 +108,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             "sample_rate": self.transcriber_config.sampling_rate,
             "channels": 1,
             "interim_results": "true",
+            "vad_events": "true",
         }
         extra_params = {}
         if self.transcriber_config.language:
@@ -130,9 +131,14 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         return f"wss://api.deepgram.com/v1/listen?{urlencode(url_params)}"
 
     # This function will return how long the time silence for endpointing should be
-    def classify_endpointing_duration(self, transcript: str):
-        preamble = "Your task is to classify whether a provided user message is complete or the user is still typing. Regardless of grammatical correctness, the message should be considered complete if it is a full thought or question. If the message is incomplete, the user is 'typing'. If the message complete the user is 'sending'. If the message completeness if ambiguous, the user is 'thinking'. Based on which is demonstrated in the provided message, return either 'typing', 'sending', or 'thinking'."
-        user_message = f"The user message is: {transcript}"
+    def get_classify_endpointing_silence_duration(self, transcript: str):
+        preamble = """You are an amazing live transcript classifier! Your task is to classify, with provided confidence, whether a provided message transcript is: 'complete', 'incomplete' or 'garbled'. The message should be considered 'complete' if it is a full thought or question. The message is 'incomplete' if there is still more the user might add. Finally, the message is 'garbled' if it appears to be a complete transcription attempt but, despite best efforts, the meaning is unclear.
+
+Based on which class is demonstrated in the provided message transcript, return the confidence level of your classification on a scale of 1-100 with 100 being the most confident followed by a space followed by either 'complete', 'incomplete', or 'garbled'.
+
+The exact format to return is:
+<confidence level> <classification>"""
+        user_message = f"{transcript}"
         messages = [
             {
                 "role": "system",
@@ -152,21 +158,17 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         }
 
         response = self.openai_client.chat.completions.create(**parameters)
-        return self._get_classified_time_cutoff_seconds(response)
 
-    def _get_classified_time_cutoff_seconds(self, response):
-        parsed = response.choices[0].message.content.lower().strip()
-        if "typing" in parsed:
-            self.logger.info("It is typing")
-            return 3.0
-        elif "sending" in parsed:
-            self.logger.info("It is sending")
+        classification = (response.choices[0].message.content.split(" "))[-1]
+        silence_duration_1_to_100 = ''.join(filter(str.isdigit, response.choices[0].message.content))
+
+        if 'garbled' in classification.lower():
             return 0
-        elif "thinking" in parsed:
-            self.logger.info("It is thinking")
-            return 0.2
-        else:
-            return 0.1
+        if 'incomplete' in classification.lower():
+            return int(silence_duration_1_to_100) / 100
+        if 'complete' in classification.lower():
+            return 1 - (int(silence_duration_1_to_100) / 100)
+        return 0
 
     def is_speech_final(
         self, current_buffer: str, deepgram_response: dict, time_silent: float
@@ -211,8 +213,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
             # For non-empty transcripts with more than just the start of a sentence
             if len(transcript) >= 2:
-                classified_endpoint_duration = self.classify_endpointing_duration(transcript)
-                return time_silent > classified_endpoint_duration
+                classified_endpoint_duration = self.get_classify_endpointing_silence_duration(transcript)
+                return time_silent > classified_endpoint_duration * 4
 
             # For shorter transcripts, check if the combined silence duration exceeds a fixed threshold
             return time_silent + deepgram_response["duration"] > self.transcriber_config.endpointing_config.time_cutoff_seconds \
@@ -264,6 +266,15 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         self.logger.debug(f"Got error {e} in Deepgram receiver")
                         break
                     data = json.loads(msg)
+                    if data["type"] == "SpeechStarted":
+                        self.output_queue.put_nowait(
+                            Transcription(
+                                message="",
+                                confidence=1.0,
+                                is_final=False,
+                            )
+                        )
+                        continue
                     if (
                         not "is_final" in data
                     ):  # means we've finished receiving transcriptions
