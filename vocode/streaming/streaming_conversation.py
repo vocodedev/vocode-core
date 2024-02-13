@@ -111,7 +111,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             output_queue: asyncio.Queue[InterruptibleEvent[AgentInput]],
             conversation: "StreamingConversation",
             interruptible_event_factory: InterruptibleEventFactory,
-            agent: BaseAgent
+            agent: BaseAgent,
         ):
             super().__init__(input_queue, output_queue)
             self.input_queue = input_queue
@@ -126,8 +126,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.info("Ignoring empty transcription")
                 return
             if transcription.is_final:
-                self.conversation.logger.info(f"Got transcription with confidence: {transcription.confidence} "
-                                              f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{transcription.message}")
+                self.conversation.logger.info(
+                    f"Got transcription with confidence: {transcription.confidence} "
+                    f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{transcription.message}"
+                )
             if (
                 not self.conversation.is_human_speaking
                 and self.conversation.is_interrupt(transcription)
@@ -287,7 +289,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     ):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
 
-                self.conversation.logger.debug("Synthesizing speech for message")
                 synthesis_result = await self.conversation.synthesizer.create_speech(
                     agent_response_message.message,
                     self.chunk_size,
@@ -519,7 +520,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
         )
         self.agent_responses_worker.consume_nonblocking(agent_response_event)
-        self.logger.info(f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {initial_message.text}")
+        self.logger.info(
+            f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {initial_message.text}"
+        )
         await initial_message_tracker.wait()
         self.transcriber.unmute()
 

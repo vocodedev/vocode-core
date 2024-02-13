@@ -65,7 +65,9 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
         self.audio_cursor = 0.0
-        self.openai_client = OpenAI(api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE"))
+        self.openai_client = OpenAI(
+            api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE")
+        )
 
     async def _run_loop(self):
         restarts = 0
@@ -140,33 +142,30 @@ The exact format to return is:
 <confidence level> <classification>"""
         user_message = f"{transcript}"
         messages = [
-            {
-                "role": "system",
-                "content": preamble
-            },
-            {
-                "role": "user",
-                "content": user_message
-            }
+            {"role": "system", "content": preamble},
+            {"role": "user", "content": user_message},
         ]
         parameters = {
             "model": "TheBloke/Nous-Hermes-2-Mixtral-8x7B-DPO-AWQ",
             "messages": messages,
             "max_tokens": 5,
             "temperature": 0,
-            "stop": ["User:", "\n", "", "?"],
+            "stop": ["User:", "\n", "<|im_end|>", "?"],
         }
 
         response = self.openai_client.chat.completions.create(**parameters)
 
         classification = (response.choices[0].message.content.split(" "))[-1]
-        silence_duration_1_to_100 = ''.join(filter(str.isdigit, response.choices[0].message.content))
-
-        if 'garbled' in classification.lower():
+        silence_duration_1_to_100 = "".join(
+            filter(str.isdigit, response.choices[0].message.content)
+        )
+        # self.logger.debug(f"Classification: {classification}")
+        # self.logger.debug(f"Proportion: {silence_duration_1_to_100}")
+        if "garbled" in classification.lower():
             return 0
-        if 'incomplete' in classification.lower():
+        if "incomplete" in classification.lower():
             return int(silence_duration_1_to_100) / 100
-        if 'complete' in classification.lower():
+        if "complete" in classification.lower():
             return 1 - (int(silence_duration_1_to_100) / 100)
         return 0
 
@@ -206,19 +205,26 @@ The exact format to return is:
         elif isinstance(
             self.transcriber_config.endpointing_config, ClassifierEndpointingConfig
         ):
-            # If there's no transcript, check if the buffer is non-empty and the silence duration exceeds the threshold
-            if not transcript:
-                silence_exceeds_threshold = (time_silent + deepgram_response["duration"]) > self.transcriber_config.endpointing_config.time_cutoff_seconds
-                return current_buffer and silence_exceeds_threshold
-
             # For non-empty transcripts with more than just the start of a sentence
-            if len(transcript) >= 2:
-                classified_endpoint_duration = self.get_classify_endpointing_silence_duration(transcript)
+            # self.logger.debug(f"Transcript: {transcript}")
+            if len(current_buffer + transcript) >= 1:
+                self.logger.debug(f"Transcript is greater than 2")
+                classified_endpoint_duration = (
+                    self.get_classify_endpointing_silence_duration(
+                        current_buffer + transcript
+                    )
+                )
                 return time_silent > classified_endpoint_duration * 4
 
+            self.logger.debug(f"Transcript is less than 2")
+            return False
             # For shorter transcripts, check if the combined silence duration exceeds a fixed threshold
-            return time_silent + deepgram_response["duration"] > self.transcriber_config.endpointing_config.time_cutoff_seconds \
-                if time_silent and deepgram_response["duration"] else False
+            # return (
+            #     time_silent + deepgram_response["duration"]
+            #     > self.transcriber_config.endpointing_config.time_cutoff_seconds
+            #     if time_silent and deepgram_response["duration"]
+            #     else False
+            # )
 
         raise Exception("Endpointing config not supported")
 
@@ -267,13 +273,13 @@ The exact format to return is:
                         break
                     data = json.loads(msg)
                     if data["type"] == "SpeechStarted":
-                        self.output_queue.put_nowait(
-                            Transcription(
-                                message="",
-                                confidence=1.0,
-                                is_final=False,
-                            )
-                        )
+                        # self.output_queue.put_nowait(
+                        #     Transcription(
+                        #         message="",
+                        #         confidence=1.0,
+                        #         is_final=False,
+                        #     )
+                        # )
                         continue
                     if (
                         not "is_final" in data
