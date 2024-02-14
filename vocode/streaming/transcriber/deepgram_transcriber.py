@@ -162,12 +162,12 @@ The exact format to return is:
         # self.logger.debug(f"Classification: {classification}")
         # self.logger.debug(f"Proportion: {silence_duration_1_to_100}")
         if "garbled" in classification.lower():
-            return 0
+            return 0.0
         if "incomplete" in classification.lower():
-            return int(silence_duration_1_to_100) / 100
+            return 0.9
         if "complete" in classification.lower():
-            return 1 - (int(silence_duration_1_to_100) / 100)
-        return 0
+            return 1.0 - (float(silence_duration_1_to_100) / 100.0)
+        return 0.0
 
     def is_speech_final(
         self, current_buffer: str, deepgram_response: dict, time_silent: float
@@ -214,7 +214,7 @@ The exact format to return is:
                         current_buffer + transcript
                     )
                 )
-                return time_silent > classified_endpoint_duration * 4
+                return time_silent > classified_endpoint_duration
 
             self.logger.debug(f"Transcript is less than 2")
             return False
