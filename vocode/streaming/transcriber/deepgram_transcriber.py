@@ -159,8 +159,6 @@ The exact format to return is:
         silence_duration_1_to_100 = "".join(
             filter(str.isdigit, response.choices[0].message.content)
         )
-        # self.logger.debug(f"Classification: {classification}")
-        # self.logger.debug(f"Proportion: {silence_duration_1_to_100}")
         if "garbled" in classification.lower():
             return 0.0
         if "incomplete" in classification.lower():
@@ -206,9 +204,7 @@ The exact format to return is:
             self.transcriber_config.endpointing_config, ClassifierEndpointingConfig
         ):
             # For non-empty transcripts with more than just the start of a sentence
-            # self.logger.debug(f"Transcript: {transcript}")
             if len(current_buffer + transcript) >= 1:
-                self.logger.debug(f"Transcript is greater than 2")
                 classified_endpoint_duration = (
                     self.get_classify_endpointing_silence_duration(
                         current_buffer + transcript
@@ -216,7 +212,6 @@ The exact format to return is:
                 )
                 return time_silent > classified_endpoint_duration
 
-            self.logger.debug(f"Transcript is less than 2")
             return False
             # For shorter transcripts, check if the combined silence duration exceeds a fixed threshold
             # return (
