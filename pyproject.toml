@@ -44,9 +44,7 @@ miniaudio = "^1.59"
 boto3 = "^1.28.28"
 pydantic = "^2.0"
 langchain-community = "^0.0.16"
-pytest = "^7.4.3"
-pytest-asyncio = "^0.21.1"
-pytest-mock = "^3.12.0"
+
 
 
 [tool.poetry.group.lint.dependencies]
@@ -55,10 +53,11 @@ black = "^23.1.0"
 
 [tool.poetry.group.dev.dependencies]
 python-dotenv = "^1.0.0"
-pytest = "^7.3.1"
+pytest = "^7.4.3"
 pytest-asyncio = "^0.21.0"
 aioresponses = "^0.7.4"
 pre-commit = "^3.3.3"
+pytest-mock = "^3.12.0"
 
 
 [tool.poetry.group.typing.dependencies]
