@@ -28,6 +28,7 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 
 PUNCTUATION_TERMINATORS = [".", "!", "?"]
 INCOMPLETE_SCALING_FACTOR = 2.0
+MAX_SILENCE_DURATION = 2.0
 NUM_RESTARTS = 5
 
 
@@ -211,7 +212,7 @@ The exact format to return is:
                         current_buffer + transcript
                     )
                 )
-                return time_silent > classified_endpoint_duration * 2
+                return time_silent > classified_endpoint_duration * MAX_SILENCE_DURATION
 
             return False
             # For shorter transcripts, check if the combined silence duration exceeds a fixed threshold
