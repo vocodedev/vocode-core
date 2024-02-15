@@ -1,0 +1,40 @@
+# Test with act; on a Mac with M series chips, you can use something like:
+# act push --secret-file .secrets --container-architecture linux/amd64
+#
+# Be sure to add a .secrets file in the project root to run this action
+# See the .secrets file within the workflows directory to see the variables needed
+
+name: Redeploy telephony on The Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Start SSH Agent and Load Key
+        run: |
+          mkdir -p ~/.ssh
+          eval "$(ssh-agent -s)"          
+          echo "${{ secrets.FIRST_SERVER_SSH_KEY }}" | tr -d '\r' | sed 's/\\n/\n/g' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-add ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.FIRST_SERVER_PORT }} ${{ secrets.FIRST_SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Pull Newest Code Version and Deploy with docker-compose
+        run: |
+          ssh -v -p ${{ secrets.FIRST_SERVER_PORT }} ${{ secrets.FIRST_SERVER_USERNAME }}@${{ secrets.FIRST_SERVER_HOST }} << 'ENDSSH'
+          cd /home/grey/greymattercopy/greymatter/Deployment0/autocaller/telephony_app
+          docker build -t telephony_app .
+          docker-compose down
+          docker-compose up -d
+          ENDSSH
