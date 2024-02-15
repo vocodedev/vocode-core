@@ -468,6 +468,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
+        # mute at the start
+        self.transcriber.mute()
         self.transcriptions_worker.start()
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
@@ -494,6 +496,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         initial_message = self.agent.get_agent_config().initial_message
         if initial_message:
             asyncio.create_task(self.send_initial_message(initial_message))
+        else:
+            self.transcriber.unmute()
         self.agent.attach_transcript(self.transcript)
         if mark_ready:
             await mark_ready()
