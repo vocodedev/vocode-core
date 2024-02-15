@@ -219,8 +219,10 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         self.logger.info("Agent is generating responses")
         first_response_start_time = time.time()
         async for response in responses:
-            text = response if isinstance(response, str) else response[0]  # TODO: add better handling for tuple
-            self.logger.info("Agent (generated) %s", text)
+            if isinstance(response, tuple):
+                response = response[0]
+
+            self.logger.info("Agent (generated) %s", response)
             if isinstance(response, FunctionCall):
                 function_call = response
                 continue
@@ -231,8 +233,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                                  first_response_end_time - generator_start)
                 agent_span_first.end()
                 is_first_response = False
-            if isinstance(response, tuple):
-                response = response[0]
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
