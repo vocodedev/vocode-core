@@ -49,14 +49,14 @@ def mock_eleven_labs_api():
 async def fixture_eleven_labs_synthesizer_with_api_key():
     params = DEFAULT_PARAMS.copy()
     params["api_key"] = MOCK_API_KEY
-    return ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
+    return ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params), ignore_cache=True)
 
 
 @pytest.fixture(scope="module")
 async def fixture_eleven_labs_synthesizer_wrong_api_key():
     params = DEFAULT_PARAMS.copy()
     params["api_key"] = "wrong_api_key"
-    return ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
+    return ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params), ignore_cache=True)
 
 
 @pytest.fixture(scope="module")
@@ -65,7 +65,7 @@ async def fixture_eleven_labs_synthesizer_env_api_key():
     import os
 
     os.environ["ELEVEN_LABS_API_KEY"] = MOCK_API_KEY
-    return ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params))
+    return ElevenLabsSynthesizer(ElevenLabsSynthesizerConfig(**params), ignore_cache=True)
 
 
 # PlayHT Setup

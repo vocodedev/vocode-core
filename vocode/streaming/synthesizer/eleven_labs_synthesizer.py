@@ -138,6 +138,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         return None
 
     async def save_audio_to_cache(self, audio_data: bytes, message_text: str):
+        if self.ignore_cache:
+            self.logger.info("Ignoring cache")
+            return
         os.makedirs(self.cache_path, exist_ok=True)
         file_extension = self.synthesizer_config.output_format_to_cache_file_extension()
         file_path = os.path.join(self.cache_path, f"{self.hash_message(message_text)}.{file_extension}")
