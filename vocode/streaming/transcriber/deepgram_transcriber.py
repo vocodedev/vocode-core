@@ -161,13 +161,14 @@ The exact format to return is:
         silence_duration_1_to_100 = "".join(
             filter(str.isdigit, response.choices[0].message.content)
         )
+        ret = 0.0
         if "garbled" in classification.lower():
-            return 0.0
+            ret = 0.0
         if "incomplete" in classification.lower():
-            return float(silence_duration_1_to_100) / INCOMPLETE_SCALING_FACTOR / 100.0
+            ret = float(silence_duration_1_to_100) / INCOMPLETE_SCALING_FACTOR / 100.0
         if "complete" in classification.lower():
-            return 1.0 - (float(silence_duration_1_to_100) / 100.0)
-        return 0.0
+            ret = 1.0 - (float(silence_duration_1_to_100) / 100.0)
+        return ret * MAX_SILENCE_DURATION
 
     def is_speech_final(
         self, current_buffer: str, deepgram_response: dict, time_silent: float
@@ -212,7 +213,7 @@ The exact format to return is:
                         current_buffer + transcript
                     )
                 )
-                return time_silent > classified_endpoint_duration * MAX_SILENCE_DURATION
+                return time_silent > classified_endpoint_duration
 
             return False
             # For shorter transcripts, check if the combined silence duration exceeds a fixed threshold
