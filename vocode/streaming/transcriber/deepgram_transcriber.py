@@ -161,14 +161,14 @@ The exact format to return is:
         silence_duration_1_to_100 = "".join(
             filter(str.isdigit, response.choices[0].message.content)
         )
-        time_to_return = 0.0
+        duration_to_return = 0.0
         if "incomplete" in classification.lower():
-            time_to_return = (
+            duration_to_return = (
                 float(silence_duration_1_to_100) / INCOMPLETE_SCALING_FACTOR / 100.0
             )
         elif "complete" in classification.lower():
-            time_to_return = 1.0 - (float(silence_duration_1_to_100) / 100.0)
-        return time_to_return * MAX_SILENCE_DURATION
+            duration_to_return = 1.0 - (float(silence_duration_1_to_100) / 100.0)
+        return duration_to_return * MAX_SILENCE_DURATION
 
     def is_speech_final(
         self, current_buffer: str, deepgram_response: dict, time_silent: float
