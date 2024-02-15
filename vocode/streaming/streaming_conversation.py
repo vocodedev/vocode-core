@@ -758,7 +758,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.clear_queue(self.agent.output_queue, 'agent.output_queue')
         self.clear_queue(self.agent_responses_worker.output_queue, 'agent_responses_worker.output_queue')
         self.clear_queue(self.agent_responses_worker.input_queue, 'agent_responses_worker.input_queue')
-        self.clear_queue(self.output_device.queue, 'output_device.queue')
+        if hasattr(self.output_device, 'queue'):
+            self.clear_queue(self.output_device.queue, 'output_device.queue')
         # TODO clearing of the miniaudio queue may not be needed if the task is cancelled agent_responses_worker.cancel_current_task.
         # if isinstance(self.synthesizer, ElevenLabsSynthesizer) and self.synthesizer.miniaudio_worker is not None:
         #     self.clear_queue(self.synthesizer.miniaudio_worker.input_queue, 'synthesizer.miniaudio_worker.input_queue')
