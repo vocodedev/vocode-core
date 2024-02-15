@@ -23,7 +23,7 @@ from vocode.streaming.agent.base_agent import (
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
-from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent, ChatGPTAgentOld
 from vocode.streaming.constants import (
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
     PER_CHUNK_ALLOWANCE_SECONDS,
@@ -630,8 +630,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                                                           initial_message=initial_message))
         elif initial_message:
             asyncio.create_task(self.send_initial_message(initial_message))
-        elif isinstance(self.agent, ChatGPTAgent):
-            self.agent.first_response = self.agent.create_first_response(self.agent.agent_config.expected_first_prompt)
+        elif isinstance(self.agent, ChatGPTAgentOld):
+            self.agent.first_response = await self.agent.create_first_response()
             initial_message_tracker = asyncio.Event()
             agent_response_event = (
                 self.interruptible_event_factory.create_interruptible_agent_response_event(
