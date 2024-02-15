@@ -301,7 +301,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             all_messages.append(message)
 
         # add in a question mark if the last message doesn't end with a punctuation
-        if all_messages and not (all_messages[-1][-1] in ".!?"):
+        if not any(all_messages[-1].endswith(punct) for punct in ".!?"):
             all_messages[-1] += "?"
 
         if len(all_messages) > 0:
