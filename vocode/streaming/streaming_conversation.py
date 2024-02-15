@@ -497,6 +497,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if initial_message:
             asyncio.create_task(self.send_initial_message(initial_message))
         else:
+            # unmute if no initial message so they can speak first
             self.transcriber.unmute()
         self.agent.attach_transcript(self.transcript)
         if mark_ready:
