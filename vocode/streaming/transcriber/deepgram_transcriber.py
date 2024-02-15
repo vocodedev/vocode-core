@@ -205,7 +205,6 @@ The exact format to return is:
         ):
             # For non-empty transcripts with more than just the start of a sentence
             if len(current_buffer + transcript) >= 1:
-                self.logger.debug(f"Transcript is greater than 2")
                 classified_endpoint_duration = (
                     self.get_classify_endpointing_silence_duration(
                         current_buffer + transcript
