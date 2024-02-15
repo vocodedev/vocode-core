@@ -161,7 +161,7 @@ The exact format to return is:
         silence_duration_1_to_100 = "".join(
             filter(str.isdigit, response.choices[0].message.content)
         )
-        duration_to_return = 0.0
+        duration_to_return = 0.1
         if "incomplete" in classification.lower():
             duration_to_return = (
                 float(silence_duration_1_to_100) / INCOMPLETE_SCALING_FACTOR / 100.0
