@@ -27,6 +27,8 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 
 
 PUNCTUATION_TERMINATORS = [".", "!", "?"]
+INCOMPLETE_SCALING_FACTOR = 2.0
+MAX_SILENCE_DURATION = 2.0
 NUM_RESTARTS = 5
 
 
@@ -159,13 +161,14 @@ The exact format to return is:
         silence_duration_1_to_100 = "".join(
             filter(str.isdigit, response.choices[0].message.content)
         )
-        if "garbled" in classification.lower():
-            return 0.0
+        duration_to_return = 0.0
         if "incomplete" in classification.lower():
-            return 0.9
-        if "complete" in classification.lower():
-            return 1.0 - (float(silence_duration_1_to_100) / 100.0)
-        return 0.0
+            duration_to_return = (
+                float(silence_duration_1_to_100) / INCOMPLETE_SCALING_FACTOR / 100.0
+            )
+        elif "complete" in classification.lower():
+            duration_to_return = 1.0 - (float(silence_duration_1_to_100) / 100.0)
+        return duration_to_return * MAX_SILENCE_DURATION
 
     def is_speech_final(
         self, current_buffer: str, deepgram_response: dict, time_silent: float
