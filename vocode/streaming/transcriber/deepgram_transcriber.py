@@ -160,12 +160,12 @@ The exact format to return is:
             filter(str.isdigit, response.choices[0].message.content)
         )
         if "garbled" in classification.lower():
-            return 0
+            return 0.0
         if "incomplete" in classification.lower():
-            return float(silence_duration_1_to_100) / 2 / 100
+            return float(silence_duration_1_to_100) / 2.0 / 100.0
         if "complete" in classification.lower():
-            return 1 - (float(silence_duration_1_to_100) / 100)
-        return 0
+            return 1.0 - (float(silence_duration_1_to_100) / 100.0)
+        return 0.0
 
     def is_speech_final(
         self, current_buffer: str, deepgram_response: dict, time_silent: float
