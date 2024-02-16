@@ -632,16 +632,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             asyncio.create_task(self.send_initial_message(initial_message))
         elif isinstance(self.agent, ChatGPTAgentOld):
             self.agent.first_response = await self.agent.create_first_response()
-            initial_message_tracker = asyncio.Event()
-            agent_response_event = (
-                self.interruptible_event_factory.create_interruptible_agent_response_event(
-                    AgentResponseMessage(
-                        message=BaseMessage(text=self.agent.first_response['choices'][0]['message']['content'])),
-                    is_interruptible=False,
-                    agent_response_tracker=initial_message_tracker,
-                )
-            )
-            self.agent_responses_worker.consume_nonblocking(agent_response_event)
+            response_split = self.agent.first_response['choices'][0]['message']['content'].split('.')
+            for response in response_split:
+                asyncio.create_task(self.send_initial_message(BaseMessage(text=response + '.')))
 
         if mark_ready:
             await mark_ready()
