@@ -22,7 +22,7 @@ from vocode.streaming.agent.utils import (
     vector_db_result_to_openai_chat_message,
 )
 from vocode.streaming.models.actions import FunctionCall
-from vocode.streaming.models.agent import ChatGPTAgentConfig, ChatGPTAgentConfigOLD
+from vocode.streaming.models.agent import ChatGPTAgentConfig, ChatGPTAgentConfigOLD, CHAT_GPT_INITIAL_MESSAGE_MODEL_NAME
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.model import BaseModel
 from vocode.streaming.models.transcript import Transcript
@@ -605,11 +605,7 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
             openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
         if not openai.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
-        self.first_response = (
-            self.create_first_response(agent_config.expected_first_prompt)
-            if agent_config.expected_first_prompt
-            else None
-        )
+        self.first_response = None
         self.is_first_response = True
 
         self.response_predictor = response_predictor
@@ -652,18 +648,12 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
 
         return parameters
 
-    def create_first_response(self, first_prompt):
-        messages = [
-            (
-                [{"role": "system", "content": self.agent_config.prompt_preamble}]
-                if self.agent_config.prompt_preamble
-                else []
-            )
-            + [{"role": "user", "content": first_prompt}]
-        ]
-
+    async def create_first_response(self, first_message_prompt: Optional[str] = None):
+        system_prompt = first_message_prompt if first_message_prompt else self.agent_config.prompt_preamble
+        messages = [{"role": "system", "content": system_prompt}]
         parameters = self.get_chat_parameters(messages)
-        return openai.ChatCompletion.create(**parameters)
+        parameters["model"] = CHAT_GPT_INITIAL_MESSAGE_MODEL_NAME
+        return await openai.ChatCompletion.acreate(**parameters)
 
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript
