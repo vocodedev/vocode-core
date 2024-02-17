@@ -2,7 +2,6 @@ from typing import AsyncGenerator, Generator, Optional, Tuple
 from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 from vocode.streaming.models.agent import EchoAgentConfig
 
-print("This is part of the dummy commit")
 
 class EchoAgent(RespondAgent[EchoAgentConfig]):
     async def respond(
