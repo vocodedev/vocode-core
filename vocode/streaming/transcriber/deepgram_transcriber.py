@@ -148,7 +148,7 @@ The exact format to return is:
             {"role": "user", "content": user_message},
         ]
         parameters = {
-            "model": "TheBloke/Nous-Hermes-2-Mixtral-8x7B-DPO-AWQ",
+            "model": "Qwen/Qwen1.5-72B-Chat-AWQ",
             "messages": messages,
             "max_tokens": 5,
             "temperature": 0,
