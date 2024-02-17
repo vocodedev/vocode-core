@@ -31,6 +31,7 @@ from vocode.streaming.utils.state_manager import TwilioCallStateManager
 
 from telephony_app.models.call_status import CallStatus
 from telephony_app.utils.call_information_handler import execute_status_update_by_telephony_id
+from telephony_app.utils.twilio_call_helper import send_call_end_notification
 
 
 class PhoneCallWebsocketAction(Enum):
@@ -39,22 +40,22 @@ class PhoneCallWebsocketAction(Enum):
 
 class TwilioCall(Call[TwilioOutputDevice]):
     def __init__(
-        self,
-        from_phone: str,
-        to_phone: str,
-        base_url: str,
-        config_manager: BaseConfigManager,
-        agent_config: AgentConfig,
-        transcriber_config: TranscriberConfig,
-        synthesizer_config: SynthesizerConfig,
-        twilio_sid: str,
-        twilio_config: Optional[TwilioConfig] = None,
-        conversation_id: Optional[str] = None,
-        transcriber_factory: TranscriberFactory = TranscriberFactory(),
-        agent_factory: AgentFactory = AgentFactory(),
-        synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
-        events_manager: Optional[EventsManager] = None,
-        logger: Optional[logging.Logger] = None,
+            self,
+            from_phone: str,
+            to_phone: str,
+            base_url: str,
+            config_manager: BaseConfigManager,
+            agent_config: AgentConfig,
+            transcriber_config: TranscriberConfig,
+            synthesizer_config: SynthesizerConfig,
+            twilio_sid: str,
+            twilio_config: Optional[TwilioConfig] = None,
+            conversation_id: Optional[str] = None,
+            transcriber_factory: TranscriberFactory = TranscriberFactory(),
+            agent_factory: AgentFactory = AgentFactory(),
+            synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+            events_manager: Optional[EventsManager] = None,
+            logger: Optional[logging.Logger] = None,
     ):
         super().__init__(
             from_phone,
@@ -153,7 +154,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
             chunk = base64.b64decode(media["payload"])
             if self.latest_media_timestamp + 20 < int(media["timestamp"]):
                 bytes_to_fill = 8 * (
-                    int(media["timestamp"]) - (self.latest_media_timestamp + 20)
+                        int(media["timestamp"]) - (self.latest_media_timestamp + 20)
                 )
                 self.logger.debug(f"Filling {bytes_to_fill} bytes of silence")
                 # NOTE: 0xff is silence for mulaw audio
@@ -163,9 +164,15 @@ class TwilioCall(Call[TwilioOutputDevice]):
         elif data["event"] == "stop":
             self.logger.debug(f"Media WS: Received event 'stop': {message}")
             self.logger.debug("Stopping...")
-            await execute_status_update_by_telephony_id(telephony_id=data['stop']['callSid'],
-                                                        call_status=CallStatus.ENDED_BEFORE_TRANSFER,
-                                                        call_type=self.agent.agent_config.call_type)
+            status_update_task = asyncio.create_task(
+                execute_status_update_by_telephony_id(telephony_id=data['stop']['callSid'],
+                                                      call_status=CallStatus.ENDED_BEFORE_TRANSFER,
+                                                      call_type=self.agent.agent_config.call_type))
+            send_call_end_notification_task = asyncio.create_task(
+                send_call_end_notification(call_id=self.agent.agent_config.current_call_id,
+                                           call_type=self.agent.agent_config.call_type)
+            )
+            await asyncio.gather(status_update_task, send_call_end_notification_task)
             self.logger.debug("Updated call status to have ended")
             return PhoneCallWebsocketAction.CLOSE_WEBSOCKET
         return None
