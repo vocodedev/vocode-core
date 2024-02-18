@@ -148,7 +148,7 @@ The exact format to return is:
             {"role": "user", "content": user_message},
         ]
         parameters = {
-            "model": "Qwen/Qwen1.5-72B-Chat-AWQ",
+            "model": "Qwen/Qwen1.5-72B-Chat-GPTQ-Int4",
             "messages": messages,
             "max_tokens": 5,
             "temperature": 0,
