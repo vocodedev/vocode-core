@@ -812,6 +812,11 @@ The exact format to return is:
             self.transcriptions_worker.is_final = False
         if transcript_message:
             transcript_message.text = message_sent
+        # check if we should execute an action after it has been spoken
+        if isinstance(self.agent, ChatGPTAgent):
+            if self.agent.pending_action:
+                self.agent.yield_function_call(self.agent.pending_action)
+                self.agent.pending_action = None
         return message_sent, cut_off
 
     def mark_terminated(self):
