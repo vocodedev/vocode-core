@@ -38,12 +38,12 @@ from telephony_app.utils.twilio_call_helper import hangup_twilio_call
 
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def __init__(
-        self,
-        agent_config: ChatGPTAgentConfig,
-        action_factory: ActionFactory = ActionFactory(),
-        logger: Optional[logging.Logger] = None,
-        openai_api_key: Optional[str] = None,
-        vector_db_factory=VectorDBFactory(),
+            self,
+            agent_config: ChatGPTAgentConfig,
+            action_factory: ActionFactory = ActionFactory(),
+            logger: Optional[logging.Logger] = None,
+            openai_api_key: Optional[str] = None,
+            vector_db_factory=VectorDBFactory(),
     ):
         super().__init__(
             agent_config=agent_config, action_factory=action_factory, logger=logger
@@ -65,6 +65,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # mistral configs
             self.aclient = AsyncOpenAI(api_key="EMPTY", base_url=getenv("AI_API_BASE"))
             self.client = OpenAI(api_key="EMPTY", base_url=getenv("AI_API_BASE"))
+            self.fclient = AsyncOpenAI(api_key="functionary", base_url=getenv("AI_API_BASE"))
 
             # openai.api_type = "open_ai"
             # openai.api_version = None
@@ -102,7 +103,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         ]
 
     def get_chat_parameters(
-        self, messages: Optional[List] = None, use_functions: bool = True
+            self, messages: Optional[List] = None, use_functions: bool = True
     ):
         assert self.transcript is not None
         messages = messages or format_openai_chat_messages_from_transcript(
@@ -143,7 +144,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         self.transcript = transcript
 
     async def check_conditions(
-        self, stringified_messages: str, conditions: List[str]
+            self, stringified_messages: str, conditions: List[str]
     ) -> List[str]:
         true_conditions = []
 
@@ -152,9 +153,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             user_message = {
                 "role": "user",
                 "content": stringified_messages
-                + "\n\nNow, return either 'True' or 'False' depending on whether the condition: <"
-                + condition.strip()
-                + "> applies (True) to the conversation or not (False).",
+                           + "\n\nNow, return either 'True' or 'False' depending on whether the condition: <"
+                           + condition.strip()
+                           + "> applies (True) to the conversation or not (False).",
             }
 
             preamble = "You will be provided a condition and a conversation. Please classify if that condition applies (True), or does not apply (False) to the provided conversation.\n\nCondition:\n"
@@ -172,47 +173,112 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         return true_conditions
 
-    async def run_nonblocking_checks(self):
-        if self.agent_config.transcript_analyzer_func == "check for spam":
-            telephony_id = await get_telephony_id_from_internal_id(
-                call_id=self.agent_config.current_call_id,
-                call_type=self.agent_config.call_type,
-            )
+    async def run_nonblocking_checks(self, latest_agent_response: str):
+        tools = self.get_tools()
+        if self.agent_config.actions:
             try:
-                preamble = "You will be given a transcript between a caller and the receiver's assistant. Please classify if the call is a spam or an important conversation that should be transferred to the intended recipient. If it's spam, say 'HANGUP'. If you should transfer, say 'TRANSFER'. If you're not sure, or there's not enough data, say 'NOT SURE'"
-                system_message = {"role": "system", "content": preamble}
-                transcript_message = {
-                    "role": "user",
-                    "content": self.transcript.to_string(),
-                }
+                tool_descriptions = self.format_tool_descriptions(tools)
+                pretty_tool_descriptions = ', '.join(tool_descriptions)
+                chat = self.prepare_chat(latest_agent_response)
+                stringified_messages = str(chat)
+                system_message, transcript_message = self.prepare_messages(pretty_tool_descriptions, stringified_messages)
+                chat_parameters = self.get_chat_parameters(messages=[system_message, transcript_message])
+                chat_parameters["model"] = "Qwen/Qwen1.5-72B-Chat-GPTQ-Int4"
 
-                combined_messages = [system_message, transcript_message]
-                chat_parameters = self.get_chat_parameters(messages=combined_messages)
+                # check whether we should be executing an API call
                 response = await self.aclient.chat.completions.create(**chat_parameters)
+                tool_classification = self.get_tool_classification(response, tools)
 
-                spam_classification = response.choices[0].message.content
-
-                if "TRANSFER" in spam_classification:
-                    self.logger.info("I am now transferring the call")
-                    await self.transfer_call(telephony_id=telephony_id)
-                elif "HANGUP" in spam_classification:
-                    self.logger.info(
-                        f"I am now hanging up because this call {self.agent_config.current_call_id} is spam"
-                    )
-                    await hangup_twilio_call(
-                        call_sid=telephony_id, call_type=self.agent_config.call_type
-                    )
-                else:
-                    self.logger.info("I'm not sure if this call is spam yet")
+                # figure out the correct tool classification to use
+                if tool_classification:
+                    return await self.handle_tool_response(chat, tools)
             except Exception as e:
                 self.logger.error(f"An error occurred: {e}")
         return
 
+    def get_tools(self):
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "transfer_call",
+                    "description": "Triggered when the agent agrees to transfer the call",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "transfer_reason": {
+                                "type": "string",
+                                "description": "The reason for transferring the call, limited to 120 characters"
+                            }
+                        },
+                        "required": ["transfer_reason"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "hangup_call",
+                    "description": "Hangup the call if the assistant says goodbye",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "end_reason": {
+                                "type": "string",
+                                "description": "The reason for ending the call, limited to 120 characters"
+                            }
+                        },
+                        "required": ["end_reason"]
+                    }
+                }
+            }
+        ]
+
+    def format_tool_descriptions(self, tools):
+        return [
+            f"'{tool['function']['name']}': {tool['function']['description']} (Required params: {', '.join(tool['function']['parameters']['required'])})"
+            for tool in tools
+        ]
+
+    def prepare_chat(self, latest_agent_response):
+        chat = format_openai_chat_messages_from_transcript(self.transcript)[1:]
+        chat[-1] = {'role': 'assistant', 'content': latest_agent_response}
+        return chat
+
+    def prepare_messages(self, pretty_tool_descriptions, stringified_messages):
+        preamble = f"""You will be provided with a conversational transcript between a caller and the receiver's 
+        assistant. During the conversation, the assistant has the following actions it can 
+        take: {pretty_tool_descriptions}.\n 
+        Your task is to infer whether, currently, the assistant is waiting for the caller to respond, or is 
+        immediately going to execute an action without waiting for a response. Return the action name from the list 
+        provided if the assistant is executing an action. If the assistant is waiting for a response, return 'None'. 
+        Return a single word."""
+        system_message = {"role": "system", "content": preamble}
+        transcript_message = {"role": "user", "content": stringified_messages}
+        return system_message, transcript_message
+
+    def get_tool_classification(self, response, tools):
+        tool_classification = response.choices[0].message.content.lower().strip()
+        self.logger.info(f"Tool classification: {tool_classification}")
+        return tool_classification in [tool["function"]["name"].lower() for tool in tools]
+
+    async def handle_tool_response(self, chat, tools):
+        tool_response = await self.fclient.chat.completions.create(
+            model="meetkai/functionary-small-v2.2",
+            messages=chat,
+            tools=tools,
+            tool_choice="auto"
+        )
+        tool_response = tool_response.choices[0]
+        if tool_response.message.tool_calls:
+            tool_call = tool_response.message.tool_calls[0]
+            return FunctionCall(name=tool_call.function.name, arguments=tool_call.function.arguments)
+
     async def respond(
-        self,
-        human_input,
-        conversation_id: str,
-        is_interrupt: bool = False,
+            self,
+            human_input,
+            conversation_id: str,
+            is_interrupt: bool = False,
     ) -> Tuple[str, bool]:
         assert self.transcript is not None
         if is_interrupt and self.agent_config.cut_off_response:
@@ -233,10 +299,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         return text, False
 
     async def generate_response(
-        self,
-        human_input: str,
-        conversation_id: str,
-        is_interrupt: bool = False,
+            self,
+            human_input: str,
+            conversation_id: str,
+            is_interrupt: bool = False,
     ) -> AsyncGenerator[Tuple[Union[str, FunctionCall], bool], None]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
@@ -291,7 +357,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         all_messages = []
 
         async for message in collate_response_async(
-            openai_get_tokens(stream), get_functions=True
+                openai_get_tokens(stream), get_functions=True
         ):
             if not message:
                 continue
@@ -304,28 +370,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         if len(all_messages) > 0:
             latest_agent_response = " ".join(filter(None, all_messages))
-            await self.run_nonblocking_checks()
+            api_function_call = await self.run_nonblocking_checks(latest_agent_response=latest_agent_response)
+            if api_function_call:
+                yield api_function_call, True
             self.logger.info(
                 f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {latest_agent_response}"
             )
-
-    async def transfer_call(self, telephony_id):
-        if self.agent_config.call_type == CallType.INBOUND:
-            company_phone_number = self.agent_config.to_phone_number
-        elif self.agent_config.call_type == CallType.OUTBOUND:
-            company_phone_number = self.agent_config.from_phone_number
-        else:
-            raise ValueError(
-                f"There is no assigned call type for call {self.agent_config.current_call_id}"
-            )
-
-        phone_number_transfer_to = await get_company_primary_phone_number(
-            phone_number=company_phone_number
-        )
-
-        # transfer to the primary number associated with each company; the phone number being called into is
-        # associated to a singular assigned company
-        await transfer_call(
-            telephony_call_sid=telephony_id,
-            phone_number_transfer_to=phone_number_transfer_to,
-        )
