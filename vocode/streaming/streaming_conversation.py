@@ -9,6 +9,10 @@ import logging
 import time
 import typing
 
+from vocode import getenv
+from openai import AsyncOpenAI, OpenAI
+
+
 from vocode.streaming.action.worker import ActionsWorker
 
 from vocode.streaming.agent.bot_sentiment_analyser import (
@@ -33,10 +37,19 @@ from vocode.streaming.models.agent import ChatGPTAgentConfig, FillerAudioConfig
 from vocode.streaming.models.synthesizer import (
     SentimentConfig,
 )
+
+from vocode.streaming.agent.utils import (
+    format_openai_chat_messages_from_transcript,
+    collate_response_async,
+    openai_get_tokens,
+    vector_db_result_to_openai_chat_message,
+)
 from vocode.streaming.constants import (
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
     PER_CHUNK_ALLOWANCE_SECONDS,
     ALLOWED_IDLE_TIME,
+    INCOMPLETE_SCALING_FACTOR,
+    MAX_SILENCE_DURATION,
 )
 from vocode.streaming.agent.base_agent import (
     AgentInput,
@@ -119,34 +132,78 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation = conversation
             self.interruptible_event_factory = interruptible_event_factory
             self.agent = agent
+            self.buffer = ""
+            self.time_silent = 0.0
+            self.buffer_avg_confidence = 0.0
+            self.num_buffer_utterances = 0
+            self.is_final = True  # this flag controls if we are accepting new transcriptions, it is regulated by the agent
 
-        async def process(self, transcription: Transcription):
-            self.conversation.mark_last_action_timestamp()
-            if transcription.message.strip() == "":
-                self.conversation.logger.info("Ignoring empty transcription")
-                return
-            if transcription.is_final:
-                self.conversation.logger.info(
-                    f"Got transcription with confidence: {transcription.confidence} "
-                    f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{transcription.message}"
-                )
-            if (
-                not self.conversation.is_human_speaking
-                and self.conversation.is_interrupt(transcription)
-            ):
-                self.conversation.current_transcription_is_interrupt = (
-                    self.conversation.broadcast_interrupt()
-                )
-                if self.conversation.current_transcription_is_interrupt:
-                    self.conversation.logger.debug("sending interrupt")
-                self.conversation.logger.debug("Human started speaking")
+        def get_expected_silence_duration(self, transcript: str):
+            self.openai_client = OpenAI(api_key="EMPTY", base_url=getenv("AI_API_BASE"))
+            preamble = """You are an amazing live transcript classifier! You will be provided a contextual message and a reply. Your task is to classify, with provided confidence, whether a the provided reply is: 'complete' or 'incomplete'. The reply should be considered 'complete' if it would be considered a valid reply to the context message. The message is 'incomplete' if the reply is likely truncated or is not complete given the context.
 
-            transcription.is_interrupt = (
-                self.conversation.current_transcription_is_interrupt
+Based on which class is demonstrated in the provided message and reply transcript, return the confidence level of your classification on a scale of 1-100 with 100 representing full confidence in your chosen classification followed by a space followed by your classifiaction: either 'complete' or 'incomplete'.
+
+The exact format to return is:
+<confidence level> <classification>"""
+            user_message = f"{transcript}"
+            messages = [
+                {"role": "system", "content": preamble},
+                {
+                    "role": "user",
+                    "content": user_message,
+                },
+            ]
+            parameters = {
+                "model": "TheBloke/Nous-Hermes-2-Mixtral-8x7B-DPO-AWQ",
+                "messages": messages,
+                "max_tokens": 5,
+                "temperature": 0,
+                "stop": ["User:", "\n", "<|im_end|>", "?"],
+            }
+            response = self.openai_client.chat.completions.create(**parameters)
+
+            classification = (response.choices[0].message.content.split(" "))[-1]
+            silence_duration_1_to_100 = "".join(
+                filter(str.isdigit, response.choices[0].message.content)
             )
-            self.conversation.is_human_speaking = not transcription.is_final
-            if transcription.is_final:
+            duration_to_return = 0.1
+            logging.error(
+                f"Got classification: {classification} and duration: {silence_duration_1_to_100}"
+            )
+            if "incomplete" in classification.lower():
+                duration_to_return = (
+                    (float(silence_duration_1_to_100) / 100.0) * MAX_SILENCE_DURATION
+                ) * INCOMPLETE_SCALING_FACTOR
+            elif "complete" in classification.lower():
+                duration_to_return = (
+                    1.0
+                    - ((float(silence_duration_1_to_100) / 100.0))
+                    * MAX_SILENCE_DURATION
+                )
+            else:
+                logging.error(
+                    f"Unexpected classification: {classification}. Returning max silence duration"
+                )
+                duration_to_return = MAX_SILENCE_DURATION
+            return duration_to_return
+
+        async def _buffer_check(self, initial_buffer, expected_silence_duration):
+            await asyncio.sleep(expected_silence_duration)
+            if initial_buffer == self.buffer and not self.is_final:
+                self.conversation.logger.info(
+                    f"Buffer: {self.buffer} unchanged after {expected_silence_duration}s, marking as final"
+                )
+                self.is_final = True
                 self.conversation.transcriber.mute()
+                transcription = Transcription(
+                    message=self.buffer,
+                    confidence=1.0,  # Assuming full confidence as it's not provided
+                    is_final=True,
+                    time_silent=self.time_silent,
+                )
+                self.buffer = ""
+                self.time_silent = 0.0
                 # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
                 event = self.interruptible_event_factory.create_interruptible_event(
                     TranscriptionAgentInput(
@@ -157,6 +214,78 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                 )
                 self.output_queue.put_nowait(event)
+                self.conversation.logger.info(
+                    f"Got transcription with confidence: {transcription.confidence} "
+                    f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{transcription.message}"
+                )
+                self.conversation.logger.info("Transcription event put in output queue")
+
+        async def process(self, transcription: Transcription):
+            self.conversation.mark_last_action_timestamp()
+            if self.is_final:
+                self.conversation.logger.debug(
+                    "Ignoring transcription since we are in-flight"
+                )
+                return
+            if len(self.buffer) > 0:
+                # only accumulate silence if the buffer is not empty
+                self.time_silent += transcription.time_silent
+            self.conversation.logger.info(f"Time silent: {self.time_silent}s")
+            if transcription.message.strip() == "":
+                self.conversation.logger.debug("Ignoring empty transcription")
+                return
+            else:
+                # if we detect a non-empty transcription, we reset the time silent
+                self.time_silent = 0.0
+            self.buffer = f"{self.buffer} {transcription.message.strip()}"
+
+            previous_agent_message = next(
+                (
+                    message["content"]
+                    for message in reversed(
+                        format_openai_chat_messages_from_transcript(
+                            self.conversation.transcript
+                        )
+                    )
+                    if message["role"] == "assistant"
+                ),
+                "The conversation has just started. There are no previous agent messages.",
+            )
+            pretty_printed = f"Context: {previous_agent_message} Reply: {self.buffer}"
+
+            expected_silence_duration = self.get_expected_silence_duration(
+                pretty_printed
+            )
+
+            if self.time_silent >= expected_silence_duration:
+                if not self.is_final:
+                    self.is_final = True
+                    self.conversation.transcriber.mute()
+                    transcription.message = self.buffer
+                    self.buffer = ""
+                    self.time_silent = 0.0
+                    # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
+                    event = self.interruptible_event_factory.create_interruptible_event(
+                        TranscriptionAgentInput(
+                            transcription=transcription,
+                            conversation_id=self.conversation.id,
+                            vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
+                            twilio_sid=getattr(self.conversation, "twilio_sid", None),
+                        )
+                    )
+                    self.output_queue.put_nowait(event)
+                    self.conversation.logger.info(
+                        "Transcription event put in output queue"
+                    )
+            else:
+                self.conversation.logger.info(
+                    "Transcription possibly incomplete, starting buffer check"
+                )
+                asyncio.create_task(
+                    self._buffer_check(
+                        self.buffer, expected_silence_duration - self.time_silent
+                    )
+                )
 
     class FillerAudioWorker(InterruptibleAgentResponseWorker):
         """
@@ -513,6 +642,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.check_for_idle_task = asyncio.create_task(self.check_for_idle())
         if len(self.events_manager.subscriptions) > 0:
             self.events_task = asyncio.create_task(self.events_manager.start())
+        # set transcriber is final to false
+        self.transcriptions_worker.is_final = False
 
     async def send_initial_message(self, initial_message: BaseMessage):
         # TODO: configure if initial message is interruptible
@@ -626,6 +757,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Muting transcriber")
             self.transcriber.mute()
+            # disable transcriptionworker with is_final
+            self.transcriptions_worker.is_final = True
         message_sent = message
         cut_off = False
         chunk_size = seconds_per_chunk * get_chunk_size_per_second(
@@ -634,6 +767,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         chunk_idx = 0
         seconds_spoken = 0
+
         async for chunk_result in synthesis_result.chunk_generator:
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
@@ -675,6 +809,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()
+            self.transcriptions_worker.is_final = False
         if transcript_message:
             transcript_message.text = message_sent
         return message_sent, cut_off

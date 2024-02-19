@@ -67,9 +67,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self.is_ready = False
         self.logger = logger or logging.getLogger(__name__)
         self.audio_cursor = 0.0
-        self.openai_client = OpenAI(
-            api_key="EMPTY", base_url=getenv("MISTRAL_API_BASE")
-        )
+        self.openai_client = OpenAI(api_key="EMPTY", base_url=getenv("AI_API_BASE"))
 
     async def _run_loop(self):
         restarts = 0
@@ -111,8 +109,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             "encoding": encoding,
             "sample_rate": self.transcriber_config.sampling_rate,
             "channels": 1,
-            "interim_results": "true",
-            "vad_events": "true",
         }
         extra_params = {}
         if self.transcriber_config.language:
@@ -203,19 +199,6 @@ The exact format to return is:
                 and (time_silent + deepgram_response["duration"])
                 > self.transcriber_config.endpointing_config.time_cutoff_seconds
             )
-        elif isinstance(
-            self.transcriber_config.endpointing_config, ClassifierEndpointingConfig
-        ):
-            # For non-empty transcripts with more than just the start of a sentence
-            if len(current_buffer + transcript) >= 1:
-                classified_endpoint_duration = (
-                    self.get_classify_endpointing_silence_duration(
-                        current_buffer + transcript
-                    )
-                )
-                return time_silent > classified_endpoint_duration
-
-            return False
             # For shorter transcripts, check if the combined silence duration exceeds a fixed threshold
             # return (
             #     time_silent + deepgram_response["duration"]
@@ -298,44 +281,16 @@ The exact format to return is:
 
                     is_final = data["is_final"]
                     time_silent = self.calculate_time_silent(data)
-                    speech_final = self.is_speech_final(buffer, data, time_silent)
                     top_choice = data["channel"]["alternatives"][0]
                     confidence = top_choice["confidence"]
-
-                    if top_choice["transcript"] and confidence > 0.0 and is_final:
-                        buffer = f"{buffer} {top_choice['transcript']}"
-                        if buffer_avg_confidence == 0:
-                            buffer_avg_confidence = confidence
-                        else:
-                            buffer_avg_confidence = (
-                                buffer_avg_confidence
-                                + confidence / (num_buffer_utterances)
-                            ) * (num_buffer_utterances / (num_buffer_utterances + 1))
-                        num_buffer_utterances += 1
-
-                    if speech_final:
-                        self.output_queue.put_nowait(
-                            Transcription(
-                                message=buffer,
-                                confidence=buffer_avg_confidence,
-                                is_final=True,
-                            )
+                    self.output_queue.put_nowait(
+                        Transcription(
+                            message=top_choice["transcript"],
+                            confidence=confidence,
+                            is_final=False,
+                            time_silent=time_silent,
                         )
-                        buffer = ""
-                        buffer_avg_confidence = 0
-                        num_buffer_utterances = 1
-                        time_silent = 0
-                    elif top_choice["transcript"] and confidence > 0.0:
-                        self.output_queue.put_nowait(
-                            Transcription(
-                                message=buffer,
-                                confidence=confidence,
-                                is_final=False,
-                            )
-                        )
-                        time_silent = self.calculate_time_silent(data)
-                    else:
-                        time_silent += data["duration"]
+                    )
                 self.logger.debug("Terminating Deepgram transcriber receiver")
 
             await asyncio.gather(sender(ws), receiver(ws))

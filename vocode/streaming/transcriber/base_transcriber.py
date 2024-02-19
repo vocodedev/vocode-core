@@ -14,11 +14,13 @@ from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
 tracer = trace.get_tracer(__name__)
 meter = metrics.get_meter(__name__)
 
+
 class Transcription(BaseModel):
     message: str
     confidence: float
     is_final: bool
     is_interrupt: bool = False
+    time_silent: float = 0.0
 
     def __str__(self):
         return f"Transcription({self.message}, {self.confidence}, {self.is_final})"
