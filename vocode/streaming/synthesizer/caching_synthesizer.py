@@ -124,3 +124,6 @@ class CachingSynthesizer(BaseSynthesizer):
         # TODO should this also be cached?
         return self.inner_synthesizer.create_synthesis_result_from_wav(file, message, chunk_size)
 
+    async def tear_down(self):
+        if self.inner_synthesizer.aiohttp_session:
+            await self.inner_synthesizer.aiohttp_session.close()
