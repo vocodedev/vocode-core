@@ -49,6 +49,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             agent_config=agent_config, action_factory=action_factory, logger=logger
         )
 
+        self.agent_config.pending_action = None
         if agent_config.azure_params:
             self.aclient = AsyncAzureOpenAI(
                 api_version=agent_config.azure_params.api_version,
@@ -187,11 +188,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
                 # check whether we should be executing an API call
                 response = await self.aclient.chat.completions.create(**chat_parameters)
-                tool_classification = self.get_tool_classification(response, tools)
-
+                is_classified_tool, tool_classification = self.get_tool_classification(response, tools)
                 # figure out the correct tool classification to use
-                if tool_classification:
-                    return await self.handle_tool_response(chat, tools)
+
+                if is_classified_tool:
+                    self.logger.info(f"Initial API call classification: {tool_classification}")
+                    await self.handle_tool_response(chat, tools, tool_classification)
             except Exception as e:
                 self.logger.error(f"An error occurred: {e}")
         return
@@ -219,7 +221,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 "type": "function",
                 "function": {
                     "name": "hangup_call",
-                    "description": "Hangup the call if the assistant says goodbye",
+                    "description": "Hangup the call if the assistant does not think the conversation is "
+                                   "appropriate to continue",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -259,20 +262,29 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     def get_tool_classification(self, response, tools):
         tool_classification = response.choices[0].message.content.lower().strip()
-        self.logger.info(f"Tool classification: {tool_classification}")
-        return tool_classification in [tool["function"]["name"].lower() for tool in tools]
 
-    async def handle_tool_response(self, chat, tools):
+        self.logger.info(f"Final tool classification to trigger: {tool_classification}")
+        is_classified_tool = tool_classification in [
+            tool["function"]["name"].lower() for tool in tools
+        ]
+        return is_classified_tool, tool_classification
+
+    async def handle_tool_response(self, chat, tools, tool_classification):
         tool_response = await self.fclient.chat.completions.create(
             model="meetkai/functionary-small-v2.2",
             messages=chat,
             tools=tools,
-            tool_choice="auto"
+            tool_choice={"type": "function", "function": {"name": tool_classification}},
         )
         tool_response = tool_response.choices[0]
+        self.logger.info(f"The tool_response is {tool_response}")
+
         if tool_response.message.tool_calls:
             tool_call = tool_response.message.tool_calls[0]
-            return FunctionCall(name=tool_call.function.name, arguments=tool_call.function.arguments)
+
+            self.agent_config.pending_action = FunctionCall(
+                name=tool_call.function.name, arguments=tool_call.function.arguments
+            )
 
     async def respond(
             self,
@@ -370,9 +382,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         if len(all_messages) > 0:
             latest_agent_response = " ".join(filter(None, all_messages))
-            api_function_call = await self.run_nonblocking_checks(latest_agent_response=latest_agent_response)
-            if api_function_call:
-                yield api_function_call, True
+
+            await self.run_nonblocking_checks(
+                latest_agent_response=latest_agent_response
+            )
             self.logger.info(
                 f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {latest_agent_response}"
             )

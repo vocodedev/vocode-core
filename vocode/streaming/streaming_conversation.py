@@ -167,8 +167,7 @@ The exact format to return is:
             silence_duration_1_to_100 = "".join(
                 filter(str.isdigit, response.choices[0].message.content)
             )
-            duration_to_return = 0.1
-            logging.error(
+            logging.info(
                 f"Got classification: {classification} and duration: {silence_duration_1_to_100}"
             )
             if "incomplete" in classification.lower():
@@ -177,9 +176,7 @@ The exact format to return is:
                 ) * INCOMPLETE_SCALING_FACTOR
             elif "complete" in classification.lower():
                 duration_to_return = (
-                    1.0
-                    - ((float(silence_duration_1_to_100) / 100.0))
-                    * MAX_SILENCE_DURATION
+                    (1.0 - (float(silence_duration_1_to_100) / 100.0)) * MAX_SILENCE_DURATION
                 )
             else:
                 logging.error(
@@ -812,6 +809,25 @@ The exact format to return is:
             self.transcriptions_worker.is_final = False
         if transcript_message:
             transcript_message.text = message_sent
+
+            # check if we should execute an action after it has been spoken
+            if isinstance(self.agent, ChatGPTAgent):
+                self.logger.info(f"The pending action is {self.agent.agent_config.pending_action}"
+                                 f" and the current transcript text is {transcript_message.text}")
+                if self.agent.agent_config.pending_action:
+                    await self.agent.call_function(self.agent.agent_config.pending_action,
+                                                   TranscriptionAgentInput(
+                                                       transcription=Transcription(
+                                                           message=transcript_message.text,
+                                                           confidence=1.0,
+                                                           is_final=True,
+                                                           time_silent=0.0,
+                                                       ),
+                                                       conversation_id=self.id,
+                                                       vonage_uuid=getattr(self, "vonage_uuid", None),
+                                                       twilio_sid=getattr(self, "twilio_sid", None),
+                                                   ))
+                    self.agent.pending_action = None
         return message_sent, cut_off
 
     def mark_terminated(self):

@@ -27,7 +27,6 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 
 
 PUNCTUATION_TERMINATORS = [".", "!", "?"]
-INCOMPLETE_SCALING_FACTOR = 2.0
 MAX_SILENCE_DURATION = 2.0
 NUM_RESTARTS = 5
 

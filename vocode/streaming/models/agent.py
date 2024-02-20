@@ -3,7 +3,7 @@ from enum import Enum
 from langchain.prompts import PromptTemplate
 
 from pydantic import validator
-from vocode.streaming.models.actions import ActionConfig
+from vocode.streaming.models.actions import ActionConfig, FunctionCall
 
 from vocode.streaming.models.call_type import CallType
 from vocode.streaming.models.message import BaseMessage
@@ -107,6 +107,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     cut_off_response: Optional[CutOffResponse] = None
     azure_params: Optional[AzureOpenAIConfig] = None
     vector_db_config: Optional[VectorDBConfig] = None
+    pending_action: Optional[FunctionCall] = None
 
 
 class MistralAgentConfig(AgentConfig, type=AgentType.MISTRAL.value):
