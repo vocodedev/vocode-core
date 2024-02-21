@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import queue
 import random
 import threading
@@ -8,6 +9,7 @@ from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, 
 import logging
 import time
 import typing
+import requests
 
 from vocode import getenv
 from openai import AsyncOpenAI, OpenAI
@@ -139,51 +141,94 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.is_final = True  # this flag controls if we are accepting new transcriptions, it is regulated by the agent
 
         def get_expected_silence_duration(self, transcript: str):
-            self.openai_client = OpenAI(api_key="EMPTY", base_url=getenv("AI_API_BASE"))
-            preamble = """You are an amazing live transcript classifier! You will be provided a contextual message and a reply. Your task is to classify, with provided confidence, whether a the provided reply is: 'complete' or 'incomplete'. The reply should be considered 'complete' if it would be considered a valid reply to the context message. The message is 'incomplete' if the reply is likely truncated or is not complete given the context.
+            # Define a constant for max silence time
+            MAX_SILENCE_TIME = MAX_SILENCE_DURATION
 
-Based on which class is demonstrated in the provided message and reply transcript, return the confidence level of your classification on a scale of 1-100 with 100 representing full confidence in your chosen classification followed by a space followed by your classifiaction: either 'complete' or 'incomplete'.
+            # Define the prompt for the classification task
+            prompt = [
+                f"""<|im_start|>system 
+You are a sentient, superintelligent artificial general intelligence, here to teach and assist me.<|im_end|>
+<|im_start|>user 
+Analyze the provided dialogue and classify whether Speaker B provided a good or bad response to Speaker A. For instance, if Speaker A asks for a X and Y and Speaker B only provides Y, the response is bad. If Speaker B provides both X and Y, the response is good.
 
-The exact format to return is:
-<confidence level> <classification>"""
-            user_message = f"{transcript}"
-            messages = [
-                {"role": "system", "content": preamble},
-                {
-                    "role": "user",
-                    "content": user_message,
-                },
+Dialogue:
+{transcript}
+
+If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, if Speaker B's response addresses Speaker A's initial message, return "good".<|im_end|>
+<|im_start|>assistant
+""",
             ]
-            parameters = {
-                "model": "TheBloke/Nous-Hermes-2-Mixtral-8x7B-DPO-AWQ",
-                "messages": messages,
-                "max_tokens": 5,
-                "temperature": 0,
-                "stop": ["User:", "\n", "<|im_end|>", "?"],
-            }
-            response = self.openai_client.chat.completions.create(**parameters)
 
-            classification = (response.choices[0].message.content.split(" "))[-1]
-            silence_duration_1_to_100 = "".join(
-                filter(str.isdigit, response.choices[0].message.content)
+            # Get the model to use for the completion
+            model = "TheBloke/Nous-Hermes-2-Mixtral-8x7B-DPO-AWQ"
+
+            # Prepare the data for the POST request
+            data = {
+                "model": model,
+                "prompt": prompt,
+                "max_tokens": 1,
+                "temperature": 1,
+                "logprobs": 10,
+            }
+
+            # Perform the POST request to classify the dialogue
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer 'EMPTY'",
+            }
+            base_url = getenv("AI_API_BASE")
+            response = requests.post(
+                f"{base_url}/completions", headers=headers, json=data
             )
-            logging.info(
-                f"Got classification: {classification} and duration: {silence_duration_1_to_100}"
-            )
-            if "incomplete" in classification.lower():
-                duration_to_return = (
-                    (float(silence_duration_1_to_100) / 100.0) * MAX_SILENCE_DURATION
-                ) * INCOMPLETE_SCALING_FACTOR
-            elif "complete" in classification.lower():
-                duration_to_return = (
-                    (1.0 - (float(silence_duration_1_to_100) / 100.0)) * MAX_SILENCE_DURATION
+
+            # Check if the request was successful
+            if response.status_code == 200:
+                response_data = response.json()
+                # Extract the content and the log probabilities
+                content = response_data["choices"][0]["text"].strip()
+                top_logprobs = response_data["choices"][0]["logprobs"]["top_logprobs"][
+                    0
+                ]
+
+                # Initialize a dictionary to hold the sum of log probabilities for 'bad' and 'good'
+                summed_logprobs = {"bad": 0, "good": 0}
+
+                # Sum the log probabilities for each classification starting with 'b' or 'g'
+                for classification, logprob in top_logprobs.items():
+                    if classification.strip().lower().startswith("ba"):
+                        summed_logprobs["bad"] += math.exp(logprob)
+                    elif classification.strip().lower().startswith("go"):
+                        summed_logprobs["good"] += math.exp(logprob)
+
+                # Determine the most likely classification based on the summed log probabilities
+                if summed_logprobs["bad"] > summed_logprobs["good"]:
+                    final_classification = "bad"
+                    confidence = summed_logprobs["bad"] / (
+                        summed_logprobs["bad"] + summed_logprobs["good"]
+                    )
+                else:
+                    final_classification = "good"
+                    confidence = summed_logprobs["good"] / (
+                        summed_logprobs["good"] + summed_logprobs["bad"]
+                    )
+
+                # Calculate the expected silence duration based on the classification
+                if final_classification == "bad":
+                    expected_silence_duration = confidence * MAX_SILENCE_TIME
+                else:
+                    expected_silence_duration = MAX_SILENCE_TIME - (
+                        confidence * MAX_SILENCE_TIME
+                    )
+                logging.info(
+                    f"Dialogue classified as {final_classification} with confidence {round(confidence * 100, 2)}%"
                 )
+                # Print the result and the expected silence duration
+                return round(expected_silence_duration, 2)
             else:
                 logging.error(
-                    f"Unexpected classification: {classification}. Returning max silence duration"
+                    f"Failed to classify the dialogue: {response.status_code} - {response.text}"
                 )
-                duration_to_return = MAX_SILENCE_DURATION
-            return duration_to_return
+                return 0
 
         async def _buffer_check(self, initial_buffer, expected_silence_duration):
             await asyncio.sleep(expected_silence_duration)
@@ -276,7 +321,7 @@ The exact format to return is:
                     )
             else:
                 self.conversation.logger.info(
-                    "Transcription possibly incomplete, starting buffer check"
+                    f"Holding in buffer for {expected_silence_duration}s"
                 )
                 asyncio.create_task(
                     self._buffer_check(
@@ -812,21 +857,25 @@ The exact format to return is:
 
             # check if we should execute an action after it has been spoken
             if isinstance(self.agent, ChatGPTAgent):
-                self.logger.info(f"The pending action is {self.agent.agent_config.pending_action}"
-                                 f" and the current transcript text is {transcript_message.text}")
+                self.logger.info(
+                    f"The pending action is {self.agent.agent_config.pending_action}"
+                    f" and the current transcript text is {transcript_message.text}"
+                )
                 if self.agent.agent_config.pending_action:
-                    await self.agent.call_function(self.agent.agent_config.pending_action,
-                                                   TranscriptionAgentInput(
-                                                       transcription=Transcription(
-                                                           message=transcript_message.text,
-                                                           confidence=1.0,
-                                                           is_final=True,
-                                                           time_silent=0.0,
-                                                       ),
-                                                       conversation_id=self.id,
-                                                       vonage_uuid=getattr(self, "vonage_uuid", None),
-                                                       twilio_sid=getattr(self, "twilio_sid", None),
-                                                   ))
+                    await self.agent.call_function(
+                        self.agent.agent_config.pending_action,
+                        TranscriptionAgentInput(
+                            transcription=Transcription(
+                                message=transcript_message.text,
+                                confidence=1.0,
+                                is_final=True,
+                                time_silent=0.0,
+                            ),
+                            conversation_id=self.id,
+                            vonage_uuid=getattr(self, "vonage_uuid", None),
+                            twilio_sid=getattr(self, "twilio_sid", None),
+                        ),
+                    )
                     self.agent.pending_action = None
         return message_sent, cut_off
 

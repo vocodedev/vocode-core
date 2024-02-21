@@ -38,12 +38,12 @@ from telephony_app.utils.twilio_call_helper import hangup_twilio_call
 
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def __init__(
-            self,
-            agent_config: ChatGPTAgentConfig,
-            action_factory: ActionFactory = ActionFactory(),
-            logger: Optional[logging.Logger] = None,
-            openai_api_key: Optional[str] = None,
-            vector_db_factory=VectorDBFactory(),
+        self,
+        agent_config: ChatGPTAgentConfig,
+        action_factory: ActionFactory = ActionFactory(),
+        logger: Optional[logging.Logger] = None,
+        openai_api_key: Optional[str] = None,
+        vector_db_factory=VectorDBFactory(),
     ):
         super().__init__(
             agent_config=agent_config, action_factory=action_factory, logger=logger
@@ -66,7 +66,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # mistral configs
             self.aclient = AsyncOpenAI(api_key="EMPTY", base_url=getenv("AI_API_BASE"))
             self.client = OpenAI(api_key="EMPTY", base_url=getenv("AI_API_BASE"))
-            self.fclient = AsyncOpenAI(api_key="functionary", base_url=getenv("AI_API_BASE"))
+            self.fclient = AsyncOpenAI(
+                api_key="functionary", base_url=getenv("AI_API_BASE")
+            )
 
             # openai.api_type = "open_ai"
             # openai.api_version = None
@@ -104,7 +106,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         ]
 
     def get_chat_parameters(
-            self, messages: Optional[List] = None, use_functions: bool = True
+        self, messages: Optional[List] = None, use_functions: bool = True
     ):
         assert self.transcript is not None
         messages = messages or format_openai_chat_messages_from_transcript(
@@ -115,7 +117,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             "messages": messages,
             "max_tokens": self.agent_config.max_tokens,
             "temperature": self.agent_config.temperature,
-            "stop": ["User:", "\n", "<|im_end|>", "?"],
+            # "stop": ["User:", "\n", "<|im_end|>", "?"],
+            # just ?
+            "stop": ["?"],
         }
 
         if self.agent_config.azure_params is not None:
@@ -125,7 +129,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         if use_functions and self.functions:
             parameters["functions"] = self.functions
-
         return parameters
 
     def create_first_response(self, first_prompt):
@@ -145,7 +148,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         self.transcript = transcript
 
     async def check_conditions(
-            self, stringified_messages: str, conditions: List[str]
+        self, stringified_messages: str, conditions: List[str]
     ) -> List[str]:
         true_conditions = []
 
@@ -154,9 +157,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             user_message = {
                 "role": "user",
                 "content": stringified_messages
-                           + "\n\nNow, return either 'True' or 'False' depending on whether the condition: <"
-                           + condition.strip()
-                           + "> applies (True) to the conversation or not (False).",
+                + "\n\nNow, return either 'True' or 'False' depending on whether the condition: <"
+                + condition.strip()
+                + "> applies (True) to the conversation or not (False).",
             }
 
             preamble = "You will be provided a condition and a conversation. Please classify if that condition applies (True), or does not apply (False) to the provided conversation.\n\nCondition:\n"
@@ -179,20 +182,28 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         if self.agent_config.actions:
             try:
                 tool_descriptions = self.format_tool_descriptions(tools)
-                pretty_tool_descriptions = ', '.join(tool_descriptions)
+                pretty_tool_descriptions = ", ".join(tool_descriptions)
                 chat = self.prepare_chat(latest_agent_response)
                 stringified_messages = str(chat)
-                system_message, transcript_message = self.prepare_messages(pretty_tool_descriptions, stringified_messages)
-                chat_parameters = self.get_chat_parameters(messages=[system_message, transcript_message])
+                system_message, transcript_message = self.prepare_messages(
+                    pretty_tool_descriptions, stringified_messages
+                )
+                chat_parameters = self.get_chat_parameters(
+                    messages=[system_message, transcript_message]
+                )
                 chat_parameters["model"] = "Qwen/Qwen1.5-72B-Chat-GPTQ-Int4"
 
                 # check whether we should be executing an API call
                 response = await self.aclient.chat.completions.create(**chat_parameters)
-                is_classified_tool, tool_classification = self.get_tool_classification(response, tools)
+                is_classified_tool, tool_classification = self.get_tool_classification(
+                    response, tools
+                )
                 # figure out the correct tool classification to use
 
                 if is_classified_tool:
-                    self.logger.info(f"Initial API call classification: {tool_classification}")
+                    self.logger.info(
+                        f"Initial API call classification: {tool_classification}"
+                    )
                     await self.handle_tool_response(chat, tools, tool_classification)
             except Exception as e:
                 self.logger.error(f"An error occurred: {e}")
@@ -210,31 +221,31 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                         "properties": {
                             "transfer_reason": {
                                 "type": "string",
-                                "description": "The reason for transferring the call, limited to 120 characters"
+                                "description": "The reason for transferring the call, limited to 120 characters",
                             }
                         },
-                        "required": ["transfer_reason"]
-                    }
-                }
+                        "required": ["transfer_reason"],
+                    },
+                },
             },
             {
                 "type": "function",
                 "function": {
                     "name": "hangup_call",
                     "description": "Hangup the call if the assistant does not think the conversation is "
-                                   "appropriate to continue",
+                    "appropriate to continue",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "end_reason": {
                                 "type": "string",
-                                "description": "The reason for ending the call, limited to 120 characters"
+                                "description": "The reason for ending the call, limited to 120 characters",
                             }
                         },
-                        "required": ["end_reason"]
-                    }
-                }
-            }
+                        "required": ["end_reason"],
+                    },
+                },
+            },
         ]
 
     def format_tool_descriptions(self, tools):
@@ -245,7 +256,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     def prepare_chat(self, latest_agent_response):
         chat = format_openai_chat_messages_from_transcript(self.transcript)[1:]
-        chat[-1] = {'role': 'assistant', 'content': latest_agent_response}
+        chat[-1] = {"role": "assistant", "content": latest_agent_response}
         return chat
 
     def prepare_messages(self, pretty_tool_descriptions, stringified_messages):
@@ -281,16 +292,15 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         if tool_response.message.tool_calls:
             tool_call = tool_response.message.tool_calls[0]
-
             self.agent_config.pending_action = FunctionCall(
                 name=tool_call.function.name, arguments=tool_call.function.arguments
             )
 
     async def respond(
-            self,
-            human_input,
-            conversation_id: str,
-            is_interrupt: bool = False,
+        self,
+        human_input,
+        conversation_id: str,
+        is_interrupt: bool = False,
     ) -> Tuple[str, bool]:
         assert self.transcript is not None
         if is_interrupt and self.agent_config.cut_off_response:
@@ -311,10 +321,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         return text, False
 
     async def generate_response(
-            self,
-            human_input: str,
-            conversation_id: str,
-            is_interrupt: bool = False,
+        self,
+        human_input: str,
+        conversation_id: str,
+        is_interrupt: bool = False,
     ) -> AsyncGenerator[Tuple[Union[str, FunctionCall], bool], None]:
         if is_interrupt and self.agent_config.cut_off_response:
             cut_off_response = self.get_cut_off_response()
@@ -369,7 +379,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         all_messages = []
 
         async for message in collate_response_async(
-                openai_get_tokens(stream), get_functions=True
+            openai_get_tokens(stream), get_functions=True
         ):
             if not message:
                 continue
