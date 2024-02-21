@@ -113,7 +113,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             "messages": messages,
             "max_tokens": self.agent_config.max_tokens,
             "temperature": self.agent_config.temperature,
-            "stop": ["User:", "\n", "<|im_end|>", "?"],
+            # "stop": ["User:", "\n", "<|im_end|>", "?"],
+            # just ?
+            "stop": ["?"],
         }
 
         if self.agent_config.azure_params is not None:
@@ -123,7 +125,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         if use_functions and self.functions:
             parameters["functions"] = self.functions
-
         return parameters
 
     def create_first_response(self, first_prompt):
