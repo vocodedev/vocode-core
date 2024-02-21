@@ -681,7 +681,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 transcription = Transcription(
                     message="THIS IS SYSTEM MESSAGE: Conversation idle for too long. If conversation is in czech " + \
                             "SAY: Slyšíme se? Jste ještě na lince?" + \
-                            "If conversation is in english SAY: Are you still there?",
+                            "If conversation is in english SAY: Are you still there?" + \
+                            "If conversation is in slovak SAY: Ste ešte na linke?" + \
+                            "If conversation is in slovak SAY: Czy nadal tam jesteś?",
                     confidence=1.0,
                     is_final=True,
                     is_interrupt=True)
