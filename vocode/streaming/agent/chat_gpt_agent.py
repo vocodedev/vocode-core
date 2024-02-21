@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import openai
 from openai import AzureOpenAI, AsyncAzureOpenAI, OpenAI, AsyncOpenAI
 from typing import AsyncGenerator, Optional, Tuple
-
+import aiohttp
 import logging
 from pydantic import BaseModel
 
@@ -374,28 +374,84 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 chat_parameters = self.get_chat_parameters()
         else:
             chat_parameters = self.get_chat_parameters()
-        chat_parameters["stream"] = True
-        stream = await self.aclient.chat.completions.create(**chat_parameters)
-        all_messages = []
 
-        async for message in collate_response_async(
-            openai_get_tokens(stream), get_functions=True
-        ):
-            if not message:
-                continue
-            yield message, True
-            all_messages.append(message)
+        # Prepare headers and data for the POST request
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer 'EMPTY'",
+        }
+        data = {
+            "model": chat_parameters["model"],
+            "messages": chat_parameters["messages"],
+            "stream": True,
+            "stop": ["?"],
+            "include_stop_str_in_output": True,
+        }
 
-        # add in a question mark if the last message doesn't end with a punctuation
-        if all_messages and not (all_messages[-1][-1] in ".!?"):
-            all_messages[-1] += "?"
+        # Perform the POST request to the OpenAI API
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{getenv('AI_API_BASE')}/chat/completions",
+                headers=headers,
+                json=data,
+                timeout=None,  # Stream endpoint; no timeout
+            ) as response:
+                if response.status == 200:
+                    all_messages = []
+                    messageBuffer = ""
+                    async for line in response.content:
+                        if line.strip():  # Ensure line is not just whitespace
+                            try:
+                                # find first and last { and } to extract the JSON
+                                first_brace = line.find(b"{")
+                                last_brace = line.rfind(b"}")
+                                chunk = json.loads(
+                                    line[first_brace : last_brace + 1].strip()
+                                )
+                                if "choices" in chunk and chunk["choices"]:
+                                    for choice in chunk["choices"]:
+                                        if (
+                                            "delta" in choice
+                                            and "content" in choice["delta"]
+                                        ):
+                                            message = choice["delta"]["content"]
+                                            # if it contains any punctuation besides a comma, yield the buffer and the message and reset it
+                                            # also check if, on split by space, it is longer than 2 words
+                                            if (
+                                                any(p in message for p in ".!?")
+                                                and len(message.split(" ")) > 2
+                                            ):
+                                                messageBuffer += message
+                                                all_messages.append(messageBuffer)
+                                                yield messageBuffer, True
+                                                messageBuffer = ""
+                                            else:
+                                                messageBuffer += message
+                                            if (
+                                                "finish_reason" in choice
+                                                and choice["finish_reason"] == "stop"
+                                            ):
+                                                if len(messageBuffer) > 0:
+                                                    all_messages.append(messageBuffer)
+                                                    yield messageBuffer, True
+                                                    messageBuffer = ""
+                                                break
+                            except json.JSONDecodeError:
+                                # self.logger.error(
+                                #     "JSONDecodeError: Received an empty line or invalid JSON."
+                                # )
+                                continue
 
-        if len(all_messages) > 0:
-            latest_agent_response = " ".join(filter(None, all_messages))
+                    if len(all_messages) > 0:
+                        latest_agent_response = "".join(filter(None, all_messages))
 
-            await self.run_nonblocking_checks(
-                latest_agent_response=latest_agent_response
-            )
-            self.logger.info(
-                f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {latest_agent_response}"
-            )
+                        await self.run_nonblocking_checks(
+                            latest_agent_response=latest_agent_response
+                        )
+                        self.logger.info(
+                            f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {latest_agent_response}"
+                        )
+                else:
+                    self.logger.error(
+                        f"Error while streaming from OpenAI: {response.status}"
+                    )
