@@ -10,7 +10,7 @@ import logging
 import time
 import typing
 import requests
-
+import aiohttp
 from vocode import getenv
 from openai import AsyncOpenAI, OpenAI
 
@@ -139,8 +139,25 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.buffer_avg_confidence = 0.0
             self.num_buffer_utterances = 0
             self.is_final = True  # this flag controls if we are accepting new transcriptions, it is regulated by the agent
+            self.waiting_for_interrupt = False
+            self.interrupt_count = 0
+            self.silenceCache = {}
 
-        def get_expected_silence_duration(self, transcript: str):
+        async def get_expected_silence_duration(self, buffer: str) -> float:
+            previous_agent_message = next(
+                (
+                    message["content"]
+                    for message in reversed(
+                        format_openai_chat_messages_from_transcript(
+                            self.conversation.transcript
+                        )
+                    )
+                    if message["role"] == "assistant"
+                ),
+                "The conversation has just started. There are no previous agent messages.",
+            )
+            pretty_printed = f"""Speaker A: {previous_agent_message}
+Speaker B: {self.buffer}"""
             # Define a constant for max silence time
             MAX_SILENCE_TIME = MAX_SILENCE_DURATION
 
@@ -152,7 +169,7 @@ You are a sentient, superintelligent artificial general intelligence, here to te
 Analyze the provided dialogue and classify whether Speaker B provided a good or bad response to Speaker A. For instance, if Speaker A asks for a X and Y and Speaker B only provides Y, the response is bad. If Speaker B provides both X and Y, the response is good.
 
 Dialogue:
-{transcript}
+{pretty_printed}
 
 If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, if Speaker B's response addresses Speaker A's initial message, return "good".<|im_end|>
 <|im_start|>assistant
@@ -171,81 +188,102 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                 "logprobs": 10,
             }
 
-            # Perform the POST request to classify the dialogue
+            # Prepare headers for the POST request
             headers = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer 'EMPTY'",
             }
             base_url = getenv("AI_API_BASE")
-            response = requests.post(
-                f"{base_url}/completions", headers=headers, json=data
-            )
-
-            # Check if the request was successful
-            if response.status_code == 200:
-                response_data = response.json()
-                # Extract the content and the log probabilities
-                content = response_data["choices"][0]["text"].strip()
-                top_logprobs = response_data["choices"][0]["logprobs"]["top_logprobs"][
-                    0
-                ]
-
-                # Initialize a dictionary to hold the sum of log probabilities for 'bad' and 'good'
-                summed_logprobs = {"bad": 0, "good": 0}
-
-                # Sum the log probabilities for each classification starting with 'b' or 'g'
-                for classification, logprob in top_logprobs.items():
-                    if classification.strip().lower().startswith("ba"):
-                        summed_logprobs["bad"] += math.exp(logprob)
-                    elif classification.strip().lower().startswith("go"):
-                        summed_logprobs["good"] += math.exp(logprob)
-
-                # Determine the most likely classification based on the summed log probabilities
-                if summed_logprobs["bad"] > summed_logprobs["good"]:
-                    final_classification = "bad"
-                    confidence = summed_logprobs["bad"] / (
-                        summed_logprobs["bad"] + summed_logprobs["good"]
-                    )
-                else:
-                    final_classification = "good"
-                    confidence = summed_logprobs["good"] / (
-                        summed_logprobs["good"] + summed_logprobs["bad"]
-                    )
-
-                # Calculate the expected silence duration based on the classification
-                if final_classification == "bad":
-                    expected_silence_duration = confidence * MAX_SILENCE_TIME
-                else:
-                    expected_silence_duration = MAX_SILENCE_TIME - (
-                        confidence * MAX_SILENCE_TIME
-                    )
-                logging.info(
-                    f"Dialogue classified as {final_classification} with confidence {round(confidence * 100, 2)}%"
-                )
-                # Print the result and the expected silence duration
-                return round(expected_silence_duration, 2)
-            else:
-                logging.error(
-                    f"Failed to classify the dialogue: {response.status_code} - {response.text}"
-                )
-                return 0
-
-        async def _buffer_check(self, initial_buffer, expected_silence_duration):
-            await asyncio.sleep(expected_silence_duration)
-            if initial_buffer == self.buffer and not self.is_final:
+            if pretty_printed in self.silenceCache:
                 self.conversation.logger.info(
-                    f"Buffer: {self.buffer} unchanged after {expected_silence_duration}s, marking as final"
+                    f"Using cached silence duration for {pretty_printed}"
                 )
-                self.is_final = True
-                self.conversation.transcriber.mute()
+                # reduce the cache by 50%
+                self.silenceCache[pretty_printed] = (
+                    self.silenceCache[pretty_printed] / 4
+                )
+                return self.silenceCache[pretty_printed]
+
+            # Perform the POST request to classify the dialogue asynchronously
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{base_url}/completions", headers=headers, json=data
+                ) as response:
+                    if response.status == 200:
+                        response_data = await response.json()
+                        # Extract the content and the log probabilities
+                        content = response_data["choices"][0]["text"].strip()
+                        top_logprobs = response_data["choices"][0]["logprobs"][
+                            "top_logprobs"
+                        ][0]
+
+                        # Initialize a dictionary to hold the sum of log probabilities for 'bad' and 'good'
+                        summed_logprobs = {"bad": 0, "good": 0}
+
+                        # Sum the log probabilities for each classification starting with 'b' or 'g'
+                        for classification, logprob in top_logprobs.items():
+                            if classification.strip().lower().startswith("ba"):
+                                summed_logprobs["bad"] += math.exp(logprob)
+                            elif classification.strip().lower().startswith("go"):
+                                summed_logprobs["good"] += math.exp(logprob)
+
+                        # Determine the most likely classification based on the summed log probabilities
+                        if summed_logprobs["bad"] > summed_logprobs["good"]:
+                            final_classification = "bad"
+                            confidence = summed_logprobs["bad"] / (
+                                summed_logprobs["bad"] + summed_logprobs["good"]
+                            )
+                        else:
+                            final_classification = "good"
+                            confidence = summed_logprobs["good"] / (
+                                summed_logprobs["good"] + summed_logprobs["bad"]
+                            )
+
+                        # Calculate the expected silence duration based on the classification
+                        if final_classification == "bad":
+                            expected_silence_duration = (1 + confidence) * (
+                                confidence * MAX_SILENCE_TIME
+                            )
+                        else:
+                            expected_silence_duration = MAX_SILENCE_TIME - (
+                                confidence * confidence * confidence * MAX_SILENCE_TIME
+                            )
+                        logging.info(
+                            f"Dialogue classified as {final_classification} with confidence {round(confidence * 100, 2)}%"
+                        )
+                        # Return the result and the expected silence duration
+                        self.silenceCache[pretty_printed] = expected_silence_duration
+                        return round(expected_silence_duration, 2)
+                    else:
+                        logging.error(
+                            f"Failed to classify the dialogue: {response.status} - {await response.text()}"
+                        )
+                        return 0.0
+
+        async def _buffer_check(self, initial_buffer):
+            if self.time_silent < 2:
+                expected_silence_duration = (
+                    await self.get_expected_silence_duration(initial_buffer)
+                    - self.time_silent
+                )
+                await asyncio.sleep(expected_silence_duration)
+            if initial_buffer == self.buffer and not self.is_final:
+                if self.waiting_for_interrupt:
+                    return
+                self.conversation.broadcast_interrupt()
+                self.interrupt_count += 1
+                # self.conversation.logger.info(
+                #     f"Buffer: {self.buffer} unchanged after {expected_silence_duration}s, marking as final"
+                # )
+                # self.is_final = True #doing in the synth
                 transcription = Transcription(
                     message=self.buffer,
                     confidence=1.0,  # Assuming full confidence as it's not provided
                     is_final=True,
                     time_silent=self.time_silent,
                 )
-                self.buffer = ""
-                self.time_silent = 0.0
+                # self.buffer = "" #reset in synth
+                # self.time_silent = 0.0
                 # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
                 event = self.interruptible_event_factory.create_interruptible_event(
                     TranscriptionAgentInput(
@@ -261,73 +299,54 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                     f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{transcription.message}"
                 )
                 self.conversation.logger.info("Transcription event put in output queue")
+            else:
+                self.interrupt_count = 0
 
+        # async procesess to send out the transcription
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
-            if self.is_final:
-                self.conversation.logger.debug(
-                    "Ignoring transcription since we are in-flight"
-                )
+            # check if the message is just "vad"
+            if (
+                transcription.message.strip() == "vad"
+                and not self.is_final
+                and len(self.buffer) > 0
+            ):
+                if self.interrupt_count < 1:
+                    self.conversation.logger.debug("Recieved vad message")
+                    self.waiting_for_interrupt = True
+                    self.conversation.broadcast_interrupt()
+                    self.interrupt_count += 1
+                # trigger buffer check in case nothing else comes in
                 return
+            elif transcription.message.strip() == "vad":
+                self.conversation.logger.debug("Ignoring consecutive vad message")
+                return
+
+            # if self.is_final:
+            #     self.conversation.logger.debug(
+            #         "Ignoring transcription since we are in-flight"
+            #     )
+            #     self.buffer = ""
+            #     self.time_silent = 0.0
+            #     return
             if len(self.buffer) > 0:
                 # only accumulate silence if the buffer is not empty
                 self.time_silent += transcription.time_silent
             self.conversation.logger.info(f"Time silent: {self.time_silent}s")
             if transcription.message.strip() == "":
+                if len(self.buffer) > 0 and self.waiting_for_interrupt:
+                    self.waiting_for_interrupt = False
+                    asyncio.create_task(self._buffer_check(self.buffer))
                 self.conversation.logger.debug("Ignoring empty transcription")
                 return
             else:
+                self.waiting_for_interrupt = False
+
                 # if we detect a non-empty transcription, we reset the time silent
                 self.time_silent = 0.0
             self.buffer = f"{self.buffer} {transcription.message.strip()}"
-
-            previous_agent_message = next(
-                (
-                    message["content"]
-                    for message in reversed(
-                        format_openai_chat_messages_from_transcript(
-                            self.conversation.transcript
-                        )
-                    )
-                    if message["role"] == "assistant"
-                ),
-                "The conversation has just started. There are no previous agent messages.",
-            )
-            pretty_printed = f"Context: {previous_agent_message} Reply: {self.buffer}"
-
-            expected_silence_duration = self.get_expected_silence_duration(
-                pretty_printed
-            )
-
-            if self.time_silent >= expected_silence_duration:
-                if not self.is_final:
-                    self.is_final = True
-                    self.conversation.transcriber.mute()
-                    transcription.message = self.buffer
-                    self.buffer = ""
-                    self.time_silent = 0.0
-                    # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
-                    event = self.interruptible_event_factory.create_interruptible_event(
-                        TranscriptionAgentInput(
-                            transcription=transcription,
-                            conversation_id=self.conversation.id,
-                            vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
-                            twilio_sid=getattr(self.conversation, "twilio_sid", None),
-                        )
-                    )
-                    self.output_queue.put_nowait(event)
-                    self.conversation.logger.info(
-                        "Transcription event put in output queue"
-                    )
-            else:
-                self.conversation.logger.info(
-                    f"Holding in buffer for {expected_silence_duration}s"
-                )
-                asyncio.create_task(
-                    self._buffer_check(
-                        self.buffer, expected_silence_duration - self.time_silent
-                    )
-                )
+            self.interrupt_count = 0
+            asyncio.create_task(self._buffer_check(self.buffer))
 
     class FillerAudioWorker(InterruptibleAgentResponseWorker):
         """
@@ -407,6 +426,7 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
             self.output_queue = output_queue
             self.conversation = conversation
             self.interruptible_event_factory = interruptible_event_factory
+            self.convoCache = {}
             self.chunk_size = (
                 get_chunk_size_per_second(
                     self.conversation.synthesizer.get_synthesizer_config().audio_encoding,
@@ -460,12 +480,24 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                         self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                     ):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
-
-                synthesis_result = await self.conversation.synthesizer.create_speech(
-                    agent_response_message.message,
-                    self.chunk_size,
-                    bot_sentiment=self.conversation.bot_sentiment,
-                )
+                if str(agent_response_message.message) in self.convoCache:
+                    self.conversation.logger.info(
+                        f"Using cached synthesis result for {str(agent_response_message.message)}"
+                    )
+                    synthesis_result = self.convoCache[
+                        str(agent_response_message.message)
+                    ]
+                else:
+                    synthesis_result = (
+                        await self.conversation.synthesizer.create_speech(
+                            agent_response_message.message,
+                            self.chunk_size,
+                            bot_sentiment=self.conversation.bot_sentiment,
+                        )
+                    )
+                    self.convoCache[str(agent_response_message.message)] = (
+                        synthesis_result
+                    )
                 self.produce_interruptible_agent_response_event_nonblocking(
                     (agent_response_message.message, synthesis_result),
                     is_interruptible=item.is_interruptible,
@@ -641,7 +673,6 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
         # mute at the start
-        self.transcriber.mute()
         self.transcriptions_worker.start()
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
@@ -689,7 +720,6 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
 
     async def send_initial_message(self, initial_message: BaseMessage):
         # TODO: configure if initial message is interruptible
-        self.transcriber.mute()
         initial_message_tracker = asyncio.Event()
         agent_response_event = (
             self.interruptible_event_factory.create_interruptible_agent_response_event(
@@ -740,6 +770,11 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
             confidence=1.0,
             is_final=True,
         )
+        if self.transcriptions_worker.is_final:
+            # self.transcriptions_worker.is_final = False
+            # self.transcriptions_worker.buffer = ""
+            # self.transcriptions_worker.time_silent = 0.0
+            return
         self.transcriptions_worker.consume_nonblocking(transcription)
 
     def receive_audio(self, chunk: bytes):
@@ -768,6 +803,7 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                 break
         self.agent.cancel_current_task()
         self.agent_responses_worker.cancel_current_task()
+        self.synthesis_results_worker.cancel_current_task()
         return num_interrupts > 0
 
     def is_interrupt(self, transcription: Transcription):
@@ -796,11 +832,16 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
 
         Returns the message that was sent up to, and a flag if the message was cut off
         """
+        # skip if its already marked as final
+        # if self.transcriptions_worker.is_final:
+        #     self.logger.debug("Ignoring speech from synth since we are in-flight")
+        #     self.transcriptions_worker.is_final = False
+        #     self.transcriptions_worker.buffer = ""
+        #     self.transcriptions_worker.time_silent = 0.0
+        #     return
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Muting transcriber")
-            self.transcriber.mute()
             # disable transcriptionworker with is_final
-            self.transcriptions_worker.is_final = True
         message_sent = message
         cut_off = False
         chunk_size = seconds_per_chunk * get_chunk_size_per_second(
@@ -809,6 +850,10 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
         )
         chunk_idx = 0
         seconds_spoken = 0
+        # set right before synth sends out the message so that user has more time to speak
+        self.transcriptions_worker.is_final = True  # transcriber
+        self.transcriptions_worker.buffer = ""  # transcriber
+        self.transcriptions_worker.time_silent = 0.0  # transcriber
 
         async for chunk_result in synthesis_result.chunk_generator:
             start_time = time.time()
@@ -851,7 +896,8 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()
-            self.transcriptions_worker.is_final = False
+        self.transcriptions_worker.is_final = False
+        self.transcriptions_worker.interrupt_count = 0
         if transcript_message:
             transcript_message.text = message_sent
 

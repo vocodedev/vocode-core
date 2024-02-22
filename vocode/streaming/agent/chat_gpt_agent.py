@@ -384,7 +384,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             "model": chat_parameters["model"],
             "messages": chat_parameters["messages"],
             "stream": True,
-            "stop": ["?"],
+            "stop": ["?", "\n"],
             "include_stop_str_in_output": True,
         }
 

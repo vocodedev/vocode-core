@@ -108,6 +108,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             "encoding": encoding,
             "sample_rate": self.transcriber_config.sampling_rate,
             "channels": 1,
+            "vad_events": "true",
         }
         extra_params = {}
         if self.transcriber_config.language:
@@ -253,13 +254,14 @@ The exact format to return is:
                         break
                     data = json.loads(msg)
                     if data["type"] == "SpeechStarted":
-                        # self.output_queue.put_nowait(
-                        #     Transcription(
-                        #         message="",
-                        #         confidence=1.0,
-                        #         is_final=False,
-                        #     )
-                        # )
+                        # self.logger.debug("VAD triggered")
+                        self.output_queue.put_nowait(
+                            Transcription(
+                                message="vad",
+                                confidence=1.0,
+                                is_final=False,
+                            )
+                        )
                         continue
                     if (
                         not "is_final" in data
