@@ -199,7 +199,7 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                     f"Using cached silence duration for {pretty_printed}"
                 )
                 self.silenceCache[pretty_printed] = (
-                    self.silenceCache[pretty_printed] / 3
+                    self.silenceCache[pretty_printed] / 2
                 )
                 return self.silenceCache[pretty_printed]
 
