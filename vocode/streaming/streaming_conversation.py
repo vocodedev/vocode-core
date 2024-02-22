@@ -198,9 +198,8 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                 self.conversation.logger.info(
                     f"Using cached silence duration for {pretty_printed}"
                 )
-                # reduce the cache by 50%
                 self.silenceCache[pretty_printed] = (
-                    self.silenceCache[pretty_printed] / 4
+                    self.silenceCache[pretty_printed] / 3
                 )
                 return self.silenceCache[pretty_printed]
 
