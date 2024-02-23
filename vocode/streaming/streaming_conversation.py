@@ -138,10 +138,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.time_silent = 0.0
             self.buffer_avg_confidence = 0.0
             self.num_buffer_utterances = 0
-            self.is_final = True  # this flag controls if we are accepting new transcriptions, it is regulated by the agent
+            self.is_final = True  # this flag controls if we are accepting new transcriptions, when true, the agent is speaking and we are not taking in new transcriptions
             self.waiting_for_interrupt = False
-            self.interrupt_count = 0
-            self.silenceCache = {}
+            self.interrupt_count = 0  # this regulates how many times we've interrupted as a result of VAD, we don't want two interrupts in a row without a message in between
+            self.silenceCache = (
+                {}
+            )  # this allows us not to reprocess endpoint classifications if it needs to be classified again in the event of a false interruption
 
         async def get_expected_silence_duration(self, buffer: str) -> float:
             previous_agent_message = next(
@@ -265,25 +267,23 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                     await self.get_expected_silence_duration(initial_buffer)
                     - self.time_silent
                 )
-                await asyncio.sleep(expected_silence_duration)
-            if initial_buffer == self.buffer and not self.is_final:
+                await asyncio.sleep(
+                    expected_silence_duration
+                )  # in the background, we wait to see if a new transcription comes in
+            if (
+                initial_buffer == self.buffer and not self.is_final
+            ):  # check for new transcription
                 if self.waiting_for_interrupt:
                     return
                 self.conversation.broadcast_interrupt()
-                self.interrupt_count += 1
-                # self.conversation.logger.info(
-                #     f"Buffer: {self.buffer} unchanged after {expected_silence_duration}s, marking as final"
-                # )
-                # self.is_final = True #doing in the synth
+                self.interrupt_count += 1  # we just broadcasted an interupt
                 transcription = Transcription(
                     message=self.buffer,
                     confidence=1.0,  # Assuming full confidence as it's not provided
                     is_final=True,
                     time_silent=self.time_silent,
                 )
-                # self.buffer = "" #reset in synth
-                # self.time_silent = 0.0
-                # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
+
                 event = self.interruptible_event_factory.create_interruptible_event(
                     TranscriptionAgentInput(
                         transcription=transcription,
@@ -299,7 +299,7 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                 )
                 self.conversation.logger.info("Transcription event put in output queue")
             else:
-                self.interrupt_count = 0
+                self.interrupt_count = 0  # we got a new transcription, so now we no longer worry about consecutive interrupts
 
         # async procesess to send out the transcription
         async def process(self, transcription: Transcription):
@@ -308,42 +308,44 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
             if (
                 transcription.message.strip() == "vad"
                 and not self.is_final
-                and len(self.buffer) > 0
+                and len(self.buffer)
+                > 0  # VAD doesnt matter if we haven't started hearing anything yet
             ):
                 if self.interrupt_count < 1:
-                    self.conversation.logger.debug("Recieved vad message")
-                    self.waiting_for_interrupt = True
+                    self.conversation.logger.debug("Recieved VAD message")
+                    self.waiting_for_interrupt = (
+                        True  # now we are waiting for a message with content
+                    )
                     self.conversation.broadcast_interrupt()
                     self.interrupt_count += 1
                 # trigger buffer check in case nothing else comes in
                 return
-            elif transcription.message.strip() == "vad":
+            elif transcription.message.strip() == "vad":  # ignore all others regardless
                 self.conversation.logger.debug("Ignoring consecutive vad message")
                 return
 
-            # if self.is_final:
-            #     self.conversation.logger.debug(
-            #         "Ignoring transcription since we are in-flight"
-            #     )
-            #     self.buffer = ""
-            #     self.time_silent = 0.0
-            #     return
             if len(self.buffer) > 0:
                 # only accumulate silence if the buffer is not empty
                 self.time_silent += transcription.time_silent
             self.conversation.logger.info(f"Time silent: {self.time_silent}s")
-            if transcription.message.strip() == "":
-                if len(self.buffer) > 0 and self.waiting_for_interrupt:
+            if (
+                transcription.message.strip() == ""
+            ):  # if we didn't get anything, still, we just send out what we have
+                if (
+                    len(self.buffer) > 0 and self.waiting_for_interrupt
+                ):  # because we are waiting and didnt get a message, send it out as is
                     self.waiting_for_interrupt = False
                     asyncio.create_task(self._buffer_check(self.buffer))
                 self.conversation.logger.debug("Ignoring empty transcription")
                 return
             else:
-                self.waiting_for_interrupt = False
+                self.waiting_for_interrupt = False  # we DID get something so we no longer are disregarding VAD messages
 
-                # if we detect a non-empty transcription, we reset the time silent
+                # if we detect a non-empty transcription, we reset the time silent since they just said something
                 self.time_silent = 0.0
-            self.buffer = f"{self.buffer} {transcription.message.strip()}"
+            self.buffer = (
+                f"{self.buffer} {transcription.message.strip()}".strip()
+            )  # otherwise send it out with the new message, also handling if its empty
             self.interrupt_count = 0
             asyncio.create_task(self._buffer_check(self.buffer))
 
