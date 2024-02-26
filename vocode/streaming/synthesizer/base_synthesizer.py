@@ -39,6 +39,7 @@ FILLER_PHRASES = [
     BaseMessage(text="Right..."),
     BaseMessage(text="Let me see..."),
 ]
+
 FILLER_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "filler_audio")
 TYPING_NOISE_PATH = "%s/typing-noise.wav" % FILLER_AUDIO_PATH
 

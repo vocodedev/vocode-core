@@ -65,7 +65,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.ignore_cache = ignore_cache
     @property
     def cache_path(self):
-        return os.path.join(FILLER_AUDIO_PATH, "elevenlabs", self.model_id, self.voice_id, self.output_format)
+        filler_path = FILLER_AUDIO_PATH if os.getenv("FILLER_AUDIO_PATH") is None else os.getenv("FILLER_AUDIO_PATH")
+        return os.path.join(filler_path, "elevenlabs", self.model_id, self.voice_id, self.output_format)
 
     @staticmethod
     def hash_message(message_text: str) -> str:
@@ -377,7 +378,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         # FIXME probably remove it anyway.
         # blob storage & env path to downloaded files.
         filler_phrase_audios = []
-        elevenlabs_fillers = os.path.join(FILLER_AUDIO_PATH, "elevenlabs", self.model_id, self.voice_id)
+        elevenlabs_fillers = os.path.join(self.cache_path, "elevenlabs", self.model_id, self.voice_id)
         audio_files = os.listdir(elevenlabs_fillers)
         # for audio_file in audio_files:
         #     wav = open(elevenlabs_fillers + "/" + audio_file, "rb").read()
