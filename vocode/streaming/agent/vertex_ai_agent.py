@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 from langchain import ConversationChain
 from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.agent import ChatVertexAIAgentConfig
-from langchain.chat_models import ChatVertexAI
+from langchain_community.chat_models import ChatVertexAI
 from langchain.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder,

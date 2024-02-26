@@ -17,7 +17,7 @@ jobs:
           - "3.10"
           - "3.11"
         poetry-version:
-          - "1.4.2"
+          - "1.7.1"
 
     runs-on: ubuntu-latest
 

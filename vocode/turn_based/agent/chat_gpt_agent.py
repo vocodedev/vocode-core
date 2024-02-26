@@ -7,7 +7,7 @@ from langchain.prompts import (
     HumanMessagePromptTemplate,
 )
 from langchain.chains import ConversationChain
-from langchain.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from vocode import getenv
 
@@ -36,7 +36,9 @@ class ChatGPTAgent(BaseAgent):
                 HumanMessagePromptTemplate.from_template("{input}"),
             ]
         )
-        self.memory = memory if memory else ConversationBufferMemory(return_messages=True)
+        self.memory = (
+            memory if memory else ConversationBufferMemory(return_messages=True)
+        )
         if initial_message:
             self.memory.chat_memory.add_ai_message(initial_message)
         self.llm = ChatOpenAI(  # type: ignore

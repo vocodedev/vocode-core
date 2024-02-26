@@ -8,7 +8,7 @@ from ..models.agent import (
     RESTfulAgentText,
     RESTfulAgentEnd,
 )
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from typing import Union
 from fastapi import APIRouter
 

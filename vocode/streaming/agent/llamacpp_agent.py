@@ -15,7 +15,7 @@ from langchain.prompts import (
     MessagesPlaceholder,
     HumanMessagePromptTemplate,
 )
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from langchain.schema import LLMResult, SystemMessage, get_buffer_string
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import (
@@ -24,7 +24,7 @@ from langchain.prompts import (
     HumanMessagePromptTemplate,
     PromptTemplate,
 )
-from langchain.prompts.base import DEFAULT_FORMATTER_MAPPING
+from langchain_core.prompts.string import DEFAULT_FORMATTER_MAPPING
 
 ALPACA_TEMPLATE_WITH_HISTORY = """### Instruction:
 Your previous conversation history:

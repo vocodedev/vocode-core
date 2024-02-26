@@ -2,7 +2,7 @@ import asyncio
 import typing
 from dotenv import load_dotenv
 from playground.streaming.tracing_utils import make_parser_and_maybe_trace
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from vocode.streaming.action.base_action import BaseAction
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.action.worker import ActionsWorker

@@ -1,7 +1,7 @@
 import asyncio
 from enum import Enum
 from typing import Generic, Optional, TypeVar
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from vocode.streaming.models.model import TypedModel
 
 
@@ -26,7 +26,6 @@ class ActionInput(BaseModel, Generic[ParametersType]):
 
     class Config:
         arbitrary_types_allowed = True
-
 
 
 class FunctionFragment(BaseModel):

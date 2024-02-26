@@ -3,13 +3,14 @@ from langchain import ConversationChain
 import logging
 
 from typing import Optional, Tuple
+from pydantic.v1 import SecretStr
 from vocode.streaming.agent.base_agent import RespondAgent
 
 from vocode.streaming.agent.utils import get_sentence_from_buffer
 
 from langchain import ConversationChain
 from langchain.schema import ChatMessage, AIMessage, HumanMessage
-from langchain.chat_models import ChatAnthropic
+from langchain_community.chat_models import ChatAnthropic
 import logging
 from vocode import getenv
 
@@ -34,15 +35,25 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
         self,
         agent_config: ChatAnthropicAgentConfig,
         logger: Optional[logging.Logger] = None,
-        anthropic_api_key: Optional[str] = None,
+        anthropic_api_key: Optional[SecretStr] = None,
     ):
         super().__init__(agent_config=agent_config, logger=logger)
         import anthropic
 
-        anthropic_api_key = anthropic_api_key or getenv("ANTHROPIC_API_KEY")
+        # Convert anthropic_api_key to SecretStr if it's not None and not already a SecretStr
+        if anthropic_api_key is not None and not isinstance(
+            anthropic_api_key, SecretStr
+        ):
+            anthropic_api_key = SecretStr(anthropic_api_key)
+        else:
+            # Retrieve anthropic_api_key from environment variable and convert to SecretStr
+            env_key = getenv("ANTHROPIC_API_KEY")
+            if env_key:
+                anthropic_api_key = SecretStr(env_key)
+
         if not anthropic_api_key:
             raise ValueError(
-                "ANTHROPIC_API_KEY must be set in environment or passed in"
+                "ANTHROPIC_API_KEY must be set in environment or passed in as a SecretStr"
             )
         self.prompt = ChatPromptTemplate.from_messages(
             [
@@ -52,13 +63,13 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
         )
 
         self.llm = ChatAnthropic(
-            model=agent_config.model_name,
+            model_name=agent_config.model_name,
             anthropic_api_key=anthropic_api_key,
         )
 
         # streaming not well supported by langchain, so we will connect directly
         self.anthropic_client = (
-            anthropic.AsyncAnthropic(api_key=anthropic_api_key)
+            anthropic.AsyncAnthropic(api_key=str(anthropic_api_key))
             if agent_config.generate_responses
             else None
         )

@@ -1,5 +1,5 @@
 from typing import Optional, Type
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 import os
 from vocode.streaming.action.base_action import BaseAction
 from vocode.streaming.models.actions import (

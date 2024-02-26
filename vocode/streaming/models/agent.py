@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 from enum import Enum
 from langchain.prompts import PromptTemplate
 
-from pydantic import validator
+from pydantic.v1 import validator
 from vocode.streaming.models.actions import ActionConfig
 
 from vocode.streaming.models.message import BaseMessage
