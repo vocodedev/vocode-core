@@ -374,33 +374,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             return result
 
     async def get_phrase_filler_audios(self) -> List[FillerAudio]:
-        # FIXME currently it is stored on github but later replace with
-        # FIXME probably remove it anyway.
-        # blob storage & env path to downloaded files.
+        # Kept for compatibility with the old code.
         filler_phrase_audios = []
-        elevenlabs_fillers = os.path.join(self.cache_path, "elevenlabs", self.model_id, self.voice_id)
-        audio_files = os.listdir(elevenlabs_fillers)
-        # for audio_file in audio_files:
-        #     wav = open(elevenlabs_fillers + "/" + audio_file, "rb").read()
-        #     filler_phrase = BaseMessage(text=audio_file.split(".")[0])
-        #     audio_data = convert_wav(
-        #         io.BytesIO(wav),
-        #         output_sample_rate=self.synthesizer_config.sampling_rate,
-        #         output_encoding=self.synthesizer_config.audio_encoding,
-        #     )
-        #     offset_ms = 20
-        #     offset = self.synthesizer_config.sampling_rate * offset_ms // 1000
-        #     audio_data = audio_data[offset:]
-        #
-        #     filler_phrase_audios.append(
-        #         FillerAudio(
-        #             filler_phrase,
-        #             audio_data=audio_data,
-        #             synthesizer_config=self.synthesizer_config,
-        #             is_interruptible=False,  # FIXME: consider making this configurable.
-        #             seconds_per_chunk=2,
-        #         )
-        #     )
 
         return filler_phrase_audios
 
