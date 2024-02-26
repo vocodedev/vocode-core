@@ -1,5 +1,9 @@
+# Standard library imports
 import logging
 import os
+import sys
+
+# Third-party imports
 from fastapi import FastAPI
 from vocode.streaming.models.telephony import TwilioConfig
 from pyngrok import ngrok
@@ -12,14 +16,16 @@ from vocode.streaming.telephony.server.base import (
     TwilioInboundCallConfig,
     TelephonyServer,
 )
+from dotenv import load_dotenv
 
-from speller_agent import SpellerAgentFactory
-import sys
+# Local application/library specific imports
+from speller_agent import (
+    SpellerAgentFactory,
+    SpellerAgentConfig,
+)
 
 # if running from python, this will load the local .env
 # docker-compose will load the .env file by itself
-from dotenv import load_dotenv
-
 load_dotenv()
 
 app = FastAPI(docs_url=None)
@@ -28,7 +34,9 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-config_manager = RedisConfigManager()
+config_manager = RedisConfigManager(
+    logger=logger,
+)
 
 BASE_URL = os.getenv("BASE_URL")
 
@@ -56,10 +64,16 @@ telephony_server = TelephonyServer(
                 prompt_preamble="Have a pleasant conversation about life",
                 generate_responses=True,
             ),
+            # uncomment this to use the speller agent instead
+            # agent_config=SpellerAgentConfig(
+            #     initial_message=BaseMessage(text="im a speller agent, say something to me and ill spell it out for you"),
+            #     generate_responses=False,
+            # ),
             twilio_config=TwilioConfig(
                 account_sid=os.environ["TWILIO_ACCOUNT_SID"],
                 auth_token=os.environ["TWILIO_AUTH_TOKEN"],
             ),
+            logger=logger,
         )
     ],
     agent_factory=SpellerAgentFactory(),

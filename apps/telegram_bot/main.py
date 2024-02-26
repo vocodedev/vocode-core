@@ -28,6 +28,10 @@ from vocode.turn_based.synthesizer import (
     BaseSynthesizer,
 )
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
@@ -46,7 +50,7 @@ supported_classes = [
 # Required environment variables containing API key: OPENAI_API_KEY, TELEGRAM_BOT_KEY, and your Vocode synthesizers classes corresponding API key variable
 
 # Your chosen synthesizer provider's corresponding Vocode turn_based class instance
-SYNTH = CoquiSynthesizer(use_xtts=True)
+SYNTH = AzureSynthesizer(voice_name="en-US-SteffanNeural")
 
 # Instructions to the language model responsible for generating response transcript.
 SYSTEM_PROMPT = "You are having a voice-to-voice conversation with a user. Always pretend you are a real human. Do not avoid or decline to answer questions because you are not human."
@@ -153,7 +157,8 @@ class VocodeBotResponder:
             setattr(self.synthesizer, voice_attr_of[type(self.synthesizer)], voice_id)
 
         # Synthesize response
-        synth_response = await self.synthesizer.async_synthesize(agent_response)
+        # TODO make async
+        synth_response = self.synthesizer.synthesize(agent_response)
 
         # Save conversation to DB
         self.db[chat_id].current_conversation = pickle.dumps(agent.memory)
