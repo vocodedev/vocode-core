@@ -74,6 +74,7 @@ class AgentInput(TypedModel, type=AgentInputType.BASE.value):
 
 class TranscriptionAgentInput(AgentInput, type=AgentInputType.TRANSCRIPTION.value):
     transcription: Transcription
+    affirmative_phrase: Optional[str] = None
 
 
 class ActionResultAgentInput(AgentInput, type=AgentInputType.ACTION_RESULT.value):
@@ -140,9 +141,9 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
         interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
         logger: Optional[logging.Logger] = None,
     ):
-        self.input_queue: asyncio.Queue[
-            InterruptibleEvent[AgentInput]
-        ] = asyncio.Queue()
+        self.input_queue: asyncio.Queue[InterruptibleEvent[AgentInput]] = (
+            asyncio.Queue()
+        )
         self.output_queue: asyncio.Queue[
             InterruptibleAgentResponseEvent[AgentResponse]
         ] = asyncio.Queue()
@@ -154,9 +155,9 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
             interruptible_event_factory=interruptible_event_factory,
         )
         self.action_factory = action_factory
-        self.actions_queue: asyncio.Queue[
-            InterruptibleEvent[ActionInput]
-        ] = asyncio.Queue()
+        self.actions_queue: asyncio.Queue[InterruptibleEvent[ActionInput]] = (
+            asyncio.Queue()
+        )
         self.logger = logger or logging.getLogger(__name__)
         self.goodbye_model = None
         if self.agent_config.end_conversation_on_goodbye:
@@ -200,7 +201,10 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
 
 class RespondAgent(BaseAgent[AgentConfigType]):
     async def handle_generate_response(
-        self, transcription: Transcription, agent_input: AgentInput
+        self,
+        transcription: Transcription,
+        agent_input: AgentInput,
+        affirmative_phrase: Optional[str] = None,
     ) -> bool:
         conversation_id = agent_input.conversation_id
         tracer_name_start = await self.get_tracer_name_start()
@@ -210,11 +214,19 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         agent_span_first = tracer.start_span(
             f"{tracer_name_start}.generate_first"  # type: ignore
         )
-        responses = self.generate_response(
-            transcription.message,
-            is_interrupt=transcription.is_interrupt,
-            conversation_id=conversation_id,
-        )
+        if affirmative_phrase:
+            responses = self.generate_completion(
+                transcription.message,
+                affirmative_phrase,
+                conversation_id,
+                is_interrupt=transcription.is_interrupt,
+            )
+        else:
+            responses = self.generate_response(
+                transcription.message,
+                is_interrupt=transcription.is_interrupt,
+                conversation_id=conversation_id,
+            )
         is_first_response = True
         function_call = None
         async for response, is_interruptible in responses:
@@ -276,6 +288,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     text=transcription.message,
                     conversation_id=agent_input.conversation_id,
                 )
+
             elif isinstance(agent_input, ActionResultAgentInput):
                 self.transcript.add_action_finish_log(
                     action_input=agent_input.action_input,
@@ -299,16 +312,20 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 goodbye_detected_task = self.create_goodbye_detection_task(
                     transcription.message
                 )
-            if self.agent_config.send_filler_audio:
-                self.produce_interruptible_agent_response_event_nonblocking(
-                    AgentResponseFillerAudio()
-                )
+            phrase = typing.cast(
+                TranscriptionAgentInput, agent_input
+            ).affirmative_phrase
             self.logger.debug("Responding to transcription")
             should_stop = False
             if self.agent_config.generate_responses:
-                should_stop = await self.handle_generate_response(
-                    transcription, agent_input
-                )
+                if phrase:
+                    should_stop = await self.handle_generate_response(
+                        transcription, agent_input, phrase
+                    )
+                else:
+                    should_stop = await self.handle_generate_response(
+                        transcription, agent_input
+                    )
             else:
                 should_stop = await self.handle_respond(
                     transcription, agent_input.conversation_id
@@ -433,6 +450,17 @@ class RespondAgent(BaseAgent[AgentConfigType]):
     def generate_response(
         self,
         human_input,
+        conversation_id: str,
+        is_interrupt: bool = False,
+    ) -> AsyncGenerator[
+        Tuple[Union[str, FunctionCall], bool], None
+    ]:  # tuple of the content and whether it is interruptible
+        raise NotImplementedError
+
+    def generate_completion(
+        self,
+        human_input,
+        affirmative_phrase: Optional[str],
         conversation_id: str,
         is_interrupt: bool = False,
     ) -> AsyncGenerator[

@@ -17,7 +17,8 @@ import io
 import wave
 import aiohttp
 import nltk
-nltk.download('punkt')
+
+nltk.download("punkt")
 from nltk.tokenize import word_tokenize
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 from opentelemetry import trace
@@ -32,16 +33,34 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 
 FILLER_PHRASES = [
-    BaseMessage(text="Um..."),
-    BaseMessage(text="Uh..."),
-    BaseMessage(text="Uh-huh..."),
-    BaseMessage(text="Mm-hmm..."),
-    BaseMessage(text="Hmm..."),
-    BaseMessage(text="Okay..."),
-    BaseMessage(text="Right..."),
-    BaseMessage(text="Let me see..."),
+    BaseMessage(text="Hmm?"),
+    BaseMessage(text="aha?"),
+    BaseMessage(text="hmm-hmm?"),
+    # BaseMessage(text="oh?"),
 ]
+AFFIRMATIVE_PHRASES = [
+    BaseMessage(text="Got it."),
+    BaseMessage(text="Understood."),
+    BaseMessage(text="Right."),
+    BaseMessage(text="Noted."),
+    BaseMessage(text="Okay."),
+    BaseMessage(text="Sure."),
+    BaseMessage(text="Gotcha."),
+    BaseMessage(text="I see."),
+    # BaseMessage(text="Got it!"),
+    # BaseMessage(text="Understood!"),
+    # BaseMessage(text="Right!"),
+    # BaseMessage(text="Noted!"),
+    # BaseMessage(text="Okay!"),
+    # BaseMessage(text="Sure!"),
+    # BaseMessage(text="Gotcha!"),
+    # BaseMessage(text="I see!"),
+    # BaseMessage(text="Okey-dokee!"),
+]
+
 FILLER_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "filler_audio")
+AFFIRMATIVE_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "affirmative_audio")
+
 TYPING_NOISE_PATH = "%s/typing-noise.wav" % FILLER_AUDIO_PATH
 
 
@@ -134,6 +153,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
                 synthesizer_config.sampling_rate == 8000
             ), "MuLaw encoding only supports 8kHz sampling rate"
         self.filler_audios: List[FillerAudio] = []
+        self.affirmative_audios: List[FillerAudio] = []
         if aiohttp_session:
             # the caller is responsible for closing the session
             self.aiohttp_session = aiohttp_session
@@ -167,7 +187,16 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         elif filler_audio_config.use_typing_noise:
             self.filler_audios = [self.get_typing_noise_filler_audio()]
 
+    async def set_affirmative_audios(self, filler_audio_config: FillerAudioConfig):
+        if filler_audio_config.use_phrases:
+            self.affirmative_audios = await self.get_phrase_affirmative_audios()
+        elif filler_audio_config.use_typing_noise:
+            self.affirmative_audios = [self.get_typing_noise_filler_audio()]
+
     async def get_phrase_filler_audios(self) -> List[FillerAudio]:
+        return []
+
+    async def get_phrase_affirmative_audios(self) -> List[FillerAudio]:
         return []
 
     def ready_synthesizer(self):
@@ -250,12 +279,12 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         chunk_size: int,
         create_speech_span: Optional[Span],
     ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
-        miniaudio_worker_input_queue: asyncio.Queue[
-            Union[bytes, None]
-        ] = asyncio.Queue()
-        miniaudio_worker_output_queue: asyncio.Queue[
-            Tuple[bytes, bool]
-        ] = asyncio.Queue()
+        miniaudio_worker_input_queue: asyncio.Queue[Union[bytes, None]] = (
+            asyncio.Queue()
+        )
+        miniaudio_worker_output_queue: asyncio.Queue[Tuple[bytes, bool]] = (
+            asyncio.Queue()
+        )
         miniaudio_worker = MiniaudioWorker(
             self.synthesizer_config,
             chunk_size,

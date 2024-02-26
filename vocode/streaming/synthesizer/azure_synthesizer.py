@@ -16,7 +16,9 @@ from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
     FILLER_PHRASES,
+    AFFIRMATIVE_PHRASES,
     FILLER_AUDIO_PATH,
+    AFFIRMATIVE_AUDIO_PATH,
     FillerAudio,
     encode_as_wav,
     tracer,
@@ -142,7 +144,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 audio_data = open(filler_audio_path, "rb").read()
             else:
                 self.logger.debug(f"Generating filler audio for {filler_phrase.text}")
-                ssml = self.create_ssml(filler_phrase.text)
+                ssml = self.create_ssml(filler_phrase.text, volume=50)
                 result = await asyncio.get_event_loop().run_in_executor(
                     self.thread_pool_executor, self.synthesizer.speak_ssml, ssml
                 )
@@ -158,6 +160,46 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 )
             )
         return filler_phrase_audios
+
+    async def get_phrase_affirmative_audios(self) -> List[FillerAudio]:
+        affirmative_phrase_audios = []
+        for affirmative_phrase in AFFIRMATIVE_PHRASES:
+            cache_key = "-".join(
+                (
+                    str(affirmative_phrase.text),
+                    str(self.synthesizer_config.type),
+                    str(self.synthesizer_config.audio_encoding),
+                    str(self.synthesizer_config.sampling_rate),
+                    str(self.voice_name),
+                    str(self.pitch),
+                    str(self.rate),
+                )
+            )
+            affirmative_audio_path = os.path.join(
+                AFFIRMATIVE_AUDIO_PATH, f"{cache_key}.bytes"
+            )
+            if os.path.exists(affirmative_audio_path):
+                audio_data = open(affirmative_audio_path, "rb").read()
+            else:
+                self.logger.debug(
+                    f"Generating affirmative audio for {affirmative_phrase.text}"
+                )
+                ssml = self.create_ssml(affirmative_phrase.text, volume=35)
+                result = await asyncio.get_event_loop().run_in_executor(
+                    self.thread_pool_executor, self.synthesizer.speak_ssml, ssml
+                )
+                offset = self.synthesizer_config.sampling_rate * self.OFFSET_MS // 1000
+                audio_data = result.audio_data[offset:]
+                with open(affirmative_audio_path, "wb") as f:
+                    f.write(audio_data)
+            affirmative_phrase_audios.append(
+                FillerAudio(
+                    affirmative_phrase,
+                    audio_data,
+                    self.synthesizer_config,
+                )
+            )
+        return affirmative_phrase_audios
 
     def add_marks(self, message: str, index=0) -> str:
         search_result = re.search(r"([\.\,\:\;\-\—]+)", message)
@@ -175,7 +217,10 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         pool.add(evt)
 
     def create_ssml(
-        self, message: str, bot_sentiment: Optional[BotSentiment] = None
+        self,
+        message: str,
+        bot_sentiment: Optional[BotSentiment] = None,
+        volume: int = 1,
     ) -> str:
         voice_language_code = self.synthesizer_config.voice_name[:5]
         ssml_root = ElementTree.fromstring(
@@ -211,6 +256,9 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         prosody = ElementTree.SubElement(voice_root, "prosody")
         prosody.set("pitch", f"{self.pitch}%")
         prosody.set("rate", f"{self.rate}%")
+        prosody.set("volume", f"-{volume}%")
+        # remove ALL punctuation except for periods and question marks
+        message = re.sub(r"[^\w\s\.\?\!\@\:\']", "", message)
         prosody.text = message.strip()
         return ElementTree.tostring(ssml_root, encoding="unicode")
 

@@ -185,5 +185,49 @@ def format_openai_chat_messages_from_transcript(
     return chat_messages
 
 
+def format_openai_chat_completion_from_transcript(
+    transcript: Transcript, prompt_preamble: Optional[str] = None
+) -> str:
+    formatted_conversation = ""
+    if prompt_preamble:
+        formatted_conversation += f"<|im_start|>system\n{prompt_preamble}<|im_end|>\n"
+
+    # merge consecutive bot messages
+    new_event_logs: List[EventLog] = []
+    idx = 0
+    while idx < len(transcript.event_logs):
+        bot_messages_buffer: List[Message] = []
+        current_log = transcript.event_logs[idx]
+        while isinstance(current_log, Message) and current_log.sender == Sender.BOT:
+            bot_messages_buffer.append(current_log)
+            idx += 1
+            try:
+                current_log = transcript.event_logs[idx]
+            except IndexError:
+                break
+        if bot_messages_buffer:
+            merged_bot_message = deepcopy(bot_messages_buffer[-1])
+            merged_bot_message.text = " ".join(
+                event_log.text for event_log in bot_messages_buffer
+            )
+            new_event_logs.append(merged_bot_message)
+        else:
+            new_event_logs.append(current_log)
+            idx += 1
+
+    for event_log in new_event_logs:
+        if isinstance(event_log, Message):
+            role = "assistant" if event_log.sender == Sender.BOT else "user"
+            formatted_conversation += (
+                f"<|im_start|>{role}\n{event_log.text}<|im_end|>\n"
+            )
+        elif isinstance(event_log, ActionStart):
+            formatted_conversation += f"<|im_start|>assistant\nFunction call: {event_log.action_type} with arguments {event_log.action_input.params.json()}<|im_end|>\n"
+        elif isinstance(event_log, ActionFinish):
+            formatted_conversation += f"<|im_start|>function\nFunction {event_log.action_type} finished with response {event_log.action_output.response.json()}<|im_end|>\n"
+
+    return formatted_conversation.strip()
+
+
 def vector_db_result_to_openai_chat_message(vector_db_result):
     return {"role": "user", "content": vector_db_result}

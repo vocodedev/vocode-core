@@ -74,7 +74,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     allowed_idle_time_seconds: Optional[float] = None
     allow_agent_to_be_cut_off: bool = True
     end_conversation_on_goodbye: bool = False
-    send_filler_audio: Union[bool, FillerAudioConfig] = False
+    send_filler_audio: Union[bool, FillerAudioConfig] = True  # hacky, true by default
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
     actions: Optional[List[ActionConfig]] = None
@@ -108,6 +108,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     azure_params: Optional[AzureOpenAIConfig] = None
     vector_db_config: Optional[VectorDBConfig] = None
     pending_action: Optional[FunctionCall] = None
+    send_filler_audio: Union[bool, FillerAudioConfig] = FillerAudioConfig()
 
 
 class MistralAgentConfig(AgentConfig, type=AgentType.MISTRAL.value):

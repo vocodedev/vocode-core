@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import audioop
 from opentelemetry import trace, metrics
-from typing import Generic, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.model import BaseModel
 
@@ -21,6 +21,7 @@ class Transcription(BaseModel):
     is_final: bool
     is_interrupt: bool = False
     time_silent: float = 0.0
+    affirmative_phrase: Optional[str] = None
 
     def __str__(self):
         return f"Transcription({self.message}, {self.confidence}, {self.is_final})"

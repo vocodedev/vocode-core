@@ -178,8 +178,18 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
         self.input_queue = input_queue
         self.max_concurrency = max_concurrency
         self.interruptible_event_factory = interruptible_event_factory
-        self.current_task = None
+        self.current_task: InterruptibleEvent = None
         self.interruptible_event = None
+
+    def clear_task_queue(self):
+        while not self.input_queue.empty():
+            self.input_queue.get_nowait()
+        if self.current_task:
+            if isinstance(self.current_task, asyncio.Task):
+                self.current_task.cancel()
+            else:
+                self.current_task.interrupt()
+        self.current_task = None
 
     def produce_interruptible_event_nonblocking(
         self, item: Any, is_interruptible: bool = True

@@ -1,6 +1,8 @@
 from __future__ import annotations
+from copy import deepcopy
 
 import asyncio
+from enum import Enum
 import math
 import queue
 import random
@@ -88,7 +90,14 @@ from telephony_app.utils.call_information_handler import update_call_transcripts
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
 
 
+class BufferStatus(Enum):
+    DISCARD = "discard"
+    SEND = "send"
+    HOLD = "hold"
+
+
 class StreamingConversation(Generic[OutputDeviceType]):
+
     class QueueingInterruptibleEventFactory(InterruptibleEventFactory):
         def __init__(self, conversation: "StreamingConversation"):
             self.conversation = conversation
@@ -137,13 +146,22 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.buffer = ""
             self.time_silent = 0.0
             self.buffer_avg_confidence = 0.0
-            self.num_buffer_utterances = 0
-            self.is_final = True  # this flag controls if we are accepting new transcriptions, when true, the agent is speaking and we are not taking in new transcriptions
-            self.waiting_for_interrupt = False
-            self.interrupt_count = 0  # this regulates how many times we've interrupted as a result of VAD, we don't want two interrupts in a row without a message in between
+            self.buffer_check_task: asyncio.Task = None
+            # removed the buffer_utterances
+            # self.num_buffer_utterances = 0
+            self.block_inputs = True  # this flag controls if we are accepting new transcriptions, when true, the agent is speaking and we are not taking in new transcriptions
             self.silenceCache = (
                 {}
             )  # this allows us not to reprocess endpoint classifications if it needs to be classified again in the event of a false interruption
+            self.ready_to_send = BufferStatus.SEND
+            self.synthesis_done = False
+            self.current_sleep_time = 0.0
+            self.last_classification = "good"
+            self.last_filler_time = time.time()
+            self.last_affirmative_time = time.time()
+            self.vad_time = 2.0
+            self.chosen_affirmative_phrase = None
+            self.triggered_affirmative = False
 
         async def get_expected_silence_duration(self, buffer: str) -> float:
             previous_agent_message = next(
@@ -159,7 +177,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 "The conversation has just started. There are no previous agent messages.",
             )
             pretty_printed = f"""Speaker A: {previous_agent_message}
-Speaker B: {self.buffer}"""
+Speaker B: {buffer}"""
             # Define a constant for max silence time
             MAX_SILENCE_TIME = MAX_SILENCE_DURATION
 
@@ -169,11 +187,11 @@ Speaker B: {self.buffer}"""
 You are a sentient, superintelligent artificial general intelligence, here to teach and assist me.<|im_end|>
 <|im_start|>user 
 Analyze the provided dialogue and classify whether Speaker B provided a good or bad response to Speaker A. For instance, if Speaker A asks for a X and Y and Speaker B only provides Y, the response is bad. If Speaker B provides both X and Y, the response is good.
-
+If speaker B is listing something or providing information like a phone number or address, the response is bad.
 Dialogue:
 {pretty_printed}
 
-If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, if Speaker B's response addresses Speaker A's initial message, return "good".<|im_end|>
+If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, if Speaker B's response addresses Speaker A's initial message, return "good" If Speaker B is listing something, return "bad".<|im_end|>
 <|im_start|>assistant
 """,
             ]
@@ -196,14 +214,21 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                 "Authorization": f"Bearer 'EMPTY'",
             }
             base_url = getenv("AI_API_BASE")
+
             if pretty_printed in self.silenceCache:
                 self.conversation.logger.info(
                     f"Using cached silence duration for {pretty_printed}"
                 )
                 self.silenceCache[pretty_printed] = (
-                    self.silenceCache[pretty_printed] / 2
+                    self.silenceCache[pretty_printed] * 0.5
                 )
-                return self.silenceCache[pretty_printed]
+                return self.silenceCache[pretty_printed] / 3
+            elif len(buffer.strip().split()) == 1:
+                self.conversation.logger.info(
+                    f"Single word buffer, waiting two seconds."
+                )
+                self.silenceCache[pretty_printed] = 5.0
+                return 2.0
 
             # Perform the POST request to classify the dialogue asynchronously
             async with aiohttp.ClientSession() as session:
@@ -240,16 +265,34 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                                 summed_logprobs["good"] + summed_logprobs["bad"]
                             )
 
-                        # Calculate the expected silence duration based on the classification
+                        # Send out filler audio for "mmhm" to the output device
                         if final_classification == "bad":
-                            expected_silence_duration = (1 + confidence) * (
-                                confidence * MAX_SILENCE_TIME
+                            expected_silence_duration = (
+                                confidence**20 * MAX_SILENCE_TIME
                             )
+                            self.last_classification = "bad"
+                            if self.last_classification == "bad":
+                                self.conversation.logger.debug(
+                                    f"It's been {time.time() - self.last_filler_time} seconds since the last filler"
+                                )
+                                # only do it if more than 2.5 seconds have passed since the last one
+                                if (
+                                    time.time() - self.last_filler_time > 3
+                                    and time.time() - self.last_affirmative_time > 4
+                                    and confidence**200 > 0.85
+                                ):
+                                    self.conversation.agent_responses_worker.send_filler_audio(
+                                        asyncio.Event()
+                                    )
+                                    self.last_filler_time = (
+                                        time.time()
+                                    )
                         else:
-                            expected_silence_duration = MAX_SILENCE_TIME - (
-                                confidence * confidence * confidence * MAX_SILENCE_TIME
-                            )
-                        logging.info(
+                            expected_silence_duration = (
+                                1 - confidence**200
+                            ) * MAX_SILENCE_TIME
+                            self.last_classification = "good"
+                        self.conversation.logger.debug(
                             f"Dialogue classified as {final_classification} with confidence {round(confidence * 100, 2)}%"
                         )
                         # Return the result and the expected silence duration
@@ -262,92 +305,228 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                         return 0.0
 
         async def _buffer_check(self, initial_buffer):
-            if self.time_silent < 2:
-                expected_silence_duration = (
-                    await self.get_expected_silence_duration(initial_buffer)
-                    - self.time_silent
-                )
-                await asyncio.sleep(
-                    expected_silence_duration
-                )  # in the background, we wait to see if a new transcription comes in
-            if (
-                initial_buffer == self.buffer and not self.is_final
-            ):  # check for new transcription
-                if self.waiting_for_interrupt:
-                    return
-                self.conversation.broadcast_interrupt()
-                self.interrupt_count += 1  # we just broadcasted an interupt
-                transcription = Transcription(
-                    message=self.buffer,
-                    confidence=1.0,  # Assuming full confidence as it's not provided
-                    is_final=True,
-                    time_silent=self.time_silent,
-                )
+            # Reset the current sleep time to zero
+            self.current_sleep_time = 0.0
+            # Create a transcription object with the current buffer content
+            transcription = Transcription(
+                message=initial_buffer,
+                confidence=1.0,  # We assume full confidence as it's not explicitly provided
+                is_final=True,
+                time_silent=self.time_silent,
+            )
+            # Calculate the expected silence duration after the current buffer
+            start_expected_duration = time.time()
+            expected_silence_duration = (
+                await self.get_expected_silence_duration(initial_buffer)
+                - self.time_silent
+            )
+            elapsed_time_duration = time.time() - start_expected_duration
+            expected_silence_duration -= elapsed_time_duration
 
+            # Ensure the sleep time is at least 0.1 seconds
+            self.current_sleep_time = max(expected_silence_duration, 0.5)
+
+            # Log the time taken for classification and the calculated sleep duration
+            self.conversation.logger.info(
+                f"Classification took: {elapsed_time_duration}\nSleep duration: {self.current_sleep_time}"
+            )
+            if (
+                self.current_sleep_time >= 0.1  # last edit
+                # and time.time() - self.last_filler_time > 1.5
+                and len(initial_buffer.strip().split()) > 2
+            ):
+                # choose the affirmative phrase
+                self.chosen_affirmative_phrase = random.choice(
+                    self.conversation.synthesizer.affirmative_audios
+                ).message.text
+                # Create an interruptible event with the transcription data
                 event = self.interruptible_event_factory.create_interruptible_event(
-                    TranscriptionAgentInput(
+                    payload=TranscriptionAgentInput(
+                        transcription=transcription,
+                        affirmative_phrase=self.chosen_affirmative_phrase,
+                        conversation_id=self.conversation.id,
+                        vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
+                        twilio_sid=getattr(self.conversation, "twilio_sid", None),
+                    ),
+                )
+            else:
+                # Create an interruptible event with the transcription data
+                event = self.interruptible_event_factory.create_interruptible_event(
+                    payload=TranscriptionAgentInput(
                         transcription=transcription,
                         conversation_id=self.conversation.id,
                         vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
                         twilio_sid=getattr(self.conversation, "twilio_sid", None),
-                    )
+                    ),
                 )
-                self.output_queue.put_nowait(event)
-                self.conversation.logger.info(
-                    f"Got transcription with confidence: {transcription.confidence} "
-                    f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{transcription.message}"
-                )
-                self.conversation.logger.info("Transcription event put in output queue")
-            else:
-                self.interrupt_count = 0  # we got a new transcription, so now we no longer worry about consecutive interrupts
+            sleeping_time = self.current_sleep_time
 
-        # async procesess to send out the transcription
-        async def process(self, transcription: Transcription):
-            self.conversation.mark_last_action_timestamp()
-            # check if the message is just "vad"
-            if (
-                transcription.message.strip() == "vad"
-                and not self.is_final
-                and len(self.buffer)
-                > 0  # VAD doesnt matter if we haven't started hearing anything yet
-            ):
-                if self.interrupt_count < 1:
-                    self.conversation.logger.debug("Recieved VAD message")
-                    self.waiting_for_interrupt = (
-                        True  # now we are waiting for a message with content
-                    )
-                    self.conversation.broadcast_interrupt()
-                    self.interrupt_count += 1
-                # trigger buffer check in case nothing else comes in
-                return
-            elif transcription.message.strip() == "vad":  # ignore all others regardless
-                self.conversation.logger.debug("Ignoring consecutive vad message")
-                return
+            # Place the event in the output queue for further processing
+            self.output_queue.put_nowait(event)
 
-            if len(self.buffer) > 0:
-                # only accumulate silence if the buffer is not empty
-                self.time_silent += transcription.time_silent
-            self.conversation.logger.info(f"Time silent: {self.time_silent}s")
-            if (
-                transcription.message.strip() == ""
-            ):  # if we didn't get anything, still, we just send out what we have
+            # TODO: This log is intercepted, so it should be right before we send synth so the online transcript isnt messed up
+            # self.conversation.logger.info(
+            #     f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{transcription.message}"
+            # )
+            self.conversation.logger.info("Transcription event put in output queue")
+
+            # Set the buffer status to HOLD, indicating we're not ready to send it yet
+            self.ready_to_send = BufferStatus.HOLD
+
+            # HERE, we will send of the affirmative audio if the sleeping time > 1.5 and the time since last filler is > 3
+
+            log_interval = 1.0  # Log at most every 1 second
+            time_since_last_log = 0.0
+            while sleeping_time > 0.01:
+                sleeping_time = self.current_sleep_time
+                self.sleeping_time = min(1.5, sleeping_time)
                 if (
-                    len(self.buffer) > 0 and self.waiting_for_interrupt
-                ):  # because we are waiting and didnt get a message, send it out as is
-                    self.waiting_for_interrupt = False
-                    asyncio.create_task(self._buffer_check(self.buffer))
-                self.conversation.logger.debug("Ignoring empty transcription")
-                return
-            else:
-                self.waiting_for_interrupt = False  # we DID get something so we no longer are disregarding VAD messages
+                    sleeping_time > 0.5
+                    and time.time() - self.last_filler_time > 2
+                    and len(initial_buffer.strip().split()) > 3
+                    and time.time() - self.last_affirmative_time > 3
+                    and not self.triggered_affirmative
+                ) or (
+                    self.time_silent > 1.5
+                    and not self.triggered_affirmative
+                    and time.time() - self.last_filler_time > 1.5
+                    and time.time() - self.last_affirmative_time > 1.5
+                ):
+                    self.triggered_affirmative = True
 
-                # if we detect a non-empty transcription, we reset the time silent since they just said something
-                self.time_silent = 0.0
-            self.buffer = (
-                f"{self.buffer} {transcription.message.strip()}".strip()
-            )  # otherwise send it out with the new message, also handling if its empty
-            self.interrupt_count = 0
-            asyncio.create_task(self._buffer_check(self.buffer))
+                    self.conversation.logger.info(
+                        f"Sending affirmative audio, sleeping time: {self.current_sleep_time}"
+                    )
+                    self.conversation.agent_responses_worker.send_affirmative_audio(
+                        # self.interruptible_event_factory.create_interruptible_event(
+                        #     payload=None
+                        # )
+                        asyncio.Event(),
+                        phrase=self.chosen_affirmative_phrase,
+                    )
+                    self.last_affirmative_time = time.time()
+                if not self.synthesis_done and self.current_sleep_time < 0.02:
+
+                    self.conversation.logger.debug(
+                        f"Added sleep for synthesis to finish..."
+                    )
+                    self.current_sleep_time = 0.02
+                    if (
+                        not self.triggered_affirmative
+                        and time.time() - self.last_filler_time > 2.0
+                        and time.time() - self.last_affirmative_time > 2.0
+                    ):
+                        self.triggered_affirmative = True
+                        self.conversation.agent_responses_worker.send_affirmative_audio(
+                            asyncio.Event(),
+                            phrase=self.chosen_affirmative_phrase,
+                        )
+                        self.last_affirmative_time = time.time()
+
+                await asyncio.sleep(0.01)
+                if self.current_sleep_time > 0:
+                    self.current_sleep_time -= 0.01
+                time_since_last_log += 0.01
+                if time_since_last_log >= log_interval:
+                    self.conversation.logger.info(
+                        f"Sleeping... {self.current_sleep_time} seconds left"
+                    )
+                    time_since_last_log = 0.0
+                if self.synthesis_done:
+                    # self.conversation.logger.info("Synthesis done, still sleeping")
+                    self.last_affirmative_time = time.time()
+                    if (
+                        time.time() - self.last_filler_time > 2.0
+                        and time.time() - self.last_affirmative_time > 2.0
+                        and not self.triggered_affirmative
+                    ):
+                        self.triggered_affirmative = True
+
+                        # self.conversation.logger.info(
+                        #     f"Sending affirmative audio, sleeping time: {self.current_sleep_time}"
+                        # )
+                        self.conversation.agent_responses_worker.send_affirmative_audio(
+                            # self.interruptible_event_factory.create_interruptible_event(
+                            #     payload=None
+                            # )
+                            asyncio.Event(),
+                            phrase=self.chosen_affirmative_phrase,
+                        )
+
+            self.conversation.logger.info(f"Marking as send")
+            self.ready_to_send = BufferStatus.SEND
+
+        async def process(self, transcription: Transcription):
+            # Ignore the transcription if we are currently in-flight (i.e., the agent is speaking)
+            if self.block_inputs:
+                self.conversation.logger.debug(
+                    "Ignoring transcription since we are in-flight"
+                )
+                return
+
+            # Mark the timestamp of the last action
+            self.conversation.mark_last_action_timestamp()
+
+            # If the message is just "vad", handle it without resetting the buffer check
+            if transcription.message.strip() == "vad":
+                if len(self.buffer) == 0:
+                    self.conversation.logger.info("Ignoring vad, empty message.")
+                    return
+
+                # If a buffer check task is running, extend the current sleep time
+                if self.buffer_check_task and not self.buffer_check_task.done():
+                    self.conversation.logger.info(
+                        "Adding waiting chunk to buffer check task due to VAD"
+                    )
+                    self.current_sleep_time = min(
+                        2,
+                        max(
+                            self.vad_time,
+                            min(
+                                self.current_sleep_time * 1.5,
+                                self.current_sleep_time + 2,
+                            ),
+                        ),
+                    )
+                    self.vad_time = self.vad_time / 3
+                return
+
+            # Strip the transcription message and log the time silent
+            transcription.message = transcription.message.strip()
+            self.conversation.logger.info(f"Time silent: {self.time_silent}s")
+
+            # If the transcription message is empty, handle it accordingly
+            if len(transcription.message) == 0:
+                self.conversation.logger.debug("Ignoring empty transcription")
+                if len(self.buffer) == 0:
+                    self.conversation.logger.info("Ignoring empty message.")
+                    return
+                self.time_silent += transcription.time_silent
+                return
+            # Update the buffer with the new message and log it
+            self.conversation.logger.info(
+                f"Updated Buffer: {self.buffer} + {transcription.message}"
+            )
+            self.buffer = f"{self.buffer} {transcription.message}"
+            self.vad_time = 2.0
+            self.time_silent = transcription.time_silent
+
+            # If a buffer check task exists, cancel it and start a new one
+            if self.buffer_check_task:
+                self.conversation.logger.info("Cancelling buffer check task")
+                self.conversation.logger.info(
+                    f"BufferCancel? {self.buffer_check_task.cancel()}"
+                )
+
+            # Broadcast an interrupt and set the buffer status to DISCARD
+            self.conversation.broadcast_interrupt()
+            self.ready_to_send = BufferStatus.DISCARD
+
+            # Start a new buffer check task to recalculate the timing
+            self.buffer_check_task = asyncio.create_task(
+                self._buffer_check(deepcopy(self.buffer))
+            )
+            return
 
     class FillerAudioWorker(InterruptibleAgentResponseWorker):
         """
@@ -386,22 +565,24 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
 
         async def process(self, item: InterruptibleAgentResponseEvent[FillerAudio]):
             try:
+
                 filler_audio = item.payload
                 assert self.conversation.filler_audio_config is not None
                 filler_synthesis_result = filler_audio.create_synthesis_result()
+
                 self.current_filler_seconds_per_chunk = filler_audio.seconds_per_chunk
-                silence_threshold = (
-                    self.conversation.filler_audio_config.silence_threshold_seconds
-                )
-                await asyncio.sleep(silence_threshold)
+                # tis a generator
+                audio = bytearray()
+                async for chunk in filler_synthesis_result.chunk_generator:
+                    audio.extend(chunk.chunk)
+                # silence_threshold = (
+                #     self.conversation.filler_audio_config.silence_threshold_seconds
+                # )
+                # await asyncio.sleep(silence_threshold)
                 self.conversation.logger.debug("Sending filler audio to output")
                 self.filler_audio_started_event = threading.Event()
-                await self.conversation.send_speech_to_output(
-                    filler_audio.message.text,
-                    filler_synthesis_result,
-                    item.interruption_event,
-                    filler_audio.seconds_per_chunk,
-                    started_event=self.filler_audio_started_event,
+                self.conversation.output_device.consume_nonblocking(
+                    audio,
                 )
                 item.agent_response_tracker.set()
             except asyncio.CancelledError:
@@ -447,6 +628,36 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                 event = self.interruptible_event_factory.create_interruptible_agent_response_event(
                     filler_audio,
                     is_interruptible=filler_audio.is_interruptible,
+                    agent_response_tracker=agent_response_tracker,
+                )
+                self.conversation.filler_audio_worker.consume_nonblocking(event)
+            else:
+                self.conversation.logger.debug(
+                    "No filler audio available for synthesizer"
+                )
+
+        def send_affirmative_audio(
+            self, agent_response_tracker: Optional[asyncio.Event], phrase: str
+        ):
+            assert self.conversation.filler_audio_worker is not None
+            self.conversation.logger.debug("Sending affirmative audio")
+            if self.conversation.synthesizer.affirmative_audios:
+                affirmative_audio = None
+                for audio in self.conversation.synthesizer.affirmative_audios:
+                    if audio.message.text == phrase:
+                        affirmative_audio = audio
+                        break
+                if not affirmative_audio:
+                    self.conversation.logger.debug(
+                        f"Phrase {phrase} not found in affirmative audios"
+                    )
+                    return
+                self.conversation.logger.debug(
+                    f"Chose {affirmative_audio.message.text}"
+                )
+                event = self.interruptible_event_factory.create_interruptible_agent_response_event(
+                    affirmative_audio,
+                    is_interruptible=affirmative_audio.is_interruptible,
                     agent_response_tracker=agent_response_tracker,
                 )
                 self.conversation.filler_audio_worker.consume_nonblocking(event)
@@ -508,7 +719,12 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                 pass
 
     class SynthesisResultsWorker(InterruptibleAgentResponseWorker):
-        """Plays SynthesisResults from the output queue on the output device"""
+        """Worker class responsible for playing synthesized speech results.
+
+        This worker takes synthesized speech results from the input queue and plays them
+        on the output device. It also handles the creation of transcript messages and
+        manages interruptible events related to speech output.
+        """
 
         def __init__(
             self,
@@ -517,6 +733,7 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
             ],
             conversation: "StreamingConversation",
         ):
+            # Initialize the worker with the input queue and the conversation context.
             super().__init__(input_queue=input_queue)
             self.input_queue = input_queue
             self.conversation = conversation
@@ -525,51 +742,91 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
             self,
             item: InterruptibleAgentResponseEvent[Tuple[BaseMessage, SynthesisResult]],
         ):
+            # Process a single item from the input queue.
             try:
+                # Unpack the message and synthesis result from the event payload.
                 message, synthesis_result = item.payload
-                # create an empty transcript message and attach it to the transcript
+
+                # Initialize a transcript message with an empty text, which will be updated later.
                 transcript_message = Message(
                     text="",
                     sender=Sender.BOT,
                 )
+                # Add the empty transcript message to the conversation's transcript.
                 self.conversation.transcript.add_message(
                     message=transcript_message,
                     conversation_id=self.conversation.id,
                     publish_to_events_manager=False,
                 )
-                message_sent, cut_off = await self.conversation.send_speech_to_output(
+
+                # Prepare the coroutine for sending synthesized speech to the output device.
+                send_speech_coroutine = self.conversation.send_speech_to_output(
                     message.text,
                     synthesis_result,
                     item.interruption_event,
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
                     transcript_message=transcript_message,
                 )
-                # publish the transcript message now that it includes what was said during send_speech_to_output
+                # Create an asynchronous task for the coroutine and store it as the current task.
+                self.current_task = asyncio.create_task(send_speech_coroutine)
+
+                # Create an interruptible event for the current task, allowing it to be interrupted if necessary.
+                interruptible_event = (
+                    self.interruptible_event_factory.create_interruptible_event(
+                        self.current_task,
+                        is_interruptible=True,
+                    )
+                )
+                # Place the interruptible event into the output queue for further processing.
+                self.output_queue.put_nowait(interruptible_event)
+
+                # Wait for the current task to complete or be cancelled.
+                try:
+                    # Await the completion of the speech output task and retrieve the message sent and cutoff status.
+                    message_sent, cut_off = await self.current_task
+                except Exception as e:
+                    # If an exception occurs, log it and set the message as cut off.
+                    self.conversation.logger.debug(f"Detected Task cancelled: {e}")
+                    message_sent, cut_off = "", True
+                    return
+
+                # Once the speech output is complete, publish the transcript message with the actual content spoken.
                 self.conversation.transcript.maybe_publish_transcript_event_from_message(
                     message=transcript_message,
                     conversation_id=self.conversation.id,
                 )
+                # Signal that the agent response has been processed.
                 item.agent_response_tracker.set()
-                self.conversation.logger.debug("Message sent: {}".format(message_sent))
+                # Log the message that was successfully sent.
+                self.conversation.logger.debug(f"Message sent: {message_sent}")
+
+                # If the message was cut off, update the last bot message accordingly.
                 if cut_off:
                     self.conversation.agent.update_last_bot_message_on_cut_off(
                         message_sent
                     )
+
+                # Check if the conversation should end after the agent says goodbye.
                 if self.conversation.agent.agent_config.end_conversation_on_goodbye:
+                    # Create a task to detect if the agent said goodbye.
                     goodbye_detected_task = (
                         self.conversation.agent.create_goodbye_detection_task(
                             message_sent
                         )
                     )
                     try:
+                        # Wait briefly for the goodbye detection task to complete.
                         if await asyncio.wait_for(goodbye_detected_task, 0.1):
+                            # If goodbye was detected, log the event and terminate the conversation.
                             self.conversation.logger.debug(
                                 "Agent said goodbye, ending call"
                             )
                             await self.conversation.terminate()
                     except asyncio.TimeoutError:
+                        # If the goodbye detection task times out, simply pass.
                         pass
             except asyncio.CancelledError:
+                # If the task was cancelled, do nothing.
                 pass
 
     def __init__(
@@ -583,6 +840,7 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
     ):
+
         self.id = conversation_id or create_conversation_id()
         self.logger = wrap_logger(
             logger or logging.getLogger(__name__),
@@ -673,6 +931,7 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
+        self.transcriber.mute()
         # mute at the start
         self.transcriptions_worker.start()
         self.agent_responses_worker.start()
@@ -694,7 +953,10 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                 self.filler_audio_config = typing.cast(
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
-            await self.synthesizer.set_filler_audios(self.filler_audio_config)
+
+            filler_audio_task = asyncio.create_task(self.synthesizer.set_filler_audios(self.filler_audio_config))
+            affirmative_audio_task = asyncio.create_task(self.synthesizer.set_affirmative_audios(self.filler_audio_config))
+            await asyncio.gather(filler_audio_task, affirmative_audio_task)
 
         self.agent.start()
         initial_message = self.agent.get_agent_config().initial_message
@@ -717,7 +979,7 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
         if len(self.events_manager.subscriptions) > 0:
             self.events_task = asyncio.create_task(self.events_manager.start())
         # set transcriber is final to false
-        self.transcriptions_worker.is_final = False
+        self.transcriptions_worker.block_inputs = False
 
     async def send_initial_message(self, initial_message: BaseMessage):
         # TODO: configure if initial message is interruptible
@@ -730,9 +992,6 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
             )
         )
         self.agent_responses_worker.consume_nonblocking(agent_response_event)
-        self.logger.info(
-            f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {initial_message.text}"
-        )
         await initial_message_tracker.wait()
         self.transcriber.unmute()
 
@@ -771,7 +1030,7 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
             confidence=1.0,
             is_final=True,
         )
-        if self.transcriptions_worker.is_final:
+        if self.transcriptions_worker.block_inputs:
             # self.transcriptions_worker.is_final = False
             # self.transcriptions_worker.buffer = ""
             # self.transcriptions_worker.time_silent = 0.0
@@ -792,6 +1051,8 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
 
         Returns true if any events were interrupted - which is used as a flag for the agent (is_interrupt)
         """
+        self.logger.debug("Broadcasting interrupt")
+
         num_interrupts = 0
         while True:
             try:
@@ -802,9 +1063,9 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                         num_interrupts += 1
             except queue.Empty:
                 break
-        self.agent.cancel_current_task()
-        self.agent_responses_worker.cancel_current_task()
-        self.synthesis_results_worker.cancel_current_task()
+        self.agent.clear_task_queue()
+        self.agent_responses_worker.clear_task_queue()
+        self.synthesis_results_worker.clear_task_queue()
         return num_interrupts > 0
 
     def is_interrupt(self, transcription: Transcription):
@@ -821,109 +1082,162 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
         transcript_message: Optional[Message] = None,
         started_event: Optional[threading.Event] = None,
     ):
+        # Check if both the synthesis result and message are available, if not, return empty message and False flag
+        if not (synthesis_result and message):
+            return "", False
+
         """
         - Sends the speech chunk by chunk to the output device
-          - update the transcript message as chunks come in (transcript_message is always provided for non filler audio utterances)
+        - update the transcript message as chunks come in (transcript_message is always provided for non filler audio utterances)
         - If the stop_event is set, the output is stopped
         - Sets started_event when the first chunk is sent
-
-        Importantly, we rate limit the chunks sent to the output. For interrupts to work properly,
-        the next chunk of audio can only be sent after the last chunk is played, so we send
-        a chunk of x seconds only after x seconds have passed since the last chunk was sent.
-
-        Returns the message that was sent up to, and a flag if the message was cut off
         """
-        # skip if its already marked as final
-        # if self.transcriptions_worker.is_final:
-        #     self.logger.debug("Ignoring speech from synth since we are in-flight")
-        #     self.transcriptions_worker.is_final = False
-        #     self.transcriptions_worker.buffer = ""
-        #     self.transcriptions_worker.time_silent = 0.0
-        #     return
+        # Set the flag indicating that synthesis is not yet complete
+        self.transcriptions_worker.synthesis_done = False
+
+        # Mute the transcriber during speech synthesis if configured to do so
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Muting transcriber")
-            # disable transcriptionworker with is_final
+
+        # Initialize variables to hold the message sent and the cutoff status
         message_sent = message
         cut_off = False
+
+        # Calculate the size of each speech chunk based on the seconds per chunk and the audio configuration
         chunk_size = seconds_per_chunk * get_chunk_size_per_second(
             self.synthesizer.get_synthesizer_config().audio_encoding,
             self.synthesizer.get_synthesizer_config().sampling_rate,
         )
-        chunk_idx = 0
-        seconds_spoken = 0
-        # set right before synth sends out the message so that user has more time to speak
-        self.transcriptions_worker.is_final = True  # transcriber
-        self.transcriptions_worker.buffer = ""  # transcriber
-        self.transcriptions_worker.time_silent = 0.0  # transcriber
 
+        # Initialize a bytearray to accumulate the speech data
+        speech_data = bytearray()
+
+        # Asynchronously generate speech data from the synthesis result
         async for chunk_result in synthesis_result.chunk_generator:
-            start_time = time.time()
-            speech_length_seconds = seconds_per_chunk * (
-                len(chunk_result.chunk) / chunk_size
-            )
-            seconds_spoken = chunk_idx * seconds_per_chunk
-            if stop_event.is_set():
-                self.logger.debug(
-                    "Interrupted, stopping text to speech after {} chunks".format(
-                        chunk_idx
+            speech_data.extend(chunk_result.chunk)
+
+        # Mark synthesis as done once all chunks are generated
+        self.transcriptions_worker.synthesis_done = True
+
+        # If no speech data is generated, return empty message and False flag
+        if len(speech_data) == 0:
+            return "", False
+
+        # If a buffer check task exists, wait for it to complete before proceeding
+        if self.transcriptions_worker.buffer_check_task:
+            try:
+                await self.transcriptions_worker.buffer_check_task
+                # Handle cancellation of the buffer check task
+                if self.transcriptions_worker.buffer_check_task.cancelled():
+                    self.logger.debug("Buffer check task was cancelled.")
+                    return "", False
+                # Handle non-send status after buffer check completion
+                elif self.transcriptions_worker.ready_to_send != BufferStatus.SEND:
+                    self.logger.debug(
+                        "Buffer check completed but buffer status is not SEND."
                     )
+                    return "", False
+            except asyncio.CancelledError:
+                # Handle external cancellation of the buffer check task
+                self.logger.debug(
+                    "Buffer check task was cancelled by an external event."
                 )
-                message_sent = f"{synthesis_result.get_message_up_to(seconds_spoken)}-"
-                cut_off = True
-                break
-            if chunk_idx == 0:
-                if started_event:
-                    started_event.set()
-            self.output_device.consume_nonblocking(chunk_result.chunk)
-            end_time = time.time()
-            await asyncio.sleep(
-                max(
-                    speech_length_seconds
-                    - (end_time - start_time)
-                    - self.per_chunk_allowance_seconds,
-                    0,
-                )
+                return "", False
+        else:
+            # Proceed if no buffer check task is found
+            self.logger.debug("No buffer check task found, proceeding without waiting.")
+
+        held_buffer = self.transcriptions_worker.buffer
+
+        # Log the start of sending synthesized speech to the output device
+        self.logger.debug("Sending in synth buffer")
+        # Clear the transcription worker's buffer and related attributes before sending
+        self.transcriptions_worker.block_inputs = True
+        self.transcriptions_worker.buffer = ""
+        self.transcriptions_worker.time_silent = 0.0
+        self.transcriptions_worker.triggered_affirmative = False
+
+        # Send the generated speech data to the output device
+        start_time = time.time()
+        self.output_device.consume_nonblocking(speech_data)
+        end_time = time.time()
+
+        # Calculate the length of the speech in seconds
+        speech_length_seconds = len(speech_data) / chunk_size
+
+        # Sleep for the duration of the speech minus the time already spent sending the data
+        await asyncio.sleep(
+            max(
+                speech_length_seconds
+                - (end_time - start_time)
+                - self.per_chunk_allowance_seconds,
+                0,
             )
-            self.logger.debug(
-                "Sent chunk {} with size {}".format(chunk_idx, len(chunk_result.chunk))
+        )
+
+        if held_buffer:
+            self.logger.info(
+                f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{held_buffer}"
             )
-            self.mark_last_action_timestamp()
-            chunk_idx += 1
-            seconds_spoken += seconds_per_chunk
-            if transcript_message:
-                transcript_message.text = synthesis_result.get_message_up_to(
-                    seconds_spoken
-                )
+
+        if message:
+            self.logger.info(
+                f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message}"
+            )
+
+        # Log the successful sending of speech data
+        self.logger.debug(f"Sent speech data with size {len(speech_data)}")
+
+        # Update the last action timestamp after sending speech
+        self.mark_last_action_timestamp()
+
+        # Update the message sent with the actual content spoken
+        message_sent = synthesis_result.get_message_up_to(len(speech_data) / chunk_size)
+
+        # If a transcript message is provided, update its text with the message sent
+        if transcript_message:
+            transcript_message.text = message_sent
+        cut_off = False
+
+        # Reset the synthesis done flag and prepare for the next synthesis
+        self.transcriptions_worker.synthesis_done = False
+
+        # Unmute the transcriber after speech synthesis if it was muted
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()
-        self.transcriptions_worker.is_final = False
-        self.transcriptions_worker.interrupt_count = 0
+
+        # Reset the transcription worker's flags and buffer status
+        self.transcriptions_worker.block_inputs = False
+        self.transcriptions_worker.ready_to_send = BufferStatus.DISCARD
         if transcript_message:
             transcript_message.text = message_sent
 
-            # check if we should execute an action after it has been spoken
-            if isinstance(self.agent, ChatGPTAgent):
-                self.logger.info(
-                    f"The pending action is {self.agent.agent_config.pending_action}"
-                    f" and the current transcript text is {transcript_message.text}"
-                )
-                if self.agent.agent_config.pending_action:
-                    await self.agent.call_function(
-                        self.agent.agent_config.pending_action,
-                        TranscriptionAgentInput(
-                            transcription=Transcription(
-                                message=transcript_message.text,
-                                confidence=1.0,
-                                is_final=True,
-                                time_silent=0.0,
-                            ),
-                            conversation_id=self.id,
-                            vonage_uuid=getattr(self, "vonage_uuid", None),
-                            twilio_sid=getattr(self, "twilio_sid", None),
+        # If a transcript message is provided, check if there is a pending action to execute
+        if transcript_message and isinstance(self.agent, ChatGPTAgent):
+            self.logger.info(
+                f"The pending action is {self.agent.agent_config.pending_action}"
+                f" and the current transcript text is {transcript_message.text}"
+            )
+            # If a pending action exists, execute it and reset the pending action
+            if self.agent.agent_config.pending_action:
+                await self.agent.call_function(
+                    self.agent.agent_config.pending_action,
+                    TranscriptionAgentInput(
+                        transcription=Transcription(
+                            message=transcript_message.text,
+                            confidence=1.0,
+                            is_final=True,
+                            time_silent=0.0,
                         ),
-                    )
-                    self.agent.pending_action = None
+                        conversation_id=self.id,
+                        vonage_uuid=getattr(self, "vonage_uuid", None),
+                        twilio_sid=getattr(self, "twilio_sid", None),
+                    ),
+                )
+                self.agent.pending_action = None
+
+        # Return the message sent and the cutoff status
         return message_sent, cut_off
 
     def mark_terminated(self):
