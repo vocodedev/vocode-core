@@ -197,7 +197,7 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
             ]
 
             # Get the model to use for the completion
-            model = "TheBloke/Nous-Hermes-2-Mixtral-8x7B-DPO-AWQ"
+            model = "Qwen/Qwen1.5-72B-Chat-GPTQ-Int4"
 
             # Prepare the data for the POST request
             data = {
