@@ -571,9 +571,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                         await self.run_nonblocking_checks(
                             latest_agent_response=latest_agent_response
                         )
-                        self.logger.info(
-                            f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {latest_agent_response}"
-                        )
                 else:
                     self.logger.error(
                         f"Error while streaming from OpenAI: {response.status}"

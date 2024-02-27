@@ -288,6 +288,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     text=transcription.message,
                     conversation_id=agent_input.conversation_id,
                 )
+                self.logger.info(
+                    f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{transcription.message}"
+                )
 
             elif isinstance(agent_input, ActionResultAgentInput):
                 self.transcript.add_action_finish_log(

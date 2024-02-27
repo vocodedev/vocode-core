@@ -1175,16 +1175,6 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
             )
         )
 
-        if held_buffer:
-            self.logger.info(
-                f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{held_buffer}"
-            )
-
-        if message:
-            self.logger.info(
-                f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message}"
-            )
-
         # Log the successful sending of speech data
         self.logger.debug(f"Sent speech data with size {len(speech_data)}")
 
@@ -1193,6 +1183,10 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
 
         # Update the message sent with the actual content spoken
         message_sent = synthesis_result.get_message_up_to(len(speech_data) / chunk_size)
+        if message_sent and not cut_off:
+            self.logger.info(
+                f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message_sent}"
+            )
 
         # If a transcript message is provided, update its text with the message sent
         if transcript_message:
