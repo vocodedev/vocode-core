@@ -31,6 +31,7 @@ from vocode.streaming.utils.state_manager import TwilioCallStateManager
 
 from telephony_app.models.call_status import CallStatus
 from telephony_app.utils.call_information_handler import execute_status_update_by_telephony_id
+from telephony_app.utils.mirth_connector import send_message_to_mirth
 from telephony_app.utils.twilio_call_helper import send_call_end_notification
 
 
@@ -172,7 +173,11 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 send_call_end_notification(call_id=self.agent.agent_config.current_call_id,
                                            call_type=self.agent.agent_config.call_type)
             )
-            await asyncio.gather(status_update_task, send_call_end_notification_task)
+            send_message_to_mirth_task = asyncio.create_task(
+                send_message_to_mirth(self.agent.transcript.to_string())
+            )
+
+            await asyncio.gather(status_update_task, send_call_end_notification_task, send_message_to_mirth_task)
             self.logger.debug("Updated call status to have ended")
             return PhoneCallWebsocketAction.CLOSE_WEBSOCKET
         return None
