@@ -683,7 +683,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             "SAY: Slyšíme se? Jste ještě na lince?" + \
                             "If conversation is in english SAY: Are you still there?" + \
                             "If conversation is in slovak SAY: Ste ešte na linke?" + \
-                            "If conversation is in slovak SAY: Czy nadal tam jesteś?",
+                            "If conversation is in polish SAY: Czy nadal tam jesteś?",
                     confidence=1.0,
                     is_final=True,
                     is_interrupt=True)
