@@ -1,4 +1,5 @@
 import asyncio
+import os
 from typing import Optional
 
 from twilio.rest import Client
@@ -38,10 +39,13 @@ class TwilioClient(BaseTelephonyClient):
     def get_telephony_config(self):
         return self.twilio_config
 
-    async def create_call(self, conversation_id: str, to_phone: str, from_phone: str, record: bool = False, digits: Optional[str] = None) -> str:
+    async def create_call(self, conversation_id: str, to_phone: str, from_phone: str, record: bool = False,
+                          digits: Optional[str] = None) -> str:
         loop = asyncio.get_running_loop()
         twiml = self.get_connection_twiml(conversation_id=conversation_id)
-        status_callback = f'https://{self.base_url}/call_status'
+        # if provided, use the status callback from the environment variable.
+        status_callback = f'https://{self.base_url}/call_status' if os.getenv("STATUS_CALLBACK") is None else os.getenv(
+            "STATUS_CALLBACK")
 
         twilio_call = await loop.run_in_executor(
             None,
@@ -58,7 +62,6 @@ class TwilioClient(BaseTelephonyClient):
             )
         )
         return twilio_call.sid
-
 
     def get_connection_twiml(self, conversation_id: str):
         return self.templater.get_connection_twiml(
