@@ -109,6 +109,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             "sample_rate": self.transcriber_config.sampling_rate,
             "channels": 1,
             "vad_events": "true",
+            "interim_results": "true",
+            "filler_words": "true",
         }
         extra_params = {}
         if self.transcriber_config.language:
@@ -286,7 +288,9 @@ The exact format to return is:
                     confidence = top_choice["confidence"]
                     self.output_queue.put_nowait(
                         Transcription(
-                            message=top_choice["transcript"],
+                            message=json.dumps(
+                                top_choice
+                            ),  # since we're doing interim results, we can just send the whole data dict
                             confidence=confidence,
                             is_final=False,
                             time_silent=time_silent,

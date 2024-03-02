@@ -10,4 +10,4 @@ VONAGE_AUDIO_ENCODING = AudioEncoding.LINEAR16
 VONAGE_CHUNK_SIZE = 640  # 20ms at 16kHz with 16bit samples
 VONAGE_CONTENT_TYPE = "audio/l16;rate=16000"
 
-DEEPGRAM_DEFAULT_MODEL = "nova-2-phonecall"
+DEEPGRAM_DEFAULT_MODEL = "nova-2"

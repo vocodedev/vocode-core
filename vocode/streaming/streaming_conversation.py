@@ -3,6 +3,7 @@ from copy import deepcopy
 
 import asyncio
 from enum import Enum
+import json
 import math
 import queue
 import random
@@ -125,6 +126,91 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.interruptible_events.put_nowait(interruptible_event)
             return interruptible_event
 
+    class TranscriptionBuffer:
+        def __init__(self):
+            self.buffer = []
+
+        def to_message(self):
+            return " ".join([word["word"] for word in self.buffer])
+
+        def __str__(self):
+            return str(self.buffer)
+
+        def __len__(self):
+            return len(self.buffer)
+
+        def __getitem__(self, index):
+            return self.buffer[index]
+
+        def __setitem__(self, index, value):
+            self.buffer[index] = value
+
+        def __delitem__(self, index):
+            del self.buffer[index]
+
+        def __iter__(self):
+            return iter(self.buffer)
+
+        def __contains__(self, item):
+            return item in self.buffer
+
+        def get_buffer(self):
+            return self.buffer
+
+        def update_buffer(self, new_results):
+            if not self.buffer:
+                self.buffer = new_results
+            else:
+                # check if first word of new buffer is the same and has the same start time as the first word in ithe new buffer. if so, just replace the words in the buffer with the new ones
+                if (
+                    self.buffer[0]["word"] == new_results[0]["word"]
+                    and self.buffer[0]["start"] == new_results[0]["start"]
+                ):
+                    self.buffer = new_results
+                else:
+                    for new_word in new_results:
+                        self._update_or_add_word(new_word)
+                    self._merge_and_clean_buffer()
+
+        def _update_or_add_word(self, new_word):
+            overlap_indices = []
+
+            for i, existing_word in enumerate(self.buffer):
+                if self._is_overlap(new_word, existing_word):
+                    overlap_indices.append(i)
+
+            if not overlap_indices:
+                self.buffer.append(new_word)
+            else:
+                for i in sorted(overlap_indices, reverse=True):
+                    del self.buffer[i]
+                self.buffer.append(new_word)
+
+            self.buffer.sort(key=lambda x: x["start"])
+
+        def _is_overlap(self, word1, word2):
+            return not (
+                word1["end"] <= word2["start"] or word1["start"] >= word2["end"]
+            )
+
+        def _merge_and_clean_buffer(self):
+            merged_buffer = []
+            for word in self.buffer:
+                if not merged_buffer or not self._is_overlap(word, merged_buffer[-1]):
+                    merged_buffer.append(word)
+                else:
+                    # Merge words if they overlap
+                    if word["end"] > merged_buffer[-1]["end"]:
+                        merged_buffer[-1]["end"] = word["end"]
+                    if "confidence" in word:
+                        merged_buffer[-1]["confidence"] = max(
+                            merged_buffer[-1].get("confidence", 0), word["confidence"]
+                        )
+            self.buffer = merged_buffer
+
+        def clear(self):
+            self.buffer = []
+
     class TranscriptionsWorker(AsyncQueueWorker):
         """Processes all transcriptions: sends an interrupt if needed
         and sends final transcriptions to the output queue"""
@@ -143,7 +229,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation = conversation
             self.interruptible_event_factory = interruptible_event_factory
             self.agent = agent
-            self.buffer = ""
+            self.buffer = self.conversation.TranscriptionBuffer()
             self.time_silent = 0.0
             self.buffer_avg_confidence = 0.0
             self.buffer_check_task: asyncio.Task = None
@@ -184,20 +270,23 @@ Speaker B: {buffer}"""
             # Define the prompt for the classification task
             prompt = [
                 f"""<|im_start|>system 
-You are a sentient, superintelligent artificial general intelligence, here to teach and assist me.<|im_end|>
-<|im_start|>user 
 Analyze the provided dialogue and classify whether Speaker B provided a good or bad response to Speaker A. For instance, if Speaker A asks for a X and Y and Speaker B only provides Y, the response is bad. If Speaker B provides both X and Y, the response is good.
-If speaker B is listing something or providing information like a phone number or address, the response is bad.
-Dialogue:
-{pretty_printed}
+For instance, let's say Speaker A says "Can I have your phone number?" and Speaker B responds with "650434". This would be a bad response because the phone number is incomplete.
+If Speaker A were to say "What's your date of birth?" and Speaker B were to respond with "january 1st" this would be a bad response because the date is incomplete.
+If Speaker A were to say "Why are you calling?" and Speaker B were to respond with "hello im calling" this would be a bad response because the response is incomplete.
+If Speaker A were to say "What's your favorite color?" and Speaker B were to respond with "blue" this would be a good response because the response is complete.
+If Speaker A were to say "What's your favorite color?" and Speaker B were to respond with "its been blue ever since i was little" this would actually be a bad response because the response implies they are going to continue talking about their favorite color.
+If Speaker A were to say "How are you doing today?" and Speaker B were to respond with "ugh shit went down on the way to work" this would also be a bad response because there is an implication they are going to expand on that.
 
-If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, if Speaker B's response addresses Speaker A's initial message, return "good" If Speaker B is listing something, return "bad".<|im_end|>
+The user will send you the dialogue and you must return a single word, either: "good" or "bad".<|im_end|>
+<|im_start|>user 
+{pretty_printed}<|im_end|>
 <|im_start|>assistant
 """,
             ]
 
             # Get the model to use for the completion
-            model = "Qwen/Qwen1.5-72B-Chat-GPTQ-Int4"
+            model = getenv("AI_MODEL_NAME_LARGE")
 
             # Prepare the data for the POST request
             data = {
@@ -284,9 +373,7 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                                     self.conversation.agent_responses_worker.send_filler_audio(
                                         asyncio.Event()
                                     )
-                                    self.last_filler_time = (
-                                        time.time()
-                                    )
+                                    self.last_filler_time = time.time()
                         else:
                             expected_silence_duration = (
                                 1 - confidence**200
@@ -478,21 +565,30 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                     self.conversation.logger.info(
                         "Adding waiting chunk to buffer check task due to VAD"
                     )
-                    self.current_sleep_time = min(
-                        2,
-                        max(
-                            self.vad_time,
-                            min(
-                                self.current_sleep_time * 1.5,
-                                self.current_sleep_time + 2,
-                            ),
-                        ),
-                    )
+                    # self.current_sleep_time = min(
+                    #     2,
+                    #     max(
+                    #         self.vad_time,
+                    #         min(
+                    #             self.current_sleep_time * 1.5,
+                    #             self.current_sleep_time + 2,
+                    #         ),
+                    #     ),
+                    # )
+                    self.current_sleep_time = self.vad_time
                     self.vad_time = self.vad_time / 3
                 return
-
+            if "words" not in json.loads(transcription.message):
+                self.conversation.logger.info("Ignoring transcription, no words.")
+                return
+            elif len(json.loads(transcription.message)["words"]) == 0:
+                self.conversation.logger.info("Ignoring transcription, zero words.")
+                return
+            self.conversation.logger.debug(
+                f"Transcription message: {' '.join(word['word'] for word in json.loads(transcription.message)['words'])}"
+            )
             # Strip the transcription message and log the time silent
-            transcription.message = transcription.message.strip()
+            transcription.message = transcription.message
             self.conversation.logger.info(f"Time silent: {self.time_silent}s")
 
             # If the transcription message is empty, handle it accordingly
@@ -504,10 +600,8 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                 self.time_silent += transcription.time_silent
                 return
             # Update the buffer with the new message and log it
-            self.conversation.logger.info(
-                f"Updated Buffer: {self.buffer} + {transcription.message}"
-            )
-            self.buffer = f"{self.buffer} {transcription.message}"
+            self.buffer.update_buffer(json.loads(transcription.message)["words"])
+            self.conversation.logger.info(f"New buffer: {self.buffer.to_message()}")
             self.vad_time = 2.0
             self.time_silent = transcription.time_silent
 
@@ -524,7 +618,7 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
 
             # Start a new buffer check task to recalculate the timing
             self.buffer_check_task = asyncio.create_task(
-                self._buffer_check(deepcopy(self.buffer))
+                self._buffer_check(deepcopy(self.buffer.to_message()))
             )
             return
 
@@ -954,8 +1048,12 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
 
-            filler_audio_task = asyncio.create_task(self.synthesizer.set_filler_audios(self.filler_audio_config))
-            affirmative_audio_task = asyncio.create_task(self.synthesizer.set_affirmative_audios(self.filler_audio_config))
+            filler_audio_task = asyncio.create_task(
+                self.synthesizer.set_filler_audios(self.filler_audio_config)
+            )
+            affirmative_audio_task = asyncio.create_task(
+                self.synthesizer.set_affirmative_audios(self.filler_audio_config)
+            )
             await asyncio.gather(filler_audio_task, affirmative_audio_task)
 
         self.agent.start()
@@ -1063,6 +1161,8 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
                         num_interrupts += 1
             except queue.Empty:
                 break
+        self.transcriber.unmute()
+        self.transcriptions_worker.is_final = False
         self.agent.clear_task_queue()
         self.agent_responses_worker.clear_task_queue()
         self.synthesis_results_worker.clear_task_queue()
@@ -1147,13 +1247,13 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
             # Proceed if no buffer check task is found
             self.logger.debug("No buffer check task found, proceeding without waiting.")
 
-        held_buffer = self.transcriptions_worker.buffer
+        held_buffer = self.transcriptions_worker.buffer.to_message()
 
         # Log the start of sending synthesized speech to the output device
         self.logger.debug("Sending in synth buffer")
         # Clear the transcription worker's buffer and related attributes before sending
         self.transcriptions_worker.block_inputs = True
-        self.transcriptions_worker.buffer = ""
+        self.transcriptions_worker.buffer.clear()
         self.transcriptions_worker.time_silent = 0.0
         self.transcriptions_worker.triggered_affirmative = False
 
@@ -1187,6 +1287,7 @@ If Speaker B did not completely respond to Speaker A, return "bad". Otherwise, i
             self.logger.info(
                 f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message_sent}"
             )
+            self.logger.info(f"Responding to {held_buffer}")
 
         # If a transcript message is provided, update its text with the message sent
         if transcript_message:
