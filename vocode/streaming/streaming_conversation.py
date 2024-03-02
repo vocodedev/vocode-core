@@ -451,10 +451,6 @@ The user will send you the dialogue and you must return a single word, either: "
             # Place the event in the output queue for further processing
             self.output_queue.put_nowait(event)
 
-            # TODO: This log is intercepted, so it should be right before we send synth so the online transcript isnt messed up
-            # self.conversation.logger.info(
-            #     f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{transcription.message}"
-            # )
             self.conversation.logger.info("Transcription event put in output queue")
 
             # Set the buffer status to HOLD, indicating we're not ready to send it yet
@@ -1253,7 +1249,6 @@ The user will send you the dialogue and you must return a single word, either: "
         self.logger.debug("Sending in synth buffer")
         # Clear the transcription worker's buffer and related attributes before sending
         self.transcriptions_worker.block_inputs = True
-        self.transcriptions_worker.buffer.clear()
         self.transcriptions_worker.time_silent = 0.0
         self.transcriptions_worker.triggered_affirmative = False
 
@@ -1264,6 +1259,11 @@ The user will send you the dialogue and you must return a single word, either: "
 
         # Calculate the length of the speech in seconds
         speech_length_seconds = len(speech_data) / chunk_size
+        if self.transcriptions_worker.buffer.to_message():
+            self.logger.info(
+                f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{self.transcriptions_worker.buffer.to_message()}"
+            )
+        self.transcriptions_worker.buffer.clear()
 
         # Sleep for the duration of the speech minus the time already spent sending the data
         await asyncio.sleep(
