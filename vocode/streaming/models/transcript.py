@@ -105,11 +105,22 @@ class Transcript(BaseModel):
             )
 
     def add_human_message(self, text: str, conversation_id: str):
+        # check if the last human message is contained within text
         self.add_message_from_props(
             text=text,
             sender=Sender.HUMAN,
             conversation_id=conversation_id,
         )
+
+    def remove_last_human_message(self):
+        if len(self.event_logs) == 0:
+            return
+        for idx, message in enumerate(self.event_logs[::-1]):
+            if message.sender == Sender.HUMAN:
+                self.event_logs.pop(-1 * (idx + 1))
+                break
+            else:
+                break
 
     def add_bot_message(self, text: str, conversation_id: str):
         self.add_message_from_props(
@@ -121,6 +132,11 @@ class Transcript(BaseModel):
     def get_last_user_message(self):
         for idx, message in enumerate(self.event_logs[::-1]):
             if message.sender == Sender.HUMAN:
+                return -1 * (idx + 1), message.to_string()
+
+    def get_last_agent_message(self):
+        for idx, message in enumerate(self.event_logs[::-1]):
+            if message.sender == Sender.BOT:
                 return -1 * (idx + 1), message.to_string()
 
     def add_action_start_log(self, action_input: ActionInput, conversation_id: str):
