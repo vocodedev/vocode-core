@@ -161,16 +161,17 @@ class StreamingConversation(Generic[OutputDeviceType]):
             if not self.buffer:
                 self.buffer = new_results
             else:
-                # check if first word of new buffer is the same and has the same start time as the first word in ithe new buffer. if so, just replace the words in the buffer with the new ones
-                if (
-                    self.buffer[0]["word"] == new_results[0]["word"]
-                    and self.buffer[0]["start"] == new_results[0]["start"]
-                ):
-                    self.buffer = new_results
+                # find the earliest time in the new results then find that time in the buffer and replace from there on
+                earliest_new_result_time = new_results[0]["start"]
+                insertion_index = None
+                for i, word in enumerate(self.buffer):
+                    if word["end"] >= earliest_new_result_time:
+                        insertion_index = i
+                        break
+                if insertion_index is not None:
+                    self.buffer = self.buffer[:insertion_index] + new_results
                 else:
-                    for new_word in new_results:
-                        self._update_or_add_word(new_word)
-                    self._merge_and_clean_buffer()
+                    self.buffer.extend(new_results)
 
         def _update_or_add_word(self, new_word):
             overlap_indices = []
@@ -188,24 +189,43 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
             self.buffer.sort(key=lambda x: x["start"])
 
-        def _is_overlap(self, word1, word2):
+        def _is_overlap(self, word1, word2, tolerance=0.1):
+            # Adjust the start and end times of the words by a tolerance to account for slight shifts
+            adjusted_word1_start = word1["start"] - tolerance
+            adjusted_word1_end = word1["end"] + tolerance
+            adjusted_word2_start = word2["start"] - tolerance
+            adjusted_word2_end = word2["end"] + tolerance
+
+            # Check for overlap with adjusted timings
             return not (
-                word1["end"] <= word2["start"] or word1["start"] >= word2["end"]
+                adjusted_word1_end <= adjusted_word2_start
+                or adjusted_word1_start >= adjusted_word2_end
             )
 
         def _merge_and_clean_buffer(self):
             merged_buffer = []
             for word in self.buffer:
-                if not merged_buffer or not self._is_overlap(word, merged_buffer[-1]):
+                if not merged_buffer:
                     merged_buffer.append(word)
                 else:
-                    # Merge words if they overlap
-                    if word["end"] > merged_buffer[-1]["end"]:
-                        merged_buffer[-1]["end"] = word["end"]
-                    if "confidence" in word:
-                        merged_buffer[-1]["confidence"] = max(
-                            merged_buffer[-1].get("confidence", 0), word["confidence"]
-                        )
+                    last_word = merged_buffer[-1]
+                    if not self._is_overlap(word, last_word):
+                        merged_buffer.append(word)
+                    else:
+                        # If the words overlap, merge them
+                        if word["end"] > last_word["end"]:
+                            last_word["end"] = word["end"]
+                        if "confidence" in word and "confidence" in last_word:
+                            # Take the maximum confidence of the overlapping words
+                            last_word["confidence"] = max(
+                                last_word["confidence"], word["confidence"]
+                            )
+                        # If the words are the same, keep the one with higher confidence
+                        elif word["word"] == last_word["word"]:
+                            if word.get("confidence", 0) > last_word.get(
+                                "confidence", 0
+                            ):
+                                merged_buffer[-1] = word
             self.buffer = merged_buffer
 
         def clear(self):
@@ -667,6 +687,24 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
 
         def send_filler_audio(self, agent_response_tracker: Optional[asyncio.Event]):
+            # only send it if a digit isn't written out in the current transcription buffer
+            digits = [
+                "one",
+                "two",
+                "three",
+                "four",
+                "five",
+                "six",
+                "seven",
+                "eight",
+                "nine",
+                "zero",
+            ]
+            if any(
+                digit in self.conversation.transcriptions_worker.buffer.to_message()
+                for digit in digits
+            ):
+                return
             assert self.conversation.filler_audio_worker is not None
             self.conversation.logger.debug("Sending filler audio")
             if self.conversation.synthesizer.filler_audios:
@@ -698,6 +736,24 @@ class StreamingConversation(Generic[OutputDeviceType]):
         def send_affirmative_audio(
             self, agent_response_tracker: Optional[asyncio.Event], phrase: str
         ):
+            # only send it if a digit isn't written out in the current transcription buffer
+            digits = [
+                "one",
+                "two",
+                "three",
+                "four",
+                "five",
+                "six",
+                "seven",
+                "eight",
+                "nine",
+                "zero",
+            ]
+            if any(
+                digit in self.conversation.transcriptions_worker.buffer.to_message()
+                for digit in digits
+            ):
+                return
             assert self.conversation.filler_audio_worker is not None
             self.conversation.logger.debug("Sending affirmative audio")
             if self.conversation.synthesizer.affirmative_audios:
