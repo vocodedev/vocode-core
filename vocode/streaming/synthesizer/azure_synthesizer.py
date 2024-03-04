@@ -144,7 +144,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 audio_data = open(filler_audio_path, "rb").read()
             else:
                 self.logger.debug(f"Generating filler audio for {filler_phrase.text}")
-                ssml = self.create_ssml(filler_phrase.text, volume=50)
+                ssml = self.create_ssml(filler_phrase.text, volume=50, rate=4)
                 result = await asyncio.get_event_loop().run_in_executor(
                     self.thread_pool_executor, self.synthesizer.speak_ssml, ssml
                 )
@@ -184,7 +184,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 self.logger.debug(
                     f"Generating affirmative audio for {affirmative_phrase.text}"
                 )
-                ssml = self.create_ssml(affirmative_phrase.text, volume=35)
+                ssml = self.create_ssml(affirmative_phrase.text, volume=55, rate=2)
                 result = await asyncio.get_event_loop().run_in_executor(
                     self.thread_pool_executor, self.synthesizer.speak_ssml, ssml
                 )
@@ -221,6 +221,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         message: str,
         bot_sentiment: Optional[BotSentiment] = None,
         volume: int = 1,
+        rate: int = 1,
     ) -> str:
         voice_language_code = self.synthesizer_config.voice_name[:5]
         ssml_root = ElementTree.fromstring(
@@ -255,7 +256,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             silence.set("type", "comma-exact")
         prosody = ElementTree.SubElement(voice_root, "prosody")
         prosody.set("pitch", f"{self.pitch}%")
-        prosody.set("rate", f"{self.rate}%")
+        prosody.set("rate", f"{rate*self.rate}%")
         prosody.set("volume", f"-{volume}%")
         # remove ALL punctuation except for periods and question marks
         message = re.sub(r"[^\w\s\.\?\!\@\:\']", "", message)
