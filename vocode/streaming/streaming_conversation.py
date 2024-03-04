@@ -624,7 +624,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             await self.synthesizer.set_filler_audios(self.filler_audio_config)
 
         self.agent.start()
-        self.audio_stream_handler = AudioStreamHandler(conversation_id=self.id, transcriber=self.transcriber)
         initial_message = self.agent.get_agent_config().initial_message
         initial_audio_path = self.agent.get_agent_config().initial_audio_path
         self.agent.attach_transcript(self.transcript)
@@ -635,11 +634,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
         elif initial_message:
             asyncio.create_task(self.send_initial_message(initial_message))
         elif isinstance(self.agent, ChatGPTAgentOld):
-            self.agent.first_response = await self.agent.create_first_response()
-            response_split = self.agent.first_response['choices'][0]['message']['content'].split('.')
-            for response in response_split:
-                asyncio.create_task(self.send_initial_message(BaseMessage(text=response + '.')))
-
+            self.logger.info("Creating first response")
+            first_response_generator = self.agent.create_first_response()
+            self.logger.info("Got generator")
+            async for response in first_response_generator:
+                self.logger.info(response)
+                asyncio.create_task(self.send_initial_message(BaseMessage(text=response[0]))) # returns tuple.
+        self.audio_stream_handler = AudioStreamHandler(conversation_id=self.id, transcriber=self.transcriber)
         if mark_ready:
             await mark_ready()
         if self.synthesizer.get_synthesizer_config().sentiment_config:

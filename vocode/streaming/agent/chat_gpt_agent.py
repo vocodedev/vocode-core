@@ -653,7 +653,12 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
         messages = [{"role": "system", "content": system_prompt}]
         parameters = self.get_chat_parameters(messages)
         parameters["model"] = CHAT_GPT_INITIAL_MESSAGE_MODEL_NAME
-        return await openai.ChatCompletion.acreate(**parameters)
+        parameters["stream"] = True
+        self.logger.info('Attempting to stream response.')
+        async for response, is_successful in self.__attempt_stream_with_retries(
+                parameters, self.agent_config.timeout_seconds,
+                max_retries=self.agent_config.max_retries):
+            yield response, is_successful
 
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript
