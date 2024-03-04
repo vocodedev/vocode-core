@@ -165,7 +165,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 earliest_new_result_time = new_results[0]["start"]
                 insertion_index = None
                 for i, word in enumerate(self.buffer):
-                    if word["end"] >= earliest_new_result_time:
+                    if word["end"] >= earliest_new_result_time - 0.1:
                         insertion_index = i
                         break
                 if insertion_index is not None:
