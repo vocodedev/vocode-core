@@ -449,11 +449,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             logger or logging.getLogger(__name__),
             conversation_id=self.id,
         )
+        self.logger.info("Creating conversation")
         self.call_start = time.time()
         self.call_initial_delay = 1.5
         self.output_device = output_device
         self.transcriber = transcriber
-        self.audio_stream_handler = AudioStreamHandler(conversation_id=self.id, transcriber=transcriber)
+        self.audio_stream_handler = None  # FIXME: try to set it here or in the start method in the beginning.
         self.agent = agent
         self.synthesizer = synthesizer
         self.synthesis_enabled = True
@@ -556,6 +557,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # tracing
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
+        self.logger.info("Finished creating conversation")
 
     def create_state_manager(self) -> ConversationStateManager:
         return ConversationStateManager(conversation=self)
@@ -597,6 +599,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriber.unmute()
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
+        self.logger.info("Starting conversation")
         self.transcriber.start()
         self.transcriptions_worker.start()
         self.agent_responses_worker.start()
@@ -621,6 +624,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             await self.synthesizer.set_filler_audios(self.filler_audio_config)
 
         self.agent.start()
+        self.audio_stream_handler = AudioStreamHandler(conversation_id=self.id, transcriber=self.transcriber)
         initial_message = self.agent.get_agent_config().initial_message
         initial_audio_path = self.agent.get_agent_config().initial_audio_path
         self.agent.attach_transcript(self.transcript)
@@ -652,6 +656,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         if self.redis_event_manger is not None:
             self.redis_task = asyncio.create_task(self.redis_event_manger.start())
+        self.logger.info("Conversation started")
 
     async def send_initial_message(self, initial_message: BaseMessage):
         # TODO: configure if initial message is interruptible

@@ -88,6 +88,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
         return TwilioCallStateManager(self)
 
     async def attach_ws_and_start(self, ws: WebSocket):
+        self.logger.info("Attaching websocket...")
         super().attach_ws(ws)
 
         await self.telephony_client.initialize_client()
@@ -110,8 +111,11 @@ class TwilioCall(Call[TwilioOutputDevice]):
             self.logger.info(f"Call answered by {twilio_call.answered_by}")
             twilio_call.update(status="completed")
         else:
+            self.logger.info(f"Call answered by {twilio_call.answered_by}")
             await self.wait_for_twilio_start(ws)
+            self.logger.info("Starting call...")
             await super().start()
+            self.logger.info("Call started")
             self.events_manager.publish_event(
                 PhoneCallConnectedEvent(
                     conversation_id=self.id,
