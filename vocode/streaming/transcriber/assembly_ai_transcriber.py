@@ -59,7 +59,13 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
 
         self.buffer = bytearray()
         self.audio_cursor = 0
-        self.terminate_msg = str.encode(json.dumps({"terminate_session": True}))
+        self.terminate_msg = json.dumps({"terminate_session": True})
+        self.threshold_msg = (
+            None if self.transcriber_config.end_utterance_silence_threshold is None 
+            else json.dumps(
+                {"end_utterance_silence_threshold": self.transcriber_config.end_utterance_silence_threshold}
+            )
+        )
 
     async def ready(self):
         return True
@@ -106,6 +112,9 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
             ping_timeout=20,
         ) as ws:
             await asyncio.sleep(0.1)
+
+            if self.threshold_msg:
+                await ws.send(self.threshold_msg)
 
             async def sender(ws):  # sends audio to websocket
                 while not self._ended:
