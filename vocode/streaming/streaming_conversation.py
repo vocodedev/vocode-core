@@ -1072,6 +1072,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         is_ready = await self.transcriber.ready()
         if not is_ready:
             raise Exception("Transcriber startup failed")
+
         if self.agent.get_agent_config().send_filler_audio:
             if not isinstance(
                 self.agent.get_agent_config().send_filler_audio, FillerAudioConfig
@@ -1081,13 +1082,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.filler_audio_config = typing.cast(
                     FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
                 )
-
             filler_audio_task = asyncio.create_task(
                 self.synthesizer.set_filler_audios(self.filler_audio_config)
             )
             affirmative_audio_task = asyncio.create_task(
                 self.synthesizer.set_affirmative_audios(self.filler_audio_config)
             )
+            prompt_preamble = self.agent.get_agent_config().prompt_preamble
+            self.logger.debug(f"Prompt Preamble: {prompt_preamble}")
+
             await asyncio.gather(filler_audio_task, affirmative_audio_task)
 
         self.agent.start()

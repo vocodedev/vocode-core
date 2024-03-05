@@ -53,7 +53,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
         return cls(
             sampling_rate=output_device.sampling_rate,
             audio_encoding=output_device.audio_encoding,
-            **kwargs
+            **kwargs,
         )
 
     # TODO(EPD-186): switch to from_twilio_output_device and from_vonage_output_device
@@ -62,7 +62,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
         return cls(
             sampling_rate=DEFAULT_SAMPLING_RATE,
             audio_encoding=DEFAULT_AUDIO_ENCODING,
-            **kwargs
+            **kwargs,
         )
 
     @classmethod
@@ -70,17 +70,19 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
         return cls(
             sampling_rate=output_audio_config.sampling_rate,
             audio_encoding=output_audio_config.audio_encoding,
-            **kwargs
+            **kwargs,
         )
 
 
-AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME = "HaroldAINeural"
 AZURE_SYNTHESIZER_DEFAULT_PITCH = 0
 AZURE_SYNTHESIZER_DEFAULT_RATE = 15
 
 
 class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE.value):
-    voice_name: str = AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME
+    voice_name: Optional[str] = None
+    azure_speech_key: Optional[str] = None
+    azure_speech_region: Optional[str] = None
+    azure_endpoint_id: Optional[str] = None
     pitch: int = AZURE_SYNTHESIZER_DEFAULT_PITCH
     rate: int = AZURE_SYNTHESIZER_DEFAULT_RATE
     language_code: str = "en-US"
@@ -137,21 +139,27 @@ class ElevenLabsSynthesizerConfig(
 
 class OpenAISynthesizerConfig(SynthesizerConfig, type=SynthesizerType.OPENAI.value):
     api_key: Optional[str] = None
-    voice: Optional[str] = Field(default="alloy", description="Voice to be used for TTS")
+    voice: Optional[str] = Field(
+        default="alloy", description="Voice to be used for TTS"
+    )
     model: Optional[str] = Field(default="tts-1", description="TTS model to be used")
 
     @validator("voice")
     def validate_voice(cls, voice):
         allowed_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
         if voice not in allowed_voices:
-            raise ValueError(f"Voice '{voice}' is not supported. Choose from {allowed_voices}.")
+            raise ValueError(
+                f"Voice '{voice}' is not supported. Choose from {allowed_voices}."
+            )
         return voice
 
     @validator("model")
     def validate_model(cls, model):
         allowed_models = ["tts-1", "tts-1-hd"]
         if model not in allowed_models:
-            raise ValueError(f"Model '{model}' is not supported. Choose from {allowed_models}.")
+            raise ValueError(
+                f"Model '{model}' is not supported. Choose from {allowed_models}."
+            )
         return model
 
 

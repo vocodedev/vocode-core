@@ -30,7 +30,10 @@ from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
 from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.models.synthesizer import SynthesizerConfig
+from vocode.streaming.models.synthesizer import (
+    SynthesizerConfig,
+)
+
 
 FILLER_PHRASES = [
     BaseMessage(text="Hmm?"),
