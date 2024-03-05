@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import random
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -357,89 +358,148 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         affirmative_phrase: Optional[str],
         conversation_id: str,
         is_interrupt: bool = False,
+        stream_output: bool = True,
     ) -> AsyncGenerator[Tuple[Union[str, FunctionCall], bool], None]:
-        if is_interrupt and self.agent_config.cut_off_response:
-            cut_off_response = self.get_cut_off_response()
-            yield cut_off_response, False
-            return
+        digits = [
+            "zero",
+            "one",
+            "two",
+            "three",
+            "four",
+            "five",
+            "six",
+            "seven",
+            "eight",
+            "nine",
+        ]
+        # replace all written numbers with digits
+        current_index = -1
+        count = 0
+
         assert self.transcript is not None
-        chat_parameters = {}
         self.logger.debug(f"COMPLETION IS RESPONDING")
-
-        if self.agent_config.vector_db_config:
-            try:
-                vector_db_search_args = {
-                    "query": self.transcript.get_last_user_message()[1],
-                }
-
-                has_vector_config_namespace = getattr(
-                    self.agent_config.vector_db_config, "namespace", None
-                )
-                if has_vector_config_namespace:
-                    vector_db_search_args[
-                        "namespace"
-                    ] = self.agent_config.vector_db_config.namespace.lower().replace(
-                        " ", "_"
-                    )
-
-                docs_with_scores = await self.vector_db.similarity_search_with_score(
-                    **vector_db_search_args
-                )
-                docs_with_scores_str = "\n\n".join(
-                    [
-                        "Document: "
-                        + doc[0].metadata["source"]
-                        + f" (Confidence: {doc[1]})\n"
-                        + doc[0].lc_kwargs["page_content"].replace(r"\n", "\n")
-                        for doc in docs_with_scores
-                    ]
-                )
-                vector_db_result = f"Found {len(docs_with_scores)} similar documents:\n{docs_with_scores_str}"
-                formatted_completion = format_openai_chat_completion_from_transcript(
-                    self.transcript, self.agent_config.prompt_preamble
-                )
-                messages = format_openai_chat_messages_from_transcript(
-                    self.transcript, self.agent_config.prompt_preamble
-                )
-                messages.insert(
-                    -1, vector_db_result_to_openai_chat_message(vector_db_result)
-                )
-                chat_parameters = self.get_chat_parameters(messages)
-            except Exception as e:
-                self.logger.error(f"Error while hitting vector db: {e}", exc_info=True)
-                chat_parameters = self.get_chat_parameters()
-        else:
-            chat_parameters = self.get_completion_parameters(
-                affirmative_phrase=affirmative_phrase
-            )
-
+        chat_parameters = self.get_completion_parameters(
+            affirmative_phrase=affirmative_phrase
+        )
         # Prepare headers and data for the POST request
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer 'EMPTY'",
         }
-        data = {
-            "model": chat_parameters["model"],
-            "prompt": chat_parameters["prompt"],
-            "stream": False,
-            "stop": ["?", "\n"],
-            "max_tokens": 100,
-            "include_stop_str_in_output": True,
-        }
+        prompt_buffer = chat_parameters["prompt"]
+        words = prompt_buffer.split()
+        new_words = []
+        largest_seq = 0
+        current_seq = 0
+        last_digit_index = -1
+        for i, word in enumerate(words):
+            post = ""
+            if "<|im_end|>" in word:
+                pre = word.split("<|im_end|>")[0]
+                post = "<|im_end|>" + word.split("<|im_end|>")[1]
+                word = pre
+            if word.lower() in digits:
+                digit_str = str(digits.index(word.lower()))
+                digit_str += post
+                new_words.append(digit_str)
+                current_seq += 1
+                if current_seq > largest_seq:
+                    largest_seq = current_seq
+                    last_digit_index = i
+            else:
+                new_words.append(word + post)
+                current_seq = 0
+        if last_digit_index != -1:
+            sequence_start = last_digit_index - largest_seq + 1
+            insert_index = sum(len(w) + 1 for w in new_words[:sequence_start])
+            if largest_seq == 10:
+                number_sentence = f"(with {largest_seq} digits):"
+            else:
+                number_sentence = f"(with only {largest_seq} digits)"
+            if largest_seq > 3:  # only provide nu
+                prompt_buffer = (
+                    " ".join(new_words[:sequence_start])
+                    + f" {number_sentence} "
+                    + " ".join(new_words[sequence_start:])
+                )
+        else:
+            prompt_buffer = " ".join(new_words)
+
+        prompt_buffer = prompt_buffer.replace("  ", " ")
+        completion_buffer = ""
+        tokens_to_generate = 120
+        max_tokens = 120
+        stop = ["?"]
         async with aiohttp.ClientSession() as session:
             base_url = getenv("AI_API_BASE")
+            # Generate the first chunk
+            while True:
+                data = {
+                    "model": chat_parameters["model"],
+                    "prompt": prompt_buffer,
+                    "stream": False,
+                    "stop": [".", "?", "\n", ":"],
+                    "max_tokens": tokens_to_generate,
+                    "include_stop_str_in_output": True,
+                }
+                async with session.post(
+                    f"{base_url}/completions", headers=headers, json=data
+                ) as response:
+                    if response.status == 200:
+                        response_data = await response.json()
+                        content = response_data["choices"][0]["text"].strip()
+                        prompt_buffer += " " + content
+                        prompt_buffer = prompt_buffer.strip().replace("  ", " ")
+                        if (
+                            content.endswith("?")
+                            or content.endswith("\n")
+                            or content.endswith(".")
+                            or content.endswith(":")
+                        ) and len(content.split()) > 2:
+                            if stream_output:
+                                self.logger.debug(f"Yielding first chunk: {content}")
+                            yield (completion_buffer + " " + content), False
+                            completion_buffer = ""
+                            if content.endswith("?"):
+                                return
+                            break
+                        else:
+                            self.logger.debug(f"Got chunk: {content}")
+                            completion_buffer += content
+                    else:
+                        self.logger.error(
+                            f"Error while streaming from OpenAI1: {str(response)}"
+                        )
+                        return
+            # Generate the second chunk
+            data = {
+                "model": chat_parameters["model"],
+                "prompt": prompt_buffer,
+                "stream": False,
+                "stop": ["?"],
+                "max_tokens": max_tokens,
+                "include_stop_str_in_output": True,
+            }
+            self.logger.debug(f"Prompt buffer: {prompt_buffer}")
+            self.logger.debug(f"data: {data}")
             async with session.post(
                 f"{base_url}/completions", headers=headers, json=data
             ) as response:
                 if response.status == 200:
                     response_data = await response.json()
-                    # Extract the content and the log probabilities
                     content = response_data["choices"][0]["text"].strip()
-                    yield content, True
-                    content = f"{affirmative_phrase} {content}"
+                    prompt_buffer += content
+                    if stream_output:
+                        self.logger.debug(f"Yielding second chunk: {content}")
+                        # if its shorter than one word, add an uh in front of it
+                        if len(content.split()) < 2:
+                            chosen_word = random.choice("uh... um... er...".split())
+                            content = chosen_word + " " + content
+                        yield content, False
                 else:
+
                     self.logger.error(
-                        f"Error while streaming from OpenAI: {response.status}"
+                        f"Error while streaming from OpenAI2: {str(response)}"
                     )
 
     async def generate_response(

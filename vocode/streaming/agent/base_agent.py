@@ -230,6 +230,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         is_first_response = True
         function_call = None
         async for response, is_interruptible in responses:
+            self.logger.debug(f"Generated response: {response}")
             if isinstance(response, FunctionCall):
                 function_call = response
                 continue
@@ -463,6 +464,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         affirmative_phrase: Optional[str],
         conversation_id: str,
         is_interrupt: bool = False,
+        stream_output: bool = True,
     ) -> AsyncGenerator[
         Tuple[Union[str, FunctionCall], bool], None
     ]:  # tuple of the content and whether it is interruptible

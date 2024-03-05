@@ -189,7 +189,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
             self.buffer.sort(key=lambda x: x["start"])
 
-        def _is_overlap(self, word1, word2, tolerance=0.1):
+        def _is_overlap(self, word1, word2, tolerance=0.05):
             # Adjust the start and end times of the words by a tolerance to account for slight shifts
             adjusted_word1_start = word1["start"] - tolerance
             adjusted_word1_end = word1["end"] + tolerance
@@ -318,19 +318,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             self.conversation.logger.debug(
                                 f"Classification: {classification}, Confidence: {confidence}, Expected silence: {expected_silence_duration}"
                             )
-                            self.conversation.logger.debug(
-                                f"It's been {time.time() - self.last_filler_time} seconds since the last filler"
-                            )
-                            return expected_silence_duration
-                        elif classification == "full":
-                            # In the full case, it's a good response and we wait based on inverted confidence
-                            expected_silence_duration = (
-                                1 - confidence
-                            ) * MAX_SILENCE_TIME
-                            self.last_classification = "full"
-                            self.conversation.logger.debug(
-                                f"Classification: {classification}, Confidence: {confidence}, Expected silence: {expected_silence_duration}"
-                            )
                             return expected_silence_duration
                         elif classification == "truncated":
                             # In the truncated case, we say no filler word and we wait on confidence
@@ -378,6 +365,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.logger.info(
                 f"Classification took: {elapsed_time_duration}\nSleep duration: {self.current_sleep_time}"
             )
+
             # choose a random affirmative phrase until it's different from the previous one
             previous_phrase = self.chosen_affirmative_phrase
             while True:
@@ -432,7 +420,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     and not self.triggered_affirmative
                     and self.last_classification == "full"
                 ) or (
-                    self.time_silent > 1.5
+                    self.time_silent > 0.7
                     and not self.triggered_affirmative
                     and time.time() - self.last_filler_time > 1.5
                     and time.time() - self.last_affirmative_time > 3
@@ -481,13 +469,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     time_since_last_log = 0.0
                 if self.synthesis_done:
                     # self.conversation.logger.info("Synthesis done, still sleeping")
-                    self.last_affirmative_time = time.time()
                     if (
-                        time.time() - self.last_filler_time > 2.0
-                        and time.time() - self.last_affirmative_time > 3.0
-                        and not self.triggered_affirmative
+                        time.time() - self.last_filler_time > 1.0
+                        and time.time() - self.last_affirmative_time > 2.0
+                        and self.time_silent > 0.5
+                        # and not self.last_classification == "paused"
                     ):
                         self.triggered_affirmative = True
+                        self.last_affirmative_time = time.time()
 
                         # self.conversation.logger.info(
                         #     f"Sending affirmative audio, sleeping time: {self.current_sleep_time}"
@@ -499,6 +488,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             asyncio.Event(),
                             phrase=self.chosen_affirmative_phrase,
                         )
+                        self.last_affirmative_time = time.time()
 
             self.conversation.logger.info(f"Marking as send")
             self.ready_to_send = BufferStatus.SEND
@@ -700,9 +690,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 "nine",
                 "zero",
             ]
-            if any(
-                digit in self.conversation.transcriptions_worker.buffer.to_message()
-                for digit in digits
+            if (
+                sum(
+                    self.conversation.transcriptions_worker.buffer.to_message().count(
+                        digit
+                    )
+                    for digit in digits
+                )
+                < 4
             ):
                 return
             assert self.conversation.filler_audio_worker is not None
@@ -748,10 +743,32 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 "eight",
                 "nine",
                 "zero",
+                "ten",
+                "twenty",
+                "thirty",
+                "forty",
+                "fifty",
+                "sixty",
+                "seventy",
+                "eighty",
+                "ninety",
+                "hundred",
             ]
-            if any(
-                digit in self.conversation.transcriptions_worker.buffer.to_message()
-                for digit in digits
+            if (
+                sum(
+                    self.conversation.transcriptions_worker.buffer.to_message().count(
+                        digit
+                    )
+                    for digit in digits
+                )
+                < 4
+                and sum(
+                    self.conversation.transcriptions_worker.buffer.to_message().count(
+                        digit
+                    )
+                    for digit in digits
+                )
+                > 1
             ):
                 return
             assert self.conversation.filler_audio_worker is not None
@@ -807,24 +824,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                     ):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
-                if str(agent_response_message.message) in self.convoCache:
-                    self.conversation.logger.info(
-                        f"Using cached synthesis result for {str(agent_response_message.message)}"
-                    )
-                    synthesis_result = self.convoCache[
-                        str(agent_response_message.message)
-                    ]
-                else:
-                    synthesis_result = (
-                        await self.conversation.synthesizer.create_speech(
-                            agent_response_message.message,
-                            self.chunk_size,
-                            bot_sentiment=self.conversation.bot_sentiment,
-                        )
-                    )
-                    self.convoCache[str(agent_response_message.message)] = (
-                        synthesis_result
-                    )
+
+                synthesis_result = await self.conversation.synthesizer.create_speech(
+                    agent_response_message.message,
+                    self.chunk_size,
+                    bot_sentiment=self.conversation.bot_sentiment,
+                )
+                self.convoCache[str(agent_response_message.message)] = synthesis_result
                 self.produce_interruptible_agent_response_event_nonblocking(
                     (agent_response_message.message, synthesis_result),
                     is_interruptible=item.is_interruptible,
@@ -906,6 +912,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     return
 
                 # Once the speech output is complete, publish the transcript message with the actual content spoken.
+                transcript_message.text = (
+                    transcript_message.text.replace("Hmm...", "")
+                    .replace("So... like...", "")
+                    .replace("So... um...", "")
+                )
+                # split on < and truncate there
+                transcript_message.text = transcript_message.text.split("<")[0].strip()
                 self.conversation.transcript.maybe_publish_transcript_event_from_message(
                     message=transcript_message,
                     conversation_id=self.conversation.id,
@@ -1183,7 +1196,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             except queue.Empty:
                 break
         self.transcriber.unmute()
-        self.transcriptions_worker.is_final = False
+        self.transcriptions_worker.block_inputs = False
         self.agent.clear_task_queue()
         self.agent_responses_worker.clear_task_queue()
         self.synthesis_results_worker.clear_task_queue()
@@ -1252,12 +1265,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if self.transcriptions_worker.buffer_check_task.cancelled():
                     self.logger.debug("Buffer check task was cancelled.")
                     return "", False
-                # Handle non-send status after buffer check completion
-                elif self.transcriptions_worker.ready_to_send != BufferStatus.SEND:
-                    self.logger.debug(
-                        "Buffer check completed but buffer status is not SEND."
-                    )
-                    return "", False
+                # # Handle non-send status after buffer check completion
+                # elif self.transcriptions_worker.ready_to_send != BufferStatus.SEND:
+                #     self.logger.debug(
+                #         "Buffer check completed but buffer status is not SEND."
+                #     )
+                #     return "", False
             except asyncio.CancelledError:
                 # Handle external cancellation of the buffer check task
                 self.logger.debug(
@@ -1308,11 +1321,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         # Update the message sent with the actual content spoken
         message_sent = synthesis_result.get_message_up_to(len(speech_data) / chunk_size)
-        if message_sent and not cut_off:
-            self.logger.info(
-                f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message_sent}"
-            )
-            self.logger.info(f"Responding to {held_buffer}")
 
         # If a transcript message is provided, update its text with the message sent
         if transcript_message:
@@ -1322,13 +1330,36 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # Reset the synthesis done flag and prepare for the next synthesis
         self.transcriptions_worker.synthesis_done = False
 
-        # Unmute the transcriber after speech synthesis if it was muted
-        if self.transcriber.get_transcriber_config().mute_during_speech:
-            self.logger.debug("Unmuting transcriber")
-            self.transcriber.unmute()
-
         # Reset the transcription worker's flags and buffer status
-        self.transcriptions_worker.block_inputs = False
+        # check if there is more in the queue making this one be called again, if so, dont unblock
+        if (
+            self.agent_responses_worker.input_queue.qsize() == 0
+            and self.agent_responses_worker.output_queue.qsize() == 0
+            and self.agent.get_input_queue().qsize() == 0
+            and self.agent.get_output_queue().qsize() == 0
+            # it must also end in punctuation
+        ):
+            if message_sent and not cut_off and message_sent.strip()[-1] not in [","]:
+
+                last_agent_message = next(
+                    (
+                        message["content"]
+                        for message in reversed(
+                            format_openai_chat_messages_from_transcript(self.transcript)
+                        )
+                        if message["role"] == "assistant"
+                    ),
+                    None,
+                )
+                self.logger.info(
+                    f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {last_agent_message}"
+                )
+                self.logger.info(f"Responding to {held_buffer}")
+                self.transcriptions_worker.block_inputs = False
+                # Unmute the transcriber after speech synthesis if it was muted
+                if self.transcriber.get_transcriber_config().mute_during_speech:
+                    self.logger.debug("Unmuting transcriber")
+                    self.transcriber.unmute()
         self.transcriptions_worker.ready_to_send = BufferStatus.DISCARD
         if transcript_message:
             transcript_message.text = message_sent
