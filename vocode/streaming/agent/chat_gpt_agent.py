@@ -327,6 +327,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         return system_message, transcript_message
 
     def get_tool_classification(self, response, tools):
+        # check to make sure there is no pending action
+        if self.agent_config.pending_action == "pending":
+            self.logger.info(
+                "Skipping tool classification as there is a pending action"
+            )
+            return False, None
         tool_classification = response.choices[0].message.content.lower().strip()
 
         self.logger.info(f"Final tool classification to trigger: {tool_classification}")
@@ -353,6 +359,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             self.agent_config.pending_action = FunctionCall(
                 name=tool_call.function.name, arguments=tool_call.function.arguments
             )
+            self.logger.info(f"Pending action: {self.agent_config.pending_action}")
+        else:
+            self.agent_config.pending_action = None
+            self.logger.info("No pending action")
 
     async def respond(
         self,
@@ -502,35 +512,37 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             # Generate the second chunk
             if not prompt_buffer:
                 return
-            data = {
-                "model": chat_parameters["model"],
-                "prompt": prompt_buffer,
-                "stream": False,
-                "stop": ["?"],
-                "max_tokens": max_tokens,
-                "include_stop_str_in_output": True,
-            }
-            self.logger.debug(f"Prompt buffer: {prompt_buffer}")
-            self.logger.debug(f"data: {data}")
-            async with session.post(
-                f"{base_url}/completions", headers=headers, json=data
-            ) as response:
-                if response.status == 200:
-                    response_data = await response.json()
-                    content = response_data["choices"][0]["text"].strip()
-                    prompt_buffer += content
-                    if stream_output and len(content) > 0:
-                        self.logger.debug(f"Yielding second chunk: {content}")
-                        # if its shorter than one word, add an uh in front of it
-                        if len(content.split()) < 2:
-                            chosen_word = random.choice("uh... um... er...".split())
-                            content = chosen_word + " " + content
-                        yield content, False
-                else:
+            if len(prompt_buffer.split()) > 2:
 
-                    self.logger.error(
-                        f"Error while streaming from OpenAI2: {str(response)}"
-                    )
+                data = {
+                    "model": chat_parameters["model"],
+                    "prompt": prompt_buffer,
+                    "stream": False,
+                    "stop": ["?"],
+                    "max_tokens": max_tokens,
+                    "include_stop_str_in_output": True,
+                }
+                self.logger.debug(f"Prompt buffer: {prompt_buffer}")
+                self.logger.debug(f"data: {data}")
+                async with session.post(
+                    f"{base_url}/completions", headers=headers, json=data
+                ) as response:
+                    if response.status == 200:
+                        response_data = await response.json()
+                        content = response_data["choices"][0]["text"].strip()
+                        prompt_buffer += content
+                        if stream_output and len(content) > 0:
+                            self.logger.debug(f"Yielding second chunk: {content}")
+                            # if its shorter than one word, add an uh in front of it
+                            if len(content.split()) < 2:
+                                chosen_word = random.choice("uh... um... er...".split())
+                                content = chosen_word + " " + content
+                            yield content, False
+                    else:
+
+                        self.logger.error(
+                            f"Error while streaming from OpenAI2: {str(response)}"
+                        )
         # run the nonblocking checks in the background
         if self.agent_config.actions:
             try:
@@ -605,7 +617,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             "model": chat_parameters["model"],
             "messages": chat_parameters["messages"],
             "stream": True,
-            "stop": ["?", "\n"],
+            "stop": ["?"],
             "include_stop_str_in_output": True,
         }
 

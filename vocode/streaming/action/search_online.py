@@ -56,7 +56,13 @@ class SearchOnline(
         }
         body = {
             "model": "sonar-small-online",
-            "messages": [{"role": "user", "content": query}],
+            "messages": [
+                {
+                    "role": "user",
+                    "content": query
+                    + "\nYour answer should be a couple of sentences, max.",
+                }
+            ],
             "temperature": 0.7,
         }
         async with httpx.AsyncClient() as client:

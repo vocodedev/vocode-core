@@ -306,6 +306,10 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     confidence=1.0,
                     is_final=True,
                 )
+                if self.agent_config.pending_action:
+                    self.agent_config.pending_action = None
+                    # resetting pending action
+                    self.logger.debug("Resetting pending action")
             else:
                 raise ValueError("Invalid AgentInput type")
 

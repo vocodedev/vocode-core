@@ -166,20 +166,20 @@ def format_openai_chat_messages_from_transcript(
         elif isinstance(event_log, ActionStart):
             chat_messages.append(
                 {
-                    "role": "assistant",
+                    "role": "user",
                     "content": None,
                     "function_call": {
                         "name": event_log.action_type,
-                        "arguments": event_log.action_input.params.json(),
+                        "arguments": f"SYSTEM: Submitted: Function call: {event_log.action_type} with arguments {event_log.action_input.params.json()}\nDo not answer the user's associated query until a response is received, starting with 'SYSTEM: Completed Function...''.<|im_end|>\n",
                     },
                 }
             )
         elif isinstance(event_log, ActionFinish):
             chat_messages.append(
                 {
-                    "role": "function",
+                    "role": "user",
                     "name": event_log.action_type,
-                    "content": event_log.action_output.response.json(),
+                    "content": f"SYSTEM: Completed: Function {event_log.action_type}.\nResponse was: {event_log.action_output.response.json()}\nNow you can use the response in the conversation.<|im_end|>\n",
                 }
             )
     return chat_messages
@@ -222,9 +222,9 @@ def format_openai_chat_completion_from_transcript(
                 f"<|im_start|>{role}\n{event_log.text}<|im_end|>\n"
             )
         elif isinstance(event_log, ActionStart):
-            formatted_conversation += f"<|im_start|>assistant\nFunction call: {event_log.action_type} with arguments {event_log.action_input.params.json()}<|im_end|>\n"
+            formatted_conversation += f"<|im_start|>user\nSYSTEM: Submitted: Function call: {event_log.action_type} with arguments {event_log.action_input.params.json()}\nDo not answer the user's associated query until a response is received, starting with 'SYSTEM: Completed Function...''.<|im_end|>\n"
         elif isinstance(event_log, ActionFinish):
-            formatted_conversation += f"<|im_start|>function\nFunction {event_log.action_type} finished with response {event_log.action_output.response.json()}<|im_end|>\n"
+            formatted_conversation += f"<|im_start|>user\nSYSTEM: Completed: Function {event_log.action_type}.\nResponse was: {event_log.action_output.response.json()}\nNow you can use the response in the conversation.<|im_end|>\n"
 
     return formatted_conversation.strip()
 

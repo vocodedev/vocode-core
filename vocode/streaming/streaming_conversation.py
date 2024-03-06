@@ -48,6 +48,7 @@ from vocode.streaming.agent.utils import (
     collate_response_async,
     openai_get_tokens,
     vector_db_result_to_openai_chat_message,
+    format_openai_chat_completion_from_transcript,
 )
 from vocode.streaming.constants import (
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
@@ -280,6 +281,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         )
                     )
                     if message["role"] == "assistant"
+                    and message["content"].strip() != ""
                 ),
                 "The conversation has just started. There are no previous agent messages.",
             )
@@ -339,6 +341,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         return 0.0
 
         async def _buffer_check(self, initial_buffer):
+            if len(initial_buffer) == 0:
+                self.conversation.logger.info("SHOULD NOT HAPPEN Ignoring empty buffer")
+                return
             self.conversation.transcript.remove_last_human_message()
             # Reset the current sleep time to zero
             self.current_sleep_time = 0.0
@@ -375,10 +380,21 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if self.chosen_affirmative_phrase != previous_phrase:
                     break
             # Create an interruptible event with the transcription data
+            current_phrase = self.chosen_affirmative_phrase
+            if self.conversation.agent.agent_config.pending_action == "pending":
+                current_phrase = "I see."
+                # make the transcription tell the agent to wait
+                transcription = Transcription(
+                    message="SYSTEM: There is a pending request still.\nUser: "
+                    + transcription.message,
+                    confidence=1.0,  # We assume full confidence as it's not explicitly provided
+                    is_final=True,
+                    time_silent=self.time_silent,
+                )
             event = self.interruptible_event_factory.create_interruptible_event(
                 payload=TranscriptionAgentInput(
                     transcription=transcription,
-                    affirmative_phrase=self.chosen_affirmative_phrase,
+                    affirmative_phrase=current_phrase,
                     conversation_id=self.conversation.id,
                     vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
                     twilio_sid=getattr(self.conversation, "twilio_sid", None),
@@ -731,6 +747,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         def send_affirmative_audio(
             self, agent_response_tracker: Optional[asyncio.Event], phrase: str
         ):
+            # if there is a pending action, don't send
+            if self.conversation.agent.agent_config.pending_action:
+                return
             # only send it if a digit isn't written out in the current transcription buffer
             digits = [
                 "one",
@@ -1129,6 +1148,35 @@ class StreamingConversation(Generic[OutputDeviceType]):
     async def check_for_idle(self):
         """Terminates the conversation after 15 seconds if no activity is detected"""
         while self.is_active():
+            # messages = format_openai_chat_completion_from_transcript(
+            #     self.transcript,
+            # )
+            # # check if the latest user message contains SYSTEM: Completed
+            # if (
+            #     messages[-1].sender == Sender.HUMAN
+            #     and "SYSTEM: Completed" in messages[-1].text
+            # ):
+            #     transcription = Transcription(
+            #         message="SYSTEM: Ready: You can now use the response with the user.",
+            #         confidence=1.0,
+            #         is_final=True,
+            #     )
+            #     # artificially submit a transcription for the bot to self respond
+            #     event = self.interruptible_event_factory.create_interruptible_event(
+            #         payload=TranscriptionAgentInput(
+            #             transcription=transcription,
+            #             affirmative_phrase=self.chosen_affirmative_phrase,
+            #             conversation_id=self.conversation.id,
+            #             vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
+            #             twilio_sid=getattr(self.conversation, "twilio_sid", None),
+            #         ),
+            #     )
+
+            #     # Place the event in the output queue for further processing
+            #     self.transcriptions_worker.output_queue.put_nowait(event)
+
+            # Place the event in the output queue for further processing
+            # self.output_queue.put_nowait(event)
             if time.time() - self.last_action_timestamp > (
                 self.agent.get_agent_config().allowed_idle_time_seconds
                 or ALLOWED_IDLE_TIME
@@ -1318,7 +1366,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 f" and the current transcript text is {transcript_message.text}"
             )
             # If a pending action exists, execute it and reset the pending action
-            if self.agent.agent_config.pending_action:
+            if (
+                self.agent.agent_config.pending_action
+                and self.agent.agent_config.pending_action != "pending"
+            ):
                 asyncio.create_task(
                     self.agent.call_function(
                         self.agent.agent_config.pending_action,
@@ -1335,7 +1386,27 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         ),
                     )
                 )
-                self.agent.agent_config.pending_action = None
+                # artificially submit a transcription for the bot to self respond saying that a request has been submitted
+                transcription = Transcription(
+                    message="SYSTEM: Pending: Your request has been submitted. No response yet.",
+                    confidence=1.0,
+                    is_final=True,
+                )
+                # # artificially submit a transcription for the bot to self respond
+                # event = self.interruptible_event_factory.create_interruptible_event(
+                #     payload=TranscriptionAgentInput(
+                #         transcription=transcription,
+                #         affirmative_phrase=self.chosen_affirmative_phrase,
+                #         conversation_id=self.conversation.id,
+                #         vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
+                #         twilio_sid=getattr(self.conversation, "twilio_sid", None),
+                #     ),
+                # )
+
+                # # Place the event in the output queue for further processing
+                # self.transcriptions_worker.output_queue.put_nowait(event)
+
+                self.agent.agent_config.pending_action = "pending"
 
         # Sleep for the duration of the speech minus the time already spent sending the data
         sleep_time = max(
