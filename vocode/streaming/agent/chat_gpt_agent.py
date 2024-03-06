@@ -450,8 +450,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             insert_index = sum(len(w) + 1 for w in new_words[:sequence_start])
             if largest_seq == 10:
                 number_sentence = f"(with {largest_seq} digits):"
+            elif largest_seq < 10:
+                number_sentence = f"(with only {largest_seq} digits (<10))"
             else:
-                number_sentence = f"(with only {largest_seq} digits)"
+                number_sentence = f"(with {largest_seq} digits (>10))"
             if largest_seq > 3:  # only provide nu
                 prompt_buffer = (
                     " ".join(new_words[:sequence_start])
@@ -459,7 +461,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     + " ".join(new_words[sequence_start:])
                 )
         else:
-            prompt_buffer = " ".join(new_words)
+            prompt_buffer = "".join(word if word.isdigit() else f" {word}").strip()
 
         prompt_buffer = prompt_buffer.replace("  ", " ")
         completion_buffer = ""

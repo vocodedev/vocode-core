@@ -167,7 +167,18 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 insertion_index = None
                 for i, word in enumerate(self.buffer):
                     if word["end"] >= earliest_new_result_time - 0.1:
-                        insertion_index = i
+                        # Check if the first word is the same and within the time tolerance
+                        if (
+                            i > 0
+                            and self.buffer[i - 1]["word"] == new_results[0]["word"]
+                            and abs(
+                                self.buffer[i - 1]["start"] - earliest_new_result_time
+                            )
+                            < 0.2
+                        ):
+                            insertion_index = i - 1
+                        else:
+                            insertion_index = i
                         break
                 if insertion_index is not None:
                     self.buffer = self.buffer[:insertion_index] + new_results
