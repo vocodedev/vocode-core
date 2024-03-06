@@ -1347,6 +1347,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriptions_worker.block_inputs = True
         self.transcriptions_worker.time_silent = 0.0
         self.transcriptions_worker.triggered_affirmative = False
+        self.transcriptions_worker.buffer.clear()
 
         # Send the generated speech data to the output device
         start_time = time.time()
@@ -1359,7 +1360,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.info(
                 f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{self.transcriptions_worker.buffer.to_message()}"
             )
-        self.transcriptions_worker.buffer.clear()
         last_agent_message = next(
             (
                 message["content"]
