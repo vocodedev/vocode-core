@@ -239,9 +239,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     self.logger.info(
                         f"Initial API call classification: {tool_classification}"
                     )
-                    await self.handle_tool_response(chat, tools, tool_classification)
+                    asyncio.create_task(
+                        self.handle_tool_response(chat, tools, tool_classification)
+                    )
             except Exception as e:
-                self.logger.error(f"An error occurred: {e}")
+                self.logger.error(f"An tool error occurred: {e}")
         return
 
     def get_tools(self):
@@ -250,7 +252,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 "type": "function",
                 "function": {
                     "name": "transfer_call",
-                    "description": "Triggered when the agent agrees to transfer the call",
+                    "description": "Transfers when the agent agrees to transfer the call",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -278,6 +280,24 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                             }
                         },
                         "required": ["end_reason"],
+                    },
+                },
+            },
+            # now for search_online
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_online",
+                    "description": "Searches online when the agent says they will look something up",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The search query to be sent to the online search API",
+                            }
+                        },
+                        "required": ["query"],
                     },
                 },
             },
@@ -316,6 +336,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         return is_classified_tool, tool_classification
 
     async def handle_tool_response(self, chat, tools, tool_classification):
+        self.logger.info(f"chat was {chat}")
+        # get the last 3 messages of the chat
+        chat = chat[-4:]
         tool_response = await self.fclient.chat.completions.create(
             model="meetkai/functionary-small-v2.2",
             messages=chat,
@@ -387,6 +410,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             "Authorization": f"Bearer 'EMPTY'",
         }
         prompt_buffer = chat_parameters["prompt"]
+        prompt_buffer = prompt_buffer.replace(
+            "<|im_start|>function", "<|im_start|>assistant"
+        )
         words = prompt_buffer.split()
         new_words = []
         largest_seq = 0
@@ -434,6 +460,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             base_url = getenv("AI_API_BASE")
             # Generate the first chunk
             while True:
+                if not prompt_buffer:
+                    break
                 data = {
                     "model": chat_parameters["model"],
                     "prompt": prompt_buffer,
@@ -472,6 +500,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                         )
                         return
             # Generate the second chunk
+            if not prompt_buffer:
+                return
             data = {
                 "model": chat_parameters["model"],
                 "prompt": prompt_buffer,
@@ -489,7 +519,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     response_data = await response.json()
                     content = response_data["choices"][0]["text"].strip()
                     prompt_buffer += content
-                    if stream_output:
+                    if stream_output and len(content) > 0:
                         self.logger.debug(f"Yielding second chunk: {content}")
                         # if its shorter than one word, add an uh in front of it
                         if len(content.split()) < 2:
@@ -501,6 +531,14 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     self.logger.error(
                         f"Error while streaming from OpenAI2: {str(response)}"
                     )
+        # run the nonblocking checks in the background
+        if self.agent_config.actions:
+            try:
+                asyncio.create_task(
+                    self.run_nonblocking_checks(latest_agent_response=completion_buffer)
+                )
+            except Exception as e:
+                self.logger.error(f"An tool error occurred: {e}")
 
     async def generate_response(
         self,

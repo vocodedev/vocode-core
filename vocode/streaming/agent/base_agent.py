@@ -81,6 +81,7 @@ class ActionResultAgentInput(AgentInput, type=AgentInputType.ACTION_RESULT.value
     action_input: ActionInput
     action_output: ActionOutput
     is_quiet: bool = False
+    affirmative_phrase: Optional[str] = None
 
 
 class AgentResponseType(str, Enum):
