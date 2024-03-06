@@ -1,0 +1,28 @@
+name: "Close stale issues"
+
+on:
+  schedule:
+    - cron: "30 1 * * *"
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/stale@v9
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        days-before-stale: 60
+        days-before-close: 7
+        stale-issue-label: 'stale'
+        stale-issue-message: 'This issue has been automatically marked as stale because it has not had recent activity. It will be closed if no further activity occurs. Thank you for your contributions.'
+        close-issue-message: 'This issue has been automatically closed due to inactivity. Thank you for your contributions.'
+        stale-pr-label: 'stale'
+        stale-pr-message: 'This PR has been automatically marked as stale because it has not had recent activity. It will be closed if no further activity occurs. Thank you for your contributions.'
+        close-pr-message: 'This PR has been automatically closed due to inactivity. Thank you for your contributions.'
+        exempt-all-pr-milestones: true
+        enable-statistics: true
