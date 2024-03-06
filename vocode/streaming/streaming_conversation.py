@@ -166,7 +166,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 earliest_new_result_time = new_results[0]["start"]
                 insertion_index = None
                 for i, word in enumerate(self.buffer):
-                    if word["end"] >= earliest_new_result_time - 0.1:
+                    if word["end"] >= earliest_new_result_time - 0.08:
+                        insertion_index = i
                         # Check if the first word is the same and within the time tolerance
                         if (
                             i > 0
@@ -174,7 +175,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             and abs(
                                 self.buffer[i - 1]["start"] - earliest_new_result_time
                             )
-                            < 0.2
+                            < 0.1
                         ):
                             insertion_index = i - 1
                         else:
@@ -336,6 +337,19 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             # In the truncated case, we say no filler word and we wait on confidence
                             expected_silence_duration = confidence * MAX_SILENCE_TIME
                             self.last_classification = "truncated"
+                            self.conversation.logger.debug(
+                                f"Classification: {classification}, Confidence: {confidence}, Expected silence: {expected_silence_duration}"
+                            )
+                            return expected_silence_duration
+                        elif classification == "full":
+                            self.conversation.logger.error(
+                                f"Full classification received: {classification}"
+                            )
+                            # invert confidence
+                            expected_silence_duration = (
+                                1 - confidence
+                            ) * MAX_SILENCE_TIME
+                            self.last_classification = "full"
                             self.conversation.logger.debug(
                                 f"Classification: {classification}, Confidence: {confidence}, Expected silence: {expected_silence_duration}"
                             )
@@ -522,6 +536,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         async def process(self, transcription: Transcription):
             # Ignore the transcription if we are currently in-flight (i.e., the agent is speaking)
+            # log the current transcript
+
             if self.block_inputs:
                 self.conversation.logger.debug(
                     "Ignoring transcription since we are in-flight"

@@ -146,7 +146,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         # add in the last turn and the affirmative phrase
         formatted_completion += f"<|im_start|>assistant\n{affirmative_phrase}"
-
+        self.logger.debug(f"Formatted completion: {formatted_completion}")
         parameters: Dict[str, Any] = {
             "prompt": formatted_completion,
             "max_tokens": self.agent_config.max_tokens,
@@ -301,6 +301,28 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     },
                 },
             },
+            # now for send_text
+            {
+                "type": "function",
+                "function": {
+                    "name": "send_text",
+                    "description": "Triggered when the agent sends a text, only if they have been provided a valid phone number and a message to send.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "to_phone": {
+                                "type": "string",
+                                "description": "The phone number to which the text message will be sent",
+                            },
+                            "message": {
+                                "type": "string",
+                                "description": "The message to be sent, limited to 120 characters",
+                            },
+                        },
+                        "required": ["to_phone", "message"],
+                    },
+                },
+            },
         ]
 
     def format_tool_descriptions(self, tools):
@@ -316,12 +338,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     def prepare_messages(self, pretty_tool_descriptions, stringified_messages):
         preamble = f"""You will be provided with a conversational transcript between a caller and the receiver's 
-        assistant. During the conversation, the assistant has the following actions it can 
-        take: {pretty_tool_descriptions}.\n 
-        Your task is to infer whether, currently, the assistant is waiting for the caller to respond, or is 
-        immediately going to execute an action without waiting for a response. Return the action name from the list 
-        provided if the assistant is executing an action. If the assistant is waiting for a response, return 'None'. 
-        Return a single word."""
+    assistant. During the conversation, the assistant has the following actions it can 
+    take: {pretty_tool_descriptions}.\n 
+    Your task is to infer whether, currently, the assistant is waiting for the caller to respond, or has already told the caller that an action has been executed. Return the action name from the list 
+    provided if the assistant has said they have executed an action. If the assistant is waiting for a response, return 'None' If the agent hasn't confirmed that the action has been executed, return 'None'.
+    Return a single word."""
         system_message = {"role": "system", "content": preamble}
         transcript_message = {"role": "user", "content": stringified_messages}
         return system_message, transcript_message
@@ -410,6 +431,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         count = 0
 
         assert self.transcript is not None
+        # log the transcript
+        self.logger.debug(f"TRANSCRIPT: {self.transcript}")
         self.logger.debug(f"COMPLETION IS RESPONDING")
         chat_parameters = self.get_completion_parameters(
             affirmative_phrase=affirmative_phrase
@@ -461,13 +484,13 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     + " ".join(new_words[sequence_start:])
                 )
         else:
-            prompt_buffer = "".join(word if word.isdigit() else f" {word}").strip()
+            prompt_buffer = " ".join(new_words)
 
         prompt_buffer = prompt_buffer.replace("  ", " ")
         completion_buffer = ""
         tokens_to_generate = 120
         max_tokens = 120
-        stop = ["?"]
+        stop = ["?", "SYSTEM"]
         async with aiohttp.ClientSession() as session:
             base_url = getenv("AI_API_BASE")
             # Generate the first chunk
@@ -478,7 +501,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     "model": chat_parameters["model"],
                     "prompt": prompt_buffer,
                     "stream": False,
-                    "stop": [".", "?", "\n", ":"],
+                    "stop": [".", "?", "\n", ":", "SYSTEM"],
                     "max_tokens": tokens_to_generate,
                     "include_stop_str_in_output": True,
                 }
@@ -487,7 +510,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 ) as response:
                     if response.status == 200:
                         response_data = await response.json()
-                        content = response_data["choices"][0]["text"].strip()
+                        content = (
+                            response_data["choices"][0]["text"]
+                            .strip()
+                            .replace("SYSTEM", "")
+                        )
                         prompt_buffer += " " + content
                         prompt_buffer = prompt_buffer.strip().replace("  ", " ")
                         if (
@@ -520,7 +547,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     "model": chat_parameters["model"],
                     "prompt": prompt_buffer,
                     "stream": False,
-                    "stop": ["?"],
+                    "stop": ["?", "SYSTEM"],
                     "max_tokens": max_tokens,
                     "include_stop_str_in_output": True,
                 }
@@ -619,7 +646,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             "model": chat_parameters["model"],
             "messages": chat_parameters["messages"],
             "stream": True,
-            "stop": ["?"],
+            "stop": ["?", "SYSTEM"],
             "include_stop_str_in_output": True,
         }
 
@@ -650,6 +677,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                             and "content" in choice["delta"]
                                         ):
                                             message = choice["delta"]["content"]
+                                            message.replace("SYSTEM", "")
                                             # if it contains any punctuation besides a comma, yield the buffer and the message and reset it
                                             # also check if, on split by space, it is longer than 2 words
                                             if (

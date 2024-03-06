@@ -16,6 +16,7 @@ from vocode.streaming.models.actions import (
 class SendTextActionConfig(ActionConfig, type=ActionType.SEND_TEXT):
     to_phone: str
     message: str
+    from_phone: str
 
 
 class SendTextParameters(BaseModel):
@@ -38,7 +39,7 @@ class SendText(
     async def send_text(self, to_phone, message):
         twilio_account_sid = os.environ["TWILIO_ACCOUNT_SID"]
         twilio_auth_token = os.environ["TWILIO_AUTH_TOKEN"]
-        from_phone = os.environ["TWILIO_PHONE_NUMBER"]
+        from_phone = self.action_config.from_phone
 
         url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_account_sid}/Messages.json"
         payload = {"To": to_phone, "From": from_phone, "Body": message}
@@ -47,15 +48,15 @@ class SendText(
         async with aiohttp.ClientSession(auth=auth) as session:
             async with session.post(url, data=payload) as response:
                 if response.status != 201:
-                    print(await response.text())
-                    raise Exception("failed to send text message")
+                    response = await response.text()
+                    return response
                 else:
                     return await response.json()
 
     async def wait_for_response(self, to_phone, timeout=60):
         twilio_account_sid = os.environ["TWILIO_ACCOUNT_SID"]
         twilio_auth_token = os.environ["TWILIO_AUTH_TOKEN"]
-        from_phone = os.environ["TWILIO_PHONE_NUMBER"]
+        from_phone = self.action_config.from_phone
 
         start_time = asyncio.get_event_loop().time()
         while asyncio.get_event_loop().time() - start_time < timeout:

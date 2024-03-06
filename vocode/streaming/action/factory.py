@@ -8,6 +8,8 @@ from vocode.streaming.action.hangup_call import HangUpCall, HangUpCallActionConf
 from vocode.streaming.action.transfer_call import TransferCall, TransferCallActionConfig
 from vocode.streaming.action.search_online import SearchOnline, SearchOnlineActionConfig
 
+from vocode.streaming.action.send_text import SendText, SendTextActionConfig
+
 
 class ActionFactory:
     def create_action(self, action_config: ActionConfig) -> BaseAction:
@@ -19,5 +21,7 @@ class ActionFactory:
             return HangUpCall(action_config)
         elif isinstance(action_config, SearchOnlineActionConfig):
             return SearchOnline(action_config)
+        elif isinstance(action_config, SendTextActionConfig):
+            return SendText(action_config)
         else:
             raise Exception("Invalid action type")
