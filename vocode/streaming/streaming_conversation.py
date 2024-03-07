@@ -158,33 +158,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
         def get_buffer(self):
             return self.buffer
 
-        def update_buffer(self, new_results):
+        def update_buffer(self, new_results, is_final):
             if not self.buffer:
-                self.buffer = new_results
+                if is_final:
+                    self.buffer = new_results
+                return
+            if is_final:
+                self.buffer.extend(new_results)
             else:
-                # find the earliest time in the new results then find that time in the buffer and replace from there on
-                earliest_new_result_time = new_results[0]["start"]
-                insertion_index = None
-                for i, word in enumerate(self.buffer):
-                    if word["end"] >= earliest_new_result_time - 0.08:
-                        insertion_index = i
-                        # Check if the first word is the same and within the time tolerance
-                        if (
-                            i > 0
-                            and self.buffer[i - 1]["word"] == new_results[0]["word"]
-                            and abs(
-                                self.buffer[i - 1]["start"] - earliest_new_result_time
-                            )
-                            < 0.1
-                        ):
-                            insertion_index = i - 1
-                        else:
-                            insertion_index = i
-                        break
-                if insertion_index is not None:
-                    self.buffer = self.buffer[:insertion_index] + new_results
-                else:
-                    self.buffer.extend(new_results)
+                return
 
         def _update_or_add_word(self, new_word):
             overlap_indices = []
@@ -366,8 +348,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         return 0.0
 
         async def _buffer_check(self, initial_buffer):
-            if len(initial_buffer) == 0:
-                self.conversation.logger.info("SHOULD NOT HAPPEN Ignoring empty buffer")
+            if (
+                len(initial_buffer) == 0
+            ):  # it might be empty if the its just started and no final one has been sent in
                 return
             self.conversation.transcript.remove_last_human_message()
             # Reset the current sleep time to zero
@@ -607,7 +590,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             #     self.conversation.logger.info(
             #         f"buffer was not changed: {self.buffer.to_message()}"
             #     )
-            self.buffer.update_buffer(new_words)
+            self.buffer.update_buffer(new_words, transcription.is_final)
             # we also want to update the last user message
 
             self.vad_time = 2.0
@@ -1372,9 +1355,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         # Calculate the length of the speech in seconds
         speech_length_seconds = len(speech_data) / chunk_size
-        if self.transcriptions_worker.buffer.to_message():
+        if held_buffer and len(held_buffer) > 0:
             self.logger.info(
-                f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{self.transcriptions_worker.buffer.to_message()}"
+                f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{held_buffer}"
             )
         last_agent_message = next(
             (
@@ -1382,7 +1365,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 for message in reversed(
                     format_openai_chat_messages_from_transcript(self.transcript)
                 )
-                if message["role"] == "assistant"
+                if message["role"] == "assistant" and len(message["content"]) > 0
             ),
             None,
         )
@@ -1470,11 +1453,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             and self.agent.get_output_queue().qsize() == 0
             # it must also end in punctuation
         ):
-            if message_sent and not cut_off and message_sent.strip()[-1] not in [","]:
+            if message_sent and message_sent.strip()[-1] not in [","]:
+                if message_sent:
+                    self.logger.info(
+                        f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message_sent}"
+                    )
 
-                self.logger.info(
-                    f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {last_agent_message}"
-                )
                 self.logger.info(f"Responding to {held_buffer}")
                 self.transcriptions_worker.block_inputs = False
                 # Unmute the transcriber after speech synthesis if it was muted

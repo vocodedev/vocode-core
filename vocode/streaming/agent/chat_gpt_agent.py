@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import random
+import string
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -146,7 +147,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         # add in the last turn and the affirmative phrase
         formatted_completion += f"<|im_start|>assistant\n{affirmative_phrase}"
-        self.logger.debug(f"Formatted completion: {formatted_completion}")
+        # self.logger.debug(f"Formatted completion: {formatted_completion}")
         parameters: Dict[str, Any] = {
             "prompt": formatted_completion,
             "max_tokens": self.agent_config.max_tokens,
@@ -213,8 +214,44 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         return true_conditions
 
     async def run_nonblocking_checks(self, latest_agent_response: str):
+        if len(latest_agent_response) == 0:
+            self.logger.info(
+                "Skipping nonblocking checks as the agent response is empty"
+            )
+            return
         tools = self.get_tools()
         if self.agent_config.actions:
+            tool_chat = self.prepare_chat_for_tool_check(latest_agent_response)
+            self.logger.info(f"tool_chat was {tool_chat}")
+            payload = {
+                "conversation": tool_chat,
+            }
+            headers = {
+                "Content-Type": "application/json",
+            }
+            # Perform the POST request to classify the dialogue asynchronously
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    "http://148.64.105.83:58000/function_call_inference/",
+                    headers=headers,
+                    json=payload,
+                ) as response:
+                    if response.status == 200:
+                        response_data = await response.json()
+                        classification = response_data["predicted_class"]
+                        probs = response_data["probabilities"]
+                        probZero = probs[0]
+                        probOne = probs[1]
+                        if classification == 0:
+                            self.logger.info(
+                                f"Initial nonblocking classification: {classification} with probability {probZero}"
+                            )
+                            return
+                        else:
+                            self.logger.info(
+                                f"Initial nonblocking classification: {classification} with probability {probOne}"
+                            )
+
             try:
                 tool_descriptions = self.format_tool_descriptions(tools)
                 pretty_tool_descriptions = ", ".join(tool_descriptions)
@@ -323,6 +360,32 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     },
                 },
             },
+            # now for send_email
+            {
+                "type": "function",
+                "function": {
+                    "name": "send_email",
+                    "description": "Triggered when the agent sends an email, only if they have been provided a valid recipient email, a subject, and a body for the email.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "recipient_email": {
+                                "type": "string",
+                                "description": "The email address of the recipient",
+                            },
+                            "subject": {
+                                "type": "string",
+                                "description": "The subject of the email",
+                            },
+                            "body": {
+                                "type": "string",
+                                "description": "The body of the email",
+                            },
+                        },
+                        "required": ["recipient_email", "subject", "body"],
+                    },
+                },
+            },
         ]
 
     def format_tool_descriptions(self, tools):
@@ -336,13 +399,71 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat[-1] = {"role": "assistant", "content": latest_agent_response}
         return chat
 
+    def prepare_chat_for_tool_check(self, latest_agent_response):
+        # Extract messages and filter out non-user and non-assistant messages
+        chat = [
+            message
+            for message in format_openai_chat_messages_from_transcript(self.transcript)
+            if message["role"] in ["user", "assistant"]
+        ]
+
+        # Find the earliest assistant message
+        earliest_assistant_index = next(
+            (i for i, message in enumerate(chat) if message["role"] == "assistant"),
+            None,
+        )
+
+        # Find the latest assistant message
+        latest_assistant_index = (
+            len(chat)
+            - 1
+            - next(
+                (
+                    i
+                    for i, message in enumerate(reversed(chat))
+                    if message["role"] == "assistant"
+                ),
+                None,
+            )
+        )
+
+        # Trim the chat to start and end with an assistant message
+        if earliest_assistant_index is not None and latest_assistant_index is not None:
+            chat = chat[earliest_assistant_index : latest_assistant_index + 1]
+
+        # Update the last message to the latest agent response
+        if chat and chat[-1]["role"] == "assistant":
+            chat[-1]["content"] = latest_agent_response
+
+        # Merge consecutive messages from the same role
+        new_chat = []
+        if chat:
+            current_message = chat[0]["content"]
+            if not current_message:
+                current_message = ""
+            current_role = chat[0]["role"]
+            for message in chat[1:]:
+                if not message["content"]:
+                    continue
+                if (
+                    message["role"] == current_role
+                    and len(message["content"].strip()) > 0
+                ):
+                    current_message += " " + message["content"]
+                else:
+                    new_chat.append(current_message)
+                    current_message = message["content"]
+                    current_role = message["role"]
+            new_chat.append(current_message)
+        # remove punctuation and make lowercase using punctuation and lower
+        new_chat = [
+            message.translate(str.maketrans("", "", string.punctuation)).lower()
+            for message in new_chat
+        ]
+        return new_chat
+
     def prepare_messages(self, pretty_tool_descriptions, stringified_messages):
-        preamble = f"""You will be provided with a conversational transcript between a caller and the receiver's 
-    assistant. During the conversation, the assistant has the following actions it can 
-    take: {pretty_tool_descriptions}.\n 
-    Your task is to infer whether, currently, the assistant is waiting for the caller to respond, or has already told the caller that an action has been executed. Return the action name from the list 
-    provided if the assistant has said they have executed an action. If the assistant is waiting for a response, return 'None' If the agent hasn't confirmed that the action has been executed, return 'None'.
-    Return a single word."""
+        preamble = f"""You will be provided with a conversational transcript between a caller and the receiver's assistant. During the conversation, the assistant and the caller will either be talking about random things, discussing an action the assistant might take, the assistant might be collecting information from the the assistant has the following actions it can take: {pretty_tool_descriptions}.\nYour task is to infer, for the latest inquiry, whether the assistant has completed an action. If the assistant is about to execute an action, or is preparing to, the action is not completed and you must return 'None'. If the agent has confirmed that an action has already been completed, return the name of the action. Return a single word."""
         system_message = {"role": "system", "content": preamble}
         transcript_message = {"role": "user", "content": stringified_messages}
         return system_message, transcript_message
@@ -365,7 +486,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     async def handle_tool_response(self, chat, tools, tool_classification):
         self.logger.info(f"chat was {chat}")
         # get the last 3 messages of the chat
-        chat = chat[-4:]
+        chat = chat[1:]
         tool_response = await self.fclient.chat.completions.create(
             model="meetkai/functionary-small-v2.2",
             messages=chat,
@@ -488,6 +609,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         prompt_buffer = prompt_buffer.replace("  ", " ")
         completion_buffer = ""
+        yielded = ""
         tokens_to_generate = 120
         max_tokens = 120
         stop = ["?", "SYSTEM"]
@@ -526,6 +648,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                             if stream_output:
                                 self.logger.debug(f"Yielding first chunk: {content}")
                             yield (completion_buffer + " " + content), False
+                            yielded += completion_buffer + " " + content
                             completion_buffer = ""
                             if content.endswith("?"):
                                 return
@@ -539,44 +662,46 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                         )
                         return
             # Generate the second chunk
-            if not prompt_buffer:
-                return
-            if len(prompt_buffer.split()) > 2:
+            if prompt_buffer:
+                if len(prompt_buffer.split()) > 2:
 
-                data = {
-                    "model": chat_parameters["model"],
-                    "prompt": prompt_buffer,
-                    "stream": False,
-                    "stop": ["?", "SYSTEM"],
-                    "max_tokens": max_tokens,
-                    "include_stop_str_in_output": True,
-                }
-                self.logger.debug(f"Prompt buffer: {prompt_buffer}")
-                self.logger.debug(f"data: {data}")
-                async with session.post(
-                    f"{base_url}/completions", headers=headers, json=data
-                ) as response:
-                    if response.status == 200:
-                        response_data = await response.json()
-                        content = response_data["choices"][0]["text"].strip()
-                        prompt_buffer += content
-                        if stream_output and len(content) > 0:
-                            self.logger.debug(f"Yielding second chunk: {content}")
-                            # if its shorter than one word, add an uh in front of it
-                            if len(content.split()) < 2:
-                                chosen_word = random.choice("uh... um... er...".split())
-                                content = chosen_word + " " + content
-                            yield content, False
-                    else:
+                    data = {
+                        "model": chat_parameters["model"],
+                        "prompt": prompt_buffer,
+                        "stream": False,
+                        "stop": ["?", "SYSTEM"],
+                        "max_tokens": max_tokens,
+                        "include_stop_str_in_output": True,
+                    }
+                    self.logger.debug(f"Prompt buffer: {prompt_buffer}")
+                    self.logger.debug(f"data: {data}")
+                    async with session.post(
+                        f"{base_url}/completions", headers=headers, json=data
+                    ) as response:
+                        if response.status == 200:
+                            response_data = await response.json()
+                            content = response_data["choices"][0]["text"].strip()
+                            prompt_buffer += content
+                            if stream_output and len(content) > 0:
+                                self.logger.debug(f"Yielding second chunk: {content}")
+                                # if its shorter than one word, add an uh in front of it
+                                if len(content.split()) < 2:
+                                    chosen_word = random.choice(
+                                        "uh... um... er...".split()
+                                    )
+                                    content = chosen_word + " " + content
+                                yield content, False
+                                yielded += content
+                        else:
 
-                        self.logger.error(
-                            f"Error while streaming from OpenAI2: {str(response)}"
-                        )
+                            self.logger.error(
+                                f"Error while streaming from OpenAI2: {str(response)}"
+                            )
         # run the nonblocking checks in the background
         if self.agent_config.actions:
             try:
                 asyncio.create_task(
-                    self.run_nonblocking_checks(latest_agent_response=completion_buffer)
+                    self.run_nonblocking_checks(latest_agent_response=yielded)
                 )
             except Exception as e:
                 self.logger.error(f"An tool error occurred: {e}")
