@@ -675,7 +675,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                 continue
 
                         # If there's any remaining text in the buffer, yield it
-                        if sentence_buffer:
+                        if sentence_buffer and len(sentence_buffer.strip()) > 0:
                             latest_agent_response += sentence_buffer
                             if stream_output:
                                 yield sentence_buffer, False
@@ -810,7 +810,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                                 "finish_reason" in choice
                                                 and choice["finish_reason"] == "stop"
                                             ):
-                                                if len(messageBuffer) > 0:
+                                                if len(messageBuffer.strip()) > 0:
                                                     all_messages.append(messageBuffer)
                                                     yield messageBuffer, True
                                                     messageBuffer = ""
@@ -820,6 +820,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                 #     "JSONDecodeError: Received an empty line or invalid JSON."
                                 # )
                                 continue
+                    # send out the last message
+                    if len(messageBuffer.strip()) > 0:
+                        all_messages.append(messageBuffer)
+                        yield messageBuffer, True
+                        messageBuffer = ""
 
                     if len(all_messages) > 0:
                         latest_agent_response = "".join(filter(None, all_messages))
