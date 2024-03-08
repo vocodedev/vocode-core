@@ -2,6 +2,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
+import random
 import re
 from typing import Any, List, Optional, Tuple
 from xml.etree import ElementTree
@@ -265,14 +266,14 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             silence = ElementTree.SubElement(
                 voice_root, "{%s}silence" % NAMESPACES.get("mstts")
             )
-            silence.set("value", "120ms")
+            silence.set("value", f"{random.randint(100, 170)}ms")
             silence.set("type", "comma-exact")
         prosody = ElementTree.SubElement(voice_root, "prosody")
         prosody.set("pitch", f"{self.pitch}%")
         prosody.set("rate", f"{rate*self.rate}%")
         prosody.set("volume", f"-{volume}%")
         # remove ALL punctuation except for periods and question marks
-        message = re.sub(r"[^\w\s\.\?\!\@\:\']", "", message)
+        # message = re.sub(r"[^\w\s\.\?\!\@\:\']", "", message)
         prosody.text = message.strip()
         return ElementTree.tostring(ssml_root, encoding="unicode")
 

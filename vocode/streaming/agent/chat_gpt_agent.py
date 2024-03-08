@@ -560,7 +560,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat_parameters = self.get_completion_parameters(
             affirmative_phrase=affirmative_phrase
         )
-        # Prepare headers and data for the POST request
 
         prompt_buffer = chat_parameters["prompt"]
         prompt_buffer = prompt_buffer.replace(
@@ -607,104 +606,94 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             prompt_buffer = " ".join(new_words)
 
         prompt_buffer = prompt_buffer.replace("  ", " ")
-        completion_buffer = ""
-        yielded = ""
-        tokens_to_generate = 120
-        max_tokens = 120
-        stop = ["?", "SYSTEM"]
+        if len(prompt_buffer) == 0:
+            self.logger.info("Prompt buffer is empty, returning")
+            return
 
-        async with aiohttp.ClientSession() as session:
-            base_url = getenv("AI_API_BASE")
-            # Generate the first chunk
-            while True:
-                if not prompt_buffer:
-                    break
+        async def stream_response():
+            latest_agent_response = ""
+            sentence_buffer = ""
+            async with aiohttp.ClientSession() as session:
+                base_url = getenv("AI_API_BASE")
                 data = {
                     "model": chat_parameters["model"],
                     "prompt": prompt_buffer,
-                    "stream": False,
-                    "stop": [".", "?", "SYSTEM"],
-                    "max_tokens": tokens_to_generate,
+                    "stream": True,
+                    "stop": ["?"],
+                    "max_tokens": chat_parameters.get("max_tokens", 120),
                     "include_stop_str_in_output": True,
                 }
+
                 async with session.post(
                     f"{base_url}/completions", headers=HEADERS, json=data
                 ) as response:
                     if response.status == 200:
-                        response_data = await response.json()
-                        content = (
-                            response_data["choices"][0]["text"]
-                            .strip()
-                            .replace("SYSTEM", "")
-                        )
-                        prompt_buffer += " " + content
-                        prompt_buffer = prompt_buffer.strip().replace("  ", " ")
-                        if (content.endswith("?") or content.endswith(".")) and len(
-                            content.split()
-                        ) > 2:
+                        async for chunk in response.content:
+                            # Parse each line of the response content
+                            if chunk.startswith(b"data: {"):
+                                # Extract JSON from the current chunk
+                                first_brace = chunk.find(b"{")
+                                last_brace = chunk.rfind(b"}")
+                                json_str = chunk[first_brace : last_brace + 1].decode(
+                                    "utf-8"
+                                )
+                                try:
+                                    completion_data = json.loads(json_str)
+                                    if (
+                                        "choices" in completion_data
+                                        and completion_data["choices"]
+                                    ):
+                                        for choice in completion_data["choices"]:
+                                            if "text" in choice:
+                                                completion_text = choice["text"]
+                                                sentence_buffer += completion_text
+                                                # Check if the buffer ends with a punctuation
+                                                if (
+                                                    sentence_buffer.strip().endswith(
+                                                        (".", "!", "?", ":\n", "\n")
+                                                    )
+                                                    and len(
+                                                        sentence_buffer.strip().split()
+                                                    )
+                                                    > 2
+                                                ):
+                                                    latest_agent_response += (
+                                                        sentence_buffer
+                                                    )
+                                                    if stream_output:
+                                                        yield sentence_buffer, False
+                                                    sentence_buffer = ""  # Reset the buffer after yielding
+                                except json.JSONDecodeError:
+                                    self.logger.error("Failed to decode JSON response.")
+                                    continue
+                            else:
+                                continue
+
+                        # If there's any remaining text in the buffer, yield it
+                        if sentence_buffer:
+                            latest_agent_response += sentence_buffer
                             if stream_output:
-                                self.logger.debug(f"Yielding first chunk: {content}")
-                            yield (completion_buffer + " " + content), False
-                            yielded += " " + completion_buffer + " " + content
-                            completion_buffer = ""
-                            if content.endswith("?"):
-                                return
-                            break
-                        else:
-                            self.logger.debug(f"Got chunk: {content}")
-                            completion_buffer += content
+                                yield sentence_buffer, False
+
+                        # Final yield to indicate the end of the stream
+                        # yield "", False
                     else:
                         self.logger.error(
-                            f"Error while streaming from OpenAI1: {str(response)}"
+                            f"Error while streaming from OpenAI: {str(response)}"
                         )
                         return
-            # Generate the second chunk
-            if prompt_buffer:
-                if len(prompt_buffer.split()) > 2:
 
-                    data = {
-                        "model": chat_parameters["model"],
-                        "prompt": prompt_buffer,
-                        "stream": False,
-                        "stop": ["?", "SYSTEM"],
-                        "max_tokens": max_tokens,
-                        "include_stop_str_in_output": True,
-                    }
-                    self.logger.debug(f"Prompt buffer: {prompt_buffer}")
-                    self.logger.debug(f"data: {data}")
-                    async with session.post(
-                        f"{base_url}/completions", headers=HEADERS, json=data
-                    ) as response:
-                        if response.status == 200:
-                            response_data = await response.json()
-                            content = response_data["choices"][0]["text"].strip()
-                            prompt_buffer += content
-                            if stream_output and len(content) > 0:
-                                self.logger.debug(f"Yielding second chunk: {content}")
-                                # if its shorter than one word, add an uh in front of it
-                                if len(content.split()) < 2:
-                                    chosen_word = random.choice(
-                                        "uh... um... er...".split()
-                                    )
-                                    content = chosen_word + " " + content
-                                yield content, False
-                                yielded += " " + content
-                        else:
-
-                            self.logger.error(
-                                f"Error while streaming from OpenAI2: {str(response)}"
-                            )
-        # remove whitespace from the yielded string
-        yielded = yielded.strip()
-        # run the nonblocking checks in the background
-
-        if self.agent_config.actions and len(yielded) > 0:
-            try:
+            # Run the nonblocking checks in the background
+            if self.agent_config.actions:
                 asyncio.create_task(
-                    self.run_nonblocking_checks(latest_agent_response=yielded)
+                    self.run_nonblocking_checks(
+                        latest_agent_response=latest_agent_response
+                    )
                 )
-            except Exception as e:
-                self.logger.error(f"An tool error occurred: {e}")
+
+        # Call the stream_response coroutine and yield from it
+        async for item in stream_response():
+            yield item
 
     async def generate_response(
         self,
@@ -835,5 +824,5 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                         )
                 else:
                     self.logger.error(
-                        f"Error while streaming from OpenAI: {response.status}"
+                        f"Error while streaming from OpenAILast: {str(response)}"
                     )
