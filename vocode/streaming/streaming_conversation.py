@@ -1410,7 +1410,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             - self.per_chunk_allowance_seconds,
             0,
         )
-        if message_sent:
+        if message_sent and len(message_sent.strip()) > 0:
             self.logger.info(
                 f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message_sent}"
             )
