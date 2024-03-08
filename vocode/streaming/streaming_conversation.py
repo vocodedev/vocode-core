@@ -411,7 +411,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if self.last_classification == "paused":
                     if (
                         time.time() - self.last_filler_time > 4
-                        and time.time() - self.last_affirmative_time > 3
+                        and time.time() - self.last_affirmative_time > 2
                         and len(self.buffer.to_message().strip().split()) > 3
                     ):
                         self.conversation.agent_responses_worker.send_filler_audio(
@@ -706,7 +706,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     for digit in digits
                 )
                 < 4
-            ):
+            ) and sum(
+                self.conversation.transcriptions_worker.buffer.to_message().count(digit)
+                for digit in digits
+            ) > 1:
                 return
             assert self.conversation.filler_audio_worker is not None
             self.conversation.logger.debug("Sending filler audio")

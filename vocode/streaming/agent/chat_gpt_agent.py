@@ -650,7 +650,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                                 # Check if the buffer ends with a punctuation
                                                 if (
                                                     sentence_buffer.strip().endswith(
-                                                        (".", "!", "?", ":\n", "\n")
+                                                        (
+                                                            ".",
+                                                            "!",
+                                                            "?",
+                                                            ":\n",
+                                                        )
                                                     )
                                                     and len(
                                                         sentence_buffer.strip().split()
