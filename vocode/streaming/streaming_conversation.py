@@ -1407,6 +1407,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             - self.per_chunk_allowance_seconds,
             0,
         )
+        if message_sent:
+            self.logger.info(
+                f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message_sent}"
+            )
         await asyncio.sleep(sleep_time)
 
         # Log the successful sending of speech data
@@ -1436,10 +1440,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             # it must also end in punctuation
         ):
             if message_sent and message_sent.strip()[-1] not in [","]:
-                if message_sent:
-                    self.logger.info(
-                        f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message_sent}"
-                    )
 
                 self.logger.info(f"Responding to {held_buffer}")
                 self.transcriptions_worker.block_inputs = False
