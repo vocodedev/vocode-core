@@ -38,6 +38,11 @@ from telephony_app.utils.call_information_handler import (
 from telephony_app.utils.transfer_call_handler import transfer_call
 from telephony_app.utils.twilio_call_helper import hangup_twilio_call
 
+HEADERS = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer 'EMPTY'",
+}
+
 
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
     def __init__(
@@ -226,14 +231,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             payload = {
                 "conversation": tool_chat,
             }
-            headers = {
-                "Content-Type": "application/json",
-            }
             # Perform the POST request to classify the dialogue asynchronously
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     "http://148.64.105.83:58000/function_call_inference/",
-                    headers=headers,
+                    headers=HEADERS,
                     json=payload,
                 ) as response:
                     if response.status == 200:
@@ -559,10 +561,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             affirmative_phrase=affirmative_phrase
         )
         # Prepare headers and data for the POST request
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer 'EMPTY'",
-        }
+
         prompt_buffer = chat_parameters["prompt"]
         prompt_buffer = prompt_buffer.replace(
             "<|im_start|>function", "<|im_start|>assistant"
@@ -613,6 +612,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         tokens_to_generate = 120
         max_tokens = 120
         stop = ["?", "SYSTEM"]
+
         async with aiohttp.ClientSession() as session:
             base_url = getenv("AI_API_BASE")
             # Generate the first chunk
@@ -628,7 +628,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     "include_stop_str_in_output": True,
                 }
                 async with session.post(
-                    f"{base_url}/completions", headers=headers, json=data
+                    f"{base_url}/completions", headers=HEADERS, json=data
                 ) as response:
                     if response.status == 200:
                         response_data = await response.json()
@@ -676,7 +676,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     self.logger.debug(f"Prompt buffer: {prompt_buffer}")
                     self.logger.debug(f"data: {data}")
                     async with session.post(
-                        f"{base_url}/completions", headers=headers, json=data
+                        f"{base_url}/completions", headers=HEADERS, json=data
                     ) as response:
                         if response.status == 200:
                             response_data = await response.json()
@@ -763,10 +763,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             chat_parameters = self.get_chat_parameters()
 
         # Prepare headers and data for the POST request
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer 'EMPTY'",
-        }
         data = {
             "model": chat_parameters["model"],
             "messages": chat_parameters["messages"],
@@ -779,7 +775,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{getenv('AI_API_BASE')}/chat/completions",
-                headers=headers,
+                headers=HEADERS,
                 json=data,
                 timeout=None,  # Stream endpoint; no timeout
             ) as response:
@@ -803,6 +799,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                         ):
                                             message = choice["delta"]["content"]
                                             message.replace("SYSTEM", "")
+                                            # TODO Fix numbers bug $48.25 -> $ 48 err... 25
                                             # if it contains any punctuation besides a comma, yield the buffer and the message and reset it
                                             # also check if, on split by space, it is longer than 2 words
                                             if (

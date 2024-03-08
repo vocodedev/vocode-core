@@ -140,24 +140,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         def __len__(self):
             return len(self.buffer)
 
-        def __getitem__(self, index):
-            return self.buffer[index]
-
-        def __setitem__(self, index, value):
-            self.buffer[index] = value
-
-        def __delitem__(self, index):
-            del self.buffer[index]
-
-        def __iter__(self):
-            return iter(self.buffer)
-
-        def __contains__(self, item):
-            return item in self.buffer
-
-        def get_buffer(self):
-            return self.buffer
-
         def update_buffer(self, new_results, is_final):
             if not self.buffer:
                 if is_final:
