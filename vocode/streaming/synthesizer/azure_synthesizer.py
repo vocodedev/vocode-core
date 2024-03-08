@@ -306,6 +306,44 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
+        # this is so it says numbers slowly
+        def remove_dashes(match):
+            return match.group().replace("-", "").replace("+", "")
+
+        def format_digits(match):
+            digits = match.group()
+            digits = re.sub(
+                r"(\d)-(\d)", r"\1\2", digits
+            )  # Remove dashes between two numbers
+
+            if len(digits) <= 4:
+                return digits
+
+            first_digit = ""
+            if len(digits) % 2 != 0:
+                first_digit = digits[0]
+                digits = digits[1:]
+
+            formatted = ""
+            for i in range(0, len(digits) - 4, 3):
+                formatted += (
+                    digits[i] + ", " + digits[i + 1] + ", " + digits[i + 2] + "... "
+                )
+            formatted += digits[-4:-2] + "... " + digits[-2:]
+
+            if first_digit:
+                ret = first_digit + "... " + formatted
+                return ret
+            return formatted
+
+        modified_message = re.sub(
+            r"\b\d+-\d+\b",
+            remove_dashes,
+            message.text.replace("-", "").replace(" (", "").replace(") ", ""),
+        )
+
+        modified_message = re.sub(r"\b(\d{5,})\b", format_digits, modified_message)
+
         # offset = int(self.OFFSET_MS * (self.synthesizer_config.sampling_rate / 1000))
         offset = 0
         self.logger.debug(f"Synthesizing message: {message}")
@@ -352,7 +390,8 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         ssml = (
             message.ssml
             if isinstance(message, SSMLMessage)
-            else self.create_ssml(message.text, bot_sentiment=bot_sentiment)
+            # put modified here so it doesnt mess up transcript but says slowly
+            else self.create_ssml(modified_message, bot_sentiment=bot_sentiment)
         )
         audio_data_stream = await asyncio.get_event_loop().run_in_executor(
             self.thread_pool_executor, self.synthesize_ssml, ssml

@@ -623,7 +623,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     "model": chat_parameters["model"],
                     "prompt": prompt_buffer,
                     "stream": False,
-                    "stop": [".", "?", "\n", ":", "SYSTEM"],
+                    "stop": [".", "?", "SYSTEM"],
                     "max_tokens": tokens_to_generate,
                     "include_stop_str_in_output": True,
                 }
@@ -639,16 +639,13 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                         )
                         prompt_buffer += " " + content
                         prompt_buffer = prompt_buffer.strip().replace("  ", " ")
-                        if (
-                            content.endswith("?")
-                            or content.endswith("\n")
-                            or content.endswith(".")
-                            or content.endswith(":")
-                        ) and len(content.split()) > 2:
+                        if (content.endswith("?") or content.endswith(".")) and len(
+                            content.split()
+                        ) > 2:
                             if stream_output:
                                 self.logger.debug(f"Yielding first chunk: {content}")
                             yield (completion_buffer + " " + content), False
-                            yielded += completion_buffer + " " + content
+                            yielded += " " + completion_buffer + " " + content
                             completion_buffer = ""
                             if content.endswith("?"):
                                 return
@@ -691,14 +688,17 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                     )
                                     content = chosen_word + " " + content
                                 yield content, False
-                                yielded += content
+                                yielded += " " + content
                         else:
 
                             self.logger.error(
                                 f"Error while streaming from OpenAI2: {str(response)}"
                             )
+        # remove whitespace from the yielded string
+        yielded = yielded.strip()
         # run the nonblocking checks in the background
-        if self.agent_config.actions:
+
+        if self.agent_config.actions and len(yielded) > 0:
             try:
                 asyncio.create_task(
                     self.run_nonblocking_checks(latest_agent_response=yielded)
