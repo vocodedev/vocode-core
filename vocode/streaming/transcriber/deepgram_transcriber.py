@@ -292,7 +292,7 @@ The exact format to return is:
                                 top_choice
                             ),  # since we're doing interim results, we can just send the whole data dict
                             confidence=confidence,
-                            is_final=False,
+                            is_final=is_final,
                             time_silent=time_silent,
                         )
                     )

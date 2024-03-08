@@ -81,6 +81,7 @@ class ActionResultAgentInput(AgentInput, type=AgentInputType.ACTION_RESULT.value
     action_input: ActionInput
     action_output: ActionOutput
     is_quiet: bool = False
+    affirmative_phrase: Optional[str] = None
 
 
 class AgentResponseType(str, Enum):
@@ -305,6 +306,10 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     confidence=1.0,
                     is_final=True,
                 )
+                if self.agent_config.pending_action:
+                    self.agent_config.pending_action = None
+                    # resetting pending action
+                    self.logger.debug("Resetting pending action")
             else:
                 raise ValueError("Invalid AgentInput type")
 

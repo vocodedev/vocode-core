@@ -10,6 +10,9 @@ class ActionType(str, Enum):
     NYLAS_SEND_EMAIL = "nylas_send_email"
     TRANSFER_CALL = "transfer_call"
     HANGUP_CALL = "hangup_call"
+    SEARCH_ONLINE = "search_online"
+    SEND_TEXT = "send_text"
+    SEND_EMAIL = "send_email"
 
 
 class ActionConfig(TypedModel, type=ActionType.BASE):
@@ -27,7 +30,6 @@ class ActionInput(BaseModel, Generic[ParametersType]):
 
     class Config:
         arbitrary_types_allowed = True
-
 
 
 class FunctionFragment(BaseModel):

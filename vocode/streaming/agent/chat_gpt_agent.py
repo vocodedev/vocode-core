@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import random
+import string
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -36,6 +37,11 @@ from telephony_app.utils.call_information_handler import (
 )
 from telephony_app.utils.transfer_call_handler import transfer_call
 from telephony_app.utils.twilio_call_helper import hangup_twilio_call
+
+HEADERS = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer 'EMPTY'",
+}
 
 
 class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
@@ -146,7 +152,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         # add in the last turn and the affirmative phrase
         formatted_completion += f"<|im_start|>assistant\n{affirmative_phrase}"
-
+        # self.logger.debug(f"Formatted completion: {formatted_completion}")
         parameters: Dict[str, Any] = {
             "prompt": formatted_completion,
             "max_tokens": self.agent_config.max_tokens,
@@ -213,8 +219,41 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         return true_conditions
 
     async def run_nonblocking_checks(self, latest_agent_response: str):
+        if len(latest_agent_response) == 0:
+            self.logger.info(
+                "Skipping nonblocking checks as the agent response is empty"
+            )
+            return
         tools = self.get_tools()
         if self.agent_config.actions:
+            tool_chat = self.prepare_chat_for_tool_check(latest_agent_response)
+            self.logger.info(f"tool_chat was {tool_chat}")
+            payload = {
+                "conversation": tool_chat,
+            }
+            # Perform the POST request to classify the dialogue asynchronously
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    "http://148.64.105.83:58000/function_call_inference/",
+                    headers=HEADERS,
+                    json=payload,
+                ) as response:
+                    if response.status == 200:
+                        response_data = await response.json()
+                        classification = response_data["predicted_class"]
+                        probs = response_data["probabilities"]
+                        probZero = probs[0]
+                        probOne = probs[1]
+                        if classification == 0:
+                            self.logger.info(
+                                f"Initial nonblocking classification: {classification} with probability {probZero}"
+                            )
+                            return
+                        else:
+                            self.logger.info(
+                                f"Initial nonblocking classification: {classification} with probability {probOne}"
+                            )
+
             try:
                 tool_descriptions = self.format_tool_descriptions(tools)
                 pretty_tool_descriptions = ", ".join(tool_descriptions)
@@ -239,9 +278,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     self.logger.info(
                         f"Initial API call classification: {tool_classification}"
                     )
-                    await self.handle_tool_response(chat, tools, tool_classification)
+                    asyncio.create_task(
+                        self.handle_tool_response(chat, tools, tool_classification)
+                    )
             except Exception as e:
-                self.logger.error(f"An error occurred: {e}")
+                self.logger.error(f"An tool error occurred: {e}")
         return
 
     def get_tools(self):
@@ -250,7 +291,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 "type": "function",
                 "function": {
                     "name": "transfer_call",
-                    "description": "Triggered when the agent agrees to transfer the call",
+                    "description": "Transfers when the agent agrees to transfer the call",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -281,6 +322,72 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     },
                 },
             },
+            # now for search_online
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_online",
+                    "description": "Searches online when the agent says they will look something up",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The search query to be sent to the online search API",
+                            }
+                        },
+                        "required": ["query"],
+                    },
+                },
+            },
+            # now for send_text
+            {
+                "type": "function",
+                "function": {
+                    "name": "send_text",
+                    "description": "Triggered when the agent sends a text, only if they have been provided a valid phone number and a message to send.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "to_phone": {
+                                "type": "string",
+                                "description": "The phone number to which the text message will be sent",
+                            },
+                            "message": {
+                                "type": "string",
+                                "description": "The message to be sent, limited to 120 characters",
+                            },
+                        },
+                        "required": ["to_phone", "message"],
+                    },
+                },
+            },
+            # now for send_email
+            {
+                "type": "function",
+                "function": {
+                    "name": "send_email",
+                    "description": "Triggered when the agent sends an email, only if they have been provided a valid recipient email, a subject, and a body for the email.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "recipient_email": {
+                                "type": "string",
+                                "description": "The email address of the recipient",
+                            },
+                            "subject": {
+                                "type": "string",
+                                "description": "The subject of the email",
+                            },
+                            "body": {
+                                "type": "string",
+                                "description": "The body of the email",
+                            },
+                        },
+                        "required": ["recipient_email", "subject", "body"],
+                    },
+                },
+            },
         ]
 
     def format_tool_descriptions(self, tools):
@@ -294,19 +401,82 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         chat[-1] = {"role": "assistant", "content": latest_agent_response}
         return chat
 
+    def prepare_chat_for_tool_check(self, latest_agent_response):
+        # Extract messages and filter out non-user and non-assistant messages
+        chat = [
+            message
+            for message in format_openai_chat_messages_from_transcript(self.transcript)
+            if message["role"] in ["user", "assistant"]
+        ]
+
+        # Find the earliest assistant message
+        earliest_assistant_index = next(
+            (i for i, message in enumerate(chat) if message["role"] == "assistant"),
+            None,
+        )
+
+        # Find the latest assistant message
+        latest_assistant_index = (
+            len(chat)
+            - 1
+            - next(
+                (
+                    i
+                    for i, message in enumerate(reversed(chat))
+                    if message["role"] == "assistant"
+                ),
+                None,
+            )
+        )
+
+        # Trim the chat to start and end with an assistant message
+        if earliest_assistant_index is not None and latest_assistant_index is not None:
+            chat = chat[earliest_assistant_index : latest_assistant_index + 1]
+
+        # Update the last message to the latest agent response
+        if chat and chat[-1]["role"] == "assistant":
+            chat[-1]["content"] = latest_agent_response
+
+        # Merge consecutive messages from the same role
+        new_chat = []
+        if chat:
+            current_message = chat[0]["content"]
+            if not current_message:
+                current_message = ""
+            current_role = chat[0]["role"]
+            for message in chat[1:]:
+                if not message["content"]:
+                    continue
+                if (
+                    message["role"] == current_role
+                    and len(message["content"].strip()) > 0
+                ):
+                    current_message += " " + message["content"]
+                else:
+                    new_chat.append(current_message)
+                    current_message = message["content"]
+                    current_role = message["role"]
+            new_chat.append(current_message)
+        # remove punctuation and make lowercase using punctuation and lower
+        new_chat = [
+            message.translate(str.maketrans("", "", string.punctuation)).lower()
+            for message in new_chat
+        ]
+        return new_chat
+
     def prepare_messages(self, pretty_tool_descriptions, stringified_messages):
-        preamble = f"""You will be provided with a conversational transcript between a caller and the receiver's 
-        assistant. During the conversation, the assistant has the following actions it can 
-        take: {pretty_tool_descriptions}.\n 
-        Your task is to infer whether, currently, the assistant is waiting for the caller to respond, or is 
-        immediately going to execute an action without waiting for a response. Return the action name from the list 
-        provided if the assistant is executing an action. If the assistant is waiting for a response, return 'None'. 
-        Return a single word."""
+        preamble = f"""You will be provided with a conversational transcript between a caller and the receiver's assistant. During the conversation, the assistant and the caller will either be talking about random things, discussing an action the assistant might take, the assistant might be collecting information from the the assistant has the following actions it can take: {pretty_tool_descriptions}.\nYour task is to infer, for the latest inquiry, whether the assistant has completed an action. If the assistant is about to execute an action, or is preparing to, the action is not completed and you must return 'None'. If the agent has confirmed that an action has already been completed, return the name of the action. Return a single word."""
         system_message = {"role": "system", "content": preamble}
         transcript_message = {"role": "user", "content": stringified_messages}
         return system_message, transcript_message
 
     def get_tool_classification(self, response, tools):
+        # check to make sure there is no pending action
+        if self.agent_config.pending_action == "pending":
+            self.logger.info(
+                "Skipping tool classification as there is a pending action"
+            )
+            return False, None
         tool_classification = response.choices[0].message.content.lower().strip()
 
         self.logger.info(f"Final tool classification to trigger: {tool_classification}")
@@ -316,6 +486,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         return is_classified_tool, tool_classification
 
     async def handle_tool_response(self, chat, tools, tool_classification):
+        self.logger.info(f"chat was {chat}")
+        # get the last 3 messages of the chat
+        chat = chat[1:]
         tool_response = await self.fclient.chat.completions.create(
             model="meetkai/functionary-small-v2.2",
             messages=chat,
@@ -330,6 +503,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             self.agent_config.pending_action = FunctionCall(
                 name=tool_call.function.name, arguments=tool_call.function.arguments
             )
+            self.logger.info(f"Pending action: {self.agent_config.pending_action}")
+        else:
+            self.agent_config.pending_action = None
+            self.logger.info("No pending action")
 
     async def respond(
         self,
@@ -377,16 +554,18 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         count = 0
 
         assert self.transcript is not None
+        # log the transcript
+        self.logger.debug(f"TRANSCRIPT: {self.transcript}")
         self.logger.debug(f"COMPLETION IS RESPONDING")
         chat_parameters = self.get_completion_parameters(
             affirmative_phrase=affirmative_phrase
         )
         # Prepare headers and data for the POST request
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer 'EMPTY'",
-        }
+
         prompt_buffer = chat_parameters["prompt"]
+        prompt_buffer = prompt_buffer.replace(
+            "<|im_start|>function", "<|im_start|>assistant"
+        )
         words = prompt_buffer.split()
         new_words = []
         largest_seq = 0
@@ -414,8 +593,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             insert_index = sum(len(w) + 1 for w in new_words[:sequence_start])
             if largest_seq == 10:
                 number_sentence = f"(with {largest_seq} digits):"
+            elif largest_seq < 10:
+                number_sentence = f"(with only {largest_seq} digits (<10))"
             else:
-                number_sentence = f"(with only {largest_seq} digits)"
+                number_sentence = f"(with {largest_seq} digits (>10))"
             if largest_seq > 3:  # only provide nu
                 prompt_buffer = (
                     " ".join(new_words[:sequence_start])
@@ -427,27 +608,35 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         prompt_buffer = prompt_buffer.replace("  ", " ")
         completion_buffer = ""
+        yielded = ""
         tokens_to_generate = 120
         max_tokens = 120
-        stop = ["?"]
+        stop = ["?", "SYSTEM"]
+
         async with aiohttp.ClientSession() as session:
             base_url = getenv("AI_API_BASE")
             # Generate the first chunk
             while True:
+                if not prompt_buffer:
+                    break
                 data = {
                     "model": chat_parameters["model"],
                     "prompt": prompt_buffer,
                     "stream": False,
-                    "stop": [".", "?", "\n", ":"],
+                    "stop": [".", "?", "\n", ":", "SYSTEM"],
                     "max_tokens": tokens_to_generate,
                     "include_stop_str_in_output": True,
                 }
                 async with session.post(
-                    f"{base_url}/completions", headers=headers, json=data
+                    f"{base_url}/completions", headers=HEADERS, json=data
                 ) as response:
                     if response.status == 200:
                         response_data = await response.json()
-                        content = response_data["choices"][0]["text"].strip()
+                        content = (
+                            response_data["choices"][0]["text"]
+                            .strip()
+                            .replace("SYSTEM", "")
+                        )
                         prompt_buffer += " " + content
                         prompt_buffer = prompt_buffer.strip().replace("  ", " ")
                         if (
@@ -459,6 +648,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                             if stream_output:
                                 self.logger.debug(f"Yielding first chunk: {content}")
                             yield (completion_buffer + " " + content), False
+                            yielded += completion_buffer + " " + content
                             completion_buffer = ""
                             if content.endswith("?"):
                                 return
@@ -472,35 +662,49 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                         )
                         return
             # Generate the second chunk
-            data = {
-                "model": chat_parameters["model"],
-                "prompt": prompt_buffer,
-                "stream": False,
-                "stop": ["?"],
-                "max_tokens": max_tokens,
-                "include_stop_str_in_output": True,
-            }
-            self.logger.debug(f"Prompt buffer: {prompt_buffer}")
-            self.logger.debug(f"data: {data}")
-            async with session.post(
-                f"{base_url}/completions", headers=headers, json=data
-            ) as response:
-                if response.status == 200:
-                    response_data = await response.json()
-                    content = response_data["choices"][0]["text"].strip()
-                    prompt_buffer += content
-                    if stream_output:
-                        self.logger.debug(f"Yielding second chunk: {content}")
-                        # if its shorter than one word, add an uh in front of it
-                        if len(content.split()) < 2:
-                            chosen_word = random.choice("uh... um... er...".split())
-                            content = chosen_word + " " + content
-                        yield content, False
-                else:
+            if prompt_buffer:
+                if len(prompt_buffer.split()) > 2:
 
-                    self.logger.error(
-                        f"Error while streaming from OpenAI2: {str(response)}"
-                    )
+                    data = {
+                        "model": chat_parameters["model"],
+                        "prompt": prompt_buffer,
+                        "stream": False,
+                        "stop": ["?", "SYSTEM"],
+                        "max_tokens": max_tokens,
+                        "include_stop_str_in_output": True,
+                    }
+                    self.logger.debug(f"Prompt buffer: {prompt_buffer}")
+                    self.logger.debug(f"data: {data}")
+                    async with session.post(
+                        f"{base_url}/completions", headers=HEADERS, json=data
+                    ) as response:
+                        if response.status == 200:
+                            response_data = await response.json()
+                            content = response_data["choices"][0]["text"].strip()
+                            prompt_buffer += content
+                            if stream_output and len(content) > 0:
+                                self.logger.debug(f"Yielding second chunk: {content}")
+                                # if its shorter than one word, add an uh in front of it
+                                if len(content.split()) < 2:
+                                    chosen_word = random.choice(
+                                        "uh... um... er...".split()
+                                    )
+                                    content = chosen_word + " " + content
+                                yield content, False
+                                yielded += content
+                        else:
+
+                            self.logger.error(
+                                f"Error while streaming from OpenAI2: {str(response)}"
+                            )
+        # run the nonblocking checks in the background
+        if self.agent_config.actions:
+            try:
+                asyncio.create_task(
+                    self.run_nonblocking_checks(latest_agent_response=yielded)
+                )
+            except Exception as e:
+                self.logger.error(f"An tool error occurred: {e}")
 
     async def generate_response(
         self,
@@ -559,15 +763,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             chat_parameters = self.get_chat_parameters()
 
         # Prepare headers and data for the POST request
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer 'EMPTY'",
-        }
         data = {
             "model": chat_parameters["model"],
             "messages": chat_parameters["messages"],
             "stream": True,
-            "stop": ["?", "\n"],
+            "stop": ["?", "SYSTEM"],
             "include_stop_str_in_output": True,
         }
 
@@ -575,7 +775,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{getenv('AI_API_BASE')}/chat/completions",
-                headers=headers,
+                headers=HEADERS,
                 json=data,
                 timeout=None,  # Stream endpoint; no timeout
             ) as response:
@@ -598,6 +798,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                             and "content" in choice["delta"]
                                         ):
                                             message = choice["delta"]["content"]
+                                            message.replace("SYSTEM", "")
+                                            # TODO Fix numbers bug $48.25 -> $ 48 err... 25
                                             # if it contains any punctuation besides a comma, yield the buffer and the message and reset it
                                             # also check if, on split by space, it is longer than 2 words
                                             if (

@@ -32,7 +32,9 @@ class TransferCall(
         TransferCallActionConfig, TransferCallParameters, TransferCallResponse
     ]
 ):
-    description: str = "transfers the call. use when you need to connect the active call to another phone line."
+    description: str = (
+        "transfers the call. use when you need to connect the active call to another phone line."
+    )
     parameters_type: Type[TransferCallParameters] = TransferCallParameters
     response_type: Type[TransferCallResponse] = TransferCallResponse
 
@@ -65,7 +67,9 @@ class TransferCall(
     ) -> ActionOutput[TransferCallResponse]:
         twilio_call_sid = self.get_twilio_sid(action_input)
 
-        await asyncio.sleep(3.5)  # to provide small gap between speaking and transfer ring
+        await asyncio.sleep(
+            3.5
+        )  # to provide small gap between speaking and transfer ring
         await self.transfer_call(twilio_call_sid, self.action_config.to_phone)
 
         return ActionOutput(

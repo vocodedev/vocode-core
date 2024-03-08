@@ -8,6 +8,7 @@ from vocode.streaming.models.actions import (
     ActionOutput,
     ActionType,
 )
+from vocode import getenv
 
 
 class NylasSendEmailActionConfig(ActionConfig, type=ActionType.NYLAS_SEND_EMAIL):
@@ -24,7 +25,7 @@ class NylasSendEmailResponse(BaseModel):
     success: bool
 
 
-class NylasSendEmail(
+class SendEmail(
     BaseAction[
         NylasSendEmailActionConfig, NylasSendEmailParameters, NylasSendEmailResponse
     ]
@@ -33,17 +34,13 @@ class NylasSendEmail(
     parameters_type: Type[NylasSendEmailParameters] = NylasSendEmailParameters
     response_type: Type[NylasSendEmailResponse] = NylasSendEmailResponse
 
-    async def run(
+    async def send_email(
         self, action_input: ActionInput[NylasSendEmailParameters]
     ) -> ActionOutput[NylasSendEmailResponse]:
-        from nylas import APIClient
+        from nylas import Client
 
         # Initialize the Nylas client
-        nylas = APIClient(
-            client_id=os.getenv("NYLAS_CLIENT_ID"),
-            client_secret=os.getenv("NYLAS_CLIENT_SECRET"),
-            access_token=os.getenv("NYLAS_ACCESS_TOKEN"),
-        )
+        nylas = Client(api_key=getenv("NYLAS_API_KEY"))
 
         # Create the email draft
         draft = nylas.drafts.create()
