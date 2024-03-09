@@ -838,7 +838,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         self.conversation.filler_audio_worker.interrupt_current_filler_audio()
                     ):
                         await self.conversation.filler_audio_worker.wait_for_filler_audio_to_finish()
-
+                if not agent_response_message.message.text.strip() or not any(
+                    char.isalpha() for char in agent_response_message.message.text
+                ):
+                    self.conversation.logger.debug(
+                        "SYNTH: Ignoring empty or non-letter agent response message"
+                    )
+                    return
                 synthesis_result = await self.conversation.synthesizer.create_speech(
                     agent_response_message.message,
                     self.chunk_size,
@@ -1143,35 +1149,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
     async def check_for_idle(self):
         """Terminates the conversation after 15 seconds if no activity is detected"""
         while self.is_active():
-            # messages = format_openai_chat_completion_from_transcript(
-            #     self.transcript,
-            # )
-            # # check if the latest user message contains SYSTEM: Completed
-            # if (
-            #     messages[-1].sender == Sender.HUMAN
-            #     and "SYSTEM: Completed" in messages[-1].text
-            # ):
-            #     transcription = Transcription(
-            #         message="SYSTEM: Ready: You can now use the response with the user.",
-            #         confidence=1.0,
-            #         is_final=True,
-            #     )
-            #     # artificially submit a transcription for the bot to self respond
-            #     event = self.interruptible_event_factory.create_interruptible_event(
-            #         payload=TranscriptionAgentInput(
-            #             transcription=transcription,
-            #             affirmative_phrase=self.chosen_affirmative_phrase,
-            #             conversation_id=self.conversation.id,
-            #             vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
-            #             twilio_sid=getattr(self.conversation, "twilio_sid", None),
-            #         ),
-            #     )
-
-            #     # Place the event in the output queue for further processing
-            #     self.transcriptions_worker.output_queue.put_nowait(event)
-
-            # Place the event in the output queue for further processing
-            # self.output_queue.put_nowait(event)
             if time.time() - self.last_action_timestamp > (
                 self.agent.get_agent_config().allowed_idle_time_seconds
                 or ALLOWED_IDLE_TIME
