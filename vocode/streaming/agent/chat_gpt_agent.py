@@ -21,6 +21,7 @@ from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.agent.utils import (
     format_openai_chat_completion_from_transcript,
     format_openai_chat_messages_from_transcript,
+    format_tool_completion_from_transcript,
     collate_response_async,
     openai_get_tokens,
     vector_db_result_to_openai_chat_message,
@@ -403,64 +404,14 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
     def prepare_chat_for_tool_check(self, latest_agent_response):
         # Extract messages and filter out non-user and non-assistant messages
-        chat = [
-            message
-            for message in format_openai_chat_messages_from_transcript(self.transcript)
-            if message["role"] in ["user", "assistant"]
-        ]
-
-        # Find the earliest assistant message
-        earliest_assistant_index = next(
-            (i for i, message in enumerate(chat) if message["role"] == "assistant"),
-            None,
+        chat = format_tool_completion_from_transcript(
+            self.transcript, latest_agent_response
         )
 
-        # Find the latest assistant message
-        latest_assistant_index = (
-            len(chat)
-            - 1
-            - next(
-                (
-                    i
-                    for i, message in enumerate(reversed(chat))
-                    if message["role"] == "assistant"
-                ),
-                None,
-            )
-        )
-
-        # Trim the chat to start and end with an assistant message
-        if earliest_assistant_index is not None and latest_assistant_index is not None:
-            chat = chat[earliest_assistant_index : latest_assistant_index + 1]
-
-        # Update the last message to the latest agent response
-        if chat and chat[-1]["role"] == "assistant":
-            chat[-1]["content"] = latest_agent_response
-
-        # Merge consecutive messages from the same role
-        new_chat = []
-        if chat:
-            current_message = chat[0]["content"]
-            if not current_message:
-                current_message = ""
-            current_role = chat[0]["role"]
-            for message in chat[1:]:
-                if not message["content"]:
-                    continue
-                if (
-                    message["role"] == current_role
-                    and len(message["content"].strip()) > 0
-                ):
-                    current_message += " " + message["content"]
-                else:
-                    new_chat.append(current_message)
-                    current_message = message["content"]
-                    current_role = message["role"]
-            new_chat.append(current_message)
         # remove punctuation and make lowercase using punctuation and lower
         new_chat = [
             message.translate(str.maketrans("", "", string.punctuation)).lower()
-            for message in new_chat
+            for message in chat
         ]
         return new_chat
 
@@ -557,9 +508,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         # log the transcript
         self.logger.debug(f"TRANSCRIPT: {self.transcript}")
         self.logger.debug(f"COMPLETION IS RESPONDING")
-        chat_parameters = self.get_completion_parameters(
-            affirmative_phrase=affirmative_phrase
-        )
+        if affirmative_phrase:
+            chat_parameters = self.get_completion_parameters(
+                affirmative_phrase=affirmative_phrase
+            )
+        else:
+            chat_parameters = self.get_completion_parameters()
 
         prompt_buffer = chat_parameters["prompt"]
         prompt_buffer = prompt_buffer.replace(
@@ -609,9 +563,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         if len(prompt_buffer) == 0:
             self.logger.info("Prompt buffer is empty, returning")
             return
+        latest_agent_response = ""
 
         async def stream_response():
-            latest_agent_response = ""
             sentence_buffer = ""
             async with aiohttp.ClientSession() as session:
                 base_url = getenv("AI_API_BASE")
@@ -619,7 +573,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     "model": chat_parameters["model"],
                     "prompt": prompt_buffer,
                     "stream": True,
-                    "stop": ["?"],
+                    "stop": ["?,", "SYSTEM"],
                     "max_tokens": chat_parameters.get("max_tokens", 120),
                     "include_stop_str_in_output": True,
                 }
@@ -646,6 +600,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                         for choice in completion_data["choices"]:
                                             if "text" in choice:
                                                 completion_text = choice["text"]
+                                                completion_text = (
+                                                    completion_text.replace(
+                                                        "SYSTEM", ""
+                                                    )
+                                                )
                                                 sentence_buffer += completion_text
                                                 # Check if the buffer ends with a punctuation
                                                 if (
@@ -662,9 +621,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                                     )
                                                     > 2
                                                 ):
-                                                    latest_agent_response += (
-                                                        sentence_buffer
-                                                    )
                                                     if stream_output:
                                                         yield sentence_buffer, False
                                                     sentence_buffer = ""  # Reset the buffer after yielding
@@ -676,7 +632,6 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
                         # If there's any remaining text in the buffer, yield it
                         if sentence_buffer and len(sentence_buffer.strip()) > 0:
-                            latest_agent_response += sentence_buffer
                             if stream_output:
                                 yield sentence_buffer, False
 
@@ -688,17 +643,15 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                         )
                         return
 
-            # Run the nonblocking checks in the background
-            if self.agent_config.actions:
-                asyncio.create_task(
-                    self.run_nonblocking_checks(
-                        latest_agent_response=latest_agent_response
-                    )
-                )
-
         # Call the stream_response coroutine and yield from it
         async for item in stream_response():
+            latest_agent_response += item[0]
             yield item
+        # Run the nonblocking checks in the background
+        if self.agent_config.actions:
+            asyncio.create_task(
+                self.run_nonblocking_checks(latest_agent_response=latest_agent_response)
+            )
 
     async def generate_response(
         self,

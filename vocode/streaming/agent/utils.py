@@ -185,6 +185,49 @@ def format_openai_chat_messages_from_transcript(
     return chat_messages
 
 
+def format_tool_completion_from_transcript(
+    transcript: Transcript,
+    latest_agent_response: str,
+) -> List[str]:
+    messages_content = []
+
+    # merge consecutive bot messages
+    new_event_logs: List[EventLog] = []
+    idx = 0
+    while idx < len(transcript.event_logs):
+        bot_messages_buffer: List[Message] = []
+        current_log = transcript.event_logs[idx]
+        while isinstance(current_log, Message) and current_log.sender == Sender.BOT:
+            bot_messages_buffer.append(current_log)
+            idx += 1
+            try:
+                current_log = transcript.event_logs[idx]
+            except IndexError:
+                break
+
+        if bot_messages_buffer:
+            merged_bot_message = deepcopy(bot_messages_buffer[-1])
+            merged_bot_message.text = " ".join(
+                event_log.text
+                for event_log in bot_messages_buffer
+                if event_log.text.strip()
+            )
+            if merged_bot_message.text.strip():
+                new_event_logs.append(merged_bot_message)
+        else:
+            if (
+                isinstance(current_log, Message) and current_log.text.strip()
+            ) or isinstance(current_log, (ActionStart, ActionFinish)):
+                new_event_logs.append(current_log)
+            idx += 1
+
+    for event_log in new_event_logs:
+        if isinstance(event_log, Message) and event_log.text.strip():
+            messages_content.append(event_log.text)
+    messages_content.append(latest_agent_response)
+    return messages_content
+
+
 def format_openai_chat_completion_from_transcript(
     transcript: Transcript, prompt_preamble: Optional[str] = None
 ) -> str:

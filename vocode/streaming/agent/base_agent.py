@@ -223,10 +223,11 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 is_interrupt=transcription.is_interrupt,
             )
         else:
-            responses = self.generate_response(
-                transcription.message,
-                is_interrupt=transcription.is_interrupt,
+            responses = self.generate_completion(
+                human_input=transcription.message,
+                affirmative_phrase=None,
                 conversation_id=conversation_id,
+                is_interrupt=transcription.is_interrupt,
             )
         is_first_response = True
         function_call = None
@@ -323,18 +324,13 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             ).affirmative_phrase
             self.logger.debug("Responding to transcription")
             should_stop = False
-            if self.agent_config.generate_responses:
-                if phrase:
-                    should_stop = await self.handle_generate_response(
-                        transcription, agent_input, phrase
-                    )
-                else:
-                    should_stop = await self.handle_generate_response(
-                        transcription, agent_input
-                    )
+            if phrase:
+                should_stop = await self.handle_generate_response(
+                    transcription, agent_input, phrase
+                )
             else:
-                should_stop = await self.handle_respond(
-                    transcription, agent_input.conversation_id
+                should_stop = await self.handle_generate_response(
+                    transcription, agent_input
                 )
 
             if should_stop:
