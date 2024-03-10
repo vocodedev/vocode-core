@@ -154,7 +154,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
         # add in the last turn and the affirmative phrase
         # formatted_completion += f"<|im_start|>assistant\n{affirmative_phrase}"
-        formatted_completion += f"<|im_start|>\nI see."
+        formatted_completion += f"<|im_start|>assistant\nI see."
 
         # self.logger.debug(f"Formatted completion: {formatted_completion}")
         parameters: Dict[str, Any] = {
