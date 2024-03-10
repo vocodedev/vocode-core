@@ -47,6 +47,7 @@ from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
     collate_response_async,
     openai_get_tokens,
+    translate_message,
     vector_db_result_to_openai_chat_message,
     format_openai_chat_completion_from_transcript,
 )
@@ -845,17 +846,48 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         "SYNTH: Ignoring empty or non-letter agent response message"
                     )
                     return
-                synthesis_result = await self.conversation.synthesizer.create_speech(
-                    agent_response_message.message,
-                    self.chunk_size,
-                    bot_sentiment=self.conversation.bot_sentiment,
-                )
-                self.convoCache[str(agent_response_message.message)] = synthesis_result
-                self.produce_interruptible_agent_response_event_nonblocking(
-                    (agent_response_message.message, synthesis_result),
-                    is_interruptible=item.is_interruptible,
-                    agent_response_tracker=item.agent_response_tracker,
-                )
+                # get the prompt preamble
+                if isinstance(self.conversation.agent, ChatGPTAgent):
+                    prompt_preamble = (
+                        self.conversation.agent.agent_config.prompt_preamble
+                    )
+                    if "hindi" in prompt_preamble.lower():
+                        self.conversation.logger.debug(
+                            f"Translating message from English to Hindi {agent_response_message.message.text}"
+                        )
+                        translated_message = translate_message(
+                            self.conversation.logger,
+                            agent_response_message.message.text,
+                            "en-US",
+                            "hi",
+                        )
+                        current_message = agent_response_message.message.text + ""
+                        agent_response_message.message.text = translated_message
+                        synthesis_result = (
+                            await self.conversation.synthesizer.create_speech(
+                                agent_response_message.message,
+                                self.chunk_size,
+                                bot_sentiment=self.conversation.bot_sentiment,
+                            )
+                        )
+                        agent_response_message.message.text = current_message
+                    else:
+                        synthesis_result = (
+                            await self.conversation.synthesizer.create_speech(
+                                agent_response_message.message,
+                                self.chunk_size,
+                                bot_sentiment=self.conversation.bot_sentiment,
+                            )
+                        )
+                    self.produce_interruptible_agent_response_event_nonblocking(
+                        (agent_response_message.message, synthesis_result),
+                        is_interruptible=item.is_interruptible,
+                        agent_response_tracker=item.agent_response_tracker,
+                    )
+                else:
+                    self.conversation.logger.debug(
+                        f"SYNTH: WAS NOT CHATGPT AGENT, {agent_response_message.message.text}"
+                    )
             except asyncio.CancelledError:
                 pass
 
@@ -1317,7 +1349,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         # Calculate the length of the speech in seconds
         speech_length_seconds = len(speech_data) / chunk_size
-        if held_buffer and len(held_buffer) > 0:
+        if held_buffer and len(held_buffer.strip()) > 0:
             self.logger.info(
                 f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{held_buffer}"
             )

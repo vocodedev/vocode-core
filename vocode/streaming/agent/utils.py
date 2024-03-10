@@ -25,6 +25,54 @@ from vocode.streaming.models.transcript import (
 
 SENTENCE_ENDINGS = [".", "!", "?", "\n"]
 
+import requests
+import uuid
+import json
+from vocode import getenv
+
+
+def translate_message(
+    logger, messageString: str, sourceLanguage: str, targetLanguage: str
+) -> str:
+    key = getenv("AZURE_TRANSLATE_KEY")
+    endpoint = "https://api.cognitive.microsofttranslator.com"
+    location = "westus3"
+
+    path = "/translate"
+    constructed_url = endpoint + path
+
+    params = {"api-version": "3.0", "from": sourceLanguage, "to": [targetLanguage]}
+
+    headers = {
+        "Ocp-Apim-Subscription-Key": key,
+        "Ocp-Apim-Subscription-Region": location,
+        "Content-type": "application/json",
+        "X-ClientTraceId": str(uuid.uuid4()),
+    }
+
+    body = [{"text": messageString}]
+    logger.info(f"Constructed URL: {constructed_url}")
+    logger.info(f"Params: {params}")
+    logger.info(f"Headers: {headers}")
+    logger.info(f"Body: {json.dumps(body)}")
+    try:
+        request = requests.post(
+            constructed_url, params=params, headers=headers, json=body
+        )
+        response = request.json()
+        logger.info(f"Response: {response}")
+    except Exception as e:
+        logger.error(f"Error in translation: {e}")
+        return messageString
+
+    # Assuming the response contains a translation, extract it
+    # Note: You might need to handle errors and different response schemas in a real-world scenario
+    translated_text = (
+        response[0]["translations"][0]["text"] if response else messageString
+    )
+
+    return translated_text
+
 
 async def collate_response_async(
     gen: AsyncIterable[Union[str, FunctionFragment]],

@@ -25,6 +25,7 @@ from vocode.streaming.agent.utils import (
     collate_response_async,
     openai_get_tokens,
     vector_db_result_to_openai_chat_message,
+    translate_message,
 )
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import Transcript
@@ -152,7 +153,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         )
 
         # add in the last turn and the affirmative phrase
-        formatted_completion += f"<|im_start|>assistant\n{affirmative_phrase}"
+        # formatted_completion += f"<|im_start|>assistant\n{affirmative_phrase}"
+        formatted_completion += f"<|im_start|>\nI see."
+
         # self.logger.debug(f"Formatted completion: {formatted_completion}")
         parameters: Dict[str, Any] = {
             "prompt": formatted_completion,
@@ -503,6 +506,24 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         # replace all written numbers with digits
         current_index = -1
         count = 0
+        # get the preamble
+        preamble = self.agent_config.prompt_preamble
+
+        if "hindi" in preamble.lower():
+            # Modify the transcript for the latest user message that matches human_input
+            latest_human_message = next(
+                (
+                    event
+                    for event in reversed(self.transcript.event_logs)
+                    if event.sender == Sender.HUMAN and event.text.strip()
+                ),
+                None,
+            )
+            if latest_human_message:
+                translated_message = translate_message(
+                    self.logger, latest_human_message.text, "hi", "en-US"
+                )
+                latest_human_message.text = translated_message
 
         assert self.transcript is not None
         # log the transcript
