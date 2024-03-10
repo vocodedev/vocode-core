@@ -245,6 +245,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 and is_interruptible,
                 agent_response_tracker=agent_input.agent_response_tracker,
             )
+            await asyncio.sleep(0)
         # TODO: implement should_stop for generate_responses
         agent_span.end()
         if function_call and self.agent_config.actions is not None:
