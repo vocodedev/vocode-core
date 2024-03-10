@@ -47,6 +47,7 @@ from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
     collate_response_async,
     openai_get_tokens,
+    translate_message,
     vector_db_result_to_openai_chat_message,
     format_openai_chat_completion_from_transcript,
 )
@@ -845,11 +846,41 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         "SYNTH: Ignoring empty or non-letter agent response message"
                     )
                     return
-                synthesis_result = await self.conversation.synthesizer.create_speech(
-                    agent_response_message.message,
-                    self.chunk_size,
-                    bot_sentiment=self.conversation.bot_sentiment,
-                )
+                # get the prompt preamble
+                if isinstance(self.conversation.agent, ChatGPTAgent):
+                    prompt_preamble = (
+                        self.conversation.agent.agent_config.prompt_preamble
+                    )
+                    if "hindi" in prompt_preamble.lower():
+                        self.conversation.logger.debug(
+                            f"Translating message from Hindi to English{agent_response_message.message.text}"
+                        )
+                        translated_message = translate_message(
+                            self.conversation.logger,
+                            agent_response_message.message.text,
+                            "en-US",
+                            "hi",
+                        )
+                        # create base message
+                        translated_message = Message(
+                            text=translated_message,
+                            sender=Sender.BOT,
+                        )
+                        synthesis_result = (
+                            await self.conversation.synthesizer.create_speech(
+                                translated_message,
+                                self.chunk_size,
+                                bot_sentiment=self.conversation.bot_sentiment,
+                            )
+                        )
+                    else:
+                        synthesis_result = (
+                            await self.conversation.synthesizer.create_speech(
+                                agent_response_message.message,
+                                self.chunk_size,
+                                bot_sentiment=self.conversation.bot_sentiment,
+                            )
+                        )
                 self.convoCache[str(agent_response_message.message)] = synthesis_result
                 self.produce_interruptible_agent_response_event_nonblocking(
                     (agent_response_message.message, synthesis_result),
@@ -1317,7 +1348,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         # Calculate the length of the speech in seconds
         speech_length_seconds = len(speech_data) / chunk_size
-        if held_buffer and len(held_buffer) > 0:
+        if held_buffer and len(held_buffer.strip()) > 0:
             self.logger.info(
                 f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{held_buffer}"
             )

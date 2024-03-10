@@ -217,9 +217,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         )
         if affirmative_phrase:
             responses = self.generate_completion(
-                transcription.message,
-                affirmative_phrase,
-                conversation_id,
+                human_input=transcription.message,
+                affirmative_phrase=affirmative_phrase,
+                conversation_id=conversation_id,
                 is_interrupt=transcription.is_interrupt,
             )
         else:
