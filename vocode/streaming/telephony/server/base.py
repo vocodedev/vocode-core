@@ -93,34 +93,10 @@ class TelephonyServer:
         self.router.add_api_route("/events", self.events, methods=["GET", "POST"])
         self.logger.info(f"Set up events endpoint at https://{self.base_url}/events")
 
-        # twilio call status endpoint
-
-        self.router.add_api_route("/call_status", self.call_status, methods=["GET", "POST"])
-        self.logger.info(f"Set up call status endpoint at https://{self.base_url}/call_status")
-
-        self.router.add_api_route("/recordings/{conversation_id}", self.recordings, methods=["GET", "POST"])
-        self.logger.info(f"Set up recordings endpoint at https://{self.base_url}/recordings/{{conversation_id}}")
 
     def events(self, request: Request):
         return Response()
 
-    async def call_status(self, request: Request):
-        form_data = await request.form()
-        call_status = form_data.get('CallStatus')
-        call_sid = form_data.get('CallSid')
-        from_number = form_data.get('From')
-        to_number = form_data.get('To')
-        self.logger.info(f"Call status: {call_status}, call sid: {call_sid}, from: {from_number}, to: {to_number}")
-
-        await self.config_manager.log_call_state(call_sid, call_status, from_number=from_number, to_number=to_number)
-        return {"message": "Status received & logged"}
-
-    async def recordings(self, request: Request, conversation_id: str):
-        recording_url = (await request.json())["recording_url"]
-        if self.events_manager is not None and recording_url is not None:
-            self.events_manager.publish_event(
-                RecordingEvent(recording_url=recording_url, conversation_id=conversation_id))
-        return Response()
 
     def get_reroute_twiml(self, number_to_dial: str):
         twiml = f"""<?xml version="1.0" encoding="UTF-8"?>

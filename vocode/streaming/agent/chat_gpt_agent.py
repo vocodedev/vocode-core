@@ -625,9 +625,10 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
         ]
 
     def get_chat_parameters(
-            self, messages: Optional[List] = None, use_functions: bool = True
+            self, messages: Optional[List] = None, use_functions: bool = True, ignore_assert: bool = False
     ):
-        assert self.transcript is not None
+        if not ignore_assert:
+            assert self.transcript is not None
         messages = messages or format_openai_chat_messages_from_transcript(
             self.transcript, self.agent_config.prompt_preamble
         )
@@ -652,8 +653,21 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
         system_prompt = first_message_prompt if first_message_prompt else self.agent_config.prompt_preamble
         messages = [{"role": "system", "content": system_prompt}]
         parameters = self.get_chat_parameters(messages)
-        parameters["model"] = CHAT_GPT_INITIAL_MESSAGE_MODEL_NAME
-        return await openai.ChatCompletion.acreate(**parameters)
+        parameters["stream"] = True
+        self.logger.info('Attempting to stream response for first message.')
+        async for response, is_successful in self.__attempt_stream_with_retries(
+                parameters, self.agent_config.timeout_seconds,
+                max_retries=self.agent_config.max_retries):
+            yield response, is_successful
+
+    async def create_first_response_full(self, first_message_prompt: Optional[str] = None):
+        system_prompt = first_message_prompt if first_message_prompt else self.agent_config.prompt_preamble
+        messages = [{"role": "system", "content": system_prompt}]
+        parameters = self.get_chat_parameters(messages, ignore_assert=True)
+        parameters["stream"] = False
+        self.logger.info('Attempting create response for the first message.')
+        chat_completion = await openai.ChatCompletion.acreate(**parameters)
+        return chat_completion.choices[0].message.content
 
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript

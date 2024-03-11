@@ -449,11 +449,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             logger or logging.getLogger(__name__),
             conversation_id=self.id,
         )
+        self.logger.info("Creating conversation")
         self.call_start = time.time()
         self.call_initial_delay = 1.5
         self.output_device = output_device
         self.transcriber = transcriber
-        self.audio_stream_handler = AudioStreamHandler(conversation_id=self.id, transcriber=transcriber)
+        self.audio_stream_handler = None  # FIXME: try to set it here or in the start method in the beginning.
         self.agent = agent
         self.synthesizer = synthesizer
         self.synthesis_enabled = True
@@ -556,6 +557,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # tracing
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
+        self.logger.info("Finished creating conversation")
 
     def create_state_manager(self) -> ConversationStateManager:
         return ConversationStateManager(conversation=self)
@@ -597,6 +599,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriber.unmute()
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
+        self.logger.info("Starting conversation")
         self.transcriber.start()
         self.transcriptions_worker.start()
         self.agent_responses_worker.start()
@@ -631,11 +634,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
         elif initial_message:
             asyncio.create_task(self.send_initial_message(initial_message))
         elif isinstance(self.agent, ChatGPTAgentOld):
-            self.agent.first_response = await self.agent.create_first_response()
-            response_split = self.agent.first_response['choices'][0]['message']['content'].split('.')
-            for response in response_split:
-                asyncio.create_task(self.send_initial_message(BaseMessage(text=response + '.')))
-
+            self.logger.info("Creating first response")
+            first_response_generator = self.agent.create_first_response()
+            self.logger.info("Got generator")
+            async for response in first_response_generator:
+                self.logger.info(response)
+                asyncio.create_task(self.send_initial_message(BaseMessage(text=response[0]))) # returns tuple.
+        self.audio_stream_handler = AudioStreamHandler(conversation_id=self.id, transcriber=self.transcriber)
         if mark_ready:
             await mark_ready()
         if self.synthesizer.get_synthesizer_config().sentiment_config:
@@ -652,6 +657,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         if self.redis_event_manger is not None:
             self.redis_task = asyncio.create_task(self.redis_event_manger.start())
+        self.logger.info("Conversation started")
 
     async def send_initial_message(self, initial_message: BaseMessage):
         # TODO: configure if initial message is interruptible
