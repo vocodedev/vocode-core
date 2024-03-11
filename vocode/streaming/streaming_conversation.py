@@ -639,7 +639,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.info("Got generator")
             async for response in first_response_generator:
                 self.logger.info(response)
-                asyncio.create_task(self.send_initial_message(BaseMessage(text=response[0]))) # returns tuple.
+                asyncio.create_task(self.send_initial_message(BaseMessage(text=response[0])))  # returns tuple.
         self.audio_stream_handler = AudioStreamHandler(conversation_id=self.id, transcriber=self.transcriber)
         if mark_ready:
             await mark_ready()
@@ -662,16 +662,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
     async def send_initial_message(self, initial_message: BaseMessage):
         # TODO: configure if initial message is interruptible
         self.transcriber.mute()
-        initial_message_tracker = asyncio.Event()
-        agent_response_event = (
-            self.interruptible_event_factory.create_interruptible_agent_response_event(
-                AgentResponseMessage(message=initial_message),
-                is_interruptible=False,
-                agent_response_tracker=initial_message_tracker,
+        message_split = initial_message.text.split(".")
+        for message in message_split:
+            initial_message_tracker = asyncio.Event()
+            initial_message_sentence = message + "."
+            print("Sending initial message: ", initial_message_sentence)
+            agent_response_event = (
+                self.interruptible_event_factory.create_interruptible_agent_response_event(
+                    AgentResponseMessage(message=BaseMessage(text=initial_message_sentence)),
+                    is_interruptible=False,
+                    agent_response_tracker=initial_message_tracker,
+                )
             )
-        )
-        self.agent_responses_worker.consume_nonblocking(agent_response_event)
-        await initial_message_tracker.wait()
+            self.agent_responses_worker.consume_nonblocking(agent_response_event)
+            await initial_message_tracker.wait()
         self.transcriber.unmute()
 
     async def check_for_idle(self):
