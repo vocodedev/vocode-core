@@ -55,7 +55,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
         self._ended = False
         self.logger = logger or logging.getLogger(__name__)
         if self.transcriber_config.endpointing_config:
-            raise Exception("Assembly AI endpointing config not supported yet")
+            self.transcriber_config.end_utterance_silence_threshold = int(self.transcriber_config.endpointing_config.time_cutoff_seconds * 1000)
 
         self.buffer = bytearray()
         self.audio_cursor = 0
