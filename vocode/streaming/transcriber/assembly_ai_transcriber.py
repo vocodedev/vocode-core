@@ -55,15 +55,15 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
         self._ended = False
         self.logger = logger or logging.getLogger(__name__)
         if self.transcriber_config.endpointing_config:
-            self.transcriber_config.end_utterance_silence_threshold = int(self.transcriber_config.endpointing_config.time_cutoff_seconds * 1000)
+            self.transcriber_config.end_utterance_silence_threshold_milliseconds = int(self.transcriber_config.endpointing_config.time_cutoff_seconds * 1000)
 
         self.buffer = bytearray()
         self.audio_cursor = 0
         self.terminate_msg = json.dumps({"terminate_session": True})
         self.end_utterance_silence_threshold_msg = (
-            None if self.transcriber_config.end_utterance_silence_threshold is None 
+            None if self.transcriber_config.end_utterance_silence_threshold_milliseconds is None 
             else json.dumps(
-                {"end_utterance_silence_threshold": self.transcriber_config.end_utterance_silence_threshold}
+                {"end_utterance_silence_threshold": self.transcriber_config.end_utterance_silence_threshold_milliseconds}
             )
         )
 

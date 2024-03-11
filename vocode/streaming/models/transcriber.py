@@ -130,7 +130,7 @@ class AssemblyAITranscriberConfig(
 ):
     buffer_size_seconds: float = 0.1
     word_boost: Optional[List[str]] = None
-    end_utterance_silence_threshold: Optional[int] = None
+    end_utterance_silence_threshold_milliseconds: Optional[int] = None
 
 
 class WhisperCPPTranscriberConfig(
