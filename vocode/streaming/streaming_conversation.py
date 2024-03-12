@@ -724,9 +724,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         self.transcriptions_worker.consume_nonblocking(transcription)
 
-    def receive_audio(self, chunk: bytes):
+    async def receive_audio(self, chunk: bytes):
         # TODO: refactor this, its not needed anymore, i can use just audio_stream_handler.
-        self.audio_stream_handler.receive_audio(chunk)
+        await self.audio_stream_handler.receive_audio(chunk)
 
     def warmup_synthesizer(self):
         self.synthesizer.ready_synthesizer()
