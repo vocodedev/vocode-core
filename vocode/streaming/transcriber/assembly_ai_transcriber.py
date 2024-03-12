@@ -8,7 +8,7 @@ import numpy as np
 from urllib.parse import urlencode
 from vocode import getenv
 
-from vocode.streaming.models.transcriber import AssemblyAITranscriberConfig
+from vocode.streaming.models.transcriber import AssemblyAITranscriberConfig, TimeEndpointingConfig, PunctuationEndpointingConfig
 from vocode.streaming.models.websocket import AudioMessage
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
