@@ -19,7 +19,7 @@ class SileroVAD:
     def _load_model(self, use_onnx: bool = False) -> torch.nn.Module:
         try:
             model, _ = torch.hub.load(
-                repo_or_dir='silero-vad',
+                repo_or_dir='snakers4/silero-vad',
                 model='silero_vad',
                 source='local',
                 onnx=use_onnx
