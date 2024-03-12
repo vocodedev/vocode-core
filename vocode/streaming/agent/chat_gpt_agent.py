@@ -594,7 +594,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     "model": chat_parameters["model"],
                     "prompt": prompt_buffer,
                     "stream": True,
-                    "stop": ["?,", "SYSTEM"],
+                    "stop": ["?", "SYSTEM"],
                     "max_tokens": chat_parameters.get("max_tokens", 120),
                     "include_stop_str_in_output": True,
                 }
