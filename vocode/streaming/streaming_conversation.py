@@ -632,7 +632,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             asyncio.create_task(self.handle_initial_audio(initial_audio_path=initial_audio_path,
                                                           initial_message=initial_message))
         elif initial_message:
-            initial_message_generator = initial_message.text.split(".")
+            # FIXME: use collator like in the agent.
+            initial_message_generator = [x for x in initial_message.text.split(".") if x.strip() != ""]
             for message in initial_message_generator:
                 message = BaseMessage(text=f'{message}.')
                 asyncio.create_task(self.send_initial_message(message))
