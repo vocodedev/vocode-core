@@ -90,49 +90,54 @@ class TwilioCall(Call[TwilioOutputDevice]):
     async def attach_ws_and_start(self, ws: WebSocket):
         self.logger.info("Attaching websocket...")
         super().attach_ws(ws)
+        self.logger.info("Attached websocket")
+        # FIXME: discuss and potentially add back those features.
 
-        await self.telephony_client.initialize_client()
-        twilio_call_ref = self.telephony_client.twilio_client.calls(self.twilio_sid)
-        twilio_call = twilio_call_ref.fetch()
-        if self.twilio_config.record:
-            recordings_create_params = (
-                self.twilio_config.extra_params.get("recordings_create_params")
-                if self.twilio_config.extra_params
-                else None
+        # self.logger.info("Initializing client...")
+        # await self.telephony_client.initialize_client()
+        # self.logger.info("Client initialized")
+        # twilio_call_ref = self.telephony_client.twilio_client.calls(self.twilio_sid)
+        # twilio_call = twilio_call_ref.fetch()
+        # self.logger.info(f"Call fetched: {twilio_call.sid}")
+        # if self.twilio_config.record:
+        #     recordings_create_params = (
+        #         self.twilio_config.extra_params.get("recordings_create_params")
+        #         if self.twilio_config.extra_params
+        #         else None
+        #     )
+        #     recording = (
+        #         twilio_call_ref.recordings.create(**recordings_create_params)
+        #         if recordings_create_params
+        #         else twilio_call_ref.recordings.create()
+        #     )
+        #     self.logger.info(f"Recording: {recording.sid}")
+        #
+        # if twilio_call.answered_by in ("machine_start", "fax"):
+        #     self.logger.info(f"Call answered by {twilio_call.answered_by}")
+        #     twilio_call.update(status="completed")
+        # else:
+        await self.wait_for_twilio_start(ws)
+        self.logger.info("Starting call...")
+        await super().start()
+        self.logger.info("Call started")
+        self.events_manager.publish_event(
+            PhoneCallConnectedEvent(
+                conversation_id=self.id,
+                to_phone_number=self.to_phone,
+                from_phone_number=self.from_phone,
             )
-            recording = (
-                twilio_call_ref.recordings.create(**recordings_create_params)
-                if recordings_create_params
-                else twilio_call_ref.recordings.create()
-            )
-            self.logger.info(f"Recording: {recording.sid}")
-
-        if twilio_call.answered_by in ("machine_start", "fax"):
-            self.logger.info(f"Call answered by {twilio_call.answered_by}")
-            twilio_call.update(status="completed")
-        else:
-            self.logger.info(f"Call answered by {twilio_call.answered_by}")
-            await self.wait_for_twilio_start(ws)
-            self.logger.info("Starting call...")
-            await super().start()
-            self.logger.info("Call started")
-            self.events_manager.publish_event(
-                PhoneCallConnectedEvent(
-                    conversation_id=self.id,
-                    to_phone_number=self.to_phone,
-                    from_phone_number=self.from_phone,
-                )
-            )
-            while self.active:
-                message = await ws.receive_text()
-                response = await self.handle_ws_message(message)
-                if response == PhoneCallWebsocketAction.CLOSE_WEBSOCKET:
-                    break
+        )
+        while self.active:
+            message = await ws.receive_text()
+            response = await self.handle_ws_message(message)
+            if response == PhoneCallWebsocketAction.CLOSE_WEBSOCKET:
+                break
         await self.config_manager.delete_config(self.id)
         await self.tear_down()
 
     async def wait_for_twilio_start(self, ws: WebSocket):
         assert isinstance(self.output_device, TwilioOutputDevice)
+        self.logger.info("Waiting for Twilio to start...")
         while True:
             message = await ws.receive_text()
             if not message:
@@ -159,9 +164,9 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 )
                 self.logger.debug(f"Filling {bytes_to_fill} bytes of silence")
                 # NOTE: 0xff is silence for mulaw audio
-                self.receive_audio(b"\xff" * bytes_to_fill)
+                await self.receive_audio(b"\xff" * bytes_to_fill)
             self.latest_media_timestamp = int(media["timestamp"])
-            self.receive_audio(chunk)
+            await self.receive_audio(chunk)
         elif data["event"] == "stop":
             self.logger.debug(f"Media WS: Received event 'stop': {message}")
             self.logger.debug("Stopping...")

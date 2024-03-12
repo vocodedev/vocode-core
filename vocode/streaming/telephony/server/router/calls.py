@@ -96,9 +96,11 @@ class CallsRouter(BaseRouter):
             raise ValueError(f"Unknown call config type {call_config.type}")
 
     async def connect_call(self, websocket: WebSocket, id: str):
+        self.logger.info("Opening Phone WS for chat {}".format(id))
         await websocket.accept()
-        self.logger.debug("Phone WS connection opened for chat {}".format(id))
+        self.logger.info("Phone WS connection opened for chat {}".format(id))
         call_config = await self.config_manager.get_config(id)
+        self.logger.info(f"Got call config for {id}")
         if not call_config:
             raise HTTPException(status_code=400, detail="No active phone call")
 
@@ -113,6 +115,7 @@ class CallsRouter(BaseRouter):
             events_manager=self.events_manager,
             logger=self.logger,
         )
+        self.logger.info(f"Call: {call}")
 
         await call.attach_ws_and_start(websocket)
         self.logger.debug("Phone WS connection closed for chat {}".format(id))
