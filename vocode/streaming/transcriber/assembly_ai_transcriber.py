@@ -54,7 +54,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
             )
         self._ended = False
         self.logger = logger or logging.getLogger(__name__)
-        if self.transcriber_config.endpointing_config:
+        if self.transcriber_config.endpointing_config.time_cutoff_seconds:
             self.transcriber_config.end_utterance_silence_threshold_milliseconds = int(self.transcriber_config.endpointing_config.time_cutoff_seconds * 1000)
 
         self.buffer = bytearray()
