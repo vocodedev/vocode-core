@@ -105,11 +105,11 @@ async def collate_response_async(
                 token,
             ):
                 # Check if the last word in the buffer is longer than 3 letters
-                if not ends_with_money and len(buffer.strip().split()[-1]) >= 4:
+                if not ends_with_money and len(buffer.strip().split(" ")[-1]) >= 4:
                     # also check that the buffer is longer than 2 words
                     # prevents clicking from when the audio plays faster than the next chunk returns
                     # either has a gap in the playback or closes altogether because the chunk is played too quickly
-                    if len(buffer.strip().split()) <= 2:
+                    if len(buffer.strip().split(" ")) <= 2:
                         continue
                     to_return = buffer.strip()
                     if to_return:

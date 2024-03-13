@@ -413,7 +413,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     if (
                         time.time() - self.last_filler_time > 4
                         and time.time() - self.last_affirmative_time > 2
-                        and len(self.buffer.to_message().strip().split()) > 3
+                        and len(self.buffer.to_message().strip().split(" ")) > 3
                     ):
                         self.conversation.agent_responses_worker.send_filler_audio(
                             asyncio.Event()
@@ -422,7 +422,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if (
                     sleeping_time > 0.5
                     and time.time() - self.last_filler_time > 2
-                    and len(initial_buffer.strip().split()) > 3
+                    and len(initial_buffer.strip().split(" ")) > 3
                     and time.time() - self.last_affirmative_time > 3
                     and not self.triggered_affirmative
                     and self.last_classification == "full"

@@ -589,9 +589,20 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             self.logger.info("Prompt buffer is empty, returning")
             return
         latest_agent_response = ""
+        if not prompt_buffer or len(prompt_buffer) < len(chat_parameters["prompt"]):
+            prompt_buffer = chat_parameters["prompt"]
 
-        async def stream_response():
+        async def stream_response(prompt_buffer):
+
             sentence_buffer = ""
+            self.logger.info(f"Prompt buffer: {prompt_buffer}")
+            if prompt_buffer[-1] == "\n" or prompt_buffer[-1] == " ":
+                prompt_buffer = prompt_buffer[:-1]
+
+            # check if it ends with "I see."
+            if not prompt_buffer.endswith("I see."):
+                # add in the last turn and the affirmative phrase
+                prompt_buffer += f"\n<|im_start|>assistant\nI see."
             async with aiohttp.ClientSession() as session:
                 base_url = getenv("AI_API_BASE")
                 data = {
@@ -633,26 +644,54 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                                 )
                                                 sentence_buffer += completion_text
                                                 last_message += completion_text
-                                                # Check if the buffer ends with a punctuation
+                                                # Find the earliest occurrence of punctuation and yield up to that punctuation
+                                                punctuation_indices = [
+                                                    sentence_buffer.find(p)
+                                                    for p in ".!?"
+                                                ]
+                                                # Filter out -1's which indicate no occurrence of the punctuation
+                                                punctuation_indices = [
+                                                    p
+                                                    for p in punctuation_indices
+                                                    if p != -1
+                                                ]
+                                                if punctuation_indices:
+                                                    earliest_punctuation_index = min(
+                                                        punctuation_indices
+                                                    )
+                                                    # Check if there are more than two words before the punctuation
+                                                    if (
+                                                        len(
+                                                            sentence_buffer[
+                                                                :earliest_punctuation_index
+                                                            ]
+                                                            .strip()
+                                                            .split(" ")
+                                                        )
+                                                        > 2
+                                                    ):
+                                                        if stream_output:
+                                                            yield sentence_buffer[
+                                                                : earliest_punctuation_index
+                                                                + 1
+                                                            ], False
+                                                        sentence_buffer = sentence_buffer[
+                                                            earliest_punctuation_index
+                                                            + 1 :
+                                                        ].lstrip()
                                                 if (
-                                                    sentence_buffer.strip().endswith(
-                                                        (
-                                                            ".",
-                                                            "!",
-                                                            "?",
-                                                            ":\n",
-                                                        )
+                                                    (
+                                                        "finish_reason" in choice
+                                                        and choice["finish_reason"]
+                                                        == "stop"
                                                     )
-                                                    and len(
-                                                        sentence_buffer.strip().split(
-                                                            " "
-                                                        )
-                                                    )
-                                                    > 2
+                                                    or "?" in completion_text
+                                                    or "?" in sentence_buffer
                                                 ):
                                                     if stream_output:
-                                                        yield sentence_buffer, False
-                                                    sentence_buffer = ""  # Reset the buffer after yielding
+                                                        yield sentence_buffer, True
+                                                    sentence_buffer = ""
+                                                    return
                                 except json.JSONDecodeError:
                                     self.logger.error("Failed to decode JSON response.")
                                     continue
@@ -675,9 +714,24 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                         return
 
         # Call the stream_response coroutine and yield from it
-        async for item in stream_response():
+        count = 0
+        yielded = ""
+        async for item in stream_response(prompt_buffer):
             latest_agent_response += item[0]
             yield item
+            yielded += item[0]
+            count += 1
+            if item[1]:
+                break
+        while count == 0 or len(yielded) == 0:
+            self.logger.error(f"No response from the agent, trying again: {count}")
+            async for item in stream_response(prompt_buffer):
+                latest_agent_response += item[0]
+                count += 1
+                yield item
+                yielded += item[0]
+                if item[1]:
+                    break
         # Run the nonblocking checks in the background
         if self.agent_config.actions:
             asyncio.create_task(
