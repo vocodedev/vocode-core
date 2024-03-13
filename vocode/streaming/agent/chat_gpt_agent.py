@@ -152,9 +152,12 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             self.transcript, self.agent_config.prompt_preamble
         )
 
+        # remove trailing newline, if any
+        if formatted_completion[-1] == "\n":
+            formatted_completion = formatted_completion[:-1]
+
         # add in the last turn and the affirmative phrase
-        # formatted_completion += f"<|im_start|>assistant\n{affirmative_phrase}"
-        formatted_completion += f"<|im_start|>assistant\nI see."
+        formatted_completion += f"\n<|im_start|>assistant\nI see."
 
         # self.logger.debug(f"Formatted completion: {formatted_completion}")
         parameters: Dict[str, Any] = {
@@ -540,7 +543,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         prompt_buffer = prompt_buffer.replace(
             "<|im_start|>function", "<|im_start|>assistant"
         )
-        words = prompt_buffer.split()
+        # print number of new lines in the prompt buffer
+        words = prompt_buffer.split(" ")
         new_words = []
         largest_seq = 0
         current_seq = 0
@@ -603,6 +607,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                     f"{base_url}/completions", headers=HEADERS, json=data
                 ) as response:
                     if response.status == 200:
+                        last_message = ""
                         async for chunk in response.content:
                             # Parse each line of the response content
                             if chunk.startswith(b"data: {"):
@@ -627,6 +632,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                                     )
                                                 )
                                                 sentence_buffer += completion_text
+                                                last_message += completion_text
                                                 # Check if the buffer ends with a punctuation
                                                 if (
                                                     sentence_buffer.strip().endswith(
@@ -638,7 +644,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                                         )
                                                     )
                                                     and len(
-                                                        sentence_buffer.strip().split()
+                                                        sentence_buffer.strip().split(
+                                                            " "
+                                                        )
                                                     )
                                                     > 2
                                                 ):
@@ -658,6 +666,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
 
                         # Final yield to indicate the end of the stream
                         # yield "", False
+                        # log what we sent out
+                        # self.logger.info(f"Sent out: {last_message}")
                     else:
                         self.logger.error(
                             f"Error while streaming from OpenAI: {str(response)}"
