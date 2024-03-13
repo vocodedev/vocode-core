@@ -56,7 +56,7 @@ class TwilioClient(BaseTelephonyClient):
                 send_digits=digits,
                 record=record,
                 status_callback=status_callback,
-                status_callback_event=['initiated', 'ringing', 'answered', 'completed'],
+                status_callback_event=['ringing', 'answered', 'completed'],
                 status_callback_method='POST',
                 **self.get_telephony_config().extra_params,
             )
