@@ -851,7 +851,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     prompt_preamble = (
                         self.conversation.agent.agent_config.prompt_preamble
                     )
-                    if "hindi" in prompt_preamble.lower():
+
+                    if self.conversation.agent.agent_config.language != "en-US":
                         self.conversation.logger.debug(
                             f"Translating message from English to Hindi {agent_response_message.message.text}"
                         )
@@ -859,7 +860,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             self.conversation.logger,
                             agent_response_message.message.text,
                             "en-US",
-                            "hi",
+                            self.conversation.agent.agent_config.language,
                         )
                         current_message = agent_response_message.message.text + ""
                         agent_response_message.message.text = translated_message

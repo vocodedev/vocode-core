@@ -109,6 +109,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     vector_db_config: Optional[VectorDBConfig] = None
     pending_action: Optional[FunctionCall] = None
     send_filler_audio: Union[bool, FillerAudioConfig] = FillerAudioConfig()
+    language: Optional[str] = "en-US"
 
 
 class MistralAgentConfig(AgentConfig, type=AgentType.MISTRAL.value):

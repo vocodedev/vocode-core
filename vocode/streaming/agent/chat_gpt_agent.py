@@ -512,7 +512,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         # get the preamble
         preamble = self.agent_config.prompt_preamble
 
-        if "hindi" in preamble.lower():
+        if self.agent_config.language != "en-US":
             # Modify the transcript for the latest user message that matches human_input
             latest_human_message = next(
                 (
@@ -524,7 +524,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             )
             if latest_human_message:
                 translated_message = translate_message(
-                    self.logger, latest_human_message.text, "hi", "en-US"
+                    self.logger,
+                    latest_human_message.text,
+                    self.agent_config.language,
+                    "en-US",
                 )
                 latest_human_message.text = translated_message
 
