@@ -152,5 +152,5 @@ class AudioStreamHandler:
             else:
                 self.logger.info(f"File {denoised_output_path} already exists, not overwriting.")
 
-    def __del__(self):
+    def terminate(self):
         self.executor.shutdown(wait=False)

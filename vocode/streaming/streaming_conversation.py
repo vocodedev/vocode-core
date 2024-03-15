@@ -942,6 +942,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.debug("Terminating actions worker")
             self.actions_worker.terminate()
         self.logger.debug("Successfully terminated")
+        self.audio_stream_handler.terminate()
 
     def is_active(self):
         return self.active
