@@ -16,6 +16,12 @@ class SileroVAD:
         self.threshold = threshold
         self.window_size = window_size
 
+    async def post_init(self):
+        self.logger.info("Loading VAD model...")
+        if self.vad_wrapper is not None:
+            loop = asyncio.get_running_loop()
+            self.vad_wrapper.model = await loop.run_in_executor(self.executor, self.vad_wrapper.load_model)
+
     def load_model(self, use_onnx: bool = False) -> torch.nn.Module:
         try:
             model, _ = torch.hub.load(
@@ -45,3 +51,6 @@ class SileroVAD:
 
     def reset_states(self) -> None:
         self.model.reset_states()
+
+    def __del__(self):
+        self.executor.shutdown(wait=True)  # Clean up the executor when done

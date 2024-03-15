@@ -645,6 +645,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.logger.info(response)
                 asyncio.create_task(self.send_initial_message(BaseMessage(text=response[0])))  # returns tuple.
         self.audio_stream_handler = AudioStreamHandler(conversation_id=self.id, transcriber=self.transcriber)
+        await self.audio_stream_handler.post_init()
         if mark_ready:
             await mark_ready()
         if self.synthesizer.get_synthesizer_config().sentiment_config:

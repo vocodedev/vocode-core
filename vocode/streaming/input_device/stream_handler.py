@@ -1,7 +1,8 @@
 import logging
 import os
 import wave
-
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
 import numpy as np
 
 from vocode.streaming.input_device.silero_vad import SileroVAD
@@ -19,6 +20,7 @@ class AudioStreamHandler:
         self.conversation_id = conversation_id
         self.audio_buffer = []  # Buffer for storing audio chunks
         self.logger = logging.getLogger(__name__)  # Set up logging
+        self.executor = ThreadPoolExecutor(max_workers=2)
         self.transcriber = transcriber
         self.audio_buffer_denoised = []
         self.frame_buffer = bytearray()
@@ -43,25 +45,34 @@ class AudioStreamHandler:
     async def post_init(self):
         self.logger.info("Loading VAD model...")
         if self.vad_wrapper is not None:
-            self.vad_wrapper.model = await self.vad_wrapper.load_model_async()
+            loop = asyncio.get_running_loop()
+            self.vad_wrapper.model = await loop.run_in_executor(
+                self.executor,
+                self.vad_wrapper.load_model
+            )
 
     async def receive_audio(self, chunk: bytes):
         if self.vad_wrapper is None:
             self.transcriber.send_audio(chunk)
         else:
-            prepared_chunk = prepare_audio_for_vad(
-                input_audio=chunk,
-                input_sample_rate=self.transcriber.transcriber_config.input_device_config.sampling_rate,
-                input_encoding=self.transcriber.transcriber_config.input_device_config.audio_encoding.value,
-                output_sample_rate=self.VAD_SAMPLE_RATE,
+            # Run prepare_audio_for_vad in the executor
+            loop = asyncio.get_running_loop()
+            prepared_chunk = await loop.run_in_executor(
+                self.executor,
+                prepare_audio_for_vad,
+                chunk,
+                self.transcriber.transcriber_config.input_device_config.sampling_rate,
+                self.VAD_SAMPLE_RATE,
+                self.transcriber.transcriber_config.input_device_config.audio_encoding.value,
             )
             self.frame_buffer.extend(prepared_chunk)
             await self.process_frame_buffer()
 
     async def process_frame_buffer(self) -> None:
+        loop = asyncio.get_running_loop()
         while len(self.frame_buffer) >= self.VAD_FRAME_SIZE + self.offset_samples:  # 2 bytes per 16-bit sample
             frame_to_process = self.frame_buffer[self.offset_samples:self.offset_samples + self.VAD_FRAME_SIZE]
-            is_speech = await self.vad_wrapper.process_chunk_async(frame_to_process)
+            is_speech = await loop.run_in_executor(self.executor, self.vad_wrapper.process_chunk, frame_to_process)
             if is_speech:
                 if self.speech_min_frames < 2 or self.frame_buffer_is_speech[-(self.speech_min_frames - 1):].all():
                     # If the speech segment is long enough, trigger VAD and pad preceding frames with ones
@@ -140,3 +151,6 @@ class AudioStreamHandler:
                 self.logger.info(f"Saved {denoised_output_path}.")
             else:
                 self.logger.info(f"File {denoised_output_path} already exists, not overwriting.")
+
+    def __del__(self):
+        self.executor.shutdown(wait=False)
