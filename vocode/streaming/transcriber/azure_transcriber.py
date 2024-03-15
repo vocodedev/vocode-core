@@ -91,11 +91,6 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
     def _run_loop(self):
         stream = self.generator()
 
-        def stop_cb(evt):
-            self.logger.info("CLOSING on {}".format(evt))
-            self.speech.stop_continuous_recognition()
-            self._ended = True
-
         self.speech.recognizing.connect(lambda x: self.recognized_sentence_stream(x))
         self.speech.recognized.connect(lambda x: self.recognized_sentence_final(x))
         self.speech.session_started.connect(
@@ -108,8 +103,6 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
             lambda evt: self.logger.debug("CANCELED {}".format(evt))
         )
 
-        self.speech.session_stopped.connect(stop_cb)
-        self.speech.canceled.connect(stop_cb)
         self.speech.start_continuous_recognition_async()
 
         for content in stream:

@@ -43,7 +43,7 @@ class RedisConfigManager(BaseConfigManager):
         self.logger.debug(f"Saving config for {conversation_id}")
         for attempt in range(3):  # Retry up to 3 times
             try:
-                await self.redis.set(conversation_id, config.json())
+                await self.redis.setex(conversation_id, 60 * 60, config.json())
             except ConnectionError as e:
                 self.logger.warning(f"Attempt {attempt + 1}: Connection error: {e}")
                 if attempt < 2:
@@ -118,7 +118,8 @@ class RedisConfigManager(BaseConfigManager):
 
         for attempt in range(3):  # Retry up to 3 times
             try:
-                await self.redis.set(f"call_state:{telephony_id}:{state}:{time.time()}", json.dumps(kwargs))
+                await self.redis.setex(f"call_state:{telephony_id}:{state}:{time.time()}", 60 * 60 * 24 * 7,
+                                       json.dumps(kwargs))
             except ConnectionError as e:
                 self.logger.warning(f"Attempt {attempt + 1}: Connection error: {e}")
                 if attempt < 2:
