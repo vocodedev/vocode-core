@@ -236,6 +236,9 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         rate: int = 1,
     ) -> str:
         voice_language_code = self.synthesizer_config.language_code
+        if voice_language_code != "en-US" and voice_language_code != "en":
+            rate = 0.8
+
         ssml_root = ElementTree.fromstring(
             f'<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="{voice_language_code}"></speak>'
         )
