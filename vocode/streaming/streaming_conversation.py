@@ -249,6 +249,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.chosen_filler_phrase = None
 
         async def get_expected_silence_duration(self, buffer: str) -> float:
+            if self.conversation.agent.agent_config.language != "en-US":
+                buffer = translate_message(
+                    self.conversation.logger,
+                    buffer,
+                    self.conversation.agent.agent_config.language,
+                    "en-US",
+                )
             previous_agent_message = next(
                 (
                     message["content"]
