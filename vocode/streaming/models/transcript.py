@@ -434,6 +434,12 @@ class TranscriptCompleteEvent(Event, type=EventType.TRANSCRIPT_COMPLETE):
         else:
             data_dict["current_dialog_state"] = None
         # Use Python's json.dumps method for JSON serialization
+
+        # TODO consider to serialize in a different way.
+        for event in data_dict["event_logs"]:
+            if 'action_input' in event and 'user_message_tracker' in event['action_input']:
+                event['action_input'].pop('user_message_tracker')
+
         return json.dumps(data_dict, ensure_ascii=False, indent=4)
 
 
