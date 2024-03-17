@@ -650,7 +650,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                                                 # Find the earliest occurrence of punctuation and yield up to that punctuation
                                                 punctuation_indices = [
                                                     sentence_buffer.find(p)
-                                                    for p in ".!?"
+                                                    for p in [". ", "!", "?"]
                                                 ]
                                                 # Filter out -1's which indicate no occurrence of the punctuation
                                                 punctuation_indices = [
