@@ -51,7 +51,3 @@ class SileroVAD:
 
     def reset_states(self) -> None:
         self.model.reset_states()
-
-    def __del__(self):
-        if self.executor is not None:
-            self.executor.shutdown(wait=True)  # Clean up the executor when done
