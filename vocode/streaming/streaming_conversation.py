@@ -371,12 +371,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
             # choose a random affirmative phrase until it's different from the previous one
             previous_phrase = self.chosen_affirmative_phrase
-            while True:
-                self.chosen_affirmative_phrase = random.choice(
-                    self.conversation.synthesizer.affirmative_audios
-                ).message.text
-                if self.chosen_affirmative_phrase != previous_phrase:
-                    break
+            if self.conversation.synthesizer.affirmative_audios:
+                while True:
+                    self.chosen_affirmative_phrase = random.choice(
+                        self.conversation.synthesizer.affirmative_audios
+                    ).message.text
+                    if self.chosen_affirmative_phrase != previous_phrase:
+                        break
             # Create an interruptible event with the transcription data
             current_phrase = self.chosen_affirmative_phrase
             if self.conversation.agent.agent_config.pending_action == "pending":
