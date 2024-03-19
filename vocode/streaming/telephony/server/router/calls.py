@@ -1,6 +1,6 @@
 from typing import Optional
 import logging
-
+import aiohttp
 from fastapi import APIRouter, HTTPException, WebSocket
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.telephony import (
@@ -21,16 +21,30 @@ from vocode.streaming.utils.base_router import BaseRouter
 from vocode.streaming.utils.events_manager import EventsManager
 
 
+async def start_twilio_recording(account_sid, auth_token, call_sid):
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Calls/{call_sid}/Recordings.json"
+    auth = aiohttp.BasicAuth(login=account_sid, password=auth_token)
+    logger = logging.getLogger(__name__)
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, auth=auth) as response:
+            if response.status == 201:
+                logger.info(f"Started recording for call {call_sid}")
+                return await response.json()
+            else:
+                logger.error(f"Starting recording for call failed {call_sid}!")
+                raise HTTPException(status_code=500, detail="Failed to start recording for call")
+
+
 class CallsRouter(BaseRouter):
     def __init__(
-        self,
-        base_url: str,
-        config_manager: BaseConfigManager,
-        transcriber_factory: TranscriberFactory = TranscriberFactory(),
-        agent_factory: AgentFactory = AgentFactory(),
-        synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
-        events_manager: Optional[EventsManager] = None,
-        logger: Optional[logging.Logger] = None,
+            self,
+            base_url: str,
+            config_manager: BaseConfigManager,
+            transcriber_factory: TranscriberFactory = TranscriberFactory(),
+            agent_factory: AgentFactory = AgentFactory(),
+            synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+            events_manager: Optional[EventsManager] = None,
+            logger: Optional[logging.Logger] = None,
     ):
         super().__init__()
         self.base_url = base_url
@@ -44,16 +58,16 @@ class CallsRouter(BaseRouter):
         self.router.websocket("/connect_call/{id}")(self.connect_call)
 
     def _from_call_config(
-        self,
-        base_url: str,
-        call_config: BaseCallConfig,
-        config_manager: BaseConfigManager,
-        conversation_id: str,
-        logger: logging.Logger,
-        transcriber_factory: TranscriberFactory = TranscriberFactory(),
-        agent_factory: AgentFactory = AgentFactory(),
-        synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
-        events_manager: Optional[EventsManager] = None,
+            self,
+            base_url: str,
+            call_config: BaseCallConfig,
+            config_manager: BaseConfigManager,
+            conversation_id: str,
+            logger: logging.Logger,
+            transcriber_factory: TranscriberFactory = TranscriberFactory(),
+            agent_factory: AgentFactory = AgentFactory(),
+            synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
+            events_manager: Optional[EventsManager] = None,
     ):
         if isinstance(call_config, TwilioCallConfig):
             return TwilioCall(
@@ -116,6 +130,8 @@ class CallsRouter(BaseRouter):
             logger=self.logger,
         )
         self.logger.info(f"Call: {call}")
+        self.logger.info("starting recording")
+        await start_twilio_recording(call.twilio_config.account_sid, call.twilio_config.auth_token, call.twilio_sid)
 
         await call.attach_ws_and_start(websocket)
         self.logger.debug("Phone WS connection closed for chat {}".format(id))
