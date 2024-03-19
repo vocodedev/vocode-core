@@ -63,6 +63,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.fillers_cache = None
         self.filler_picker = filler_picker
         self.ignore_cache = ignore_cache
+
     @property
     def cache_path(self):
         filler_path = FILLER_AUDIO_PATH if os.getenv("FILLER_AUDIO_PATH") is None else os.getenv("FILLER_AUDIO_PATH")
@@ -91,13 +92,18 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
         return output_stream
 
-    def pick_filler(self, bot_message: str, user_message: str) -> Optional[FillerAudio]:
+    async def pick_filler(self, bot_message: str, user_message: str) -> Optional[FillerAudio]:
         if self.filler_picker is not None:
             self.logger.info(f'Using filler picker for "{bot_message}" and "{user_message}"')
             pick = self.filler_picker.predict_filler_phrase(bot_message, user_message)
+            self.logger.info("Picking filler")
             if pick is not None:
                 self.logger.info(f"Filler picked: {pick}")
                 audio_data = self.get_cached_audio(pick)
+                if audio_data is None:
+                    # Create & cache missing filler.
+                    await self.save_filler_to_cache(pick)
+                    audio_data = self.get_cached_audio("yes yes")
                 if self.output_format != ELEVEN_LABS_MULAW_8000:
                     # TODO Mulaw could also use resampling and encoding, but it is not used now.
                     # Below also converts to linear, which is not desirable for Mulaw

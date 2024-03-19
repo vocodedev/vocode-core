@@ -310,7 +310,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         self.conversation.mark_last_filler_timestamp()
                         bot_message = self.conversation.transcript.get_last_bot_text()
                         self.conversation.synthesizer: ElevenLabsSynthesizer
-                        picked = self.conversation.synthesizer.pick_filler(bot_message, user_message)
+                        picked = await self.conversation.synthesizer.pick_filler(bot_message, user_message)
                         if picked is not None:
                             self.send_filler_audio(item.agent_response_tracker, picked)
                         return
