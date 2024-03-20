@@ -32,6 +32,22 @@
             "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
             "in": "query"
+          },
+          {
+            "required": false,
+            "schema": { "type": "string", "title": "Sort Column" },
+            "name": "sort_column",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "title": "Sort Desc",
+              "default": false
+            },
+            "name": "sort_desc",
+            "in": "query"
           }
         ],
         "responses": {
@@ -257,6 +273,22 @@
             "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
             "in": "query"
+          },
+          {
+            "required": false,
+            "schema": { "type": "string", "title": "Sort Column" },
+            "name": "sort_column",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "title": "Sort Desc",
+              "default": false
+            },
+            "name": "sort_desc",
+            "in": "query"
           }
         ],
         "responses": {
@@ -481,6 +513,22 @@
             "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
             "in": "query"
+          },
+          {
+            "required": false,
+            "schema": { "type": "string", "title": "Sort Column" },
+            "name": "sort_column",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "title": "Sort Desc",
+              "default": false
+            },
+            "name": "sort_desc",
+            "in": "query"
           }
         ],
         "responses": {
@@ -633,6 +681,22 @@
             "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
             "in": "query"
+          },
+          {
+            "required": false,
+            "schema": { "type": "string", "title": "Sort Column" },
+            "name": "sort_column",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "title": "Sort Desc",
+              "default": false
+            },
+            "name": "sort_desc",
+            "in": "query"
           }
         ],
         "responses": {
@@ -782,6 +846,22 @@
             "required": false,
             "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": { "type": "string", "title": "Sort Column" },
+            "name": "sort_column",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "title": "Sort Desc",
+              "default": false
+            },
+            "name": "sort_desc",
             "in": "query"
           }
         ],
@@ -935,6 +1015,22 @@
             "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
             "in": "query"
+          },
+          {
+            "required": false,
+            "schema": { "type": "string", "title": "Sort Column" },
+            "name": "sort_column",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "title": "Sort Desc",
+              "default": false
+            },
+            "name": "sort_desc",
+            "in": "query"
           }
         ],
         "responses": {
@@ -1084,6 +1180,22 @@
             "required": false,
             "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": { "type": "string", "title": "Sort Column" },
+            "name": "sort_column",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "title": "Sort Desc",
+              "default": false
+            },
+            "name": "sort_desc",
             "in": "query"
           }
         ],
@@ -1236,6 +1348,22 @@
             "required": false,
             "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": { "type": "string", "title": "Sort Column" },
+            "name": "sort_column",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "title": "Sort Desc",
+              "default": false
+            },
+            "name": "sort_desc",
             "in": "query"
           }
         ],
@@ -1396,6 +1524,22 @@
             "required": false,
             "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": { "type": "string", "title": "Sort Column" },
+            "name": "sort_column",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "title": "Sort Desc",
+              "default": false
+            },
+            "name": "sort_desc",
             "in": "query"
           }
         ],
@@ -1879,6 +2023,11 @@
             "type": "boolean",
             "title": "Run Do Not Call Detection",
             "default": false
+          },
+          "llm_temperature": {
+            "type": "number",
+            "title": "Llm Temperature",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -2017,6 +2166,11 @@
             "type": "boolean",
             "title": "Run Do Not Call Detection",
             "default": false
+          },
+          "llm_temperature": {
+            "type": "number",
+            "title": "Llm Temperature",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -2319,6 +2473,7 @@
             "type": "string",
             "enum": [
               "human_unanswered",
+              "call_did_not_connect",
               "human_disconnected",
               "bot_disconnected",
               "transfer_unanswered",
@@ -2369,6 +2524,11 @@
           },
           "telephony_account_connection": {
             "$ref": "#/components/schemas/TwilioAccountConnection"
+          },
+          "telephony_params": {
+            "additionalProperties": { "type": "string" },
+            "type": "object",
+            "title": "Telephony Params"
           }
         },
         "type": "object",
@@ -2536,6 +2696,11 @@
             "type": "boolean",
             "title": "Run Do Not Call Detection",
             "default": false
+          },
+          "llm_temperature": {
+            "type": "number",
+            "title": "Llm Temperature",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -2572,6 +2737,11 @@
             "additionalProperties": { "type": "string" },
             "type": "object",
             "title": "Context"
+          },
+          "telephony_params": {
+            "additionalProperties": { "type": "string" },
+            "type": "object",
+            "title": "Telephony Params"
           }
         },
         "type": "object",
@@ -2685,7 +2855,12 @@
             "type": "integer",
             "title": "Optimize Streaming Latency"
           },
-          "model_id": { "type": "string", "title": "Model Id" }
+          "model_id": { "type": "string", "title": "Model Id" },
+          "experimental_input_streaming": {
+            "type": "boolean",
+            "title": "Experimental Input Streaming",
+            "default": false
+          }
         },
         "type": "object",
         "required": ["id", "user_id", "type", "voice_id"],
@@ -2706,7 +2881,12 @@
             "type": "integer",
             "title": "Optimize Streaming Latency"
           },
-          "model_id": { "type": "string", "title": "Model Id" }
+          "model_id": { "type": "string", "title": "Model Id" },
+          "experimental_input_streaming": {
+            "type": "boolean",
+            "title": "Experimental Input Streaming",
+            "default": false
+          }
         },
         "type": "object",
         "required": ["type", "voice_id"],
@@ -2760,6 +2940,13 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Model Id"
+          },
+          "experimental_input_streaming": {
+            "anyOf": [
+              { "type": "boolean" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Experimental Input Streaming"
           }
         },
         "type": "object",
@@ -2868,6 +3055,7 @@
           "event_action",
           "event_phone_call_connected",
           "event_phone_call_ended",
+          "event_phone_call_did_not_connect",
           "event_transcript",
           "event_recording",
           "event_human_detection"
@@ -3036,6 +3224,11 @@
             "type": "boolean",
             "title": "Run Do Not Call Detection",
             "default": false
+          },
+          "llm_temperature": {
+            "type": "number",
+            "title": "Llm Temperature",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -3081,6 +3274,7 @@
             "type": "string",
             "enum": [
               "human_unanswered",
+              "call_did_not_connect",
               "human_disconnected",
               "bot_disconnected",
               "transfer_unanswered",
@@ -3135,6 +3329,11 @@
               { "$ref": "#/components/schemas/TwilioAccountConnection" }
             ],
             "title": "Telephony Account Connection"
+          },
+          "telephony_params": {
+            "additionalProperties": { "type": "string" },
+            "type": "object",
+            "title": "Telephony Params"
           }
         },
         "type": "object",
@@ -3462,7 +3661,15 @@
             "enum": ["faster", "draft", "low", "medium", "high", "premium"],
             "title": "Quality"
           },
-          "temperature": { "type": "number", "title": "Temperature" }
+          "temperature": { "type": "number", "title": "Temperature" },
+          "top_p": { "type": "number", "title": "Top P" },
+          "text_guidance": { "type": "number", "title": "Text Guidance" },
+          "voice_guidance": { "type": "number", "title": "Voice Guidance" },
+          "experimental_remove_silence": {
+            "type": "boolean",
+            "title": "Experimental Remove Silence",
+            "default": false
+          }
         },
         "type": "object",
         "required": ["id", "user_id", "type", "voice_id"],
@@ -3490,7 +3697,15 @@
             "enum": ["faster", "draft", "low", "medium", "high", "premium"],
             "title": "Quality"
           },
-          "temperature": { "type": "number", "title": "Temperature" }
+          "temperature": { "type": "number", "title": "Temperature" },
+          "top_p": { "type": "number", "title": "Top P" },
+          "text_guidance": { "type": "number", "title": "Text Guidance" },
+          "voice_guidance": { "type": "number", "title": "Voice Guidance" },
+          "experimental_remove_silence": {
+            "type": "boolean",
+            "title": "Experimental Remove Silence",
+            "default": false
+          }
         },
         "type": "object",
         "required": ["type", "voice_id"],
@@ -3554,6 +3769,34 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Temperature"
+          },
+          "top_p": {
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Top P"
+          },
+          "text_guidance": {
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Text Guidance"
+          },
+          "voice_guidance": {
+            "anyOf": [
+              { "type": "number" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Voice Guidance"
+          },
+          "experimental_remove_silence": {
+            "anyOf": [
+              { "type": "boolean" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Experimental Remove Silence"
           }
         },
         "type": "object",
