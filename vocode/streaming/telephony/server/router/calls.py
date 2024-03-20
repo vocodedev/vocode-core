@@ -1,3 +1,5 @@
+import os
+import signal
 from typing import Optional
 import logging
 import aiohttp
@@ -57,6 +59,10 @@ class CallsRouter(BaseRouter):
         self.router = APIRouter()
         self.router.websocket("/connect_call/{id}")(self.connect_call)
         self.active_calls = 0
+        self.calls_ran = 0
+        max_calls = os.getenv("WORKER_MAX_CALLS", None)
+        self.max_calls = int(max_calls) if max_calls is not None else None
+        self.logger.info(f"Max calls: {self.max_calls}")
 
     def _from_call_config(
             self,
@@ -113,6 +119,7 @@ class CallsRouter(BaseRouter):
     async def connect_call(self, websocket: WebSocket, id: str):
         try:
             self.active_calls += 1
+            self.calls_ran += 1
             self.logger.info("Opening Phone WS for chat {}".format(id))
             await websocket.accept()
             self.logger.info("Phone WS connection opened for chat {}".format(id))
@@ -140,6 +147,10 @@ class CallsRouter(BaseRouter):
             self.logger.debug("Phone WS connection closed for chat {}".format(id))
         finally:
             self.active_calls -= 1
+            if self.max_calls is not None and self.calls_ran >= self.max_calls:
+                self.logger.info("Max calls reached, shutting down")
+                # Graceful shutdown must be implemented in FASTAPI to avoid killing active calls.
+                os.kill(os.getpid(), signal.SIGTERM)
 
     def get_router(self) -> APIRouter:
         return self.router
