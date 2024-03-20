@@ -1649,20 +1649,6 @@
         },
         "security": [{ "HTTPBearer": [] }]
       }
-    },
-    "/v1/monitoring/health": {
-      "get": {
-        "tags": ["monitoring"],
-        "summary": "Health Check",
-        "description": "Checks the health the service.\n\nIt returns 200 if the service is healthy.",
-        "operationId": "health_check",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": { "application/json": { "schema": {} } }
-          }
-        }
-      }
     }
   },
   "components": {
