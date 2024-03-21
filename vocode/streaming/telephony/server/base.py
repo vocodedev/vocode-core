@@ -72,16 +72,17 @@ class TelephonyServer:
         self.events_manager = events_manager
         self.get_data = get_data
         self.setup_agent_config = setup_agent_config
+        self.calls_router = CallsRouter(
+            base_url=base_url,
+            config_manager=self.config_manager,
+            transcriber_factory=transcriber_factory,
+            agent_factory=agent_factory,
+            synthesizer_factory=synthesizer_factory,
+            events_manager=self.events_manager,
+            logger=self.logger,
+        )
         self.router.include_router(
-            CallsRouter(
-                base_url=base_url,
-                config_manager=self.config_manager,
-                transcriber_factory=transcriber_factory,
-                agent_factory=agent_factory,
-                synthesizer_factory=synthesizer_factory,
-                events_manager=self.events_manager,
-                logger=self.logger,
-            ).get_router()
+            self.calls_router.get_router()
         )
         for config in inbound_call_configs:
             self.router.add_api_route(
@@ -93,10 +94,8 @@ class TelephonyServer:
         self.router.add_api_route("/events", self.events, methods=["GET", "POST"])
         self.logger.info(f"Set up events endpoint at https://{self.base_url}/events")
 
-
     def events(self, request: Request):
         return Response()
-
 
     def get_reroute_twiml(self, number_to_dial: str):
         twiml = f"""<?xml version="1.0" encoding="UTF-8"?>

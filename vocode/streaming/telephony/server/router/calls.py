@@ -1,3 +1,5 @@
+import os
+import signal
 from typing import Optional
 import logging
 import aiohttp
@@ -56,6 +58,11 @@ class CallsRouter(BaseRouter):
         self.logger = logger or logging.getLogger(__name__)
         self.router = APIRouter()
         self.router.websocket("/connect_call/{id}")(self.connect_call)
+        self.active_calls = 0
+        self.calls_ran = 0
+        max_calls = os.getenv("WORKER_MAX_CALLS", None)
+        self.max_calls = int(max_calls) if max_calls is not None else None
+        self.logger.info(f"Max calls: {self.max_calls}")
 
     def _from_call_config(
             self,
@@ -110,31 +117,40 @@ class CallsRouter(BaseRouter):
             raise ValueError(f"Unknown call config type {call_config.type}")
 
     async def connect_call(self, websocket: WebSocket, id: str):
-        self.logger.info("Opening Phone WS for chat {}".format(id))
-        await websocket.accept()
-        self.logger.info("Phone WS connection opened for chat {}".format(id))
-        call_config = await self.config_manager.get_config(id)
-        self.logger.info(f"Got call config for {id}")
-        if not call_config:
-            raise HTTPException(status_code=400, detail="No active phone call")
+        try:
+            self.active_calls += 1
+            self.calls_ran += 1
+            self.logger.info("Opening Phone WS for chat {}".format(id))
+            await websocket.accept()
+            self.logger.info("Phone WS connection opened for chat {}".format(id))
+            call_config = await self.config_manager.get_config(id)
+            self.logger.info(f"Got call config for {id}")
+            if not call_config:
+                raise HTTPException(status_code=400, detail="No active phone call")
 
-        call = self._from_call_config(
-            base_url=self.base_url,
-            call_config=call_config,
-            config_manager=self.config_manager,
-            conversation_id=id,
-            transcriber_factory=self.transcriber_factory,
-            agent_factory=self.agent_factory,
-            synthesizer_factory=self.synthesizer_factory,
-            events_manager=self.events_manager,
-            logger=self.logger,
-        )
-        self.logger.info(f"Call: {call}")
-        self.logger.info("starting recording")
-        await start_twilio_recording(call.twilio_config.account_sid, call.twilio_config.auth_token, call.twilio_sid)
+            call = self._from_call_config(
+                base_url=self.base_url,
+                call_config=call_config,
+                config_manager=self.config_manager,
+                conversation_id=id,
+                transcriber_factory=self.transcriber_factory,
+                agent_factory=self.agent_factory,
+                synthesizer_factory=self.synthesizer_factory,
+                events_manager=self.events_manager,
+                logger=self.logger,
+            )
+            self.logger.info(f"Call: {call}")
+            self.logger.info("starting recording")
+            await start_twilio_recording(call.twilio_config.account_sid, call.twilio_config.auth_token, call.twilio_sid)
 
-        await call.attach_ws_and_start(websocket)
-        self.logger.debug("Phone WS connection closed for chat {}".format(id))
+            await call.attach_ws_and_start(websocket)
+            self.logger.debug("Phone WS connection closed for chat {}".format(id))
+        finally:
+            self.active_calls -= 1
+            if self.max_calls is not None and self.calls_ran >= self.max_calls:
+                self.logger.info("Max calls reached, shutting down")
+                # Graceful shutdown must be implemented in FASTAPI to avoid killing active calls.
+                os.kill(os.getpid(), signal.SIGTERM)
 
     def get_router(self) -> APIRouter:
         return self.router
