@@ -11,7 +11,9 @@ redis = "^4.5.4"
 twilio = "^8.1.0"
 vonage = "^3.5.1"
 python-dotenv = "^1.0.0"
-vocode = "0.1.111"
+#vocode = "0.1.111" #replacing the old vocode 0.1.111 release with AgentsmithsGuild's vocode-langchain-0.1.14 release which uses the latest version of langchain
+vocode = { git = "https://github.com/AgentsmithsGuild/vocode-python.git", tag = "vocode-langchain-0.1.14" }
+
 google-cloud-texttospeech = "^2.14.1"
 
 
