@@ -18,11 +18,12 @@ from vocode.streaming.models.agent import (
     ChatAnthropicAgentConfig,
     ChatGPTAgentConfig,
     EchoAgentConfig,
+    CommandAgentConfig,
     InformationRetrievalAgentConfig,
     LLMAgentConfig,
     RESTfulUserImplementedAgentConfig,
     LlamacppAgentConfig,
-    MistralAgentConfig
+    MistralAgentConfig,
 )
 
 
@@ -33,6 +34,8 @@ class AgentFactory:
         if isinstance(agent_config, LLMAgentConfig):
             return LLMAgent(agent_config=agent_config, logger=logger)
         elif isinstance(agent_config, ChatGPTAgentConfig):
+            return ChatGPTAgent(agent_config=agent_config, logger=logger)
+        elif isinstance(agent_config, CommandAgentConfig):
             return ChatGPTAgent(agent_config=agent_config, logger=logger)
         elif isinstance(agent_config, EchoAgentConfig):
             return EchoAgent(agent_config=agent_config, logger=logger)

@@ -186,6 +186,12 @@ class Transcript(BaseModel):
                 event_log.text = text
                 break
 
+    def count_action_starts(self):
+        return sum(1 for event in self.event_logs if isinstance(event, ActionStart))
+
+    def count_action_finishes(self):
+        return sum(1 for event in self.event_logs if isinstance(event, ActionFinish))
+
 
 class TranscriptEvent(Event, type=EventType.TRANSCRIPT):
     text: str

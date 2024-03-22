@@ -23,7 +23,7 @@ from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
-from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode.streaming.agent.command_agent import CommandAgent
 from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import (
@@ -38,7 +38,7 @@ from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
 
-from vocode.streaming.models.agent import ChatGPTAgentConfig, FillerAudioConfig
+from vocode.streaming.models.agent import CommandAgentConfig, FillerAudioConfig
 from vocode.streaming.models.synthesizer import (
     SentimentConfig,
 )
@@ -507,6 +507,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
             self.conversation.logger.info(f"Marking as send")
             self.ready_to_send = BufferStatus.SEND
+            # releast the action, if there is one
+            self.conversation.agent.can_send = True
 
         async def process(self, transcription: Transcription):
             # Ignore the transcription if we are currently in-flight (i.e., the agent is speaking)
@@ -855,7 +857,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                     return
                 # get the prompt preamble
-                if isinstance(self.conversation.agent, ChatGPTAgent):
+                if isinstance(self.conversation.agent, CommandAgent):
                     prompt_preamble = (
                         self.conversation.agent.agent_config.prompt_preamble
                     )
@@ -1151,6 +1153,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             await asyncio.gather(filler_audio_task, affirmative_audio_task)
 
         self.agent.start()
+        if isinstance(self.agent, CommandAgent):
+            self.agent.conversation_id = self.id
+            self.agent.twilio_sid = getattr(self, "twilio_sid", None)
         initial_message = self.agent.get_agent_config().initial_message
         if initial_message:
             asyncio.create_task(self.send_initial_message(initial_message))
@@ -1197,7 +1202,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.logger.debug("Conversation idle for too long, terminating")
                 await self.terminate()
                 return
-            await asyncio.sleep(15)
+            await asyncio.sleep(60)
 
     async def track_bot_sentiment(self):
         """Updates self.bot_sentiment every second based on the current transcript"""
@@ -1372,55 +1377,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             ),
             None,
         )
-        # If a transcript message is provided, check if there is a pending action to execute
-        if transcript_message and isinstance(self.agent, ChatGPTAgent):
-            self.logger.info(
-                f"The pending action is {self.agent.agent_config.pending_action}"
-                f" and the current transcript text is {transcript_message.text}"
-            )
-            # If a pending action exists, execute it and reset the pending action
-            if (
-                self.agent.agent_config.pending_action
-                and self.agent.agent_config.pending_action != "pending"
-            ):
-                asyncio.create_task(
-                    self.agent.call_function(
-                        self.agent.agent_config.pending_action,
-                        TranscriptionAgentInput(
-                            transcription=Transcription(
-                                message=last_agent_message,
-                                confidence=1.0,
-                                is_final=True,
-                                time_silent=0.0,
-                            ),
-                            conversation_id=self.id,
-                            vonage_uuid=getattr(self, "vonage_uuid", None),
-                            twilio_sid=getattr(self, "twilio_sid", None),
-                        ),
-                    )
-                )
-                # artificially submit a transcription for the bot to self respond saying that a request has been submitted
-                transcription = Transcription(
-                    message="SYSTEM: Pending: Your request has been submitted. No response yet.",
-                    confidence=1.0,
-                    is_final=True,
-                )
-                # # artificially submit a transcription for the bot to self respond
-                # event = self.interruptible_event_factory.create_interruptible_event(
-                #     payload=TranscriptionAgentInput(
-                #         transcription=transcription,
-                #         affirmative_phrase=self.chosen_affirmative_phrase,
-                #         conversation_id=self.conversation.id,
-                #         vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
-                #         twilio_sid=getattr(self.conversation, "twilio_sid", None),
-                #     ),
-                # )
-
-                # # Place the event in the output queue for further processing
-                # self.transcriptions_worker.output_queue.put_nowait(event)
-
-                self.agent.agent_config.pending_action = "pending"
-
         # Sleep for the duration of the speech minus the time already spent sending the data
         sleep_time = max(
             speech_length_seconds
@@ -1495,7 +1451,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         await self.synthesizer.tear_down()
         self.logger.debug("Terminating agent")
         if (
-            isinstance(self.agent, ChatGPTAgent)
+            isinstance(self.agent, CommandAgent)
             and self.agent.agent_config.vector_db_config
         ):
             # Shutting down the vector db should be done in the agent's terminate method,

@@ -41,17 +41,21 @@ class ActionsWorker(InterruptibleWorker):
         action = self.action_factory.create_action(action_input.action_config)
         action.attach_conversation_state_manager(self.conversation_state_manager)
         action_output = await action.run(action_input)
-        self.produce_interruptible_event_nonblocking(
+        self.produce_interruptible_agent_response_event_nonblocking(
             ActionResultAgentInput(
                 conversation_id=action_input.conversation_id,
                 action_input=action_input,
                 action_output=action_output,
-                vonage_uuid=action_input.vonage_uuid
-                if isinstance(action_input, VonagePhoneCallActionInput)
-                else None,
-                twilio_sid=action_input.twilio_sid
-                if isinstance(action_input, TwilioPhoneCallActionInput)
-                else None,
+                vonage_uuid=(
+                    action_input.vonage_uuid
+                    if isinstance(action_input, VonagePhoneCallActionInput)
+                    else None
+                ),
+                twilio_sid=(
+                    action_input.twilio_sid
+                    if isinstance(action_input, TwilioPhoneCallActionInput)
+                    else None
+                ),
                 is_quiet=action.quiet,
             )
         )

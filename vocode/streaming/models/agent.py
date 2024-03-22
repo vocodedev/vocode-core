@@ -42,6 +42,7 @@ class AgentType(str, Enum):
     WEBSOCKET_USER_IMPLEMENTED = "agent_websocket_user_implemented"
     ACTION = "agent_action"
     MISTRAL = "agent_mistral"
+    COMMAND = "agent_command"
 
 
 class FillerAudioConfig(BaseModel):
@@ -99,6 +100,20 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
 
 
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
+    prompt_preamble: str
+    expected_first_prompt: Optional[str] = None
+    model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
+    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
+    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
+    cut_off_response: Optional[CutOffResponse] = None
+    azure_params: Optional[AzureOpenAIConfig] = None
+    vector_db_config: Optional[VectorDBConfig] = None
+    pending_action: Optional[FunctionCall] = None
+    send_filler_audio: Union[bool, FillerAudioConfig] = FillerAudioConfig()
+    language: Optional[str] = "en-US"
+
+
+class CommandAgentConfig(AgentConfig, type=AgentType.COMMAND.value):
     prompt_preamble: str
     expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME

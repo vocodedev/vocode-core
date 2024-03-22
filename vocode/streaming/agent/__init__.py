@@ -1,6 +1,7 @@
 from vocode.streaming.agent.anthropic_agent import ChatAnthropicAgent
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode.streaming.agent.command_agent import CommandAgent
 from vocode.streaming.agent.echo_agent import EchoAgent
 from vocode.streaming.agent.gpt4all_agent import GPT4AllAgent
 from vocode.streaming.agent.information_retrieval_agent import InformationRetrievalAgent

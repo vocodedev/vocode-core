@@ -11,6 +11,8 @@ from vocode.streaming.models.actions import (
     ActionOutput,
     ActionType,
 )
+from vocode.streaming.action.base_action import BaseAction
+
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -33,9 +35,7 @@ class SearchOnlineResponse(BaseModel):
 
 
 class SearchOnline(
-    TwilioPhoneCallAction[
-        SearchOnlineActionConfig, SearchOnlineParameters, SearchOnlineResponse
-    ]
+    BaseAction[SearchOnlineActionConfig, SearchOnlineParameters, SearchOnlineResponse]
 ):
     description: str = (
         "searches online using the provided query and returns the response"
