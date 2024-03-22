@@ -90,7 +90,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
             agent_config=agent_config, action_factory=action_factory, logger=logger
         )
         self.tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(
-            "CohereForAI/c4ai-command-r-v01", trust_remote_code=True, use_fast=True
+            "CohereForAI/c4ai-command-r-v01", trust_remote_code=False, use_fast=True
         )
         self.can_send = False
         self.conversation_id = None
