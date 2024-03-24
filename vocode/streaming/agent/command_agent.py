@@ -96,7 +96,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         self.conversation_id = None
         self.twilio_sid = None
         model_id = "CohereForAI/c4ai-command-r-v01"
-        self.no_tool_reason = ""
+        self.tool_message = ""
 
         self.agent_config.pending_action = None
         if agent_config.azure_params:
@@ -285,7 +285,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
             },
             {
                 "name": "hangup_call",
-                "description": "Hangup the call if the assistant does not think the conversation is appropriate to continue",
+                "description": "Hangup the call if the instructions are to do so",
                 "parameter_definitions": {
                     "end_reason": {
                         "description": "The reason for ending the call, limited to 120 characters",
@@ -343,11 +343,22 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 },
             },
             {
-                "name": "directly_answer",
-                "description": "Calls a standard (un-augmented) AI chatbot to generate a response given the conversation history",
+                "name": "send_direct_response",
+                "description": "Send the user a message directly, given the conversation history, must include the message",
                 "parameter_definitions": {
-                    "no_api_reason": {
-                        "description": "The reason why an API call was not made, for instance, if a piece of information was missing or if an action was not required",
+                    "message": {
+                        "description": "Message you intend to send to the user",
+                        "type": "str",
+                        "required": True,
+                    }
+                },
+            },
+            {
+                "name": "get_train",
+                "description": "Retrieves information for a given train number from the Viaggiatreno service",
+                "parameter_definitions": {
+                    "train_number": {
+                        "description": "The train number to retrieve information for",
                         "type": "str",
                         "required": True,
                     }
@@ -433,13 +444,16 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
             async def get_response(prompt_buffer) -> str:
                 self.logger.info(f"Prompt buffer: {prompt_buffer}")
                 response_text = ""
+                prompt_buffer = prompt_buffer.replace(
+                    "directly-answer", "send_direct_response"
+                )
                 async with aiohttp.ClientSession() as session:
                     base_url = getenv("AI_API_BASE")
                     data = {
                         "model": getenv("AI_MODEL_NAME_LARGE"),
                         "prompt": prompt_buffer,
                         "stream": False,
-                        "stop": ["?", "SYSTEM", "<|END_OF_TURN_TOKEN|>"],
+                        "stop": ["<|END_OF_TURN_TOKEN|>"],
                         "max_tokens": 500,
                         "include_stop_str_in_output": True,
                     }
@@ -494,13 +508,13 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     tool_name = tool.get("tool_name")
                     tool_params = tool.get("parameters")
 
-                    if tool_name == "directly_answer":
+                    if tool_name == "send_direct_response":
                         self.logger.info(
                             f"No tool, model wants to directly respond: {tool_params}"
                         )
                         self.logger.info(json.dumps(tool_params))
-                        if "no_api_reason" in tool_params:
-                            self.no_tool_reason = tool_params["no_api_reason"]
+                        if "message" in tool_params:
+                            self.tool_message = tool_params["message"]
                         return None
 
                     if tool_name and tool_params is not None:
@@ -523,7 +537,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                                 ),
                             )
                             self.can_send = False
-                            self.no_tool_reason = ""
+                            self.tool_message = ""
                             return {
                                 "tool_name": tool_name,
                                 "tool_params": json.dumps(tool_params),
@@ -655,26 +669,33 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 params = eval(should_continue["tool_params"])
                 self.logger.info(f"Name: {name}, Params: {params}")
                 action_config = self._get_action_config(name)
-                action = self.action_factory.create_action(action_config)
-                action_input = action.create_action_input(
-                    conversation_id, params, user_message_tracker=None
-                )
-                self.transcript.add_action_start_log(
-                    action_input=action_input,
-                    conversation_id=conversation_id,
-                )
+                try:
+                    action = self.action_factory.create_action(action_config)
+                    action_input = action.create_action_input(
+                        conversation_id, params, user_message_tracker=None
+                    )
+                    self.transcript.add_action_start_log(
+                        action_input=action_input,
+                        conversation_id=conversation_id,
+                    )
+                except Exception as e:
+                    self.logger.error(f"Error creating action: {e}")
+                    self.tool_message = ""
+
         # log the transcript
         self.logger.debug(f"TRANSCRIPT: {self.transcript}")
         self.logger.debug(f"COMPLETION IS RESPONDING")
+        if len(self.tool_message) > 0:
+            return self.tool_message, True
         if affirmative_phrase:
             chat_parameters = self.get_completion_parameters(
                 affirmative_phrase=affirmative_phrase,
                 did_action=should_continue,
-                reason=self.no_tool_reason,
+                reason="",
             )
         else:
             chat_parameters = self.get_completion_parameters(
-                did_action=should_continue, reason=self.no_tool_reason
+                did_action=should_continue, reason=""
             )
 
         prompt_buffer = chat_parameters["prompt"]

@@ -6,6 +6,8 @@ from vocode.streaming.action.transfer_call import TransferCall, TransferCallActi
 from vocode.streaming.action.search_online import SearchOnline, SearchOnlineActionConfig
 
 from vocode.streaming.action.send_text import SendText, SendTextActionConfig
+from vocode.streaming.action.get_train import GetTrain, GetTrainActionConfig
+
 from vocode.streaming.action.nylas_send_email import (
     SendEmail,
     NylasSendEmailActionConfig,
@@ -20,6 +22,8 @@ class ActionFactory:
             return TransferCall(action_config)
         elif isinstance(action_config, HangUpCallActionConfig):
             return HangUpCall(action_config)
+        elif isinstance(action_config, GetTrainActionConfig):
+            return GetTrain(action_config)
         elif isinstance(action_config, SearchOnlineActionConfig):
             return SearchOnline(action_config)
         elif isinstance(action_config, SendTextActionConfig):

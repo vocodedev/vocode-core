@@ -17,6 +17,7 @@ class ActionType(str, Enum):
     SEARCH_ONLINE = "search_online"
     SEND_TEXT = "send_text"
     SEND_EMAIL = "send_email"
+    GET_TRAIN = "get_train"
 
 
 class ActionConfig(TypedModel, type=ActionType.BASE):

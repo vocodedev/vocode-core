@@ -312,7 +312,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
     ) -> SynthesisResult:
         # this is so it says numbers slowly
         def remove_dashes(match):
-            return match.group().replace("-", "").replace("+", "")
+            return match.group().replace("-", "...").replace("+", "")
 
         def format_digits(match):
             digits = match.group()
@@ -343,7 +343,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         modified_message = re.sub(
             r"\b\d+-\d+\b",
             remove_dashes,
-            message.text.replace("-", "").replace(" (", "").replace(") ", ""),
+            message.text.replace("-", "...").replace(" (", "").replace(") ", ""),
         )
 
         modified_message = re.sub(r"\b(\d{5,})\b", format_digits, modified_message)
