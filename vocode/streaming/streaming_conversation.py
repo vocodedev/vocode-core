@@ -14,6 +14,7 @@ import time
 import typing
 import requests
 import aiohttp
+from telephony_app.models.call_type import CallType
 from vocode import getenv
 from openai import AsyncOpenAI, OpenAI
 
@@ -1157,7 +1158,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.agent.conversation_id = self.id
             self.agent.twilio_sid = getattr(self, "twilio_sid", None)
         initial_message = self.agent.get_agent_config().initial_message
-        if initial_message:
+        call_type = self.agent.get_agent_config().call_type
+
+        if initial_message and call_type == CallType.INBOUND:
             asyncio.create_task(self.send_initial_message(initial_message))
         else:
             # unmute if no initial message so they can speak first
