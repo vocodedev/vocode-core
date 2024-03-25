@@ -3,6 +3,8 @@ import json
 from dotenv import load_dotenv
 from langchain.llms import LLMFactory
 from langchain.agents import AgentExecutor, AGENT_TO_CLASS
+from salesgpt.agents import SalesGPT
+
 # Import your tools and agent classes here
 
 def load_lcel_config(config_path):
@@ -43,5 +45,5 @@ def main(config_path):
     agent.run()
 
 if __name__ == "__main__":
-    config_path = 'path/to/your/lcel_config.json'  # Update with the actual path to your LCEL config file
+    config_path = 'run_lcel.json'  # Update with the actual path to your LCEL config file
     main(config_path)
