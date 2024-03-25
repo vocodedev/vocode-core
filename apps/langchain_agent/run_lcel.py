@@ -1,8 +1,13 @@
 import os
 import json
-from dotenv import load_dotenv
-from langchain.llms import LLMFactory
-from langchain.agents import AgentExecutor, AGENT_TO_CLASS
+from dotenv import load_dotenv 
+
+from langchain.agents import AgentExecutor, initialize_agent
+from salesgpt.tools import initialize_tool
+
+from langchain_community.chat_models import ChatLiteLLM
+
+from salesgpt.agents import SalesGPT
 # Import your tools and agent classes here
 
 def load_lcel_config(config_path):
@@ -21,7 +26,8 @@ def initialize_from_lcel_config(lcel_config):
     
     # Initialize LLM
     llm_config = lcel_config['agent']['llm']
-    llm = LLMFactory.create(llm_config['type'], **llm_config['params'])
+    # llm = LLMFactory.create(llm_config['type'], **llm_config['params'])
+    llm = ChatLiteLLM(temperature=0.2, model_name="gpt-3.5-turbo")
 
     # Initialize tools (assuming a function to initialize tools based on their type exists)
     tools = [initialize_tool(tool_conf) for tool_conf in lcel_config['agent'].get('tools', [])]
@@ -43,5 +49,5 @@ def main(config_path):
     agent.run()
 
 if __name__ == "__main__":
-    config_path = 'path/to/your/lcel_config.json'  # Update with the actual path to your LCEL config file
+    config_path = './lcel-config.json'  # Update with the actual path to your LCEL config file
     main(config_path)

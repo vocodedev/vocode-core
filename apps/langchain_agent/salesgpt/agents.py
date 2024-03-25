@@ -551,3 +551,66 @@ class SalesGPT(Chain):
             use_tools=use_tools,
             **kwargs,
         )
+
+
+    @classmethod
+    @time_logger
+    def from_llm_call_phone(cls, llm: ChatLiteLLM, prompt, tools) -> "SalesGPT":
+        """
+        Class method to initialize the SalesGPT Controller from a given ChatLiteLLM instance.
+
+        This method sets up the stage analyzer chain and sales conversation utterance chain. It also checks if custom prompts
+        are to be used and if tools are to be set up for the agent. If tools are to be used, it sets up the knowledge base,
+        gets the tools, sets up the prompt, and initializes the agent with the tools. If tools are not to be used, it sets
+        the sales agent executor and knowledge base to None.
+
+        Parameters
+        ----------
+        llm : ChatLiteLLM
+            The ChatLiteLLM instance to initialize the SalesGPT Controller from.
+        verbose : bool, optional
+            If True, verbose output is enabled. Default is False.
+        \*\*kwargs : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        SalesGPT
+            The initialized SalesGPT Controller.
+        """
+        stage_analyzer_chain = StageAnalyzerChain.from_llm(llm, verbose=True)
+        sales_conversation_utterance_chain = SalesConversationChain.from_llm(
+            llm, verbose=True,
+            use_custom_prompt=False,
+            custom_prompt=None,
+        )
+
+        verbose = True
+        llm_chain = LLMChain(llm=llm, prompt=prompt, verbose=verbose)
+        tool_names = [tool.name for tool in tools]
+        output_parser = SalesConvoOutputParser(
+            ai_prefix="", verbose=verbose
+        )
+        sales_agent_with_tools = LLMSingleActionAgent(
+            llm_chain=llm_chain,
+            output_parser=output_parser,
+            stop=["\nObservation:"],
+            allowed_tools=tool_names,
+        )
+
+        sales_agent_executor = CustomAgentExecutor.from_agent_and_tools(
+            agent=sales_agent_with_tools,
+            tools=tools,
+            verbose=verbose,
+            return_intermediate_steps=True,
+        )
+
+        return cls(
+            stage_analyzer_chain=stage_analyzer_chain,
+            sales_conversation_utterance_chain=sales_conversation_utterance_chain,
+            sales_agent_executor=sales_agent_executor,
+            knowledge_base=None,
+            model_name=llm.model,
+            verbose=verbose,
+            use_tools=True,
+        )

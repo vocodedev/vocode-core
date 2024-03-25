@@ -72,12 +72,12 @@ def get_tools(product_catalog):
             description="useful to close a transaction with a customer. You need to include product name and quantity and customer name in the query input.",
         ),
         Tool(
-            name="GetAllContacts",
+            name="get_all_contacts",
             func=get_all_contacts,
             description="Get contacts."
         ),
         Tool(
-            name="CallPhoneNumber",
+            name="call phone number",
             func=call_phone_number,
             description="""calls a phone number as a bot and returns a transcript of the conversation.
     the input to this tool is a pipe separated list of a phone number, a prompt, and the first thing the bot should say.
@@ -92,3 +92,12 @@ def get_tools(product_catalog):
     ]
 
     return tools
+
+def initialize_tool(tool_conf):
+    tool = Tool(
+            name=tool_conf.type,
+            func=tool_conf.name,
+            description=""
+        )
+
+    return tool

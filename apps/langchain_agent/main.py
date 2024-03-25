@@ -26,7 +26,8 @@ if __name__ == "__main__":
     OBJECTIVE = (
         #input("Objective: ")
         #or 
-        "Find a random person in my contacts and tell them a joke"
+        # "Find a random person in my contacts and tell them a joke"
+        "Call Shai at +972545579687 and sell him a pen by asking him questions"
     )
     llm = ChatOpenAI(temperature=0, model_name="gpt-4")  # type: ignore
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)

@@ -37,7 +37,7 @@ class SalesConversationChain(LLMChain):
         llm: ChatLiteLLM,
         verbose: bool = True,
         use_custom_prompt: bool = False,
-        custom_prompt: str = "You are an AI Sales agent, sell me this pencil",
+        custom_prompt: str = "You are an AI Sales agent, Call Shai at +972545579687 and sell him this pen by asking him question",
     ) -> LLMChain:
         """Get the response parser."""
         if use_custom_prompt:

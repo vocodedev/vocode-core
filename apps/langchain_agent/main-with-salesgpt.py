@@ -32,6 +32,7 @@ if __name__ == "__main__":
     )
     # llm = ChatOpenAI(temperature=0, model_name="gpt-4")  # type: ignore
     llm = ChatLiteLLM(temperature=0.2, model_name="gpt-3.5-turbo")
+    
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     # Logging of LLMChains
     verbose = True
@@ -56,4 +57,6 @@ if __name__ == "__main__":
             )
     sales_agent = SalesGPT.from_llm(llm, **sales_agent_kwargs)
     sales_agent.seed_agent()
-    sales_agent.invoke(sales_agent)
+    while True:
+        sales_agent.step()
+    # sales_agent.invoke(sales_agent)
