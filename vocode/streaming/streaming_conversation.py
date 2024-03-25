@@ -50,7 +50,6 @@ from vocode.streaming.agent.utils import (
     openai_get_tokens,
     translate_message,
     vector_db_result_to_openai_chat_message,
-    format_openai_chat_completion_from_transcript,
 )
 from vocode.streaming.constants import (
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
@@ -865,7 +864,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                     if self.conversation.agent.agent_config.language != "en-US":
                         self.conversation.logger.debug(
-                            f"Translating message from English to Hindi {agent_response_message.message.text}"
+                            f"Translating message from English to {self.conversation.agent.agent_config.language} {agent_response_message.message.text}"
                         )
                         translated_message = translate_message(
                             self.conversation.logger,
@@ -898,7 +897,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                 else:
                     self.conversation.logger.debug(
-                        f"SYNTH: WAS NOT CHATGPT AGENT, {agent_response_message.message.text}"
+                        f"SYNTH: WAS NOT COMMAND AGENT, {agent_response_message.message.text}"
                     )
             except asyncio.CancelledError:
                 pass
@@ -1148,8 +1147,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             affirmative_audio_task = asyncio.create_task(
                 self.synthesizer.set_affirmative_audios(self.filler_audio_config)
             )
-            prompt_preamble = self.agent.get_agent_config().prompt_preamble
-            self.logger.debug(f"Prompt Preamble: {prompt_preamble}")
 
             await asyncio.gather(filler_audio_task, affirmative_audio_task)
 

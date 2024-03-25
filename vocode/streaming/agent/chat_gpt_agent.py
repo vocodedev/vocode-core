@@ -19,7 +19,6 @@ from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.actions import FunctionCall, FunctionFragment
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.agent.utils import (
-    format_openai_chat_completion_from_transcript,
     format_openai_chat_messages_from_transcript,
     format_tool_completion_from_transcript,
     collate_response_async,
@@ -29,6 +28,7 @@ from vocode.streaming.agent.utils import (
 )
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import Transcript
+from vocode.streaming.utils.get_qwen_response import format_qwen_chat_completion_from_transcript, get_qwen_response
 from vocode.streaming.vector_db.factory import VectorDBFactory
 
 from telephony_app.models.call_type import CallType
@@ -148,7 +148,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         affirmative_phrase: Optional[str] = "",
     ):
         assert self.transcript is not None
-        formatted_completion = format_openai_chat_completion_from_transcript(
+        formatted_completion = format_qwen_chat_completion_from_transcript(
             self.transcript, self.agent_config.prompt_preamble
         )
 
@@ -595,131 +595,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         if not prompt_buffer or len(prompt_buffer) < len(chat_parameters["prompt"]):
             prompt_buffer = chat_parameters["prompt"]
 
-        async def stream_response(prompt_buffer):
-
-            sentence_buffer = ""
-            self.logger.info(f"Prompt buffer: {prompt_buffer}")
-            if prompt_buffer[-1] == "\n" or prompt_buffer[-1] == " ":
-                prompt_buffer = prompt_buffer[:-1]
-
-            # check if it ends with "I see."
-            if not prompt_buffer.endswith("I see."):
-                # add in the last turn and the affirmative phrase
-                prompt_buffer += f"\n<|im_start|>assistant\nI see."
-            async with aiohttp.ClientSession() as session:
-                base_url = getenv("AI_API_BASE")
-                data = {
-                    "model": chat_parameters["model"],
-                    "prompt": prompt_buffer,
-                    "stream": True,
-                    "stop": ["?", "SYSTEM"],
-                    "max_tokens": chat_parameters.get("max_tokens", 120),
-                    "include_stop_str_in_output": True,
-                }
-
-                async with session.post(
-                    f"{base_url}/completions", headers=HEADERS, json=data
-                ) as response:
-                    if response.status == 200:
-                        last_message = ""
-                        async for chunk in response.content:
-                            # Parse each line of the response content
-                            if chunk.startswith(b"data: {"):
-                                # Extract JSON from the current chunk
-                                first_brace = chunk.find(b"{")
-                                last_brace = chunk.rfind(b"}")
-                                json_str = chunk[first_brace : last_brace + 1].decode(
-                                    "utf-8"
-                                )
-                                try:
-                                    completion_data = json.loads(json_str)
-                                    if (
-                                        "choices" in completion_data
-                                        and completion_data["choices"]
-                                    ):
-                                        for choice in completion_data["choices"]:
-                                            if "text" in choice:
-                                                completion_text = choice["text"]
-                                                completion_text = (
-                                                    completion_text.replace(
-                                                        "SYSTEM", ""
-                                                    )
-                                                )
-                                                sentence_buffer += completion_text
-                                                last_message += completion_text
-                                                # Find the earliest occurrence of punctuation and yield up to that punctuation
-                                                punctuation_indices = [
-                                                    sentence_buffer.find(p)
-                                                    for p in [". ", "!", "?"]
-                                                ]
-                                                # Filter out -1's which indicate no occurrence of the punctuation
-                                                punctuation_indices = [
-                                                    p
-                                                    for p in punctuation_indices
-                                                    if p != -1
-                                                ]
-                                                if punctuation_indices:
-                                                    earliest_punctuation_index = min(
-                                                        punctuation_indices
-                                                    )
-                                                    # Check if there are more than two words before the punctuation
-                                                    if (
-                                                        len(
-                                                            sentence_buffer[
-                                                                :earliest_punctuation_index
-                                                            ]
-                                                            .strip()
-                                                            .split(" ")
-                                                        )
-                                                        > 2
-                                                    ):
-                                                        if stream_output:
-                                                            yield sentence_buffer[
-                                                                : earliest_punctuation_index
-                                                                + 1
-                                                            ], False
-                                                        sentence_buffer = sentence_buffer[
-                                                            earliest_punctuation_index
-                                                            + 1 :
-                                                        ].lstrip()
-                                                if (
-                                                    (
-                                                        "finish_reason" in choice
-                                                        and choice["finish_reason"]
-                                                        == "stop"
-                                                    )
-                                                    or "?" in completion_text
-                                                    or "?" in sentence_buffer
-                                                ):
-                                                    if stream_output:
-                                                        yield sentence_buffer, True
-                                                    sentence_buffer = ""
-                                                    return
-                                except json.JSONDecodeError:
-                                    self.logger.error("Failed to decode JSON response.")
-                                    continue
-                            else:
-                                continue
-
-                        # If there's any remaining text in the buffer, yield it
-                        if sentence_buffer and len(sentence_buffer.strip()) > 0:
-                            if stream_output:
-                                yield sentence_buffer, False
-
-                        # Final yield to indicate the end of the stream
-                        # yield "", False
-                        # log what we sent out
-                        # self.logger.info(f"Sent out: {last_message}")
-                    else:
-                        self.logger.error(
-                            f"Error while streaming from OpenAI: {str(response)}"
-                        )
-                        return
-
         # Call the stream_response coroutine and yield from it
         count = 0
         yielded = ""
-        async for item in stream_response(prompt_buffer):
+        async for item in get_qwen_response(prompt_buffer, self.logger):
             latest_agent_response += item[0]
             yield item
             yielded += item[0]
@@ -728,7 +607,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 break
         while count == 0 or len(yielded) == 0:
             self.logger.error(f"No response from the agent, trying again: {count}")
-            async for item in stream_response(prompt_buffer):
+            async for item in get_qwen_response(prompt_buffer, self.logger):
                 latest_agent_response += item[0]
                 count += 1
                 yield item

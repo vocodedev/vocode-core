@@ -343,7 +343,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         modified_message = re.sub(
             r"\b\d+-\d+\b",
             remove_dashes,
-            message.text.replace("-", "...").replace(" (", "").replace(") ", ""),
+            message.text.replace("-", " ").replace(" (", "").replace(") ", ""),
         )
 
         modified_message = re.sub(r"\b(\d{5,})\b", format_digits, modified_message)

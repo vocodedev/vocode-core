@@ -56,6 +56,8 @@ if TYPE_CHECKING:
 tracer = trace.get_tracer(__name__)
 AGENT_TRACE_NAME = "agent"
 
+USE_STREAMING = False
+
 
 class AgentInputType(str, Enum):
     BASE = "agent_input_base"
@@ -220,36 +222,23 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         if not transcription:
             self.logger.debug("No transcription, skipping response generation")
             return False
-        if affirmative_phrase:
-            response = await self.generate_completion(
-                human_input=transcription.message,
+
+        function_call = None
+        if USE_STREAMING:
+            function_call = await self.respond_with_functions_streaming(
+                transcription=transcription,
                 affirmative_phrase=affirmative_phrase,
                 conversation_id=conversation_id,
-                is_interrupt=transcription.is_interrupt,
+                agent_span_first=agent_span_first,
+                agent_input=agent_input
             )
         else:
-            response = await self.generate_completion(
-                human_input=transcription.message,
-                affirmative_phrase=None,
+            function_call = await self.respond_with_functions(
+                transcription=transcription,
+                affirmative_phrase=affirmative_phrase,
                 conversation_id=conversation_id,
-                is_interrupt=transcription.is_interrupt,
-            )
-        function_call = None
-
-        if isinstance(response, FunctionCall):
-            function_call = response
-            agent_span_first.end()
-        if isinstance(response[0], str):
-            self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=response[0])),
-                is_interruptible=False,
-                agent_response_tracker=agent_input.agent_response_tracker,
-            )
-        else:
-            self.logger.debug(
-                "No response generated: %s of type %s",
-                response[0],
-                type(response),
+                agent_span_first=agent_span_first,
+                agent_input=agent_input
             )
 
         await asyncio.sleep(0)
@@ -319,7 +308,8 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     self.agent_config.pending_action = None
                     # resetting pending action
                     self.logger.debug("Resetting pending action")
-                return
+                if not USE_STREAMING:
+                    return
             else:
                 raise ValueError("Invalid AgentInput type")
 
@@ -333,7 +323,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             ).affirmative_phrase
             self.logger.debug("Responding to transcription")
             should_stop = False
-            if "transcription" not in locals() or transcription is None:
+            if not USE_STREAMING and (("transcription" not in locals()) or (transcription is None)):
                 # transcription = Transcription(
                 #     message="Is the action completed?", confidence=1.0, is_final=True
                 # )
@@ -482,3 +472,80 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         stream_output: bool = True,
     ) -> str:
         raise NotImplementedError
+    
+    def generate_completion_streaming(
+        self,
+        human_input,
+        affirmative_phrase: Optional[str],
+        conversation_id: str,
+        is_interrupt: bool = False,
+        stream_output: bool = True,
+    ) -> AsyncGenerator[
+        Tuple[Union[str, FunctionCall], bool], None
+    ]:  # tuple of the content and whether it is interruptible
+        raise NotImplementedError
+
+    async def respond_with_functions(
+        self,
+        transcription: Transcription,
+        affirmative_phrase: Optional[str],
+        conversation_id: str,
+        agent_span_first,
+        agent_input: AgentInput,
+    ) -> None:
+        function_call = None
+        response = await self.generate_completion(
+            human_input=transcription.message,
+            affirmative_phrase=affirmative_phrase if affirmative_phrase else None,
+            conversation_id=conversation_id,
+            is_interrupt=transcription.is_interrupt,
+        ) 
+
+        if isinstance(response, FunctionCall):
+            function_call = response
+            agent_span_first.end()
+        if isinstance(response[0], str):
+            self.produce_interruptible_agent_response_event_nonblocking(
+                AgentResponseMessage(message=BaseMessage(text=response[0])),
+                is_interruptible=False,
+                agent_response_tracker=agent_input.agent_response_tracker,
+            )
+        else:
+            self.logger.debug(
+                "No response generated: %s of type %s",
+                response[0],
+                type(response),
+            )
+        return function_call
+
+    async def respond_with_functions_streaming(
+        self,
+        transcription: Transcription,
+        affirmative_phrase: Optional[str],
+        conversation_id: str,
+        agent_span_first,
+        agent_input: AgentInput,
+    ) -> Optional[FunctionCall]:
+        function_call = None
+        responses = self.generate_completion_streaming(
+            human_input=transcription.message,
+            affirmative_phrase=affirmative_phrase if affirmative_phrase else None,
+            conversation_id=conversation_id,
+            is_interrupt=transcription.is_interrupt,
+        ) 
+        is_first_response = True
+        async for response, is_interruptible in responses:
+            self.logger.debug(f"Generated response: {response}")
+            if isinstance(response, FunctionCall):
+                function_call = response
+                continue
+            if is_first_response:
+                agent_span_first.end()
+                is_first_response = False
+            self.produce_interruptible_agent_response_event_nonblocking(
+                AgentResponseMessage(message=BaseMessage(text=response)),
+                is_interruptible=self.agent_config.allow_agent_to_be_cut_off
+                and is_interruptible,
+                agent_response_tracker=agent_input.agent_response_tracker,
+            )
+        return function_call
