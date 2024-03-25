@@ -1,0 +1,40 @@
+salesgpt.logger 2024-03-25 15:03:37,067 - INFO - Running from_llm: --- 0.004001140594482422 seconds ---
+salesgpt.logger 2024-03-25 15:03:37,069 - INFO - Running from_llm: --- 0.0009975433349609375 seconds ---
+salesgpt.logger 2024-03-25 15:03:37,070 - INFO - Running from_llm: --- 0.0 seconds ---
+langchain.text_splitter 2024-03-25 15:03:37,071 - WARNING - Created a chunk of size 940, which is longer than the specified 10
+langchain.text_splitter 2024-03-25 15:03:37,072 - WARNING - Created a chunk of size 844, which is longer than the specified 10
+langchain.text_splitter 2024-03-25 15:03:37,073 - WARNING - Created a chunk of size 837, which is longer than the specified 10
+chromadb.telemetry.product.posthog 2024-03-25 15:03:40,693 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+httpx 2024-03-25 15:03:42,966 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+salesgpt.logger 2024-03-25 15:04:23,500 - INFO - Running from_llm: --- 46.4369375705719 seconds ---
+salesgpt.logger 2024-03-25 15:04:26,300 - INFO - Running seed_agent: --- 0.0 seconds ---
+salesgpt.logger 2024-03-25 15:09:14,209 - INFO - Running from_llm: --- 0.0029997825622558594 seconds ---
+salesgpt.logger 2024-03-25 15:09:14,214 - INFO - Running from_llm: --- 0.004003047943115234 seconds ---
+salesgpt.logger 2024-03-25 15:09:14,216 - INFO - Running from_llm: --- 0.0009987354278564453 seconds ---
+langchain.text_splitter 2024-03-25 15:09:14,222 - WARNING - Created a chunk of size 940, which is longer than the specified 10
+langchain.text_splitter 2024-03-25 15:09:14,224 - WARNING - Created a chunk of size 844, which is longer than the specified 10
+langchain.text_splitter 2024-03-25 15:09:14,226 - WARNING - Created a chunk of size 837, which is longer than the specified 10
+chromadb.telemetry.product.posthog 2024-03-25 15:09:16,514 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+httpx 2024-03-25 15:09:18,334 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+salesgpt.logger 2024-03-25 15:09:22,655 - INFO - Running from_llm: --- 8.448640584945679 seconds ---
+salesgpt.logger 2024-03-25 15:09:25,156 - INFO - Running seed_agent: --- 0.0 seconds ---
+salesgpt.logger 2024-03-25 15:14:36,564 - INFO - Running from_llm: --- 0.0020313262939453125 seconds ---
+salesgpt.logger 2024-03-25 15:14:36,565 - INFO - Running from_llm: --- 0.0 seconds ---
+salesgpt.logger 2024-03-25 15:14:36,566 - INFO - Running from_llm: --- 0.0 seconds ---
+langchain.text_splitter 2024-03-25 15:14:36,567 - WARNING - Created a chunk of size 940, which is longer than the specified 10
+langchain.text_splitter 2024-03-25 15:14:36,567 - WARNING - Created a chunk of size 844, which is longer than the specified 10
+langchain.text_splitter 2024-03-25 15:14:36,567 - WARNING - Created a chunk of size 837, which is longer than the specified 10
+chromadb.telemetry.product.posthog 2024-03-25 15:14:38,631 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+httpx 2024-03-25 15:14:40,493 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+salesgpt.logger 2024-03-25 15:14:40,791 - INFO - Running from_llm: --- 4.22979736328125 seconds ---
+salesgpt.logger 2024-03-25 15:14:42,503 - INFO - Running seed_agent: --- 0.0 seconds ---
+salesgpt.logger 2024-03-25 15:19:00,633 - INFO - Running from_llm: --- 0.001997709274291992 seconds ---
+salesgpt.logger 2024-03-25 15:19:00,634 - INFO - Running from_llm: --- 0.0 seconds ---
+salesgpt.logger 2024-03-25 15:19:00,635 - INFO - Running from_llm: --- 0.0 seconds ---
+langchain.text_splitter 2024-03-25 15:19:00,636 - WARNING - Created a chunk of size 940, which is longer than the specified 10
+langchain.text_splitter 2024-03-25 15:19:00,636 - WARNING - Created a chunk of size 844, which is longer than the specified 10
+langchain.text_splitter 2024-03-25 15:19:00,637 - WARNING - Created a chunk of size 837, which is longer than the specified 10
+chromadb.telemetry.product.posthog 2024-03-25 15:19:02,835 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+httpx 2024-03-25 15:19:03,839 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+salesgpt.logger 2024-03-25 15:19:04,151 - INFO - Running from_llm: --- 3.5191752910614014 seconds ---
+salesgpt.logger 2024-03-25 15:19:04,151 - INFO - Running seed_agent: --- 0.0 seconds ---

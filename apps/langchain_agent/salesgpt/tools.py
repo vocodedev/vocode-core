@@ -8,6 +8,7 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from tools.vocode import call_phone_number
+from tools.contacts import get_all_contacts
 import logging
 import asyncio
 import os
@@ -69,6 +70,11 @@ def get_tools(product_catalog):
             name="GeneratePaymentLink",
             func=generate_stripe_payment_link,
             description="useful to close a transaction with a customer. You need to include product name and quantity and customer name in the query input.",
+        ),
+        Tool(
+            name="GetAllContacts",
+            func=get_all_contacts,
+            description="Get contacts."
         ),
         Tool(
             name="CallPhoneNumber",

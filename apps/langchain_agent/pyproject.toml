@@ -16,6 +16,8 @@ vocode = { git = "https://github.com/AgentsmithsGuild/vocode-python.git", tag = 
 
 google-cloud-texttospeech = "^2.14.1"
 
+langchain-community="^0.0.16"
+
 
 [build-system]
 requires = ["poetry-core"]
