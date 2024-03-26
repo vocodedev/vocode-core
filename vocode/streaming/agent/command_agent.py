@@ -441,10 +441,16 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
             # self.logger.info(f"Role was: {messageArray[-1]}")
             # tool_chat = self.prepare_chat_for_tool_check(latest_agent_response)
             # self.logger.info(f"tool_chat was {prompt_buffer}")
+            async def get_qwen_response_future():
+                response = ''
+                qwen_prompt_buffer = format_qwen_chat_completion_from_transcript(self.transcript, self.agent_config.prompt_preamble)
+                async for response_chunk in get_qwen_response(prompt_buffer=qwen_prompt_buffer, logger=self.logger):
+                    response += response_chunk[0] + " "
+                    if response_chunk[1]:
+                        break
+                return response
 
-            qwen_prompt_buffer = format_qwen_chat_completion_from_transcript(self.transcript, self.agent_config.prompt_preamble)
-            qwen_response_future = get_qwen_response(prompt_buffer=qwen_prompt_buffer, logger=self.logger)
-            commandr_response = await get_commandr_response(prompt_buffer=commandr_prompt_buffer, logger=self.logger)
+            commandr_response, qwen_response = await asyncio.gather(get_commandr_response(prompt_buffer=commandr_prompt_buffer, logger=self.logger), get_qwen_response_future())
 
             if not commandr_response.startswith("Action: ```json"):
                 self.logger.error(f"ACTION RESULT DID NOT LOOK RIGHT: {commandr_response}")
@@ -482,14 +488,8 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                         )
                         self.logger.info(json.dumps(tool_params))
                         if self.agent_config.model_name.lower() == QWEN_MODEL_NAME.lower():
-                            message = ""
-                            async for message_chunk in qwen_response_future:
-                                message += message_chunk[0] + " "
-                                if message_chunk[1]:
-                                    break
-                            #TODO? message = message.replace("<|END_OF_TURN_TOKEN|>")
-                            self.logger.info(f"used Qwen for response: {message}")
-                            self.tool_message = message.strip()
+                            self.logger.info(f"used Qwen for response: {qwen_response}")
+                            self.tool_message = qwen_response.strip()
                         elif "message" in tool_params:
                             self.tool_message = tool_params["message"]
                         return None
