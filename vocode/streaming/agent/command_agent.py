@@ -441,15 +441,19 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
             # self.logger.info(f"Role was: {messageArray[-1]}")
             # tool_chat = self.prepare_chat_for_tool_check(latest_agent_response)
             # self.logger.info(f"tool_chat was {prompt_buffer}")
+            use_qwen = self.agent_config.model_name.lower() == QWEN_MODEL_NAME.lower()
+
             async def get_qwen_response_future():
                 response = ''
+                if use_qwen:
+                    return response
                 qwen_prompt_buffer = format_qwen_chat_completion_from_transcript(self.transcript, self.agent_config.prompt_preamble)
                 async for response_chunk in get_qwen_response(prompt_buffer=qwen_prompt_buffer, logger=self.logger):
                     response += response_chunk[0] + " "
                     if response_chunk[1]:
                         break
                 return response
-
+            
             commandr_response, qwen_response = await asyncio.gather(get_commandr_response(prompt_buffer=commandr_prompt_buffer, logger=self.logger), get_qwen_response_future())
 
             if not commandr_response.startswith("Action: ```json"):
@@ -487,7 +491,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                             f"No tool, model wants to directly respond: {tool_params}"
                         )
                         self.logger.info(json.dumps(tool_params))
-                        if self.agent_config.model_name.lower() == QWEN_MODEL_NAME.lower():
+                        if use_qwen:
                             self.logger.info(f"used Qwen for response: {qwen_response}")
                             self.tool_message = qwen_response.strip()
                         elif "message" in tool_params:
