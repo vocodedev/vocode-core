@@ -118,8 +118,6 @@ class CallsRouter(BaseRouter):
 
     async def connect_call(self, websocket: WebSocket, id: str):
         try:
-            self.active_calls += 1
-            self.calls_ran += 1
             self.logger.info("Opening Phone WS for chat {}".format(id))
             await websocket.accept()
             self.logger.info("Phone WS connection opened for chat {}".format(id))
@@ -127,7 +125,8 @@ class CallsRouter(BaseRouter):
             self.logger.info(f"Got call config for {id}")
             if not call_config:
                 raise HTTPException(status_code=400, detail="No active phone call")
-
+            self.active_calls += 1
+            self.calls_ran += 1
             call = self._from_call_config(
                 base_url=self.base_url,
                 call_config=call_config,
