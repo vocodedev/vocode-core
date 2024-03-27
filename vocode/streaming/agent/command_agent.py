@@ -445,7 +445,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
 
             async def get_qwen_response_future():
                 response = ''
-                if use_qwen:
+                if not use_qwen:
                     return response
                 qwen_prompt_buffer = format_qwen_chat_completion_from_transcript(self.transcript, self.agent_config.prompt_preamble)
                 async for response_chunk in get_qwen_response(prompt_buffer=qwen_prompt_buffer, logger=self.logger):

@@ -722,9 +722,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 for digit in digits
             ) > 1:
                 return
-            assert self.conversation.filler_audio_worker is not None
             self.conversation.logger.debug("Sending filler audio")
-            if self.conversation.synthesizer.filler_audios:
+            if self.conversation.synthesizer.filler_audios and self.conversation.filler_audio_worker is not None:
                 filler_audio = random.choice(
                     self.conversation.synthesizer.filler_audios
                 )
@@ -796,9 +795,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 > 1
             ):
                 return
-            assert self.conversation.filler_audio_worker is not None
             self.conversation.logger.debug("Sending affirmative audio")
-            if self.conversation.synthesizer.affirmative_audios:
+            if self.conversation.synthesizer.affirmative_audios and self.conversation.filler_audio_worker is not None:
                 affirmative_audio = None
                 for audio in self.conversation.synthesizer.affirmative_audios:
                     if audio.message.text == phrase:
@@ -1079,7 +1077,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         self.filler_audio_worker = None
         self.filler_audio_config: Optional[FillerAudioConfig] = None
-        if self.agent.get_agent_config().send_filler_audio:
+        if self.agent.get_agent_config().use_filler_words:
             self.filler_audio_worker = self.FillerAudioWorker(
                 input_queue=self.filler_audio_queue, conversation=self
             )
@@ -1132,15 +1130,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if not is_ready:
             raise Exception("Transcriber startup failed")
 
-        if self.agent.get_agent_config().send_filler_audio:
-            if not isinstance(
-                self.agent.get_agent_config().send_filler_audio, FillerAudioConfig
-            ):
-                self.filler_audio_config = FillerAudioConfig()
-            else:
-                self.filler_audio_config = typing.cast(
-                    FillerAudioConfig, self.agent.get_agent_config().send_filler_audio
-                )
+        if self.agent.get_agent_config().use_filler_words:
+            self.filler_audio_config = FillerAudioConfig()
             filler_audio_task = asyncio.create_task(
                 self.synthesizer.set_filler_audios(self.filler_audio_config)
             )
