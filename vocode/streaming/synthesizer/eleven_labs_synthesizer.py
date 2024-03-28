@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import time
 from typing import Any, AsyncGenerator, Optional, Tuple, Union
 import wave
 import aiohttp
@@ -48,6 +47,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
         self.experimental_streaming = synthesizer_config.experimental_streaming
+        self.logger = logger
 
     async def experimental_streaming_output_generator(
         self,
@@ -128,15 +128,41 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
         session = self.aiohttp_session
 
-        response = await session.request(
-            "POST",
-            url,
-            json=body,
-            headers=headers,
-            timeout=aiohttp.ClientTimeout(total=15),
-        )
-        if not response.ok:
-            raise Exception(f"ElevenLabs API returned {response.status} status code")
+        max_attempts = 3
+        delay = 0.5
+        backoff = 1.8
+
+        attempts = 0
+        response = None
+        while attempts < max_attempts:
+            try:
+                response = await session.request(
+                    "POST",
+                    url,
+                    json=body,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=9),
+                )
+                if response.ok:
+                    break
+                elif response.status == 429:
+                    self.logger.warning("ElevenLabs' rate limit exceeded. Retrying after delay...")
+                    await asyncio.sleep(delay)
+                    delay = delay * backoff  # Increase delay for next attempt
+                    attempts += 1
+                else:
+                    Exception(f"ElevenLabs API returned {response.status} status code")
+            except asyncio.TimeoutError:
+                self.logger.warning("ElevenLabs timed out. Retrying after delay...")
+                await asyncio.sleep(delay)
+                delay = delay * backoff  # Increase delay for next attempt
+                attempts += 1
+            except Exception as e:
+                raise e
+
+        if not response or not response.ok:
+            raise Exception(f"Failed to retrieve response from ElevenLabs after {attempts} tries for '{message.text}'.")
+
         if self.experimental_streaming:
             return SynthesisResult(
                 self.experimental_streaming_output_generator(
@@ -152,6 +178,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
             convert_span = tracer.start_span(
                 f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.convert",
             )
+            # Decodes MP3 into WAV
             output_bytes_io = decode_mp3(audio_data)
 
             result = self.create_synthesis_result_from_wav(
