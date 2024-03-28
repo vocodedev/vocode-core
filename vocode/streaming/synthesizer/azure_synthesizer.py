@@ -320,8 +320,11 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 r"(\d)-(\d)", r"\1\2", digits
             )  # Remove dashes between two numbers
 
-            if len(digits) <= 4:
-                return digits
+            if len(digits) <= 7:
+                formatted = ""
+                for digit in digits:
+                    formatted += digit + "... "
+                return formatted
 
             first_digit = ""
             if len(digits) % 2 != 0:
