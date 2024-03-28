@@ -20,20 +20,27 @@ class VectorDB:
             self.aiohttp_session = aiohttp.ClientSession()
             self.should_close_session_on_tear_down = True
 
+        if openai.api_type and "azure" in openai.api_type:
+            self.openai_async_client = openai.AsyncAzureOpenAI(
+                azure_endpoint = os.getenv("AZURE_OPENAI_API_BASE"),
+                api_key = os.getenv("AZURE_OPENAI_API_KEY"),
+                api_version = "2023-05-15"
+            )
+        else:
+            self.openai_async_client = openai.AsyncOpenAI(
+                api_key=os.getenv("OPENAI_API_KEY")
+            )
+
     async def create_openai_embedding(
         self, text, model=DEFAULT_OPENAI_EMBEDDING_MODEL
     ) -> List[float]:
         params = {
             "input": text,
+            "model": "text-embedding-ada-002",
         }
 
-        engine = os.getenv("AZURE_OPENAI_TEXT_EMBEDDING_ENGINE")
-        if engine:
-            params["engine"] = engine
-        else:
-            params["model"] = model
-
-        return list((await openai.Embedding.acreate(**params))["data"][0]["embedding"])
+        response = await self.openai_async_client.embeddings.create(**params)
+        return list(response.model_dump_json(indent=2))
 
     async def add_texts(
         self,

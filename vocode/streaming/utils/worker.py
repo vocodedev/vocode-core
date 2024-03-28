@@ -119,6 +119,9 @@ class InterruptibleEvent(Generic[Payload]):
         self.is_interruptible = is_interruptible
         self.payload = payload
 
+    def __str__(self) -> str:
+        return f"InterruptibleEvent(payload=({self.payload}))"
+
     def interrupt(self) -> bool:
         """
         Returns True if the event was interruptible and is now interrupted.

@@ -651,7 +651,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 interruptible_event = self.interruptible_events.get_nowait()
                 if not interruptible_event.is_interrupted():
                     if interruptible_event.interrupt():
-                        self.logger.debug("Interrupting event")
+                        self.logger.debug(f"Interrupting event: {interruptible_event}")
                         num_interrupts += 1
             except queue.Empty:
                 break

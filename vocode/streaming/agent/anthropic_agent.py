@@ -1,5 +1,5 @@
 from typing import AsyncGenerator, Optional, Tuple
-from langchain import ConversationChain
+from langchain.chains import ConversationChain
 import logging
 
 from typing import Optional, Tuple
@@ -7,7 +7,6 @@ from vocode.streaming.agent.base_agent import RespondAgent
 
 from vocode.streaming.agent.utils import get_sentence_from_buffer
 
-from langchain import ConversationChain
 from langchain.schema import ChatMessage, AIMessage, HumanMessage
 from langchain.chat_models import ChatAnthropic
 import logging

@@ -13,7 +13,6 @@ from typing import (
     Union,
 )
 
-from openai.openai_object import OpenAIObject
 from vocode.streaming.models.actions import FunctionCall, FunctionFragment
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import (
@@ -70,29 +69,28 @@ async def collate_response_async(
     if function_name_buffer and get_functions:
         yield FunctionCall(name=function_name_buffer, arguments=function_args_buffer)
 
-
 async def openai_get_tokens(gen) -> AsyncGenerator[Union[str, FunctionFragment], None]:
     async for event in gen:
-        choices = event.get("choices", [])
+        choices = event.choices or []
         if len(choices) == 0:
             break
         choice = choices[0]
         if choice.finish_reason:
             break
-        delta = choice.get("delta", {})
-        if "text" in delta and delta["text"] is not None:
-            token = delta["text"]
+        delta = choice.delta or {}
+        if hasattr(delta, "text") and getattr(delta, "text"):
+            token = delta.text
             yield token
-        if "content" in delta and delta["content"] is not None:
-            token = delta["content"]
+        if hasattr(delta, "content") and getattr(delta, "content"):
+            token = delta.content
             yield token
-        elif "function_call" in delta and delta["function_call"] is not None:
+        elif hasattr(delta, "tool_calls") and getattr(delta, "tool_calls"):
             yield FunctionFragment(
-                name=delta["function_call"]["name"]
-                if "name" in delta["function_call"]
+                name=delta.tool_calls[0].function.name
+                if (hasattr(delta.tool_calls[0].function, "name") and getattr(delta.tool_calls[0].function, "name"))
                 else "",
-                arguments=delta["function_call"]["arguments"]
-                if "arguments" in delta["function_call"]
+                arguments=delta.tool_calls[0].function.arguments
+                if (hasattr(delta.tool_calls[0].function, "arguments") and getattr(delta.tool_calls[0].function, "arguments"))
                 else "",
             )
 

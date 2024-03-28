@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import logging
 from typing import Optional, Tuple
-from langchain import ConversationChain
+from langchain.chains import ConversationChain
 from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.agent import ChatVertexAIAgentConfig
 from langchain.chat_models import ChatVertexAI

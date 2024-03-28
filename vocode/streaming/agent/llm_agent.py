@@ -1,7 +1,8 @@
+import os
 import re
 from typing import AsyncGenerator, Optional, Tuple
 
-from langchain import OpenAI
+from langchain.llms.openai import OpenAI
 from typing import Generator
 import logging
 
@@ -51,6 +52,16 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
             max_tokens=self.agent_config.max_tokens,
             openai_api_key=openai_api_key,
         )
+        if "azure" in self.agent_config.model_name:
+            self.openai_async_client = openai.AsyncAzureOpenAI(
+                azure_endpoint = os.getenv("AZURE_OPENAI_API_BASE"),
+                api_key = os.getenv("AZURE_OPENAI_API_KEY"),
+                api_version = "2023-05-15"
+            )
+        else:
+            self.openai_async_client = openai.AsyncOpenAI(
+                api_key=os.getenv("OPENAI_API_KEY")
+            )
         self.stop_tokens = [f"{recipient}:"]
         self.first_response = (
             self.llm(
@@ -102,13 +113,13 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
         return BaseMessage(text=response), False
 
     async def _stream_sentences(self, prompt):
-        stream = await openai.Completion.acreate(
-            prompt=prompt,
-            max_tokens=self.agent_config.max_tokens,
-            temperature=self.agent_config.temperature,
+        stream = self.openai_async_client.completions.create(
             model=self.agent_config.model_name,
+            prompt=prompt,
+            temperature=self.agent_config.temperature,
+            max_tokens=self.agent_config.max_tokens,
             stop=self.stop_tokens,
-            stream=True,
+            stream=True
         )
         async for sentence in collate_response_async(
             openai_get_tokens(gen=stream),

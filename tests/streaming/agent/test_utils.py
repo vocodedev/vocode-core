@@ -1,5 +1,6 @@
+import asyncio
+import time
 from typing import Any, Dict, List, Optional, Union
-from openai.openai_object import OpenAIObject
 from pydantic import BaseModel
 from vocode.streaming.models.actions import (
     ActionConfig,
@@ -21,203 +22,188 @@ from vocode.streaming.models.transcript import (
     Transcript,
 )
 
+from openai.types.chat.chat_completion_chunk import Choice, ChatCompletionChunk, ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
 
-async def _agen_from_list(l):
+
+async def _agen_from_list(l: List[ChatCompletionChunk]):
     for item in l:
+        # add the created time for the chunk here
+        item.created = int(time.time())
+        await asyncio.sleep(0.15)
         yield item
 
 
-def create_chatgpt_openai_object(
-    delta: Dict[str, str], finish_reason: Optional[Any] = None
-):
-    return OpenAIObject.construct_from(
-        {"choices": [{"delta": delta, "finish_reason": finish_reason}]}
-    )
-
-
 class StreamOpenAIResponseTestCase(BaseModel):
-    openai_objects: List[OpenAIObject]
+    input_stream: List[ChatCompletionChunk]
     expected_sentences: List[Union[str, FunctionCall]]
     get_functions: bool
 
 
-OPENAI_OBJECTS = [
+TEST_STREAM =[
     [
-        {"delta": {"role": "assistant"}, "finish_reason": None},
-        {"delta": {"content": "Hello"}, "finish_reason": None},
-        {"delta": {"content": "!"}, "finish_reason": None},
-        {"delta": {"content": " How"}, "finish_reason": None},
-        {"delta": {"content": " are"}, "finish_reason": None},
-        {"delta": {"content": " you"}, "finish_reason": None},
-        {"delta": {"content": " doing"}, "finish_reason": None},
-        {"delta": {"content": " today"}, "finish_reason": None},
-        {"delta": {"content": "?"}, "finish_reason": None},
-        {"delta": {}, "finish_reason": "stop"},
+        ChatCompletionChunk(id='test_stream_1', choices=[Choice(delta=ChoiceDelta(role="assistant"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_1', choices=[Choice(delta=ChoiceDelta(content="Hello"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_1', choices=[Choice(delta=ChoiceDelta(content="!"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_1', choices=[Choice(delta=ChoiceDelta(content=" How"),index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_1', choices=[Choice(delta=ChoiceDelta(content=" are"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_1', choices=[Choice(delta=ChoiceDelta(content=" you"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_1', choices=[Choice(delta=ChoiceDelta(content=" doing"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_1', choices=[Choice(delta=ChoiceDelta(content=" today"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_1', choices=[Choice(delta=ChoiceDelta(content="?"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_1', choices=[Choice(delta=ChoiceDelta(), index=0, finish_reason="stop")], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
     ],
     [
-        {"delta": {"role": "assistant"}, "finish_reason": None},
-        {"delta": {"content": "Hello"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {"content": " What"}, "finish_reason": None},
-        {"delta": {"content": " do"}, "finish_reason": None},
-        {"delta": {"content": " you"}, "finish_reason": None},
-        {"delta": {"content": " want"}, "finish_reason": None},
-        {"delta": {"content": " to"}, "finish_reason": None},
-        {"delta": {"content": " talk"}, "finish_reason": None},
-        {"delta": {"content": " about"}, "finish_reason": None},
-        {"delta": {"content": "?"}, "finish_reason": None},
-        {"delta": {}, "finish_reason": "stop"},
+        ChatCompletionChunk(id='test_stream_2', choices=[Choice(delta=ChoiceDelta(role="assistant"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_2', choices=[Choice(delta=ChoiceDelta(content="Hello"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_2', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_2', choices=[Choice(delta=ChoiceDelta(content=" What"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_2', choices=[Choice(delta=ChoiceDelta(content=" do"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_2', choices=[Choice(delta=ChoiceDelta(content=" you"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_2', choices=[Choice(delta=ChoiceDelta(content=" want"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_2', choices=[Choice(delta=ChoiceDelta(content=" to"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_2', choices=[Choice(delta=ChoiceDelta(content=" talk"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_2', choices=[Choice(delta=ChoiceDelta(content=" about"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_2', choices=[Choice(delta=ChoiceDelta(content="?"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_2', choices=[Choice(delta=ChoiceDelta(), index=0, finish_reason="stop")], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
     ],
     [
-        {"delta": {"role": "assistant"}, "finish_reason": None},
-        {"delta": {"content": "This"}, "finish_reason": None},
-        {"delta": {"content": " is"}, "finish_reason": None},
-        {"delta": {"content": " a"}, "finish_reason": None},
-        {"delta": {"content": " test"}, "finish_reason": None},
-        {"delta": {"content": " sentence."}, "finish_reason": None},
-        {"delta": {"content": " Want"}, "finish_reason": None},
-        {"delta": {"content": " to"}, "finish_reason": None},
-        {"delta": {"content": " hear"}, "finish_reason": None},
-        {"delta": {"content": " a"}, "finish_reason": None},
-        {"delta": {"content": " joke"}, "finish_reason": None},
-        {"delta": {"content": "?"}, "finish_reason": None},
-        {"delta": {}, "finish_reason": "stop"},
+        ChatCompletionChunk(id='test_stream_3', choices=[Choice(delta=ChoiceDelta(role="assistant"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_3', choices=[Choice(delta=ChoiceDelta(content="This"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_3', choices=[Choice(delta=ChoiceDelta(content=" is"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_3', choices=[Choice(delta=ChoiceDelta(content=" a"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_3', choices=[Choice(delta=ChoiceDelta(content=" test"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_3', choices=[Choice(delta=ChoiceDelta(content=" sentence."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_3', choices=[Choice(delta=ChoiceDelta(content=" Want"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_3', choices=[Choice(delta=ChoiceDelta(content=" to"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_3', choices=[Choice(delta=ChoiceDelta(content=" hear"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_3', choices=[Choice(delta=ChoiceDelta(content=" a"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_3', choices=[Choice(delta=ChoiceDelta(content=" joke"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_3', choices=[Choice(delta=ChoiceDelta(content="?"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_3', choices=[Choice(delta=ChoiceDelta(), index=0, finish_reason="stop")], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
     ],
     [
-        {"delta": {"role": "assistant"}, "finish_reason": None},
-        {"delta": {"content": "Sure"}, "finish_reason": None},
-        {"delta": {"content": ","}, "finish_reason": None},
-        {"delta": {"content": " here"}, "finish_reason": None},
-        {"delta": {"content": " are"}, "finish_reason": None},
-        {"delta": {"content": " three"}, "finish_reason": None},
-        {"delta": {"content": " possible"}, "finish_reason": None},
-        {"delta": {"content": " things"}, "finish_reason": None},
-        {"delta": {"content": " we"}, "finish_reason": None},
-        {"delta": {"content": " could"}, "finish_reason": None},
-        {"delta": {"content": " talk"}, "finish_reason": None},
-        {"delta": {"content": " about"}, "finish_reason": None},
-        {"delta": {"content": ":\n"}, "finish_reason": None},
-        {"delta": {"content": " \n"}, "finish_reason": None},
-        {"delta": {"content": "1"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {"content": " Goals"}, "finish_reason": None},
-        {"delta": {"content": " and"}, "finish_reason": None},
-        {"delta": {"content": " aspirations"}, "finish_reason": None},
-        {"delta": {"content": "\n"}, "finish_reason": None},
-        {"delta": {"content": "2"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {"content": " Travel"}, "finish_reason": None},
-        {"delta": {"content": " and"}, "finish_reason": None},
-        {"delta": {"content": " exploration"}, "finish_reason": None},
-        {"delta": {"content": "\n"}, "finish_reason": None},
-        {"delta": {"content": "3"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {"content": " H"}, "finish_reason": None},
-        {"delta": {"content": "obbies"}, "finish_reason": None},
-        {"delta": {"content": " and"}, "finish_reason": None},
-        {"delta": {"content": " interests"}, "finish_reason": None},
-        {"delta": {}, "finish_reason": "stop"},
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(role="assistant"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content="Sure"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=","), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" here"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" are"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" three"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" possible"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" things"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" we"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" could"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" talk"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" about"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=":\n"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" \n"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content="1"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" Goals"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" and"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" aspirations"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content="\n"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content="2"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" Travel"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" and"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" exploration"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content="\n"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content="3"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" H"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content="obbies"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" and"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(content=" interests"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_4', choices=[Choice(delta=ChoiceDelta(), index=0, finish_reason="stop")], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
     ],
     [
-        {"delta": {"role": "assistant"}, "finish_reason": None},
-        {"delta": {"content": "$"}, "finish_reason": None},
-        {"delta": {"content": "1"}, "finish_reason": None},
-        {"delta": {"content": " +"}, "finish_reason": None},
-        {"delta": {"content": " $"}, "finish_reason": None},
-        {"delta": {"content": "3"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {"content": "20"}, "finish_reason": None},
-        {"delta": {"content": " is"}, "finish_reason": None},
-        {"delta": {"content": " equal"}, "finish_reason": None},
-        {"delta": {"content": " to"}, "finish_reason": None},
-        {"delta": {"content": " $"}, "finish_reason": None},
-        {"delta": {"content": "4"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {"content": "20"}, "finish_reason": None},
-        {"delta": {"content": ".\n\n"}, "finish_reason": None},
-        {"delta": {"content": "And"}, "finish_reason": None},
-        {"delta": {"content": " $"}, "finish_reason": None},
-        {"delta": {"content": "1"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {"content": "40"}, "finish_reason": None},
-        {"delta": {"content": " plus"}, "finish_reason": None},
-        {"delta": {"content": " $"}, "finish_reason": None},
-        {"delta": {"content": "2"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {"content": "80"}, "finish_reason": None},
-        {"delta": {"content": " is"}, "finish_reason": None},
-        {"delta": {"content": " equal"}, "finish_reason": None},
-        {"delta": {"content": " to"}, "finish_reason": None},
-        {"delta": {"content": " $"}, "finish_reason": None},
-        {"delta": {"content": "4"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {"content": "20"}, "finish_reason": None},
-        {"delta": {"content": " as"}, "finish_reason": None},
-        {"delta": {"content": " well"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {}, "finish_reason": "stop"},
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(role="assistant"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="$"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="1"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" +"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" $"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="3"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="20"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" is"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" equal"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" to"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" $"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="4"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="20"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=".\n\n"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="And"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" $"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="1"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="40"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" plus"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" $"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="2"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="80"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" is"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" equal"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" to"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" $"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="4"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="20"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" as"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content=" well"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_5', choices=[Choice(delta=ChoiceDelta(), index=0, finish_reason="stop")], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
     ],
     [
-        {"delta": {"role": "assistant"}, "finish_reason": None},
-        {"delta": {"content": "$"}, "finish_reason": None},
-        {"delta": {"content": "2"}, "finish_reason": None},
-        {"delta": {"content": " +"}, "finish_reason": None},
-        {"delta": {"content": " $"}, "finish_reason": None},
-        {"delta": {"content": "3"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {"content": "00"}, "finish_reason": None},
-        {"delta": {"content": " is"}, "finish_reason": None},
-        {"delta": {"content": " equal"}, "finish_reason": None},
-        {"delta": {"content": " to"}, "finish_reason": None},
-        {"delta": {"content": " $"}, "finish_reason": None},
-        {"delta": {"content": "5"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {"content": " $"}, "finish_reason": None},
-        {"delta": {"content": "6"}, "finish_reason": None},
-        {"delta": {"content": " +"}, "finish_reason": None},
-        {"delta": {"content": " $"}, "finish_reason": None},
-        {"delta": {"content": "4"}, "finish_reason": None},
-        {"delta": {"content": " is"}, "finish_reason": None},
-        {"delta": {"content": " equal"}, "finish_reason": None},
-        {"delta": {"content": " to"}, "finish_reason": None},
-        {"delta": {"content": " $"}, "finish_reason": None},
-        {"delta": {"content": "10"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {}, "finish_reason": "stop"},
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(role="assistant"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content="$"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content="2"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content=" +"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content=" $"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content="3"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content="00"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content=" is"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content=" equal"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content=" to"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content=" $"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content="5"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content=" $"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content="6"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content=" +"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content=" $"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content="4"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content=" is"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content=" equal"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content=" to"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content=" $"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content="10"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_6', choices=[Choice(delta=ChoiceDelta(), index=0, finish_reason="stop")], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
     ],
     [
-        {"delta": {"role": "assistant"}, "finish_reason": None},
-        {"delta": {"content": "Hello"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {"content": " What"}, "finish_reason": None},
-        {"delta": {"content": " do"}, "finish_reason": None},
-        {"delta": {"content": " you"}, "finish_reason": None},
-        {"delta": {"content": " want"}, "finish_reason": None},
-        {"delta": {"content": " to"}, "finish_reason": None},
-        {"delta": {"content": " talk"}, "finish_reason": None},
-        {"delta": {"content": " about"}, "finish_reason": None},
-        {"delta": {"function_call": {"name": "wave"}}, "finish_reason": None},
-        {
-            "delta": {"function_call": {"name": "_hello", "arguments": "{\n"}},
-            "finish_reason": None,
-        },
-        {
-            "delta": {"function_call": {"arguments": '  "name": "user"\n}'}},
-            "finish_reason": None,
-        },
-        {"delta": {}, "finish_reason": "function_call"},
+        ChatCompletionChunk(id='test_stream_7', choices=[Choice(delta=ChoiceDelta(role="assistant"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_7', choices=[Choice(delta=ChoiceDelta(content="Hello"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_7', choices=[Choice(delta=ChoiceDelta(content="."), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_7', choices=[Choice(delta=ChoiceDelta(content=" What"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_7', choices=[Choice(delta=ChoiceDelta(content=" do"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_7', choices=[Choice(delta=ChoiceDelta(content=" you"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_7', choices=[Choice(delta=ChoiceDelta(content=" want"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_7', choices=[Choice(delta=ChoiceDelta(content=" to"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_7', choices=[Choice(delta=ChoiceDelta(content=" talk"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_7', choices=[Choice(delta=ChoiceDelta(content=" about"), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_8', choices=[Choice(delta=ChoiceDelta(tool_calls=[ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(name="wave"))]), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_7', choices=[Choice(delta=ChoiceDelta(tool_calls=[ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments="{\n", name="_hello"))]), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_7', choices=[Choice(delta=ChoiceDelta(tool_calls=[ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='  "name": "user"\n}'))]), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_7', choices=[Choice(delta=ChoiceDelta(), index=0, finish_reason="function_call")], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
     ],
     [
-        {"delta": {"function_call": {"name": "wave"}}, "finish_reason": None},
-        {
-            "delta": {"function_call": {"name": "_hello", "arguments": "{\n"}},
-            "finish_reason": None,
-        },
-        {
-            "delta": {"function_call": {"arguments": '  "name": "user"\n}'}},
-            "finish_reason": None,
-        },
-        {"delta": {}, "finish_reason": "function_call"},
+        ChatCompletionChunk(id='test_stream_8', choices=[Choice(delta=ChoiceDelta(tool_calls=[ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(name="wave"))]), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_8', choices=[Choice(delta=ChoiceDelta(tool_calls=[ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments="{\n", name="_hello"))]), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_8', choices=[Choice(delta=ChoiceDelta(tool_calls=[ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='  "name": "user"\n}'))]), index=0)], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
+        ChatCompletionChunk(id='test_stream_8', choices=[Choice(delta=ChoiceDelta(), index=0, finish_reason="function_call")], created=0, model='gpt-35-turbo-16k', object='chat.completion.chunk'),
     ],
 ]
 
@@ -249,76 +235,28 @@ EXPECTED_SENTENCES = [
     ],
 ]
 
-FUNCTIONS_INPUT = [
-    [
-        {"delta": {"role": "assistant"}, "finish_reason": None},
-        {"delta": {"content": "Hello"}, "finish_reason": None},
-        {"delta": {"content": "."}, "finish_reason": None},
-        {"delta": {"content": " What"}, "finish_reason": None},
-        {"delta": {"content": " do"}, "finish_reason": None},
-        {"delta": {"content": " you"}, "finish_reason": None},
-        {"delta": {"content": " want"}, "finish_reason": None},
-        {"delta": {"content": " to"}, "finish_reason": None},
-        {"delta": {"content": " talk"}, "finish_reason": None},
-        {"delta": {"content": " about"}, "finish_reason": None},
-        {"delta": {"function_call": {"name": "wave"}}, "finish_reason": None},
-        {
-            "delta": {"function_call": {"name": "_hello", "arguments": "{\n"}},
-            "finish_reason": None,
-        },
-        {
-            "delta": {"function_call": {"arguments": '  "name": "user"\n}'}},
-            "finish_reason": None,
-        },
-        {"delta": {}, "finish_reason": "function_call"},
-    ],
-    [
-        {"delta": {"function_call": {"name": "wave"}}, "finish_reason": None},
-        {
-            "delta": {"function_call": {"name": "_hello", "arguments": "{\n"}},
-            "finish_reason": None,
-        },
-        {
-            "delta": {"function_call": {"arguments": '  "name": "user"\n}'}},
-            "finish_reason": None,
-        },
-        {"delta": {}, "finish_reason": "function_call"},
-    ],
-]
-
-FUNCTIONS_OUTPUT = [
-    [
-        "Hello.",
-        "What do you want to talk about",
-        FunctionCall(name="wave_hello", arguments='{\n  "name": "user"\n}'),
-    ],
-    [
-        FunctionCall(name="wave_hello", arguments='{\n  "name": "user"\n}'),
-    ],
-]
-
 
 @pytest.mark.asyncio
 async def test_collate_response_async():
     test_cases = [
         StreamOpenAIResponseTestCase(
-            openai_objects=[
-                create_chatgpt_openai_object(**obj) for obj in openai_objects
+            input_stream=[
+                obj for obj in test_stream
             ],
             expected_sentences=expected_sentences,
             get_functions=any(
                 isinstance(item, FunctionCall) for item in expected_sentences
             ),
         )
-        for openai_objects, expected_sentences in zip(
-            OPENAI_OBJECTS, EXPECTED_SENTENCES
+        for test_stream, expected_sentences in zip(
+            TEST_STREAM, EXPECTED_SENTENCES
         )
     ]
 
     for test_case in test_cases:
         actual_sentences = []
         async for sentence in collate_response_async(
-            openai_get_tokens(_agen_from_list(test_case.openai_objects)),
+            openai_get_tokens(_agen_from_list(test_case.input_stream)),
             get_functions=test_case.get_functions,
         ):
             actual_sentences.append(sentence)
