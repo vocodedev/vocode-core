@@ -98,8 +98,6 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         speech_config = speechsdk.SpeechConfig(
             subscription=azure_speech_key, region=azure_speech_region
         )
-        if azure_endpoint_id:
-            speech_config.endpoint_id = azure_endpoint_id
 
         speech_config.speech_synthesis_voice_name = "PlaygroundLiteNeural"
         if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
@@ -130,6 +128,8 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self.synthesizer = speechsdk.SpeechSynthesizer(
             speech_config=speech_config, audio_config=None
         )
+        if azure_endpoint_id and "neural" in self.synthesizer_config.voice_name.lower():
+            speech_config.endpoint_id = azure_endpoint_id
 
         self.voice_name = self.synthesizer_config.voice_name
         self.pitch = self.synthesizer_config.pitch
@@ -235,50 +235,65 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         volume: int = 1,
         rate: int = 1,
     ) -> str:
-        voice_language_code = self.synthesizer_config.language_code
-        if voice_language_code != "en-US" and voice_language_code != "en":
-            rate = 0.1
-        else:
-            rate = 0.1
-
-        ssml_root = ElementTree.fromstring(
-            f'<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="{voice_language_code}"></speak>'
+        is_neural = "neural" in self.voice_name.lower()
+        voice_language_code = (
+            self.synthesizer_config.language_code if is_neural else None
         )
+        rate = 0.1  # This rate assignment seems to be constant in both conditions
+
+        code = f'"{voice_language_code}"' if voice_language_code else "None"
+        if is_neural:
+            ssml_root = ElementTree.fromstring(
+                f'<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis"{f" xml:lang={code}" if voice_language_code else ""}></speak>'
+            )
+        else:
+            ssml_root = ElementTree.fromstring(
+                f"<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'></speak>"
+            )
         voice = ElementTree.SubElement(ssml_root, "voice")
-        voice.set("name", self.voice_name)
-        if self.synthesizer_config.language_code != "en-US":
+        voice.set("name", self.voice_name if is_neural else "PhoenixLatestNeural")
+
+        if not is_neural:
+            speaker = ElementTree.SubElement(
+                voice, "{%s}ttsembedding" % NAMESPACES.get("mstts")
+            )
+            speaker.set("speakerProfileId", self.voice_name)
+            speaker.text = message.strip()
+        voice_root = voice
+        if is_neural and self.synthesizer_config.language_code not in ["en-US", "en"]:
             lang = ElementTree.SubElement(voice, "{%s}lang" % NAMESPACES.get(""))
             lang.set("xml:lang", self.synthesizer_config.language_code)
             voice_root = lang
-        else:
-            voice_root = voice
-        if bot_sentiment and bot_sentiment.emotion:
+
+        if bot_sentiment and bot_sentiment.emotion and is_neural:
             styled = ElementTree.SubElement(
-                voice, "{%s}express-as" % NAMESPACES.get("mstts")
+                voice_root, "{%s}express-as" % NAMESPACES.get("mstts")
             )
             styled.set("style", bot_sentiment.emotion)
             styled.set(
                 "styledegree", str(bot_sentiment.degree * 2)
             )  # Azure specific, it's a scale of 0-2
             voice_root = styled
-        # this ugly hack is necessary so we can limit the gap between sentences
-        # for normal sentences, it seems like the gap is > 500ms, so we're able to reduce it to 500ms
-        # for very tiny sentences, the API hangs - so we heuristically only update the silence gap
-        # if there is more than one word in the sentence
-        if " " in message:
+
+        if " " in message and is_neural:
             silence = ElementTree.SubElement(
                 voice_root, "{%s}silence" % NAMESPACES.get("mstts")
             )
             silence.set("value", f"{random.randint(80, 130)}ms")
             silence.set("type", "comma-exact")
-        prosody = ElementTree.SubElement(voice_root, "prosody")
-        prosody.set("pitch", f"{self.pitch}%")
-        prosody.set("rate", f"{rate*self.rate}%")
-        prosody.set("volume", f"-{volume}%")
-        # remove ALL punctuation except for periods and question marks
-        # message = re.sub(r"[^\w\s\.\?\!\@\:\']", "", message)
-        prosody.text = message.strip()
-        return ElementTree.tostring(ssml_root, encoding="unicode")
+        if is_neural:
+            prosody = ElementTree.SubElement(voice_root, "prosody")
+            prosody.set("pitch", f"{self.pitch}%")
+            prosody.set("rate", f"{rate*self.rate}%")
+            prosody.set("volume", f"-{volume}%")
+            prosody.text = message.strip()
+
+        return (
+            ElementTree.tostring(ssml_root, encoding="unicode")
+            .replace("ns0:", "")
+            .replace(":ns0", "")
+            .replace("ns0", "")
+        )
 
     def synthesize_ssml(self, ssml: str) -> speechsdk.AudioDataStream:
         result = self.synthesizer.start_speaking_ssml_async(ssml).get()

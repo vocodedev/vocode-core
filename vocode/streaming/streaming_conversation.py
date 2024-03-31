@@ -723,7 +723,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             ) > 1:
                 return
             self.conversation.logger.debug("Sending filler audio")
-            if self.conversation.synthesizer.filler_audios and self.conversation.filler_audio_worker is not None:
+            if (
+                self.conversation.synthesizer.filler_audios
+                and self.conversation.filler_audio_worker is not None
+            ):
                 filler_audio = random.choice(
                     self.conversation.synthesizer.filler_audios
                 )
@@ -796,7 +799,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             ):
                 return
             self.conversation.logger.debug("Sending affirmative audio")
-            if self.conversation.synthesizer.affirmative_audios and self.conversation.filler_audio_worker is not None:
+            if (
+                self.conversation.synthesizer.affirmative_audios
+                and self.conversation.filler_audio_worker is not None
+            ):
                 affirmative_audio = None
                 for audio in self.conversation.synthesizer.affirmative_audios:
                     if audio.message.text == phrase:
@@ -980,6 +986,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     message=transcript_message,
                     conversation_id=self.conversation.id,
                 )
+                if (
+                    transcript_message and len(transcript_message.text.strip()) > 0
+                ):
+                    replacer = "\n"
+                    self.conversation.logger.info(
+                        f"[{self.conversation.agent.agent_config.call_type}:{self.conversation.agent.agent_config.current_call_id}] Agent: {transcript_message.text.replace(replacer, ' ')}"
+                    )
                 # Signal that the agent response has been processed.
                 item.agent_response_tracker.set()
                 # Log the message that was successfully sent.
@@ -1186,14 +1199,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
     async def check_for_idle(self):
         """Terminates the conversation after 15 seconds if no activity is detected"""
         while self.is_active():
-            if time.time() - self.last_action_timestamp > (
-                self.agent.get_agent_config().allowed_idle_time_seconds
-                or ALLOWED_IDLE_TIME
-            ):
+            if time.time() - self.last_action_timestamp > 30:
                 self.logger.debug("Conversation idle for too long, terminating")
                 await self.terminate()
                 return
-            await asyncio.sleep(60)
+            await asyncio.sleep(1)
 
     async def track_bot_sentiment(self):
         """Updates self.bot_sentiment every second based on the current transcript"""
@@ -1375,10 +1385,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             - self.per_chunk_allowance_seconds,
             0,
         )
-        if message_sent and len(message_sent.strip()) > 0:
-            self.logger.info(
-                f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message_sent}"
-            )
+        # if message_sent and len(message_sent.strip()) > 0:  # TODO check here
+        #     self.logger.info(
+        #         f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message_sent}"
+        #     )
         await asyncio.sleep(sleep_time)
 
         # Log the successful sending of speech data

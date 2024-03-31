@@ -8,6 +8,9 @@ from vocode.streaming.action.search_online import SearchOnline, SearchOnlineActi
 from vocode.streaming.action.send_text import SendText, SendTextActionConfig
 from vocode.streaming.action.get_train import GetTrain, GetTrainActionConfig
 
+# calendly
+from vocode.streaming.action.use_calendly import UseCalendly, CalendlyActionConfig
+
 from vocode.streaming.action.nylas_send_email import (
     SendEmail,
     NylasSendEmailActionConfig,
@@ -28,5 +31,7 @@ class ActionFactory:
             return SearchOnline(action_config)
         elif isinstance(action_config, SendTextActionConfig):
             return SendText(action_config)
+        elif isinstance(action_config, CalendlyActionConfig):
+            return UseCalendly(action_config)
         else:
             raise Exception("Invalid action type")

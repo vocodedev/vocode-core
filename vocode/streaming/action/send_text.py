@@ -39,18 +39,24 @@ class SendText(BaseAction[SendTextActionConfig, SendTextParameters, SendTextResp
         twilio_account_sid = os.environ["TWILIO_ACCOUNT_SID"]
         twilio_auth_token = os.environ["TWILIO_AUTH_TOKEN"]
         from_phone = self.action_config.from_phone
+        # if to_phone has 9 digits, add +1 to the beginning
+        if len(to_phone) == 9:
+            to_phone = "1" + to_phone
 
         url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_account_sid}/Messages.json"
         payload = {"To": to_phone, "From": from_phone, "Body": message}
-        auth = BasicAuth(twilio_account_sid, twilio_auth_token)
+        try:
+            auth = BasicAuth(twilio_account_sid, twilio_auth_token)
 
-        async with aiohttp.ClientSession(auth=auth) as session:
-            async with session.post(url, data=payload) as response:
-                if response.status != 201:
-                    response = await response.text()
-                    return response
-                else:
-                    return await response.json()
+            async with aiohttp.ClientSession(auth=auth) as session:
+                async with session.post(url, data=payload) as response:
+                    if response.status != 201:
+                        response = await response.text()
+                        return response
+                    else:
+                        return await response.json()
+        except Exception as e:
+            return "Error sending text message: " + str(e)
 
     async def wait_for_response(self, to_phone, timeout=60):
         twilio_account_sid = os.environ["TWILIO_ACCOUNT_SID"]
@@ -88,8 +94,15 @@ class SendText(BaseAction[SendTextActionConfig, SendTextParameters, SendTextResp
     ) -> ActionOutput[SendTextResponse]:
         message = action_input.params.message
         to_phone = action_input.params.to_phone
-        await self.send_text(to_phone, message)
+        response = await self.send_text(to_phone, message)
         # response = await self.wait_for_response(self.action_config.to_phone)
+        if "error sending text message" in str(response).lower():
+            return ActionOutput(
+                action_type=action_input.action_config.type,
+                response=SendTextResponse(
+                    status=f"Failed to send message to {to_phone}. Error: {response}"
+                ),
+            )
         return ActionOutput(
             action_type=action_input.action_config.type,
             response=SendTextResponse(

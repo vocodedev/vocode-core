@@ -66,10 +66,13 @@ class SearchOnline(
             "temperature": 0.7,
         }
         async with httpx.AsyncClient() as client:
-            response = await client.post(url, json=body, headers=headers)
-            response.raise_for_status()
-            result = response.json()
-            return result["choices"][0]["message"]["content"]
+            try:
+                response = await client.post(url, json=body, headers=headers)
+                response.raise_for_status()
+                result = response.json()
+                return result["choices"][0]["message"]["content"]
+            except Exception as e:
+                return f"Error searching online: {str(e)}"
 
     async def run(
         self, action_input: ActionInput[SearchOnlineParameters]

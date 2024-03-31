@@ -48,8 +48,16 @@ from vocode.streaming.action.phone_call_action import (
 )
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import Transcript
-from vocode.streaming.utils.get_commandr_response import format_command_function_completion_from_transcript, format_commandr_chat_completion_from_transcript, get_commandr_response
-from vocode.streaming.utils.get_qwen_response import QWEN_MODEL_NAME, format_qwen_chat_completion_from_transcript, get_qwen_response
+from vocode.streaming.utils.get_commandr_response import (
+    format_command_function_completion_from_transcript,
+    format_commandr_chat_completion_from_transcript,
+    get_commandr_response,
+)
+from vocode.streaming.utils.get_qwen_response import (
+    QWEN_MODEL_NAME,
+    format_qwen_chat_completion_from_transcript,
+    get_qwen_response,
+)
 from vocode.streaming.vector_db.factory import VectorDBFactory
 
 from telephony_app.models.call_type import CallType
@@ -194,12 +202,14 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
     ):
         assert self.transcript is not None
         # add an
-        formatted_completion, messages = format_commandr_chat_completion_from_transcript(
-            self.tokenizer,
-            self.transcript,
-            self.agent_config.prompt_preamble,
-            did_action=did_action,
-            reason=reason,
+        formatted_completion, messages = (
+            format_commandr_chat_completion_from_transcript(
+                self.tokenizer,
+                self.transcript,
+                self.agent_config.prompt_preamble,
+                did_action=did_action,
+                reason=reason,
+            )
         )
         # log messages
         self.logger.debug(f"Messages: {messages}")
@@ -321,27 +331,27 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     },
                 },
             },
-            {
-                "name": "send_email",
-                "description": "Triggered when the agent sends an email, only if they have been provided a valid recipient email, a subject, and a body for the email.",
-                "parameter_definitions": {
-                    "recipient_email": {
-                        "description": "The email address of the recipient",
-                        "type": "str",
-                        "required": True,
-                    },
-                    "subject": {
-                        "description": "The subject of the email",
-                        "type": "str",
-                        "required": True,
-                    },
-                    "body": {
-                        "description": "The body of the email",
-                        "type": "str",
-                        "required": True,
-                    },
-                },
-            },
+            # {
+            #     "name": "send_email",
+            #     "description": "Triggered when the agent sends an email, only if they have been provided a valid recipient email, a subject, and a body for the email.",
+            #     "parameter_definitions": {
+            #         "recipient_email": {
+            #             "description": "The email address of the recipient",
+            #             "type": "str",
+            #             "required": True,
+            #         },
+            #         "subject": {
+            #             "description": "The subject of the email",
+            #             "type": "str",
+            #             "required": True,
+            #         },
+            #         "body": {
+            #             "description": "The body of the email",
+            #             "type": "str",
+            #             "required": True,
+            #         },
+            #     },
+            # },
             {
                 "name": "send_direct_response",
                 "description": "Send the user a message directly, given the conversation history, must include the message",
@@ -354,14 +364,26 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 },
             },
             {
-                "name": "get_train",
-                "description": "Retrieves information for a given train number from the Viaggiatreno service",
+                "name": "use_calendly",
+                "description": "You can either list events or cancel an event. Listing events (list_events) also returns a booking link for scheduling tasks. You cannot schedule directly.",
                 "parameter_definitions": {
-                    "train_number": {
-                        "description": "The train number to retrieve information for",
+                    "api_key": {
+                        "description": "API key for Calendly",
                         "type": "str",
                         "required": True,
-                    }
+                    },
+                    "action_type": {
+                        "description": "The type of Calendly action to perform",
+                        "type": "enum",
+                        "enum": ["list_events"],
+                        "required": True,
+                    },
+                    # "args": {
+                    #     "description": "Arguments required for the specific Calendly action. For cancel_event, include 'uuid' of the event and an optional 'reason'.",
+                    #     "type": "dict",
+                    #     "required": {"cancel_event": ["uuid"]},
+                    #     "optional": {"cancel_event": ["reason"]},
+                    # },
                 },
             },
         ]
@@ -427,15 +449,17 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
     ) -> Optional[Dict]:  # returns None or a dict if model should be called
         tools = self.get_tools()
         if self.agent_config.actions:
-            commandr_prompt_buffer, messageArray = format_command_function_completion_from_transcript(
-                self.tokenizer,
-                self.transcript.event_logs,
-                tools,
-                self.agent_config.prompt_preamble,
+            commandr_prompt_buffer, messageArray = (
+                format_command_function_completion_from_transcript(
+                    self.tokenizer,
+                    self.transcript.event_logs,
+                    tools,
+                    self.agent_config.prompt_preamble,
+                )
             )
             if "Function call:" in messageArray[-1]["content"]:
                 self.logger.info("Skipping tool use due to tool use.")
-                return None # TODO: investigate if this is why it needs to be prompted to do async tools
+                return None  # TODO: investigate if this is why it needs to be prompted to do async tools
 
             # print role of the latest message
             # self.logger.info(f"Role was: {messageArray[-1]}")
@@ -444,22 +468,35 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
             use_qwen = self.agent_config.model_name.lower() == QWEN_MODEL_NAME.lower()
 
             async def get_qwen_response_future():
-                response = ''
+                response = ""
                 if not use_qwen:
                     return response
-                qwen_prompt_buffer = format_qwen_chat_completion_from_transcript(self.transcript, self.agent_config.prompt_preamble)
-                async for response_chunk in get_qwen_response(prompt_buffer=qwen_prompt_buffer, logger=self.logger):
+                qwen_prompt_buffer = format_qwen_chat_completion_from_transcript(
+                    self.transcript, self.agent_config.prompt_preamble
+                )
+                async for response_chunk in get_qwen_response(
+                    prompt_buffer=qwen_prompt_buffer, logger=self.logger
+                ):
                     response += response_chunk[0] + " "
                     if response_chunk[1]:
                         break
                 return response
-            
-            commandr_response, qwen_response = await asyncio.gather(get_commandr_response(prompt_buffer=commandr_prompt_buffer, logger=self.logger), get_qwen_response_future())
+
+            commandr_response, qwen_response = await asyncio.gather(
+                get_commandr_response(
+                    prompt_buffer=commandr_prompt_buffer, logger=self.logger
+                ),
+                get_qwen_response_future(),
+            )
 
             if not commandr_response.startswith("Action: ```json"):
-                self.logger.error(f"ACTION RESULT DID NOT LOOK RIGHT: {commandr_response}")
+                self.logger.error(
+                    f"ACTION RESULT DID NOT LOOK RIGHT: {commandr_response}"
+                )
             else:
-                commandr_response_json_str = commandr_response[len("Action: ```json") :].strip()
+                commandr_response_json_str = commandr_response[
+                    len("Action: ```json") :
+                ].strip()
                 if commandr_response_json_str.endswith("```"):
                     commandr_response_json_str = commandr_response_json_str[:-3].strip()
                 try:
@@ -475,7 +512,10 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     )
                     return None
 
-                if not isinstance(commandr_response_data, list) or not commandr_response_data:
+                if (
+                    not isinstance(commandr_response_data, list)
+                    or not commandr_response_data
+                ):
                     self.logger.error(
                         f"RESPONSE FORMAT ERROR: Expected a list with data, got: {commandr_response_data}"
                     )

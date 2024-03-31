@@ -24,6 +24,7 @@ HEADERS = {
     "Authorization": f"Bearer 'EMPTY'",
 }
 
+
 def render_docs(docs: list[dict]) -> str:
     """Render a list of doc dicts to a single formatted string."""
     doc_str_list = ["<results>"]
@@ -213,7 +214,7 @@ def format_commandr_chat_completion_from_transcript(
             {
                 "role": "system",
                 "content": render_docs([current_doc])
-                + f"\n\n{event_log.action_type} submitted. Do not provide a response yet. You may inform the user that the action is being run. Please wait for the response.",
+                + f"\n\nAction: {event_log.action_type} has been submitted. You may inform the user that the action is running. If you see this message, you must respond directly to the user.",
             }
         )
     # Merge consecutive messages from the same sender
@@ -247,11 +248,10 @@ def format_commandr_chat_completion_from_transcript(
 
     return input_ids, merged_messages
 
+
 async def get_commandr_response(prompt_buffer: str, logger: Logger):
     response_text = ""
-    prompt_buffer = prompt_buffer.replace(
-        "directly-answer", "send_direct_response"
-    )
+    prompt_buffer = prompt_buffer.replace("directly-answer", "send_direct_response")
     async with aiohttp.ClientSession() as session:
         base_url = getenv("AI_API_BASE")
         data = {
