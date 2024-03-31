@@ -986,9 +986,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     message=transcript_message,
                     conversation_id=self.conversation.id,
                 )
-                if (
-                    transcript_message and len(transcript_message.text.strip()) > 0
-                ):
+                if transcript_message and len(transcript_message.text.strip()) > 0:
                     replacer = "\n"
                     self.conversation.logger.info(
                         f"[{self.conversation.agent.agent_config.call_type}:{self.conversation.agent.agent_config.current_call_id}] Agent: {transcript_message.text.replace(replacer, ' ')}"
@@ -1311,17 +1309,36 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         # Initialize a bytearray to accumulate the speech data
         speech_data = bytearray()
-
+        held_buffer = self.transcriptions_worker.buffer.to_message()
         # Asynchronously generate speech data from the synthesis result
         async for chunk_result in synthesis_result.chunk_generator:
+            if len(speech_data) > chunk_size:
+                self.transcriptions_worker.synthesis_done = True
+            if (
+                self.transcriptions_worker.buffer_check_task
+                and self.transcriptions_worker.buffer_check_task.done()
+                and not self.transcriptions_worker.buffer_check_task.cancelled()
+            ):
+                if len(speech_data) > chunk_size:
+                    self.transcriptions_worker.block_inputs = True
+                    self.transcriptions_worker.time_silent = 0.0
+                    self.transcriptions_worker.triggered_affirmative = False
+                    self.transcriptions_worker.buffer.clear()
+                    self.logger.debug(
+                        f"Sending in synth buffer early, len {len(speech_data)}"
+                    )
+                    # mark
+                    self.mark_last_action_timestamp()
+                    self.output_device.consume_nonblocking(speech_data)
+                    speech_data = bytearray()
+                    # sleep a second
+                    await asyncio.sleep(1)
             speech_data.extend(chunk_result.chunk)
 
-        # Mark synthesis as done once all chunks are generated
+        # # If no speech data is generated, return empty message and False flag
+        # if len(speech_data) == 0:
+        #     return "", False
         self.transcriptions_worker.synthesis_done = True
-
-        # If no speech data is generated, return empty message and False flag
-        if len(speech_data) == 0:
-            return "", False
 
         # If a buffer check task exists, wait for it to complete before proceeding
         if self.transcriptions_worker.buffer_check_task:
@@ -1347,8 +1364,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             # Proceed if no buffer check task is found
             self.logger.debug("No buffer check task found, proceeding without waiting.")
 
-        held_buffer = self.transcriptions_worker.buffer.to_message()
-
         # Log the start of sending synthesized speech to the output device
         self.logger.debug("Sending in synth buffer")
         # Clear the transcription worker's buffer and related attributes before sending
@@ -1359,7 +1374,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         # Send the generated speech data to the output device
         start_time = time.time()
-        self.output_device.consume_nonblocking(speech_data)
+        if len(speech_data) > 0:
+            self.output_device.consume_nonblocking(speech_data)
         end_time = time.time()
 
         # Calculate the length of the speech in seconds

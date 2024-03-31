@@ -214,7 +214,7 @@ def format_commandr_chat_completion_from_transcript(
             {
                 "role": "system",
                 "content": render_docs([current_doc])
-                + f"\n\nAction: {event_log.action_type} has been submitted. You may inform the user that the action is running. If you see this message, you must respond directly to the user.",
+                + f"\n\n{event_log.action_type} submitted. Do not provide a response yet. You may inform the user that the action is being run by sending a direct response.",
             }
         )
     # Merge consecutive messages from the same sender
