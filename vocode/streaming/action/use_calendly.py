@@ -118,14 +118,10 @@ class UseCalendly(
         args = action_input.params.args
 
         # Update attributes with the provided API key
-        self.update_attributes(api_key)
 
         try:
-            result = ""
-            if action_type == CalendlyActionType.LIST_EVENTS:
-                result = self.list_events(api_key, args)
-            elif action_type == CalendlyActionType.CANCEL_EVENT:
-                result = self.cancel_event(api_key, args)
+            self.update_attributes(api_key)
+            result = self.list_events(api_key, args)
             response = CalendlyResponse(action_type=action_type, result=result)
         except Exception as e:
             response = CalendlyResponse(action_type=action_type, result=str(e))

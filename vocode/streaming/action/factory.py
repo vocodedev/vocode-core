@@ -11,6 +11,11 @@ from vocode.streaming.action.get_train import GetTrain, GetTrainActionConfig
 # calendly
 from vocode.streaming.action.use_calendly import UseCalendly, CalendlyActionConfig
 
+# use_instructions
+from vocode.streaming.action.retrieve_instructions import (
+    RetrieveInstructions,
+    RetrieveInstructionsActionConfig,
+)
 from vocode.streaming.action.nylas_send_email import (
     SendEmail,
     NylasSendEmailActionConfig,
@@ -33,5 +38,7 @@ class ActionFactory:
             return SendText(action_config)
         elif isinstance(action_config, CalendlyActionConfig):
             return UseCalendly(action_config)
+        elif isinstance(action_config, RetrieveInstructionsActionConfig):
+            return RetrieveInstructions(action_config)
         else:
             raise Exception("Invalid action type")

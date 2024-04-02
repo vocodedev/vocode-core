@@ -51,6 +51,19 @@ def render_chat_history(_conversation: list[dict]) -> str:
     return chat_hist_str
 
 
+def format_prefix_completion_from_transcript(events: List[EventLog]):
+    EOS_TOKEN = "</s>"
+
+    # get an array of just the message contents within each event log
+    messages = [
+        event_log.text for event_log in events if isinstance(event_log, Message)
+    ]
+    last_three = messages[-3:]
+    prompt = "\n".join(last_three)
+    alpaca_prompt = f"""### Prompt:\n{prompt}\n\n### Completion:\n"""
+    return alpaca_prompt
+
+
 def format_command_function_completion_from_transcript(
     tokenizer: AutoTokenizer,
     events: List[EventLog],

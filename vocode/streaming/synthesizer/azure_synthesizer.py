@@ -138,8 +138,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self.logger = logger or logging.getLogger(__name__)
 
     async def get_phrase_filler_audios(self) -> List[FillerAudio]:
-        filler_phrase_audios = []
-        for filler_phrase in FILLER_PHRASES:
+        async def generate_filler_audio(filler_phrase):
             cache_key = "-".join(
                 (
                     str(filler_phrase.text),
@@ -152,9 +151,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 )
             )
             filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.bytes")
-            if os.path.exists(filler_audio_path):
-                audio_data = open(filler_audio_path, "rb").read()
-            else:
+            if not os.path.exists(filler_audio_path):
                 self.logger.debug(f"Generating filler audio for {filler_phrase.text}")
                 ssml = self.create_ssml(filler_phrase.text, volume=50, rate=4)
                 result = await asyncio.get_event_loop().run_in_executor(
@@ -164,18 +161,21 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 audio_data = result.audio_data[offset:]
                 with open(filler_audio_path, "wb") as f:
                     f.write(audio_data)
-            filler_phrase_audios.append(
-                FillerAudio(
-                    filler_phrase,
-                    audio_data,
-                    self.synthesizer_config,
-                )
+            else:
+                with open(filler_audio_path, "rb") as f:
+                    audio_data = f.read()
+            return FillerAudio(
+                filler_phrase,
+                audio_data,
+                self.synthesizer_config,
             )
+
+        tasks = [generate_filler_audio(phrase) for phrase in FILLER_PHRASES]
+        filler_phrase_audios = await asyncio.gather(*tasks)
         return filler_phrase_audios
 
     async def get_phrase_affirmative_audios(self) -> List[FillerAudio]:
-        affirmative_phrase_audios = []
-        for affirmative_phrase in AFFIRMATIVE_PHRASES:
+        async def generate_affirmative_audio(affirmative_phrase):
             cache_key = "-".join(
                 (
                     str(affirmative_phrase.text),
@@ -190,9 +190,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             affirmative_audio_path = os.path.join(
                 AFFIRMATIVE_AUDIO_PATH, f"{cache_key}.bytes"
             )
-            if os.path.exists(affirmative_audio_path):
-                audio_data = open(affirmative_audio_path, "rb").read()
-            else:
+            if not os.path.exists(affirmative_audio_path):
                 self.logger.debug(
                     f"Generating affirmative audio for {affirmative_phrase.text}"
                 )
@@ -204,13 +202,18 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 audio_data = result.audio_data[offset:]
                 with open(affirmative_audio_path, "wb") as f:
                     f.write(audio_data)
-            affirmative_phrase_audios.append(
-                FillerAudio(
-                    affirmative_phrase,
-                    audio_data,
-                    self.synthesizer_config,
-                )
+            else:
+                with open(affirmative_audio_path, "rb") as f:
+                    audio_data = f.read()
+            return FillerAudio(
+                affirmative_phrase,
+                audio_data,
+                self.synthesizer_config,
             )
+
+        tasks = [generate_affirmative_audio(phrase) for phrase in AFFIRMATIVE_PHRASES]
+        affirmative_phrase_audios = await asyncio.gather(*tasks)
+        self.logger.debug("Affirmative audios generated")
         return affirmative_phrase_audios
 
     def add_marks(self, message: str, index=0) -> str:

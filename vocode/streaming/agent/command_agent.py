@@ -51,6 +51,7 @@ from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.utils.get_commandr_response import (
     format_command_function_completion_from_transcript,
     format_commandr_chat_completion_from_transcript,
+    format_prefix_completion_from_transcript,
     get_commandr_response,
 )
 from vocode.streaming.utils.get_qwen_response import (
@@ -372,18 +373,17 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                         "type": "str",
                         "required": True,
                     },
-                    "action_type": {
-                        "description": "The type of Calendly action to perform",
-                        "type": "enum",
-                        "enum": ["list_events"],
+                },
+            },
+            {
+                "name": "retrieve_instructions",
+                "description": "Retrieve instructions for an upcoming part of the workflow",
+                "parameter_definitions": {
+                    "id": {
+                        "description": "The ID of the instruction to retrieve",
+                        "type": "int",
                         "required": True,
                     },
-                    # "args": {
-                    #     "description": "Arguments required for the specific Calendly action. For cancel_event, include 'uuid' of the event and an optional 'reason'.",
-                    #     "type": "dict",
-                    #     "required": {"cancel_event": ["uuid"]},
-                    #     "optional": {"cancel_event": ["reason"]},
-                    # },
                 },
             },
         ]
@@ -443,6 +443,37 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         # )
         self.actions_queue.put_nowait(event)
         return
+
+    async def gen_prefix(self):
+        prefix_prompt_buffer = format_prefix_completion_from_transcript(
+            self.transcript.event_logs,
+        )
+
+        async def call_prefixer_api(prompt: str) -> str:
+            url = "http://azure6.ngrok.app/v1/completions"
+            headers = {"Content-Type": "application/json"}
+            data = {
+                "model": "Cyleux/prefixer",
+                "prompt": prompt,
+                "max_tokens": 10,
+                "temperature": 0.5,
+                "stop": ["\n", "</s>"],
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, headers=headers, json=data) as response:
+                    if response.status == 200:
+                        response_json = await response.json()
+                        return response_json.get("choices", [{}])[0].get("text", "")
+                    else:
+                        self.logger.error(
+                            f"Prefixer API call failed with status: {response.status}"
+                        )
+                        return ""
+
+        prefix_response = await call_prefixer_api(
+            prefix_prompt_buffer,
+        )
+        return prefix_response
 
     async def gen_tool_call(
         self, conversation_id
@@ -681,6 +712,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
 
         tool_call = None
         if self.agent_config.actions:
+            # prefix = await self.gen_prefix() TODO how to do
             tool_call = await self.gen_tool_call(conversation_id)
             if tool_call is not None:
                 self.logger.info(f"Should continue: {tool_call}")

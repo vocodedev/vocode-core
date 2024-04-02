@@ -20,9 +20,9 @@ HEADERS = {
     "Authorization": f"Bearer 'EMPTY'",
 }
 
+
 def format_qwen_chat_completion_from_transcript(
-    transcript: Transcript,
-    prompt_preamble: Optional[str] = None
+    transcript: Transcript, prompt_preamble: Optional[str] = None
 ):
     formatted_conversation = ""
     if prompt_preamble:
@@ -69,6 +69,7 @@ def format_qwen_chat_completion_from_transcript(
 
     return formatted_conversation.strip()
 
+
 async def get_qwen_response(
     prompt_buffer: str,
     logger: Logger,
@@ -85,7 +86,7 @@ async def get_qwen_response(
     async with aiohttp.ClientSession() as session:
         base_url = "http://148.64.105.83:4000/v1"
         data = {
-            "model":QWEN_MODEL_NAME,
+            "model": QWEN_MODEL_NAME,
             "prompt": prompt_buffer,
             "stream": True,
             "stop": ["?", "SYSTEM"],
@@ -104,9 +105,7 @@ async def get_qwen_response(
                         # Extract JSON from the current chunk
                         first_brace = chunk.find(b"{")
                         last_brace = chunk.rfind(b"}")
-                        json_str = chunk[first_brace : last_brace + 1].decode(
-                            "utf-8"
-                        )
+                        json_str = chunk[first_brace : last_brace + 1].decode("utf-8")
                         try:
                             completion_data = json.loads(json_str)
                             if (
@@ -116,10 +115,8 @@ async def get_qwen_response(
                                 for choice in completion_data["choices"]:
                                     if "text" in choice:
                                         completion_text = choice["text"]
-                                        completion_text = (
-                                            completion_text.replace(
-                                                "SYSTEM", ""
-                                            )
+                                        completion_text = completion_text.replace(
+                                            "SYSTEM", ""
                                         )
                                         sentence_buffer += completion_text
                                         last_message += completion_text
@@ -130,9 +127,7 @@ async def get_qwen_response(
                                         ]
                                         # Filter out -1's which indicate no occurrence of the punctuation
                                         punctuation_indices = [
-                                            p
-                                            for p in punctuation_indices
-                                            if p != -1
+                                            p for p in punctuation_indices if p != -1
                                         ]
                                         if punctuation_indices:
                                             earliest_punctuation_index = min(
@@ -151,18 +146,15 @@ async def get_qwen_response(
                                             ):
                                                 if stream_output:
                                                     yield sentence_buffer[
-                                                        : earliest_punctuation_index
-                                                        + 1
+                                                        : earliest_punctuation_index + 1
                                                     ], False
                                                 sentence_buffer = sentence_buffer[
-                                                    earliest_punctuation_index
-                                                    + 1 :
+                                                    earliest_punctuation_index + 1 :
                                                 ].lstrip()
                                         if (
                                             (
                                                 "finish_reason" in choice
-                                                and choice["finish_reason"]
-                                                == "stop"
+                                                and choice["finish_reason"] == "stop"
                                             )
                                             or "?" in completion_text
                                             or "?" in sentence_buffer
@@ -187,7 +179,5 @@ async def get_qwen_response(
                 # log what we sent out
                 # self.logger.info(f"Sent out: {last_message}")
             else:
-                logger.error(
-                    f"Error while streaming from OpenAI: {str(response)}"
-                )
+                logger.error(f"Error while streaming from OpenAI: {str(response)}")
                 return
