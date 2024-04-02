@@ -28,7 +28,7 @@ from vocode.streaming.agent.base_agent import (
     RespondAgent,
     TranscriptionAgentInput,
 )
-from vocode.streaming.models.actions import ActionInput, FunctionCall, FunctionFragment
+from vocode.streaming.models.actions import ActionInput, FunctionCall, ActionType, FunctionFragment
 from vocode.streaming.models.agent import CommandAgentConfig
 from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
@@ -48,6 +48,7 @@ from vocode.streaming.action.phone_call_action import (
 )
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import Transcript
+from vocode.streaming.utils.setup_command_r_tools import setup_command_r_tools
 from vocode.streaming.utils.get_commandr_response import (
     format_command_function_completion_from_transcript,
     format_commandr_chat_completion_from_transcript,
@@ -77,7 +78,6 @@ HEADERS = {
     "Authorization": f"Bearer 'EMPTY'",
 }
 
-
 class EventLog(BaseModel):
     sender: Sender
     timestamp: float = Field(default_factory=time.time)
@@ -98,6 +98,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         super().__init__(
             agent_config=agent_config, action_factory=action_factory, logger=logger
         )
+        self.tools = setup_command_r_tools(action_config=agent_config, logger=logger)
         self.tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(
             "CohereForAI/c4ai-command-r-v01", trust_remote_code=False, use_fast=True
         )
@@ -281,112 +282,6 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
 
         return true_conditions
 
-    def get_tools(self):
-        return [
-            {
-                "name": "transfer_call",
-                "description": "Transfers when the agent agrees to transfer the call",
-                "parameter_definitions": {
-                    "transfer_reason": {
-                        "description": "The reason for transferring the call, limited to 120 characters",
-                        "type": "str",
-                        "required": True,
-                    }
-                },
-            },
-            {
-                "name": "hangup_call",
-                "description": "Hangup the call if the instructions are to do so",
-                "parameter_definitions": {
-                    "end_reason": {
-                        "description": "The reason for ending the call, limited to 120 characters",
-                        "type": "str",
-                        "required": True,
-                    }
-                },
-            },
-            {
-                "name": "search_online",
-                "description": "Searches online when the agent says they will look something up",
-                "parameter_definitions": {
-                    "query": {
-                        "description": "The search query to be sent to the online search API",
-                        "type": "str",
-                        "required": True,
-                    }
-                },
-            },
-            {
-                "name": "send_text",
-                "description": "Triggered when the agent sends a text, only if they have been provided a valid phone number and a message to send.",
-                "parameter_definitions": {
-                    "to_phone": {
-                        "description": "The phone number to which the text message will be sent",
-                        "type": "str",
-                        "required": True,
-                    },
-                    "message": {
-                        "description": "The message to be sent, limited to 120 characters",
-                        "type": "str",
-                        "required": True,
-                    },
-                },
-            },
-            # {
-            #     "name": "send_email",
-            #     "description": "Triggered when the agent sends an email, only if they have been provided a valid recipient email, a subject, and a body for the email.",
-            #     "parameter_definitions": {
-            #         "recipient_email": {
-            #             "description": "The email address of the recipient",
-            #             "type": "str",
-            #             "required": True,
-            #         },
-            #         "subject": {
-            #             "description": "The subject of the email",
-            #             "type": "str",
-            #             "required": True,
-            #         },
-            #         "body": {
-            #             "description": "The body of the email",
-            #             "type": "str",
-            #             "required": True,
-            #         },
-            #     },
-            # },
-            {
-                "name": "send_direct_response",
-                "description": "Send the user a message directly, given the conversation history, must include the message",
-                "parameter_definitions": {
-                    "message": {
-                        "description": "Message you intend to send to the user",
-                        "type": "str",
-                        "required": True,
-                    }
-                },
-            },
-            {
-                "name": "use_calendly",
-                "description": "You can either list events or cancel an event. Listing events (list_events) also returns a booking link for scheduling tasks. You cannot schedule directly.",
-                "parameter_definitions": {
-                    "api_key": {
-                        "description": "API key for Calendly",
-                        "type": "str",
-                        "required": True,
-                    },
-                },
-            },
-            {
-                "name": "retrieve_instructions",
-                "description": "Retrieve instructions for an upcoming part of the workflow",
-                "parameter_definitions": {
-                    "id": {
-                        "description": "The ID of the instruction to retrieve",
-                        "type": "int",
-                        "required": True,
-                    },
-                },
-            },
-        ]
 
     async def call_function(self, function_call: FunctionCall, agent_input: AgentInput):
         action_config = self._get_action_config(function_call.name)
@@ -478,7 +373,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
     async def gen_tool_call(
         self, conversation_id
     ) -> Optional[Dict]:  # returns None or a dict if model should be called
-        tools = self.get_tools()
+        tools = self.tools
         if self.agent_config.actions:
             commandr_prompt_buffer, messageArray = (
                 format_command_function_completion_from_transcript(
