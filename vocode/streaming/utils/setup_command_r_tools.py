@@ -112,15 +112,15 @@ all_optional_tools = {
             #     "optional": {"cancel_event": ["reason"]},
             # },
         },
-        ActionType.RETRIEVE_INSTRUCTIONS: {
-            "name": "retrieve_instructions",
-            "description": "Retrieve instructions for an upcoming part of the workflow",
-            "parameter_definitions": {
-                "id": {
-                    "description": "The ID of the instruction to retrieve",
-                    "type": "int",
-                    "required": True,
-                },
+    },
+    ActionType.RETRIEVE_INSTRUCTIONS: {
+        "name": "retrieve_instructions",
+        "description": "Retrieve instructions for an upcoming part of the workflow",
+        "parameter_definitions": {
+            "id": {
+                "description": "The ID of the instruction to retrieve",
+                "type": "int",
+                "required": True,
             },
         },
     },
