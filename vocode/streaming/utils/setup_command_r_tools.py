@@ -68,6 +68,7 @@ all_optional_tools = {
     },
     ActionType.SEND_EMAIL: None,
     ActionType.NYLAS_SEND_EMAIL: None,
+    ActionType.GET_TRAIN: None,
     # {
     #     "name": "send_email",
     #     "description": "Triggered when the agent sends an email, only if they have been provided a valid recipient email, a subject, and a body for the email.",
