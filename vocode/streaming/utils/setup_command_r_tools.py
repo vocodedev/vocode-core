@@ -66,6 +66,7 @@ all_optional_tools = {
             },
         },
     },
+    ActionType.SEND_EMAIL: None,
     # {
     #     "name": "send_email",
     #     "description": "Triggered when the agent sends an email, only if they have been provided a valid recipient email, a subject, and a body for the email.",
@@ -132,6 +133,7 @@ def setup_command_r_tools(action_config: CommandAgentConfig, logger: logging.Log
     for action_config in action_config.actions:
         action_type: ActionType = action_config.type
         tool = all_optional_tools[action_type]
-        tools.append(tool)
+        if tool:
+            tools.append(tool)
     
     return tools
