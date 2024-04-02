@@ -383,7 +383,8 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     self.agent_config.prompt_preamble,
                 )
             )
-            if "Function call:" in messageArray[-1]["content"]:
+            # self.logger.info(f"commandr_prompt_buffer was {commandr_prompt_buffer}")
+            if "Do not provide" in messageArray[-1]["content"]:
                 self.logger.info("Skipping tool use due to tool use.")
                 return None  # TODO: investigate if this is why it needs to be prompted to do async tools
 
@@ -464,7 +465,11 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                             self.tool_message = tool_params["message"]
                         return None
 
-                    if tool_name and tool_params is not None:
+                    if (
+                        tool_name
+                        and tool_params is not None
+                        and messageArray[-1]["role"] != "system"
+                    ):
                         try:
                             while not self.can_send:
                                 await asyncio.sleep(0.05)
