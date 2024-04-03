@@ -374,132 +374,137 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         self, conversation_id
     ) -> Optional[Dict]:  # returns None or a dict if model should be called
         tools = self.tools
-        if self.agent_config.actions:
-            commandr_prompt_buffer, messageArray = (
-                format_command_function_completion_from_transcript(
-                    self.tokenizer,
-                    self.transcript.event_logs,
-                    tools,
-                    self.agent_config.prompt_preamble,
-                )
+
+        if not self.agent_config.actions:
+            self.logger.error(f"skipping tool call because agent has no actions")
+            return None
+
+        commandr_prompt_buffer, messageArray = (
+            format_command_function_completion_from_transcript(
+                self.tokenizer,
+                self.transcript.event_logs,
+                tools,
+                self.agent_config.prompt_preamble,
             )
-            # self.logger.info(f"commandr_prompt_buffer was {commandr_prompt_buffer}")
-            if "Do not provide" in messageArray[-1]["content"]:
-                self.logger.info("Skipping tool use due to tool use.")
-                return None  # TODO: investigate if this is why it needs to be prompted to do async tools
+        )
+        # self.logger.info(f"commandr_prompt_buffer was {commandr_prompt_buffer}")
+        if "Do not provide" in messageArray[-1]["content"]:
+            self.logger.info("Skipping tool use due to tool use.")
+            return None  # TODO: investigate if this is why it needs to be prompted to do async tools
 
-            # print role of the latest message
-            # self.logger.info(f"Role was: {messageArray[-1]}")
-            # tool_chat = self.prepare_chat_for_tool_check(latest_agent_response)
-            # self.logger.info(f"tool_chat was {prompt_buffer}")
-            use_qwen = self.agent_config.model_name.lower() == QWEN_MODEL_NAME.lower()
+        # print role of the latest message
+        # self.logger.info(f"Role was: {messageArray[-1]}")
+        # tool_chat = self.prepare_chat_for_tool_check(latest_agent_response)
+        # self.logger.info(f"tool_chat was {prompt_buffer}")
+        use_qwen = self.agent_config.model_name.lower() == QWEN_MODEL_NAME.lower()
 
-            async def get_qwen_response_future():
-                response = ""
-                if not use_qwen:
-                    return response
-                qwen_prompt_buffer = format_qwen_chat_completion_from_transcript(
-                    self.transcript, self.agent_config.prompt_preamble
-                )
-                async for response_chunk in get_qwen_response(
-                    prompt_buffer=qwen_prompt_buffer, logger=self.logger
-                ):
-                    response += response_chunk[0] + " "
-                    if response_chunk[1]:
-                        break
+        async def get_qwen_response_future():
+            response = ""
+            if not use_qwen:
                 return response
-
-            commandr_response, qwen_response = await asyncio.gather(
-                get_commandr_response(
-                    prompt_buffer=commandr_prompt_buffer, logger=self.logger
-                ),
-                get_qwen_response_future(),
+            qwen_prompt_buffer = format_qwen_chat_completion_from_transcript(
+                self.transcript, self.agent_config.prompt_preamble
             )
+            async for response_chunk in get_qwen_response(
+                prompt_buffer=qwen_prompt_buffer, logger=self.logger
+            ):
+                response += response_chunk[0] + " "
+                if response_chunk[1]:
+                    break
+            return response
 
-            if not commandr_response.startswith("Action: ```json"):
+        commandr_response, qwen_response = await asyncio.gather(
+            get_commandr_response(
+                prompt_buffer=commandr_prompt_buffer, logger=self.logger
+            ),
+            get_qwen_response_future(),
+        )
+
+        if not commandr_response.startswith("Action: ```json"):
+            self.logger.error(
+                f"ACTION RESULT DID NOT LOOK RIGHT: {commandr_response}"
+            )
+        else:
+            commandr_response_json_str = commandr_response[
+                len("Action: ```json") :
+            ].strip()
+            if commandr_response_json_str.endswith("```"):
+                commandr_response_json_str = commandr_response_json_str[:-3].strip()
+            try:
+                commandr_response_data = json.loads(commandr_response_json_str)
+            except json.JSONDecodeError as e:
                 self.logger.error(
-                    f"ACTION RESULT DID NOT LOOK RIGHT: {commandr_response}"
+                    f"JSON DECODE ERROR: {e} with response: {commandr_response_json_str}"
                 )
-            else:
-                commandr_response_json_str = commandr_response[
-                    len("Action: ```json") :
-                ].strip()
-                if commandr_response_json_str.endswith("```"):
-                    commandr_response_json_str = commandr_response_json_str[:-3].strip()
-                try:
-                    commandr_response_data = json.loads(commandr_response_json_str)
-                except json.JSONDecodeError as e:
-                    self.logger.error(
-                        f"JSON DECODE ERROR: {e} with response: {commandr_response_json_str}"
+                return None
+            except Exception as e:
+                self.logger.error(
+                    f"UNEXPECTED ERROR: {e} with response: {commandr_response_json_str}"
+                )
+                return None
+
+            if (
+                not isinstance(commandr_response_data, list)
+                or not commandr_response_data
+            ):
+                self.logger.error(
+                    f"RESPONSE FORMAT ERROR: Expected a list with data, got: {commandr_response_data}"
+                )
+                return None
+
+            self.logger.info(f"Response was: {commandr_response_data}")
+            for tool in commandr_response_data:
+                tool_name = tool.get("tool_name")
+                tool_params = tool.get("parameters")
+                self.logger.info(f"running tool: {tool_name}")
+
+                if tool_name == "send_direct_response":
+                    self.logger.info(
+                        f"No tool, model wants to directly respond: {tool_params}"
                     )
-                    return None
-                except Exception as e:
-                    self.logger.error(
-                        f"UNEXPECTED ERROR: {e} with response: {commandr_response_json_str}"
-                    )
+                    self.logger.info(json.dumps(tool_params))
+                    if use_qwen:
+                        self.logger.info(f"used Qwen for response: {qwen_response}")
+                        self.tool_message = qwen_response.strip()
+                    elif "message" in tool_params:
+                        self.tool_message = tool_params["message"]
                     return None
 
                 if (
-                    not isinstance(commandr_response_data, list)
-                    or not commandr_response_data
+                    tool_name
+                    and tool_params is not None
+                    and messageArray[-1]["role"] != "system"
                 ):
-                    self.logger.error(
-                        f"RESPONSE FORMAT ERROR: Expected a list with data, got: {commandr_response_data}"
-                    )
-                    return None
-
-                self.logger.info(f"Response was: {commandr_response_data}")
-                for tool in commandr_response_data:
-                    tool_name = tool.get("tool_name")
-                    tool_params = tool.get("parameters")
-
-                    if tool_name == "send_direct_response":
-                        self.logger.info(
-                            f"No tool, model wants to directly respond: {tool_params}"
+                    try:
+                        while not self.can_send:
+                            await asyncio.sleep(0.05)
+                        await self.call_function(
+                            FunctionCall(
+                                name=tool_name, arguments=json.dumps(tool_params)
+                            ),
+                            TranscriptionAgentInput(
+                                transcription=Transcription(
+                                    message="I am doing that for you now.",
+                                    confidence=1.0,
+                                    is_final=True,
+                                    time_silent=0.0,
+                                ),
+                                conversation_id=self.conversation_id,
+                                twilio_sid=self.twilio_sid,
+                            ),
                         )
-                        self.logger.info(json.dumps(tool_params))
-                        if use_qwen:
-                            self.logger.info(f"used Qwen for response: {qwen_response}")
-                            self.tool_message = qwen_response.strip()
-                        elif "message" in tool_params:
-                            self.tool_message = tool_params["message"]
-                        return None
+                        self.can_send = False
+                        self.tool_message = ""
+                        return {
+                            "tool_name": tool_name,
+                            "tool_params": json.dumps(tool_params),
+                        }
 
-                    if (
-                        tool_name
-                        and tool_params is not None
-                        and messageArray[-1]["role"] != "system"
-                    ):
-                        try:
-                            while not self.can_send:
-                                await asyncio.sleep(0.05)
-                            await self.call_function(
-                                FunctionCall(
-                                    name=tool_name, arguments=json.dumps(tool_params)
-                                ),
-                                TranscriptionAgentInput(
-                                    transcription=Transcription(
-                                        message="I am doing that for you now.",
-                                        confidence=1.0,
-                                        is_final=True,
-                                        time_silent=0.0,
-                                    ),
-                                    conversation_id=self.conversation_id,
-                                    twilio_sid=self.twilio_sid,
-                                ),
-                            )
-                            self.can_send = False
-                            self.tool_message = ""
-                            return {
-                                "tool_name": tool_name,
-                                "tool_params": json.dumps(tool_params),
-                            }
-
-                        except Exception as e:
-                            self.logger.error(f"ERROR CREATING FUNCTION CALL: {e}")
-                            break  # If there's an error, we stop processing further tools
-                return None
+                    except Exception as e:
+                        self.logger.error(f"ERROR CREATING FUNCTION CALL: {e}")
+                        break  # If there's an error, we stop processing further tools
             return None
+        return None
 
     def prepare_chat(self, latest_agent_response):
         chat = format_openai_chat_messages_from_transcript(self.transcript)[1:]
