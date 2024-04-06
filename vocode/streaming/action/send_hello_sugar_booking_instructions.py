@@ -17,7 +17,6 @@ from vocode.streaming.models.actions import (
 
 from telephony_app.integrations.hello_sugar.hello_sugar_location_getter import get_all_google_locations, \
     get_cached_hello_sugar_locations
-from telephony_app.utils.prompt_llm import extract_hello_sugar_location_from_transcript
 
 
 class SendHelloSugarBookingInstructionsActionConfig(ActionConfig, type=ActionType.SEND_HELLO_SUGAR_BOOKING_INSTRUCTIONS):
@@ -48,7 +47,6 @@ class SendHelloSugarBookingInstructions(BaseAction[SendHelloSugarBookingInstruct
         if len(to_phone) == 9:
             to_phone = "1" + to_phone
 
-        # extracted_location = extract_hello_sugar_location_from_transcript(location)
         hello_sugar_google_locations = get_all_google_locations(f"hello sugar | {location}")
 
         if hello_sugar_google_locations:
