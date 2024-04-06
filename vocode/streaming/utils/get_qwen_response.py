@@ -74,7 +74,7 @@ async def get_qwen_response(
     prompt_buffer: str,
     logger: Logger,
     stream_output: bool = True,
-    retries_remaining: int = 4,
+    retries_remaining: int = 40,
 ):
     sentence_buffer = ""
     if prompt_buffer[-1] == "\n" or prompt_buffer[-1] == " ":
@@ -181,6 +181,9 @@ async def get_qwen_response(
                 # self.logger.info(f"Sent out: {last_message}")
             else:
                 if retries_remaining > 0:
-                    return get_qwen_response(prompt_buffer=prompt_buffer, logger=logger, stream_output=stream_output, retries_remaining=retries_remaining-1)
+                    logger.info("Qwen failed, retrying")
+                    async for chunk in get_qwen_response(prompt_buffer=prompt_buffer, logger=logger, stream_output=stream_output, retries_remaining=retries_remaining-1):
+                        yield chunk
+                    return
                 logger.error(f"Error while streaming from OpenAI: {str(response)}")
                 return
