@@ -282,7 +282,6 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
 
         return true_conditions
 
-
     async def call_function(self, function_call: FunctionCall, agent_input: AgentInput):
         action_config = self._get_action_config(function_call.name)
         if action_config is None:
