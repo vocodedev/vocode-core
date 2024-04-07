@@ -1,8 +1,9 @@
 import asyncio
 import logging
+import os
 import signal
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -28,26 +29,28 @@ async def main():
         speaker_output,
     ) = create_streaming_microphone_input_and_speaker_output(
         use_default_devices=False,
+        # NOTE: input must not be able to hear output device, or you'll get interference (bot replying to itself)
+        input_device_name=os.getenv("INPUT_DEVICE_NAME", None),
+        output_device_name=os.getenv("OUTPUT_DEVICE_NAME", None),
         logger=logger,
         use_blocking_speaker_output=True,  # this moves the playback to a separate thread, set to False to use the main thread
     )
 
     conversation = StreamingConversation(
         output_device=speaker_output,
-        transcriber=DeepgramTranscriber(
-            DeepgramTranscriberConfig.from_input_device(
+        transcriber=GoogleTranscriber(
+            GoogleTranscriberConfig.from_input_device(
                 microphone_input,
-                endpointing_config=PunctuationEndpointingConfig(),
             )
         ),
         agent=ChatGPTAgent(
             ChatGPTAgentConfig(
-                initial_message=BaseMessage(text="What up"),
+                initial_message=BaseMessage(text="What's up"),
                 prompt_preamble="""The AI is having a pleasant conversation about life""",
             )
         ),
-        synthesizer=AzureSynthesizer(
-            AzureSynthesizerConfig.from_output_device(speaker_output)
+        synthesizer=GoogleSynthesizer(
+            GoogleSynthesizerConfig.from_output_device(speaker_output)
         ),
         logger=logger,
     )
