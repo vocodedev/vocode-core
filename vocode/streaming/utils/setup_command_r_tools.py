@@ -1,6 +1,11 @@
 import logging
 from vocode.streaming.models.agent import CommandAgentConfig
-from vocode.streaming.models.actions import ActionInput, FunctionCall, ActionType, FunctionFragment
+from vocode.streaming.models.actions import (
+    ActionInput,
+    FunctionCall,
+    ActionType,
+    FunctionFragment,
+)
 
 standard_tools = [
     {
@@ -92,7 +97,7 @@ all_optional_tools = {
                 "required": True,
             },
             "location": {
-                "description": "The rough location the client would like directions for",
+                "description": "The rough location the client would like directions for, including the city and state",
                 "type": "str",
                 "required": True,
             },
@@ -147,7 +152,7 @@ all_optional_tools = {
     },
     ActionType.RETRIEVE_INSTRUCTIONS: {
         "name": "retrieve_instructions",
-        "description": "Retrieve instructions for an upcoming part of the workflow",
+        "description": "Trigger when instructed to. Retrieves additional steps to follow. The numerical ID is required.",
         "parameter_definitions": {
             "id": {
                 "description": "The ID of the instruction to retrieve",
@@ -158,16 +163,17 @@ all_optional_tools = {
     },
 }
 
+
 def setup_command_r_tools(action_config: CommandAgentConfig, logger: logging.Logger):
-    tools = standard_tools.copy()
+    optional_tools = []
 
     if not action_config.actions:
-        return tools
-    
+        return standard_tools.copy()
+
     for action_config in action_config.actions:
         action_type: ActionType = action_config.type
         tool = all_optional_tools[action_type]
         if tool:
-            tools.append(tool)
-    
-    return tools
+            optional_tools.append(tool)
+
+    return optional_tools + standard_tools.copy()

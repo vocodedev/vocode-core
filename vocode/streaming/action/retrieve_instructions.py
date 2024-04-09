@@ -28,7 +28,7 @@ class RetrieveInstructionsParameters(BaseModel):
 
 
 class RetrieveInstructionsResponse(BaseModel):
-    agent_profile: dict = Field(
+    agent_profile: str = Field(
         None, description="The agent profile fetched from the database"
     )
 
@@ -129,7 +129,9 @@ class RetrieveInstructions(
         if agent_profile:
             return ActionOutput(
                 action_type=action_input.action_config.type,
-                response=RetrieveInstructionsResponse(agent_profile=agent_profile),
+                response=RetrieveInstructionsResponse(
+                    agent_profile=agent_profile["user_plaintext_prompt"]
+                ),
             )
         else:
             return ActionOutput(
@@ -138,3 +140,6 @@ class RetrieveInstructions(
                     agent_profile={"ERROR": "Error fetching instructions."}
                 ),
             )
+
+
+# Path: telephony_app/local_vocode/vocode-python-main/vocode/streaming/action/send_text.py

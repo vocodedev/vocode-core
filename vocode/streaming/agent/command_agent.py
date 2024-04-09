@@ -28,7 +28,12 @@ from vocode.streaming.agent.base_agent import (
     RespondAgent,
     TranscriptionAgentInput,
 )
-from vocode.streaming.models.actions import ActionInput, FunctionCall, ActionType, FunctionFragment
+from vocode.streaming.models.actions import (
+    ActionInput,
+    FunctionCall,
+    ActionType,
+    FunctionFragment,
+)
 from vocode.streaming.models.agent import CommandAgentConfig
 from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
@@ -77,6 +82,7 @@ HEADERS = {
     "Content-Type": "application/json",
     "Authorization": f"Bearer 'EMPTY'",
 }
+
 
 class EventLog(BaseModel):
     sender: Sender
@@ -213,9 +219,6 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 reason=reason,
             )
         )
-        # log messages
-        self.logger.debug(f"Messages: {messages}")
-
         # self.logger.debug(f"Formatted completion: {formatted_completion}")
         parameters: Dict[str, Any] = {
             "prompt": formatted_completion,
@@ -386,15 +389,14 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 self.agent_config.prompt_preamble,
             )
         )
-        # self.logger.info(f"commandr_prompt_buffer was {commandr_prompt_buffer}")
+        commandr_chat_buffer, arra = format_commandr_chat_completion_from_transcript(
+            self.tokenizer,
+            self.transcript,
+            self.agent_config.prompt_preamble,
+        )  # unused for now
         if "Do not provide" in messageArray[-1]["content"]:
             self.logger.info("Skipping tool use due to tool use.")
             return None  # TODO: investigate if this is why it needs to be prompted to do async tools
-
-        # print role of the latest message
-        # self.logger.info(f"Role was: {messageArray[-1]}")
-        # tool_chat = self.prepare_chat_for_tool_check(latest_agent_response)
-        # self.logger.info(f"tool_chat was {prompt_buffer}")
         use_qwen = self.agent_config.model_name.lower() == QWEN_MODEL_NAME.lower()
 
         async def get_qwen_response_future():
@@ -412,6 +414,39 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     break
             return response
 
+        async def gen_command_response_chat_future(prompt_buffer):
+            # self.logger.info(f"Prompt buffer: {prompt_buffer}")
+            response_text = ""
+            async with aiohttp.ClientSession() as session:
+                base_url = getenv("AI_API_HUGE_BASE")
+                self.logger.info(f"Base URL: {base_url}")
+                self.logger.info(f"AI_MODEL_NAME_HUGE: {getenv('AI_MODEL_NAME_HUGE')}")
+                data = {
+                    "model": getenv("AI_MODEL_NAME_HUGE"),
+                    "prompt": prompt_buffer,
+                    "stream": False,
+                    "stop": ["?", "SYSTEM", "<|END_OF_TURN_TOKEN|>"],
+                    "max_tokens": 120,
+                    "include_stop_str_in_output": True,
+                }
+
+                async with session.post(
+                    f"{base_url}/completions", headers=HEADERS, json=data
+                ) as response:
+                    if response.status == 200:
+                        response_data = await response.json()
+                        if "choices" in response_data and response_data["choices"]:
+                            response_text = (
+                                response_data["choices"][0]
+                                .get("text", "")
+                                .replace("SYSTEM", "")
+                            )
+                    else:
+                        self.logger.error(
+                            f"Error while getting chat response from command-r: {str(response)}\nThe request data was: {data}"
+                        )
+            return response_text
+
         commandr_response, qwen_response = await asyncio.gather(
             get_commandr_response(
                 prompt_buffer=commandr_prompt_buffer, logger=self.logger
@@ -420,9 +455,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         )
 
         if not commandr_response.startswith("Action: ```json"):
-            self.logger.error(
-                f"ACTION RESULT DID NOT LOOK RIGHT: {commandr_response}"
-            )
+            self.logger.error(f"ACTION RESULT DID NOT LOOK RIGHT: {commandr_response}")
         else:
             commandr_response_json_str = commandr_response[
                 len("Action: ```json") :
@@ -653,46 +686,6 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
             )
 
         prompt_buffer = chat_parameters["prompt"]
-        # print number of new lines in the prompt buffer
-        words = prompt_buffer.split(" ")
-        new_words = []
-        largest_seq = 0
-        current_seq = 0
-        last_digit_index = -1
-        for i, word in enumerate(words):
-            post = ""
-            if "<|END_OF_TURN_TOKEN|>" in word:
-                pre = word.split("<|END_OF_TURN_TOKEN|>")[0]
-                post = "<|END_OF_TURN_TOKEN|>" + word.split("<|END_OF_TURN_TOKEN|>")[1]
-                word = pre
-            if word.lower() in digits:
-                digit_str = str(digits.index(word.lower()))
-                digit_str += post
-                new_words.append(digit_str)
-                current_seq += 1
-                if current_seq > largest_seq:
-                    largest_seq = current_seq
-                    last_digit_index = i
-            else:
-                new_words.append(word + post)
-                current_seq = 0
-        if last_digit_index != -1:
-            sequence_start = last_digit_index - largest_seq + 1
-            insert_index = sum(len(w) + 1 for w in new_words[:sequence_start])
-            if largest_seq == 10:
-                number_sentence = f"(with {largest_seq} digits):"
-            elif largest_seq < 10:
-                number_sentence = f"(with only {largest_seq} digits (<10))"
-            else:
-                number_sentence = f"(with {largest_seq} digits (>10))"
-            if largest_seq > 3:  # only provide nu
-                prompt_buffer = (
-                    " ".join(new_words[:sequence_start])
-                    + f" {number_sentence} "
-                    + " ".join(new_words[sequence_start:])
-                )
-        else:
-            prompt_buffer = " ".join(new_words)
 
         prompt_buffer = prompt_buffer.replace("  ", " ")
         if len(prompt_buffer) == 0:
@@ -702,7 +695,8 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         if not prompt_buffer or len(prompt_buffer) < len(chat_parameters["prompt"]):
             prompt_buffer = chat_parameters["prompt"]
 
-        async def get_response(prompt_buffer) -> str:
+        # Get the full response and store it
+        async def gen_command_response_chat_future(prompt_buffer):
             # self.logger.info(f"Prompt buffer: {prompt_buffer}")
             response_text = ""
             async with aiohttp.ClientSession() as session:
@@ -712,7 +706,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     "prompt": prompt_buffer,
                     "stream": False,
                     "stop": ["?", "SYSTEM", "<|END_OF_TURN_TOKEN|>"],
-                    "max_tokens": chat_parameters.get("max_tokens", 120),
+                    "max_tokens": 120,
                     "include_stop_str_in_output": True,
                 }
 
@@ -729,12 +723,13 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                             )
                     else:
                         self.logger.error(
-                            f"Error while getting response from command-r: {str(response)}"
+                            f"Error while getting chat response from command-r: {str(response)}\nThe request data was: {data}"
                         )
             return response_text
 
-        # Get the full response and store it
-        latest_agent_response = await get_response(prompt_buffer)
+        if len(self.tool_message) > 0:
+            return self.tool_message, True
+        latest_agent_response = await gen_command_response_chat_future(prompt_buffer)
         latest_agent_response = latest_agent_response.replace(
             "<|END_OF_TURN_TOKEN|>", ""
         )

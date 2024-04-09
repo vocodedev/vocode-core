@@ -15,11 +15,15 @@ from vocode.streaming.models.actions import (
     ActionType,
 )
 
-from telephony_app.integrations.hello_sugar.hello_sugar_location_getter import get_all_google_locations, \
-    get_cached_hello_sugar_locations
+from telephony_app.integrations.hello_sugar.hello_sugar_location_getter import (
+    get_all_google_locations,
+    get_cached_hello_sugar_locations,
+)
 
 
-class SendHelloSugarDirectionsActionConfig(ActionConfig, type=ActionType.SEND_HELLO_SUGAR_DIRECTIONS):
+class SendHelloSugarDirectionsActionConfig(
+    ActionConfig, type=ActionType.SEND_HELLO_SUGAR_DIRECTIONS
+):
     from_phone: str
 
 
@@ -32,12 +36,22 @@ class SendHelloSugarDirectionsResponse(BaseModel):
     status: str = Field(None, description="The response received from the recipient")
 
 
-class SendHelloSugarDirections(BaseAction[SendHelloSugarDirectionsActionConfig, SendHelloSugarDirectionsParameters, SendHelloSugarDirectionsResponse]):
+class SendHelloSugarDirections(
+    BaseAction[
+        SendHelloSugarDirectionsActionConfig,
+        SendHelloSugarDirectionsParameters,
+        SendHelloSugarDirectionsResponse,
+    ]
+):
     description: str = (
         "sends a text message to a phone number about the directions to get to a specific location"
     )
-    parameters_type: Type[SendHelloSugarDirectionsParameters] = SendHelloSugarDirectionsParameters
-    response_type: Type[SendHelloSugarDirectionsResponse] = SendHelloSugarDirectionsResponse
+    parameters_type: Type[SendHelloSugarDirectionsParameters] = (
+        SendHelloSugarDirectionsParameters
+    )
+    response_type: Type[SendHelloSugarDirectionsResponse] = (
+        SendHelloSugarDirectionsResponse
+    )
 
     async def send_hello_sugar_directions(self, to_phone, location):
         twilio_account_sid = os.environ["TWILIO_ACCOUNT_SID"]
@@ -47,16 +61,29 @@ class SendHelloSugarDirections(BaseAction[SendHelloSugarDirectionsActionConfig, 
         if len(to_phone) == 9:
             to_phone = "1" + to_phone
 
-        hello_sugar_google_locations = get_all_google_locations(f"hello sugar | {location}")
+        hello_sugar_google_locations = get_all_google_locations(
+            f"hello sugar | {location}"
+        )
+        # log location
+        logging.error(f"locations: {hello_sugar_google_locations}")
 
         if hello_sugar_google_locations:
-            searched_hello_sugar_location = hello_sugar_google_locations["places"][0]["id"]
+            searched_hello_sugar_location = hello_sugar_google_locations["places"][0][
+                "id"
+            ]
             cached_hello_sugar_locations = get_cached_hello_sugar_locations()
             try:
                 if searched_hello_sugar_location not in cached_hello_sugar_locations:
-                    raise ValueError(f"The location does not exist {searched_hello_sugar_location} in hello sugar's locations")
+                    raise ValueError(
+                        f"The location does not exist {searched_hello_sugar_location} in hello sugar's locations"
+                    )
 
                 message = f"The directions are {cached_hello_sugar_locations[searched_hello_sugar_location]['directions']}"
+                # log searched and cached locations
+                logging.error(f"searched location: {searched_hello_sugar_location}")
+                logging.error(
+                    f"cached location: {cached_hello_sugar_locations[searched_hello_sugar_location]}"
+                )
                 url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_account_sid}/Messages.json"
                 payload = {"To": to_phone, "From": from_phone, "Body": message}
                 auth = BasicAuth(twilio_account_sid, twilio_auth_token)
@@ -75,9 +102,8 @@ class SendHelloSugarDirections(BaseAction[SendHelloSugarDirectionsActionConfig, 
             except Exception as e:
                 return f"Error sending text message: {e}"
 
-
     async def run(
-            self, action_input: ActionInput[SendHelloSugarDirectionsParameters]
+        self, action_input: ActionInput[SendHelloSugarDirectionsParameters]
     ) -> ActionOutput[SendHelloSugarDirectionsResponse]:
         location = action_input.params.location
         to_phone = action_input.params.to_phone
