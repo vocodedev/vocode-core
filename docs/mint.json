@@ -5,7 +5,7 @@
     "dark": "/logo/dark.png",
     "light": "/logo/dark.png"
   },
-  "favicon": "/favicon.png",
+  "favicon": "/favicon.svg",
   "modeToggle": {
     "default": "dark",
     "isHidden": true
@@ -49,11 +49,19 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": ["welcome", "hosted-quickstart", "open-source-quickstart"]
+      "pages": [
+        "welcome",
+        "hosted-quickstart",
+        "open-source-quickstart"
+      ]
     },
     {
       "group": "Vocode 101",
-      "pages": ["what-is-vocode", "how-it-works", "how-to-use-it"]
+      "pages": [
+        "what-is-vocode",
+        "how-it-works",
+        "how-to-use-it"
+      ]
     },
     {
       "group": "Guides",
@@ -105,7 +113,9 @@
     },
     {
       "group": "Usage",
-      "pages": ["api-reference/usage/get-usage"]
+      "pages": [
+        "api-reference/usage/get-usage"
+      ]
     },
     {
       "group": "Actions",
