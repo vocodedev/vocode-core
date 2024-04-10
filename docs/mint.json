@@ -179,6 +179,7 @@
         "conversational-dials",
         "setting-up-webhook",
         "using-actions",
+        "external-actions",
         "vectordb",
         "multilingual",
         "injecting-context",
