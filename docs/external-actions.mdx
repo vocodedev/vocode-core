@@ -98,11 +98,12 @@ import base64
 import hashlib
 import hmac
 
+
 async def test_requester_encodes_signature(
-request_signature: str, signature: str, payload: dict
+    request_signature: str, signature: str, payload: dict
 ):
-"""
-Asynchronous function to check if the request signature is encoded correctly.
+    """
+    Asynchronous function to check if the request signature is encoded correctly.
 
     Args:
         request_signature (str): The request signature to be decoded.
@@ -116,7 +117,6 @@ Asynchronous function to check if the request signature is encoded correctly.
     decoded_digest = base64.b64decode(request_signature)
     calculated_digest = hmac.new(signature_bytes, payload, hashlib.sha256).digest()
     assert hmac.compare_digest(decoded_digest, calculated_digest) is True
-
 ````
 
 ```typescript TypeScript
