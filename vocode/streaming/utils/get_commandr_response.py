@@ -129,8 +129,26 @@ def format_command_function_completion_from_transcript(
         tokenize=False,
         add_generation_prompt=True,
     )
-    input_ids = input_ids.replace("directly_answer", "send-direct-response")
-    input_ids = input_ids.replace("directly-answer", "send-direct-response")
+    input_ids = input_ids.replace("directly_answer", "send_direct_response")
+    input_ids = input_ids.replace("directly-answer", "send_direct_response")
+    to_replace = "You are a powerful conversational AI trained by Cohere to help people. You are augmented by a number of tools, and your job is to use and consume the output of these tools to best help the user. You will see a conversation history between yourself and a user, ending with an utterance from the user. You will then see a specific instruction instructing you what kind of response to generate. When you answer the user's requests, you cite your sources in your answers, according to those instructions."
+    replace_with = "You are a capable telephone AI. You have been developed and trained by a company called OpenCall to help people over the phone. You are augmented by a number of tools, and your job is to converse with the user, while simultaneously using and consuming these tools only when your instructions indicate to do so. You will see a conversation history between yourself and a user, either ending with an utterance from the user or an indication from the system regarding the status of any tools being run."
+    input_ids = input_ids.replace(to_replace, replace_with)
+
+    to_replace = "## Available Tools"
+    replace_with = """## Style Guide
+To respond to the user or consume the output of a tool, you must use the send_direct_response tool. Only use tools as instructed and do not use tools again if the system indicates that the tool has completed.
+
+## Available Tools"""
+    input_ids = input_ids.replace(to_replace, replace_with)
+
+    to_replace = "You can use any of the supplied tools any number of times, but you should aim to execute the minimum number of necessary actions for the input."
+    replace_with = "Critically, you may only use a single tool per turn. As such, the json formatted list of actions you return should only contain a single action."
+    input_ids = input_ids.replace(to_replace, replace_with)
+
+    to_replace = "of actions that you want to perform"
+    replace_with = "containing a single action that you want to perform"
+    input_ids = input_ids.replace(to_replace, replace_with)
 
     return input_ids, merged_messages
 
@@ -219,7 +237,7 @@ def format_commandr_chat_completion_from_transcript(
             messages.append(
                 {
                     "role": "system",
-                    "content": f"Action: ```json\n{{\n    \"tool_name\": \"{current_doc['action_type']}\",\n    \"parameters\": {current_doc['action_input']},\n    \"tool_output\": {current_doc['action_output']}\n}}\n```",
+                    "content": f"Action Completed: ```json\n{{\n    \"tool_name\": \"{current_doc['action_type']}\",\n    \"parameters\": {current_doc['action_input']},\n    \"tool_output\": {current_doc['action_output']}\n}}\n\nYou may directly respond to the user.```",
                 }
             )
             current_doc = {"action_type": "", "action_input": "", "action_output": ""}
@@ -236,7 +254,7 @@ def format_commandr_chat_completion_from_transcript(
         messages.append(
             {
                 "role": "system",
-                "content": f"Action: ```json\n{{\n    \"tool_name\": \"{current_doc['action_type']}\",\n    \"parameters\": {current_doc['action_input']}\n}}\n```",
+                "content": f"Action Pending: ```json\n{{\n    \"tool_name\": \"{current_doc['action_type']}\",\n    \"parameters\": {current_doc['action_input']}\n}}\n\nYou do not have the result. Yet, you may directly respond to the user.```",
             }
         )
     # Merge consecutive messages from the same sender
@@ -265,8 +283,8 @@ def format_commandr_chat_completion_from_transcript(
         if len(reason) > 0:
             input_ids += f"<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>No action taken because: {reason}<|END_OF_TURN_TOKEN|>"
         input_ids += "<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>"
-        input_ids = input_ids.replace("directly_answer", "send-direct-response")
-        input_ids = input_ids.replace("directly-answer", "send-direct-response")
+        input_ids = input_ids.replace("directly_answer", "send_direct_response")
+        input_ids = input_ids.replace("directly-answer", "send_direct_response")
     except Exception as e:
         raise e
 
@@ -275,8 +293,8 @@ def format_commandr_chat_completion_from_transcript(
 
 async def get_commandr_response(prompt_buffer: str, logger: Logger):
     response_text = ""
-    prompt_buffer = prompt_buffer.replace("directly_answer", "send-direct-response")
-    prompt_buffer = prompt_buffer.replace("directly-answer", "send-direct-response")
+    prompt_buffer = prompt_buffer.replace("directly_answer", "send_direct_response")
+    prompt_buffer = prompt_buffer.replace("directly-answer", "send_direct_response")
     async with aiohttp.ClientSession() as session:
         base_url = getenv("AI_API_BASE")
         data = {
@@ -285,6 +303,8 @@ async def get_commandr_response(prompt_buffer: str, logger: Logger):
             "stream": False,
             "stop": ["<|END_OF_TURN_TOKEN|>"],
             "max_tokens": 500,
+            "top_p": 1,
+            "temperature": 0,
             "include_stop_str_in_output": True,
         }
 

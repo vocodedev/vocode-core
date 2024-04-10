@@ -414,39 +414,6 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     break
             return response
 
-        async def gen_command_response_chat_future(prompt_buffer):
-            # self.logger.info(f"Prompt buffer: {prompt_buffer}")
-            response_text = ""
-            async with aiohttp.ClientSession() as session:
-                base_url = getenv("AI_API_HUGE_BASE")
-                self.logger.info(f"Base URL: {base_url}")
-                self.logger.info(f"AI_MODEL_NAME_HUGE: {getenv('AI_MODEL_NAME_HUGE')}")
-                data = {
-                    "model": getenv("AI_MODEL_NAME_HUGE"),
-                    "prompt": prompt_buffer,
-                    "stream": False,
-                    "stop": ["?", "SYSTEM", "<|END_OF_TURN_TOKEN|>"],
-                    "max_tokens": 120,
-                    "include_stop_str_in_output": True,
-                }
-
-                async with session.post(
-                    f"{base_url}/completions", headers=HEADERS, json=data
-                ) as response:
-                    if response.status == 200:
-                        response_data = await response.json()
-                        if "choices" in response_data and response_data["choices"]:
-                            response_text = (
-                                response_data["choices"][0]
-                                .get("text", "")
-                                .replace("SYSTEM", "")
-                            )
-                    else:
-                        self.logger.error(
-                            f"Error while getting chat response from command-r: {str(response)}\nThe request data was: {data}"
-                        )
-            return response_text
-
         commandr_response, qwen_response = await asyncio.gather(
             get_commandr_response(
                 prompt_buffer=commandr_prompt_buffer, logger=self.logger
@@ -537,45 +504,6 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                         break  # If there's an error, we stop processing further tools
             return None
         return None
-
-    def prepare_chat(self, latest_agent_response):
-        chat = format_openai_chat_messages_from_transcript(self.transcript)[1:]
-        chat[-1] = {"role": "assistant", "content": latest_agent_response}
-        return chat
-
-    def prepare_chat_for_tool_check(self, latest_agent_response):
-        # Extract messages and filter out non-user and non-assistant messages
-        chat = format_tool_completion_from_transcript(
-            self.transcript, latest_agent_response
-        )
-
-        # remove punctuation and make lowercase using punctuation and lower
-        new_chat = [
-            message.translate(str.maketrans("", "", string.punctuation)).lower()
-            for message in chat
-        ]
-        return new_chat
-
-    def prepare_messages(self, pretty_tool_descriptions, stringified_messages):
-        preamble = f"""You will be provided with a conversational transcript between a caller and the receiver's assistant. During the conversation, the assistant and the caller will either be talking about random things, discussing an action the assistant might take, the assistant might be collecting information from the the assistant has the following actions it can take: {pretty_tool_descriptions}.\nYour task is to infer, for the latest inquiry, whether the assistant has completed an action. If the assistant is about to execute an action, or is preparing to, the action is not completed and you must return 'None'. If the agent has confirmed that an action has already been completed, return the name of the action. Return a single word."""
-        system_message = {"role": "system", "content": preamble}
-        transcript_message = {"role": "user", "content": stringified_messages}
-        return system_message, transcript_message
-
-    def get_tool_classification(self, response, tools):
-        # check to make sure there is no pending action
-        if self.agent_config.pending_action == "pending":
-            self.logger.info(
-                "Skipping tool classification as there is a pending action"
-            )
-            return False, None
-        tool_classification = response.choices[0].message.content.lower().strip()
-
-        self.logger.info(f"Final tool classification to trigger: {tool_classification}")
-        is_classified_tool = tool_classification in [
-            tool["function"]["name"].lower() for tool in tools
-        ]
-        return is_classified_tool, tool_classification
 
     async def respond(
         self,
@@ -696,7 +624,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
             prompt_buffer = chat_parameters["prompt"]
 
         # Get the full response and store it
-        async def gen_command_response_chat_future(prompt_buffer):
+        async def gen_command_response_chat_future_fallback(prompt_buffer):
             # self.logger.info(f"Prompt buffer: {prompt_buffer}")
             response_text = ""
             async with aiohttp.ClientSession() as session:
@@ -707,6 +635,8 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     "stream": False,
                     "stop": ["?", "SYSTEM", "<|END_OF_TURN_TOKEN|>"],
                     "max_tokens": 120,
+                    "top_p": 1,
+                    "temperature": 0,
                     "include_stop_str_in_output": True,
                 }
 
@@ -729,7 +659,9 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
 
         if len(self.tool_message) > 0:
             return self.tool_message, True
-        latest_agent_response = await gen_command_response_chat_future(prompt_buffer)
+        latest_agent_response = await gen_command_response_chat_future_fallback(
+            prompt_buffer
+        )
         latest_agent_response = latest_agent_response.replace(
             "<|END_OF_TURN_TOKEN|>", ""
         )

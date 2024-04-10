@@ -10,10 +10,10 @@ from vocode.streaming.models.actions import (
 standard_tools = [
     {
         "name": "send_direct_response",
-        "description": "Send the user a message directly, given the conversation history, must include the message",
+        "description": "Continue the conversation, given the conversation history. Must include the message.",
         "parameter_definitions": {
             "message": {
-                "description": "Message you intend to send to the user",
+                "description": "Your reply to the user.",
                 "type": "str",
                 "required": True,
             }
@@ -24,7 +24,7 @@ standard_tools = [
 all_optional_tools = {
     ActionType.TRANSFER_CALL: {
         "name": "transfer_call",
-        "description": "Transfers when the agent agrees to transfer the call",
+        "description": "Transfers when the agent agrees to transfer the call.",
         "parameter_definitions": {
             "transfer_reason": {
                 "description": "The reason for transferring the call, limited to 120 characters",
@@ -35,7 +35,7 @@ all_optional_tools = {
     },
     ActionType.HANGUP_CALL: {
         "name": "hangup_call",
-        "description": "Hangup the call if the instructions are to do so",
+        "description": "Hangup the call if the instructions are to do so.",
         "parameter_definitions": {
             "end_reason": {
                 "description": "The reason for ending the call, limited to 120 characters",
@@ -44,9 +44,20 @@ all_optional_tools = {
             }
         },
     },
+    ActionType.RETRIEVE_INSTRUCTIONS: {
+        "name": "retrieve_instruction",
+        "description": "Certain steps specify an instruction id to retrieve before moving on. This action retrieves the instruction.",
+        "parameter_definitions": {
+            "id": {
+                "description": "The ID number of the instruction to retrieve",
+                "type": "int",
+                "required": True,
+            },
+        },
+    },
     ActionType.SEARCH_ONLINE: {
         "name": "search_online",
-        "description": "Searches online when the agent says they will look something up",
+        "description": "Searches online when the agent says they will look something up.",
         "parameter_definitions": {
             "query": {
                 "description": "The search query to be sent to the online search API",
@@ -57,7 +68,7 @@ all_optional_tools = {
     },
     ActionType.SEND_TEXT: {
         "name": "send_text",
-        "description": "Triggered when the agent sends a text, only if they have been provided a valid phone number and a message to send.",
+        "description": "Send an sms to a phone number.",
         "parameter_definitions": {
             "to_phone": {
                 "description": "The phone number to which the text message will be sent",
@@ -73,15 +84,15 @@ all_optional_tools = {
     },
     ActionType.SEND_HELLO_SUGAR_DIRECTIONS: {
         "name": "send_hello_sugar_directions",
-        "description": "Triggered when the agent sends a text, only if they have been provided a valid phone number and a message to send.",
+        "description": "Sends a text with directions to the caller given a specific location and the number they're calling from.",
         "parameter_definitions": {
             "to_phone": {
-                "description": "The phone number to which the text message will be sent",
+                "description": "The phone number to which the directions will be texted",
                 "type": "str",
                 "required": True,
             },
             "location": {
-                "description": "The rough location the client would like directions for",
+                "description": "The rough location the client is trying to get to, including the city and state",
                 "type": "str",
                 "required": True,
             },
@@ -89,15 +100,15 @@ all_optional_tools = {
     },
     ActionType.SEND_HELLO_SUGAR_BOOKING_INSTRUCTIONS: {
         "name": "send_hello_sugar_booking_instructions",
-        "description": "Triggered when the agent sends a text, only if they have been provided a valid phone number and a message to send.",
+        "description": "Sends instructions on how to actually book an appointment at a specific Hello Sugar location.",
         "parameter_definitions": {
             "to_phone": {
-                "description": "The phone number to which the text message will be sent",
+                "description": "The phone number to which the instructions will be sent",
                 "type": "str",
                 "required": True,
             },
             "location": {
-                "description": "The rough location the client would like directions for, including the city and state",
+                "description": "The rough appointment location",
                 "type": "str",
                 "required": True,
             },
@@ -129,7 +140,7 @@ all_optional_tools = {
     # },
     ActionType.USE_CALENDLY: {
         "name": "use_calendly",
-        "description": "You can either list events or cancel an event. Listing events (list_events) also returns a booking link for scheduling tasks. You cannot schedule directly.",
+        "description": "Listing events (list_events) also returns a booking link for scheduling tasks. You cannot schedule directly.",
         "parameter_definitions": {
             "api_key": {
                 "description": "API key for Calendly",
@@ -148,17 +159,6 @@ all_optional_tools = {
             #     "required": {"cancel_event": ["uuid"]},
             #     "optional": {"cancel_event": ["reason"]},
             # },
-        },
-    },
-    ActionType.RETRIEVE_INSTRUCTIONS: {
-        "name": "retrieve_instructions",
-        "description": "Trigger when instructed to. Retrieves additional steps to follow. The numerical ID is required.",
-        "parameter_definitions": {
-            "id": {
-                "description": "The ID of the instruction to retrieve",
-                "type": "int",
-                "required": True,
-            },
         },
     },
 }

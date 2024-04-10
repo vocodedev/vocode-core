@@ -19,9 +19,10 @@ class ActionType(str, Enum):
     SEND_EMAIL = "send_email"
     GET_TRAIN = "get_train"
     USE_CALENDLY = "use_calendly"
-    RETRIEVE_INSTRUCTIONS = "retrieve_instructions"
+    RETRIEVE_INSTRUCTIONS = "retrieve_instruction"
     SEND_HELLO_SUGAR_DIRECTIONS = "send_hello_sugar_directions"
     SEND_HELLO_SUGAR_BOOKING_INSTRUCTIONS = "send_hello_sugar_booking_instructions"
+
 
 class ActionConfig(TypedModel, type=ActionType.BASE):
     pass

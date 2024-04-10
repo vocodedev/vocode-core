@@ -119,6 +119,6 @@ class SendHelloSugarDirections(
         return ActionOutput(
             action_type=action_input.action_config.type,
             response=SendHelloSugarDirectionsResponse(
-                status=f"Message to {to_phone} has been sent successfully with the content: '{location}'."
+                status=f"Details about '{location}' have been sent via text to: {to_phone}. The messages sent is: {response}"
             ),
         )
