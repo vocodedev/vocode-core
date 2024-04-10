@@ -61,11 +61,11 @@ For example, in the [Meeting Assistant Example](/external-actions#meeting-assist
   prompt to an LLM!
 </Card>
 
-#### Other Fields to Determine Agent Behavior - `speak_on_send`: if `True`, then
+#### Other Fields to Determine Agent Behavior
 
-the underlying LLM will generate a message to be spoken into the phone call as the
-API request is being sent. - `url`: The API request is sent to this URL in the format
-defined below in [Responding to External Action API Requests](/external-actions#responding-to-external-action-api-requests)
+- `speak_on_send`: if `True`, then the underlying LLM will generate a message to be spoken into the phone call as the
+  API request is being sent. - `url`: The API request is sent to this URL in the format
+  defined below in [Responding to External Action API Requests](/external-actions#responding-to-external-action-api-requests)
 
 - `speak_on_receive`: if `True`, then the Vocode Agent will invoke the underlying
   LLM to respond based on the result from the API Response or the Error encountered.
@@ -115,7 +115,7 @@ curl --request GET \
     "processing_mode": "muted",
     "name": "Meeting_Booking_Assistant",
     "description": "Book a meeting for a 30 minute or 1 hour call.",
-    "url": "http://localhost:3003/external_action",
+    "url": "http://example.com/booking",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -150,22 +150,22 @@ import hashlib
 import hmac
 
 async def test_requester_encodes_signature(
-request_signature: str, signature: str, payload: dict
+request_signature_value: str, signature_secret: str, payload: dict
 ):
 """
 Asynchronous function to check if the request signature is encoded correctly.
 
     Args:
-        request_signature (str): The request signature to be decoded.
-        signature (str): The signature to be decoded and used for comparison.
+        request_signature_value (str): The request signature to be decoded.
+        signature_secret (str): The signature to be decoded and used for comparison.
         payload (dict): The payload to be used for digest calculation.
 
     Returns:
         None
     """
-    signature_bytes = base64.b64decode(signature)
-    decoded_digest = base64.b64decode(request_signature)
-    calculated_digest = hmac.new(signature_bytes, payload, hashlib.sha256).digest()
+    signature_secret_as_bytes = base64.b64decode(signature_secret)
+    decoded_digest = base64.b64decode(request_signature_value)
+    calculated_digest = hmac.new(signature_secret_as_bytes, payload, hashlib.sha256).digest()
     assert hmac.compare_digest(decoded_digest, calculated_digest) is True
 
 ````
@@ -174,22 +174,22 @@ Asynchronous function to check if the request signature is encoded correctly.
 import * as crypto from 'crypto';
 
 async function testRequesterEncodesSignature(
-  requestSignature: string,
-  signature: string,
+  requestSignatureValue: string,
+  signatureSecret: string,
   payload: Record<string, unknown>
 ): Promise<void> {
   /**
    * Asynchronous function to check if the request signature is encoded correctly.
    *
-   * @param requestSignature - The request signature to be decoded.
-   * @param signature - The signature to be decoded and used for comparison.
+   * @param requestSignatureValue - The request signature to be decoded.
+   * @param signatureSecret - The signature to be decoded and used for comparison.
    * @param payload - The payload to be used for digest calculation.
    */
-  const signatureBytes = Buffer.from(signature, 'base64');
-  const decodedDigest = Buffer.from(requestSignature, 'base64');
+  const signatureAsBytes = Buffer.from(signatureSecret, 'base64');
+  const decodedDigest = Buffer.from(requestSignatureValue, 'base64');
   const payloadString = JSON.stringify(payload);
   const calculatedDigest = crypto
-    .createHmac('sha256', signatureBytes)
+    .createHmac('sha256', signatureAsBytes)
     .update(payloadString)
     .digest();
 
@@ -227,6 +227,8 @@ In the [Meeting Assistant Example](/external-actions#meeting-assistant-example) 
 ```
 
 ## Meeting Assistant Example:
+
+This is an example of a Meeting Assistant which will attempt to book a meeting for 30 minutes or an hour at any time ending in a zero (ie 10:30am is okay but 10:35am is not)
 
 <CodeGroup>
 
@@ -316,40 +318,9 @@ curl --request POST \
 
 </CodeGroup>
 
-You can then attach the created External Action to your agent as follows:
-
-  <CodeGroup>
-
-```python Python
-from vocode import AgentUpdateParams
-
-vocode_client.numbers.update_number(
-  phone_number="11234567890",
-  inbound_agent=AgentUpdateParams(
-      actions=["<EXTERNAL ACTION UUID>"]
-  )
-)
-```
-
-```typescript TypeScript
-vocode.numbers.updateNumber({
-  phoneNumber: "11234567890",
-  inboundAgent: {
-    actions: ["<EXTERNAL ACTION UUID>"],
-  },
-});
-```
-
-```bash cURL
-curl --request POST \
-  --url https://api.vocode.dev/v1/numbers/update?phone_number=11234567890 \
-  --header 'Content-Type: application/json' \
-  --header 'Authorization: Bearer <API_KEY>'
-  --data '{
-  "inbound_agent": {
-    "actions": ["<EXTERNAL ACTION UUID>"]
-  }
-}'
-```
-
-</CodeGroup>
+<Card title="💡 Note" color="#ca8b04">
+  If you're looking to attach the created External Action to your agent after
+  creating it in the example below, theres an example of how to do this on the
+  [Using Actions](/using-actions#transfercall) page under the TransferCall
+  section!
+</Card>
