@@ -22,6 +22,7 @@ class ActionType(str, Enum):
     RETRIEVE_INSTRUCTIONS = "retrieve_instruction"
     SEND_HELLO_SUGAR_DIRECTIONS = "send_hello_sugar_directions"
     SEND_HELLO_SUGAR_BOOKING_INSTRUCTIONS = "send_hello_sugar_booking_instructions"
+    CHECK_CALENDAR_AVAILABILITY = "check_calendar_availability"
 
 
 class ActionConfig(TypedModel, type=ActionType.BASE):

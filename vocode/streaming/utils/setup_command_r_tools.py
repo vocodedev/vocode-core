@@ -161,6 +161,17 @@ all_optional_tools = {
             # },
         },
     },
+    ActionType.CHECK_CALENDAR_AVAILABILITY: {
+        "name": "check_calendar_availability",
+        "description": "Check calendar availability for the client's appointment",
+        "parameter_definitions": {
+            "day": {
+                "description": "the day or date that the client would like to book an appointment",
+                "type": "str",
+                "required": True,
+            },
+        },
+    },
 }
 
 
