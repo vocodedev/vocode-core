@@ -1,10 +1,9 @@
-from ast import List
 import logging
 from telephony_app.utils.date_parser import get_availability_for_day, Interval
 from telephony_app.integrations.oauth import OauthCredentials
 from datetime import datetime
 from dateutil import tz
-from typing import Optional, Type, TypedDict
+from typing import List, Optional, Type, TypedDict
 from pydantic import BaseModel, Field
 from vocode.streaming.models.actions import (
     ActionConfig,
@@ -58,5 +57,5 @@ class CheckCalendarAvailability(BaseAction[CheckCalendarAvailabilityActionConfig
 
         return ActionOutput(
             action_type=action_input.action_config.type,
-            response=CheckCalendarAvailabilityResponse(vailability=availability),
+            response=CheckCalendarAvailabilityResponse(availability=availability),
         )

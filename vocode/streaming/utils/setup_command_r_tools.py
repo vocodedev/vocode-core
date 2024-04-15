@@ -172,6 +172,17 @@ all_optional_tools = {
             },
         },
     },
+    ActionType.BOOK_CALENDAR_APPOINTMENT: {
+        "name": "book_calendar_appointment",
+        "description": "Book an appointment for the client on the calendar",
+        "parameter_definitions": {
+            "date": {
+                "description": "the date and time for the appointment",
+                "type": "str",
+                "required": True,
+            },
+        },
+    },
 }
 
 

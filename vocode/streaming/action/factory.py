@@ -11,6 +11,7 @@ from vocode.streaming.action.use_calendly import UseCalendly, CalendlyActionConf
 from vocode.streaming.action.send_hello_sugar_directions import SendHelloSugarDirections, SendHelloSugarDirectionsActionConfig
 from vocode.streaming.action.send_hello_sugar_booking_instructions import SendHelloSugarBookingInstructions, SendHelloSugarBookingInstructionsActionConfig
 from vocode.streaming.action.check_calendar_availability import CheckCalendarAvailability, CheckCalendarAvailabilityActionConfig
+from vocode.streaming.action.book_calendar_appointment import BookCalendarAppointment, BookCalendarAppointmentActionConfig
 
 # use_instructions
 from vocode.streaming.action.retrieve_instructions import (
@@ -46,6 +47,8 @@ class ActionFactory:
         elif isinstance(action_config, SendHelloSugarBookingInstructionsActionConfig):
             return SendHelloSugarBookingInstructions(action_config)
         elif isinstance(action_config, CheckCalendarAvailabilityActionConfig):
+            return CheckCalendarAvailability(action_config)
+        elif isinstance(action_config, BookCalendarAppointmentActionConfig):
             return CheckCalendarAvailability(action_config)
         else:
             raise Exception("Invalid action type")
