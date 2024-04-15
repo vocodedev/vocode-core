@@ -3,9 +3,11 @@ title: "Using actions"
 description: "Make agents on your phone calls take actions"
 ---
 
-Agents on phone calls can take three actions:
+Agents on phone calls can take four actions:
 
-`EndConversation`: allows the agent to end the call, e.g. if the user says "Goodbye!"
+#### EndConversation
+
+`EndConversation` allows the agent to end the call, e.g. if the user says "Goodbye!"
 
   <CodeGroup>
 
@@ -35,7 +37,9 @@ curl --request POST \
 
 </CodeGroup>
 
-`DTMF`: allows the agent to hit dial tones during a call, e.g. navigating a phone tree
+#### DTMF
+
+`DTMF` allows the agent to hit dial tones during a call, e.g. navigating a phone tree
 
   <CodeGroup>
 
@@ -65,7 +69,9 @@ curl --request POST \
 
 </CodeGroup>
 
-`TransferCall`: allows the agent to transfer the call to another phone number
+#### TransferCall
+
+`TransferCall` allows the agent to transfer the call to another phone number
 
   <CodeGroup>
 
@@ -196,3 +202,9 @@ curl --request POST \
 ```
 
 </CodeGroup>
+
+#### [Beta] ExternalAction
+
+`ExternalAction` allows your agent communicate with an External API and include the response as context in the conversation.
+
+See the dedicated [External Action's](/external-actions) page for more info!
