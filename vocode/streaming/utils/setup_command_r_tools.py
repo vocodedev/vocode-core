@@ -181,6 +181,21 @@ all_optional_tools = {
                 "type": "str",
                 "required": True,
             },
+            "guest_email": {
+                "description": "email of the person who is requesting this appointment",
+                "type": "str",
+                "required": True,
+            },
+            "guest_name": {
+                "description": "name of the person who is requesting this appointment",
+                "type": "str",
+                "required": True,
+            },
+            "description": {
+                "description": "summary of the appointment reason",
+                "type": "str",
+                "required": True,
+            },
         },
     },
 }
