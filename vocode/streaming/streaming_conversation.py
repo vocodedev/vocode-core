@@ -127,33 +127,33 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 # TODO human_speaking should be set here as this is the only place with is_final=false.
                 self.conversation.logger.info(f"Ignoring empty transcription {transcription}")
                 return
-
-            # Prevent interrupt.
-            since_last_filler_time = time.time() - self.conversation.last_filler_timestamp
-            silence_since_last_action = time.time() - self.conversation.last_action_timestamp
-            if (
-                    since_last_filler_time < self.conversation.filler_audio_config.silence_threshold_seconds + BOT_TALKING_SINCE_LAST_FILLER_TIME_LIMIT
-                    or silence_since_last_action < BOT_TALKING_SINCE_LAST_ACTION_TIME_LIMIT):
-                # I could clear since_last_filler_time after first response is generated in the synthesizer, but this is complicated to detect, which audio is which.
-                bot_still_talking = True
-                self.conversation.logger.info(
-                    f'Bot still talking, because filler was said recently. since_last_filler_time: {since_last_filler_time}, silence_since_last_action: {silence_since_last_action}')
-
-            else:
-                has_task = self.conversation.synthesis_results_worker.current_task is not None
-                bot_still_talking = has_task and not self.conversation.synthesis_results_worker.current_task.done() if has_task else False
-
-            if bot_still_talking and self.let_bot_finish_speaking:
-                self.conversation.logger.info(
-                    f'The user said "{transcription.message}" during the bot was talking. We are letting the bot finish speaking. Message is not sent to the agent.')
-                # Detect if the bot is talking. This may fail if the current task is done and another not started yet. But playing the audio takes most of the time.
-                return  # just ignore the transcription for now.
-
-            if bot_still_talking and self.conversation.over_talking_filler_detector:
-                self.conversation.logger.info(
-                    f'The user said "{transcription.message}" during the bot was talking. Testing to ignore filler words and confirmation words.')
-                if self.conversation.over_talking_filler_detector.detect_filler(transcription.message):
-                    return
+            # TODO: rework or remove completely.
+            # # Prevent interrupt.
+            # since_last_filler_time = time.time() - self.conversation.last_filler_timestamp
+            # silence_since_last_action = time.time() - self.conversation.last_action_timestamp
+            # if (
+            #         since_last_filler_time < self.conversation.filler_audio_config.silence_threshold_seconds + BOT_TALKING_SINCE_LAST_FILLER_TIME_LIMIT
+            #         or silence_since_last_action < BOT_TALKING_SINCE_LAST_ACTION_TIME_LIMIT):
+            #     # I could clear since_last_filler_time after first response is generated in the synthesizer, but this is complicated to detect, which audio is which.
+            #     bot_still_talking = True
+            #     self.conversation.logger.info(
+            #         f'Bot still talking, because filler was said recently. since_last_filler_time: {since_last_filler_time}, silence_since_last_action: {silence_since_last_action}')
+            #
+            # else:
+            #     has_task = self.conversation.synthesis_results_worker.current_task is not None
+            #     bot_still_talking = has_task and not self.conversation.synthesis_results_worker.current_task.done() if has_task else False
+            #
+            # if bot_still_talking and self.let_bot_finish_speaking:
+            #     self.conversation.logger.info(
+            #         f'The user said "{transcription.message}" during the bot was talking. We are letting the bot finish speaking. Message is not sent to the agent.')
+            #     # Detect if the bot is talking. This may fail if the current task is done and another not started yet. But playing the audio takes most of the time.
+            #     return  # just ignore the transcription for now.
+            #
+            # if bot_still_talking and self.conversation.over_talking_filler_detector:
+            #     self.conversation.logger.info(
+            #         f'The user said "{transcription.message}" during the bot was talking. Testing to ignore filler words and confirmation words.')
+            #     if self.conversation.over_talking_filler_detector.detect_filler(transcription.message):
+            #         return
 
             if transcription.is_final:
                 self.conversation.logger.debug(
