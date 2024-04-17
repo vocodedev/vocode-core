@@ -16,11 +16,13 @@ from vocode.streaming.models.actions import (
 
 
 class TransferCallActionConfig(ActionConfig, type=ActionType.TRANSFER_CALL):
-    to_phone: str
+    pass
 
 
 class TransferCallParameters(BaseModel):
-    pass
+    phone_number_to_transfer_to: str = Field(
+        ..., description="The phone number to transfer the call to",
+    )
 
 
 class TransferCallResponse(BaseModel):
@@ -68,9 +70,10 @@ class TransferCall(
         twilio_call_sid = self.get_twilio_sid(action_input)
 
         await asyncio.sleep(
-            3.5
+            6.5
         )  # to provide small gap between speaking and transfer ring
-        await self.transfer_call(twilio_call_sid, self.action_config.to_phone)
+        await self.transfer_call(twilio_call_sid=twilio_call_sid,
+                                 to_phone=action_input.params.phone_number_to_transfer_to)
 
         return ActionOutput(
             action_type=action_input.action_config.type,

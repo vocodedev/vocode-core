@@ -26,6 +26,11 @@ all_optional_tools = {
         "name": "transfer_call",
         "description": "Transfers when the agent agrees to transfer the call.",
         "parameter_definitions": {
+            "phone_number_to_transfer_to": {
+                "description": "The phone number to transfer the call to",
+                "type": "str",
+                "required": True,
+            },
             "transfer_reason": {
                 "description": "The reason for transferring the call, limited to 120 characters",
                 "type": "str",
