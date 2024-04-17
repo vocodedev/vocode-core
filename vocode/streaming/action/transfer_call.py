@@ -43,7 +43,7 @@ class TransferCall(
             twilio_account_sid=twilio_account_sid, twilio_auth_token=twilio_call_sid
         )
 
-        twiml_data = "<Response><Dial>{to_phone}</Dial></Response>".format(
+        twiml_data = "<Response><Dial callerId='+420773185304'><Number>{to_phone}</Number></Dial></Response>".format(
             to_phone=to_phone
         )
 
