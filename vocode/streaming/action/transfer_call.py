@@ -31,7 +31,7 @@ class TransferCall(
         TransferCallActionConfig, TransferCallParameters, TransferCallResponse
     ]
 ):
-    description: str = "transfers the call. use when you need to connect the active call to another phone line."
+    description: str = "Never use it before confirming thast customer really wants to transfer call! Transfers the call."
     parameters_type: Type[TransferCallParameters] = TransferCallParameters
     response_type: Type[TransferCallResponse] = TransferCallResponse
 
@@ -60,7 +60,7 @@ class TransferCall(
                     return await response.json()
 
     async def run(
-        self, action_input: ActionInput[TransferCallParameters]
+            self, action_input: ActionInput[TransferCallParameters]
     ) -> ActionOutput[TransferCallResponse]:
         twilio_call_sid = self.get_twilio_sid(action_input)
 
