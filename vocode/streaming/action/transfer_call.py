@@ -16,6 +16,7 @@ from vocode.streaming.models.actions import (
 
 class TransferCallActionConfig(ActionConfig, type=ActionType.TRANSFER_CALL):
     to_phone: str
+    from_phone: str
 
 
 class TransferCallParameters(BaseModel):
@@ -35,7 +36,7 @@ class TransferCall(
     parameters_type: Type[TransferCallParameters] = TransferCallParameters
     response_type: Type[TransferCallResponse] = TransferCallResponse
 
-    async def transfer_call(self, twilio_call_sid, to_phone):
+    async def transfer_call(self, twilio_call_sid, to_phone, caller_id):
         twilio_account_sid = os.environ["TWILIO_ACCOUNT_SID"]
         twilio_auth_token = os.environ["TWILIO_AUTH_TOKEN"]
 
@@ -43,8 +44,9 @@ class TransferCall(
             twilio_account_sid=twilio_account_sid, twilio_auth_token=twilio_call_sid
         )
 
-        twiml_data = "<Response><Dial callerId='+420773185304'><Number>{to_phone}</Number></Dial></Response>".format(
-            to_phone=to_phone
+        twiml_data = "<Response><Dial callerId={caller_id}><Number>{to_phone}</Number></Dial></Response>".format(
+            to_phone=to_phone,
+            caller_id=caller_id,
         )
 
         payload = {"Twiml": twiml_data}
@@ -64,7 +66,8 @@ class TransferCall(
     ) -> ActionOutput[TransferCallResponse]:
         twilio_call_sid = self.get_twilio_sid(action_input)
 
-        await self.transfer_call(twilio_call_sid, self.action_config.to_phone)
+        await self.transfer_call(twilio_call_sid=twilio_call_sid, to_phone=self.action_config.to_phone,
+                                 caller_id=self.action_config.from_phone)
 
         return ActionOutput(
             action_type=action_input.action_config.type,
