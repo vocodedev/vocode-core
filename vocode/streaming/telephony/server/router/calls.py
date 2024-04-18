@@ -1,3 +1,4 @@
+import asyncio
 import os
 import signal
 from typing import Optional
@@ -23,18 +24,26 @@ from vocode.streaming.utils.base_router import BaseRouter
 from vocode.streaming.utils.events_manager import EventsManager
 
 
-async def start_twilio_recording(account_sid, auth_token, call_sid):
+async def start_twilio_recording(account_sid, auth_token, call_sid, retries=3, backoff_factor=0.1):
     url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Calls/{call_sid}/Recordings.json"
     auth = aiohttp.BasicAuth(login=account_sid, password=auth_token)
     logger = logging.getLogger(__name__)
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, auth=auth) as response:
-            if response.status == 201:
-                logger.info(f"Started recording for call {call_sid}")
-                return await response.json()
-            else:
-                logger.error(f"Starting recording for call failed {call_sid}!")
-                raise HTTPException(status_code=500, detail="Failed to start recording for call")
+    attempt = 0
+    while attempt < retries:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, auth=auth) as response:
+                if response.status == 201:
+                    logger.info(f"Started recording for call {call_sid}")
+                    return await response.json()
+                elif response.status == 400:
+                    error_details = await response.text()
+                    logger.error(f"Attempt {attempt + 1}: Starting recording for call failed {call_sid} with error: {error_details}")
+                    attempt += 1
+                    await asyncio.sleep(backoff_factor * (2 ** attempt))
+                else:
+                    logger.error(f"Starting recording for call failed {call_sid} with unexpected status code {response.status}!")
+                    raise HTTPException(status_code=response.status, detail="Failed to start recording for call")
+    raise Exception("Failed to start recording after several attempts")
 
 
 class CallsRouter(BaseRouter):
