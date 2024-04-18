@@ -54,6 +54,7 @@ class CheckCalendarAvailability(BaseAction[CheckCalendarAvailabilityActionConfig
     ) -> ActionOutput[CheckCalendarAvailabilityResponse]:
         raw_availability = get_availability_for_day(self.action_config.all_availability, action_input.params.day)
         availability = [natural_lang_date(slot["start"]) for slot in raw_availability]
+        logger.info(f"availability: {availability}")
 
         return ActionOutput(
             action_type=action_input.action_config.type,
