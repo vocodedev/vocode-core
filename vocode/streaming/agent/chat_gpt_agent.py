@@ -1,11 +1,7 @@
 import logging
+from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
 
-from typing import Any, Dict, List, Optional, Tuple, Union
-
-import openai
-from typing import AsyncGenerator, Optional, Tuple
-
-import logging
+from openai import AsyncAzureOpenAI, AsyncOpenAI, OpenAI, AzureOpenAI
 from pydantic.v1 import BaseModel
 
 from vocode import getenv
@@ -37,16 +33,26 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             agent_config=agent_config, action_factory=action_factory, logger=logger
         )
         if agent_config.azure_params:
-            openai.api_type = agent_config.azure_params.api_type
-            openai.api_base = getenv("AZURE_OPENAI_API_BASE")
-            openai.api_version = agent_config.azure_params.api_version
-            openai.api_key = getenv("AZURE_OPENAI_API_KEY")
+            self.aync_openai_client = AsyncAzureOpenAI(
+                api_version=agent_config.azure_params.api_version,
+                api_key=getenv("AZURE_OPENAI_API_KEY"),
+                azure_endpoint=getenv("AZURE_OPENAI_API_BASE"),
+            )
+            self.openai_client = AzureOpenAI(
+                api_version=agent_config.azure_params.api_version,
+                api_key=getenv("AZURE_OPENAI_API_KEY"),
+                azure_endpoint=getenv("AZURE_OPENAI_API_BASE"),
+            )
         else:
-            openai.api_type = "open_ai"
-            openai.api_base = "https://api.openai.com/v1"
-            openai.api_version = None
-            openai.api_key = openai_api_key or getenv("OPENAI_API_KEY")
-        if not openai.api_key:
+            self.aync_openai_client = AsyncOpenAI(
+                api_base="https://api.openai.com/v1",
+                api_key=openai_api_key or getenv("OPENAI_API_KEY"),
+            )
+            self.openai_client = OpenAI(
+                api_base="https://api.openai.com/v1",
+                api_key=openai_api_key or getenv("OPENAI_API_KEY"),
+            )
+        if not self.openai_client.api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
         self.first_response = (
             self.create_first_response(agent_config.expected_first_prompt)
@@ -104,7 +110,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         ]
 
         parameters = self.get_chat_parameters(messages)
-        return openai.ChatCompletion.create(**parameters)
+        return self.openai_client.ChatCompletion.create(**parameters)
 
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript
@@ -126,7 +132,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             text = self.first_response
         else:
             chat_parameters = self.get_chat_parameters()
-            chat_completion = await openai.ChatCompletion.acreate(**chat_parameters)
+            chat_completion = await self.async_openai_client.ChatCompletion.acreate(
+                **chat_parameters
+            )
             text = chat_completion.choices[0].message.content
         self.logger.debug(f"LLM response: {text}")
         return text, False
@@ -172,7 +180,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         else:
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
-        stream = await openai.ChatCompletion.acreate(**chat_parameters)
+        stream = await self.asyn_openai_client.ChatCompletion.acreate(**chat_parameters)
         async for message in collate_response_async(
             openai_get_tokens(stream), get_functions=True
         ):
