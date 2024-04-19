@@ -1,13 +1,12 @@
 import re
-from typing import AsyncGenerator, Optional, Tuple
-
-from langchain import OpenAI
-from typing import Generator
 import logging
 
-import openai
-from vocode import getenv
+from typing import AsyncGenerator, Optional, Tuple, Generator
 
+from openai import AsyncOpenAI
+from langchain import OpenAI
+
+from vocode import getenv
 from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 from vocode.streaming.agent.utils import collate_response_async, openai_get_tokens
 from vocode.streaming.models.agent import LLMAgentConfig
@@ -44,6 +43,13 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
         openai_api_key = openai_api_key or getenv("OPENAI_API_KEY")
         if not openai_api_key:
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
+        self.async_openai_client = AsyncOpenAI(
+            api_key=openai_api_key,
+            model=self.agent_config.model_name,
+            temperature=self.agent_config.temperature,
+            max_tokens=self.agent_config.max_tokens,
+            stop=self.agent_config.stop_tokens,
+        )
         self.llm = OpenAI(  # type: ignore
             model_name=self.agent_config.model_name,
             temperature=self.agent_config.temperature,
@@ -101,7 +107,7 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
         return response, False
 
     async def _stream_sentences(self, prompt):
-        stream = await openai.Completion.acreate(
+        stream = await self.async_openai_client.Completion.acreate(
             prompt=prompt,
             max_tokens=self.agent_config.max_tokens,
             temperature=self.agent_config.temperature,
