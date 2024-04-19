@@ -3,7 +3,7 @@ title: "Using actions"
 description: "Make agents on your phone calls take actions"
 ---
 
-Agents on phone calls can take four actions:
+Vocode agents can decide to take actions synchronously during calls. See [Phrase Triggers](/phrase-triggers) for information on how to configure how these actions are triggered. Below is the list of actions that an agent can perform:
 
 #### EndConversation
 
@@ -207,4 +207,10 @@ curl --request POST \
 
 `ExternalAction` allows your agent communicate with an External API and include the response as context in the conversation.
 
-See the dedicated [External Action's](/external-actions) page for more info!
+See [External Actions](/external-actions).
+
+#### [Beta] Warm Transfer
+
+Allows your agent to conference in another party into the call.
+
+See [Warm Transfer](/warm-transfer).
