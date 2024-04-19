@@ -1,0 +1,81 @@
+---
+title: "[Beta] Warm Transfer"
+description: "Conference another party into an outbound call"
+---
+
+This guide will walk you through how to configure a Vocode agent to perform the following on an outbound call:
+
+1. Place the primary participant of the call on hold
+2. Dial another party into the same call and interact with the agent while the primary participant is on hold
+3. Remove the primary participant from hold to speak with the other party
+
+Note: the warm transfer feature is not yet available for inbound calls, and is only available with Twilio phone numbers.
+
+# BYOT Setup
+
+In order to use this feature on [your Twilio account](/bring-your-own-telephony), extra setup is required. In particular, you'll have to allocate some phone numbers on your account to a **steering pool**. To conduct warm transfers, numbers from this pool are momentarily used to set up the conference call. As such, the size of the pool affects the number of concurrent warm transfers you can perform. When all of the numbers in the pool are in use, the Vocode API will throw a 429 error.
+
+Note: setting up the pool will cause inflight calls to fail — make sure to configure this when calls aren't running.
+
+Using your Twilio account connection (see the guide on [BYOT](/bring-your-own-telephony)), you can configure the steering pool as follows:
+
+```python
+vocode_client.account_connections.add_to_steering_pool(
+    id="<YOUR TWILIO ACCOUNT CONNECTION ID>",
+)
+```
+
+This operation will buy a phone number on your Twilio account and set it up to be used for warm transfers. You can also link an existing phone number on your Twilio account to the steering pool:
+
+```python
+vocode_client.account_connections.add_to_steering_pool(
+    id="<YOUR TWILIO ACCOUNT CONNECTION ID>",
+    phone_number="<YOUR TWILIO PHONE NUMBER>",
+)
+```
+
+# Configuring your agent to execute warm transfers
+
+To use warm transfers, you'll need to add the `SetHold` and `AddToConference` actions to your agent - this allows the agent to:
+
+- Conference in another party and place the original participant on hold
+- Bring the original participant off of hold back into the call
+
+Here's an example agent configuration, which uses [phrase triggers](/phrase-triggers):
+
+```python
+vocode_client.agents.update_agent(
+    actions=[
+        {
+            "type": "action_set_hold",
+            "config": {},
+            "action_trigger": {
+                "type": "action_trigger_phrase_based",
+                "config": {
+                    "phrase_triggers": [
+                        {
+                            "phrase": "Removing participant from hold",
+                            "conditions": ["phrase_condition_type_contains"],
+                        }
+                    ]
+                },
+            },
+        },
+        {
+            "type": "action_add_to_conference",
+            "config": {"phone_number": "{transfer_phone_number}"},
+            "action_trigger": {
+                "type": "action_trigger_phrase_based",
+                "config": {
+                    "phrase_triggers": [
+                        {
+                            "phrase": "I connect you now please hold",
+                            "conditions": ["phrase_condition_type_contains"],
+                        }
+                    ]
+                },
+            },
+        },
+    ]
+)
+```
