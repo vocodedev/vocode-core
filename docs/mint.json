@@ -194,6 +194,8 @@
         "actions",
         "conversational-dials",
         "retrieve-call-data",
+        "phrase-triggers",
+        "warm-transfer",
         "machine-detection",
         "do-not-call-detection",
         "bring-your-own-telephony",

@@ -1,0 +1,77 @@
+---
+title: "[Beta] Phrase Triggers"
+description: "Configure Vocode actions to run based on spoken phrases by the agent"
+---
+
+Phrase triggers allow users to more explicitly control the behavior of their agents by configuring actions to run only once a bot has spoken a particular phrase. For example, you can configure an agent to transfer a call to a human agent only after the bot has said "I will transfer now".
+
+# Creating a phrase trigger
+
+You can create a phrase trigger as follows:
+
+```python
+from vocode import (
+    PhraseBasedActionTrigger,
+    PhraseBasedActionTriggerConfig,
+    PhraseTrigger,
+)
+
+phrase_trigger = PhraseBasedActionTrigger(
+    config=PhraseBasedActionTriggerConfig(
+        phrase_triggers=[
+            PhraseTrigger(
+                phrase="I will transfer now",
+                conditions=["phrase_condition_type_contains"],
+            ),
+            PhraseTrigger(
+                phrase="You can speak to a human now",
+                conditions=["phrase_condition_type_contains"],
+            )
+        ]
+    )
+)
+```
+
+In this example, the action that this phrase trigger is attached to will fire only after the bot has spoken a turn that contains "I will transfer now" or "You can speak to a human now".
+
+`"phrase_condition_type_contains"` is the only condition type supported at this time, and does not match case, so in the above example, if the bot said "Okay, you can speak to a human now", the phrase trigger would still fire.
+
+# Configuring your action
+
+```python
+from vocode import (
+    TransferCallActionParams,
+    TransferCallConfig,
+)
+
+vocode_client.agents.update_agent(
+    actions=[
+        TransferCallActionParams(
+            type="action_transfer_call",
+            config=TransferCallConfig(
+                transfer_phone_number="<YOUR TRANSFER PHONE NUMBER>",
+            ),
+            action_trigger=phrase_trigger # from the previous code block
+        )
+    ]
+)
+```
+
+To switch back to the default behavior, use a `FunctionCallActionTrigger`.
+
+```python
+from vocode import FunctionCallActionTrigger
+
+function_trigger = FunctionCallActionTrigger(config={})
+vocode_client.agents.update_agent(
+    actions=[
+        TransferCallActionParams(
+            type="action_transfer_call",
+            config=TransferCallConfig(
+                transfer_phone_number="<YOUR TRANSFER PHONE NUMBER>",
+            ),
+            action_trigger=function_trigger
+        )
+    ]
+)
+```

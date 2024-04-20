@@ -1670,6 +1670,45 @@
                 "$ref": "#/components/schemas/AddToSteeringPoolRequest"
               }
             }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        },
+        "security": [{ "HTTPBearer": [] }]
+      }
+    },
+    "/v1/account_connections/remove_from_steering_pool": {
+      "post": {
+        "tags": ["account_connections"],
+        "summary": "Remove From Steering Pool",
+        "operationId": "remove_from_steering_pool",
+        "parameters": [
+          {
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" },
+            "name": "id",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveFromSteeringPoolRequest"
+              }
+            }
           },
           "required": true
         },
@@ -1714,10 +1753,22 @@
           },
           "page": { "type": "integer", "title": "Page" },
           "size": { "type": "integer", "title": "Size" },
-          "has_more": { "type": "boolean", "title": "Has More" }
+          "has_more": { "type": "boolean", "title": "Has More" },
+          "total": { "type": "integer", "title": "Total" },
+          "total_is_estimated": {
+            "type": "boolean",
+            "title": "Total Is Estimated"
+          }
         },
         "type": "object",
-        "required": ["items", "page", "size", "has_more"],
+        "required": [
+          "items",
+          "page",
+          "size",
+          "has_more",
+          "total",
+          "total_is_estimated"
+        ],
         "title": "AccountConnectionPage"
       },
       "AccountConnectionParamsRequest": {
@@ -1793,10 +1844,22 @@
           },
           "page": { "type": "integer", "title": "Page" },
           "size": { "type": "integer", "title": "Size" },
-          "has_more": { "type": "boolean", "title": "Has More" }
+          "has_more": { "type": "boolean", "title": "Has More" },
+          "total": { "type": "integer", "title": "Total" },
+          "total_is_estimated": {
+            "type": "boolean",
+            "title": "Total Is Estimated"
+          }
         },
         "type": "object",
-        "required": ["items", "page", "size", "has_more"],
+        "required": [
+          "items",
+          "page",
+          "size",
+          "has_more",
+          "total",
+          "total_is_estimated"
+        ],
         "title": "ActionPage"
       },
       "ActionParamsRequest": {
@@ -1973,6 +2036,7 @@
           "phone_number": { "type": "string", "title": "Phone Number" }
         },
         "type": "object",
+        "required": ["phone_number"],
         "title": "AddToSteeringPoolRequest"
       },
       "Agent": {
@@ -2101,10 +2165,22 @@
           },
           "page": { "type": "integer", "title": "Page" },
           "size": { "type": "integer", "title": "Size" },
-          "has_more": { "type": "boolean", "title": "Has More" }
+          "has_more": { "type": "boolean", "title": "Has More" },
+          "total": { "type": "integer", "title": "Total" },
+          "total_is_estimated": {
+            "type": "boolean",
+            "title": "Total Is Estimated"
+          }
         },
         "type": "object",
-        "required": ["items", "page", "size", "has_more"],
+        "required": [
+          "items",
+          "page",
+          "size",
+          "has_more",
+          "total",
+          "total_is_estimated"
+        ],
         "title": "AgentPage"
       },
       "AgentParams": {
@@ -2551,6 +2627,13 @@
             ],
             "title": "Stage Outcome"
           },
+          "telephony_metadata": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/VonageTelephonyMetadata" },
+              { "$ref": "#/components/schemas/TwilioTelephonyMetadata" }
+            ],
+            "title": "Telephony Metadata"
+          },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "$ref": "#/components/schemas/Agent" },
@@ -2622,10 +2705,22 @@
           },
           "page": { "type": "integer", "title": "Page" },
           "size": { "type": "integer", "title": "Size" },
-          "has_more": { "type": "boolean", "title": "Has More" }
+          "has_more": { "type": "boolean", "title": "Has More" },
+          "total": { "type": "integer", "title": "Total" },
+          "total_is_estimated": {
+            "type": "boolean",
+            "title": "Total Is Estimated"
+          }
         },
         "type": "object",
-        "required": ["items", "page", "size", "has_more"],
+        "required": [
+          "items",
+          "page",
+          "size",
+          "has_more",
+          "total",
+          "total_is_estimated"
+        ],
         "title": "CallPage"
       },
       "CallStatus": {
@@ -3471,6 +3566,13 @@
             ],
             "title": "Stage Outcome"
           },
+          "telephony_metadata": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/VonageTelephonyMetadata" },
+              { "$ref": "#/components/schemas/TwilioTelephonyMetadata" }
+            ],
+            "title": "Telephony Metadata"
+          },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
           "agent": { "type": "string", "format": "uuid", "title": "Agent" },
@@ -3694,10 +3796,22 @@
           },
           "page": { "type": "integer", "title": "Page" },
           "size": { "type": "integer", "title": "Size" },
-          "has_more": { "type": "boolean", "title": "Has More" }
+          "has_more": { "type": "boolean", "title": "Has More" },
+          "total": { "type": "integer", "title": "Total" },
+          "total_is_estimated": {
+            "type": "boolean",
+            "title": "Total Is Estimated"
+          }
         },
         "type": "object",
-        "required": ["items", "page", "size", "has_more"],
+        "required": [
+          "items",
+          "page",
+          "size",
+          "has_more",
+          "total",
+          "total_is_estimated"
+        ],
         "title": "PhoneNumberPage"
       },
       "PhraseBasedActionTrigger": {
@@ -4018,10 +4132,22 @@
           },
           "page": { "type": "integer", "title": "Page" },
           "size": { "type": "integer", "title": "Size" },
-          "has_more": { "type": "boolean", "title": "Has More" }
+          "has_more": { "type": "boolean", "title": "Has More" },
+          "total": { "type": "integer", "title": "Total" },
+          "total_is_estimated": {
+            "type": "boolean",
+            "title": "Total Is Estimated"
+          }
         },
         "type": "object",
-        "required": ["items", "page", "size", "has_more"],
+        "required": [
+          "items",
+          "page",
+          "size",
+          "has_more",
+          "total",
+          "total_is_estimated"
+        ],
         "title": "PromptPage"
       },
       "PromptParams": {
@@ -4096,6 +4222,14 @@
         },
         "type": "object",
         "title": "PromptUpdateParams"
+      },
+      "RemoveFromSteeringPoolRequest": {
+        "properties": {
+          "phone_number": { "type": "string", "title": "Phone Number" }
+        },
+        "type": "object",
+        "required": ["phone_number"],
+        "title": "RemoveFromSteeringPoolRequest"
       },
       "RimeVoice": {
         "properties": {
@@ -4432,6 +4566,29 @@
         "required": ["twilio_account_sid", "twilio_auth_token"],
         "title": "TwilioCredentials"
       },
+      "TwilioTelephonyMetadata": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["telephony_metadata_twilio"],
+            "title": "Type",
+            "default": "telephony_metadata_twilio"
+          },
+          "call_sid": { "type": "string", "title": "Call Sid" },
+          "call_status": { "type": "string", "title": "Call Status" },
+          "transfer_call_sid": {
+            "type": "string",
+            "title": "Transfer Call Sid"
+          },
+          "transfer_call_status": {
+            "type": "string",
+            "title": "Transfer Call Status"
+          },
+          "conference_sid": { "type": "string", "title": "Conference Sid" }
+        },
+        "type": "object",
+        "title": "TwilioTelephonyMetadata"
+      },
       "Undefined": {
         "properties": {},
         "additionalProperties": false,
@@ -4516,10 +4673,22 @@
           },
           "page": { "type": "integer", "title": "Page" },
           "size": { "type": "integer", "title": "Size" },
-          "has_more": { "type": "boolean", "title": "Has More" }
+          "has_more": { "type": "boolean", "title": "Has More" },
+          "total": { "type": "integer", "title": "Total" },
+          "total_is_estimated": {
+            "type": "boolean",
+            "title": "Total Is Estimated"
+          }
         },
         "type": "object",
-        "required": ["items", "page", "size", "has_more"],
+        "required": [
+          "items",
+          "page",
+          "size",
+          "has_more",
+          "total",
+          "total_is_estimated"
+        ],
         "title": "VectorDatabasePage"
       },
       "VoicePage": {
@@ -4547,10 +4716,22 @@
           },
           "page": { "type": "integer", "title": "Page" },
           "size": { "type": "integer", "title": "Size" },
-          "has_more": { "type": "boolean", "title": "Has More" }
+          "has_more": { "type": "boolean", "title": "Has More" },
+          "total": { "type": "integer", "title": "Total" },
+          "total_is_estimated": {
+            "type": "boolean",
+            "title": "Total Is Estimated"
+          }
         },
         "type": "object",
-        "required": ["items", "page", "size", "has_more"],
+        "required": [
+          "items",
+          "page",
+          "size",
+          "has_more",
+          "total",
+          "total_is_estimated"
+        ],
         "title": "VoicePage"
       },
       "VoiceParamsRequest": {
@@ -4607,6 +4788,18 @@
           }
         }
       },
+      "VonageTelephonyMetadata": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["telephony_metadata_vonage"],
+            "title": "Type",
+            "default": "telephony_metadata_vonage"
+          }
+        },
+        "type": "object",
+        "title": "VonageTelephonyMetadata"
+      },
       "Webhook": {
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
@@ -4634,10 +4827,22 @@
           },
           "page": { "type": "integer", "title": "Page" },
           "size": { "type": "integer", "title": "Size" },
-          "has_more": { "type": "boolean", "title": "Has More" }
+          "has_more": { "type": "boolean", "title": "Has More" },
+          "total": { "type": "integer", "title": "Total" },
+          "total_is_estimated": {
+            "type": "boolean",
+            "title": "Total Is Estimated"
+          }
         },
         "type": "object",
-        "required": ["items", "page", "size", "has_more"],
+        "required": [
+          "items",
+          "page",
+          "size",
+          "has_more",
+          "total",
+          "total_is_estimated"
+        ],
         "title": "WebhookPage"
       },
       "WebhookParams": {
