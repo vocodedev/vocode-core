@@ -9,7 +9,9 @@ from vocode.streaming.agent.factory import AgentFactory
 
 class SpellerAgentConfig(AgentConfig, type="agent_speller"):
     """Configuration for SpellerAgent. Inherits from AgentConfig."""
+
     pass
+
 
 class SpellerAgent(RespondAgent[SpellerAgentConfig]):
     """SpellerAgent class. Inherits from RespondAgent.
@@ -45,7 +47,6 @@ class SpellerAgent(RespondAgent[SpellerAgentConfig]):
             Tuple[Optional[str], bool]: The generated response and a flag indicating whether to stop.
         """
         return "".join(c + " " for c in human_input), False
-
 
 
 class SpellerAgentFactory(AgentFactory):
