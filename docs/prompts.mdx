@@ -1,0 +1,39 @@
+---
+title: "Prompts"
+description: "How to instruct your agents"
+---
+
+# Prompt Basics
+
+Prompts are instructions that you can write in natural language to instruct Vocode Agents how to behave. In this guide,
+we'll cover how prompts are represented in the Vocode API. For best practices on prompting, check out our guide on [Prompt Engineering](/prompt-engineering).
+
+# Vocode Prompts
+
+Standard prompts can only contain raw text. Here is an example for how to create a standard prompt:
+
+```python
+PROMPT = """
+sample prompt
+"""
+
+prompt = vocode_client.prompts.create_prompt(request=PromptParams(content=PROMPT))
+```
+
+We can assign this to an agent via the agent update endpoint like so:
+
+```python
+update_response = vocode_client.agents.update_agent(
+    id=agent_id,
+    request=AgentUpdateParams(
+        prompt=prompt.id,
+    ),
+)
+```
+
+# Prompt Engineering
+
+Prompt engineering is a critical part of setting up your agent correctly. Poorly instructing your agent could cause it to
+underperform expectations.
+
+We've compiled some best practices in our guide for [Prompt Engineering](/prompt-engineering).

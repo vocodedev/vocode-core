@@ -1,0 +1,79 @@
+---
+title: "Setting up your number"
+---
+
+We're going to start by getting a number that we can use for our receptionist. There are two ways to get numbers compatible
+with Vocode:
+
+1. Linking your own telephony provider via [BYO Telephony](/bring-your-own-telephony).
+2. Purchasing a number directly via Vocode telephony.
+
+If you're on the Free plan, you'll have to upgrade your account in order to either purchase numbers via Vocode telephony or
+to link your own Twilio account via [BYO Telephony](/bring-your-own-telephony).
+
+# Linking your own Twilio numbers
+
+You can link your own telephony account once you've upgraded your plan by following the
+documentation in [BYO Telephony](/bring-your-own-telephony). We'll quickly walk through the steps here for adding your own
+Twilio account.
+
+First, we're going to link our Twilio account via [Account Connections](/account-connections).
+
+```python
+account_connection = vocode_client.account_connections.create_account_connection(
+    request={
+        "type": "account_connection_twilio",
+        "credentials": {
+            "twilio_account_sid": os.getenv("TWILIO_ACCOUNT_SID"),
+            "twilio_auth_token": os.getenv("TWILIO_AUTH_TOKEN"),
+        },
+    }
+)
+```
+
+Now, once we have a phone number from our Twilio account, we can link it to Vocode using the link number functionality.
+
+```python
+number_to_link = "1123456789"
+print(
+    vocode_client.numbers.link_number(
+        phone_number=number_to_link,
+        telephony_account_connection=account_connection_id,
+    )
+)
+```
+
+# Buying a number
+
+You can use the `numbers/buy` endpoint to purchase numbers via Vocode telephony or via your own account connection. Here,
+we purchase one using Vocode telephony.
+
+<CodeGroup>
+
+```python Python
+phone_number = vocode_client.numbers.buy_number(BuyPhoneNumberRequest(area_code="415", telephony_provider="twilio"))
+```
+
+```typescript TypeScript
+const phoneNumber = await vocode.numbers.buyNumber();
+```
+
+</CodeGroup>
+
+You can specify which telephony provider you want to use, the current supported options are: `twilio` and `vonage`.
+
+You'll get a response that looks like:
+
+```json
+{
+  "id": "***",
+  "user_id": "***",
+  "number": "11234567890",
+  "inbound_agent": {...},
+  "telephony_provider": "twilio",
+  "telephony_account_connection": null,
+  ...
+}
+```
+
+Your phone number is now active! Let's start configuring the number to work as our receptionist.

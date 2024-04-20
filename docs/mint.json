@@ -53,7 +53,11 @@
     },
     {
       "group": "Vocode 101",
-      "pages": ["what-is-vocode", "how-it-works", "how-to-use-it"]
+      "pages": [
+        "open-source/what-is-vocode",
+        "open-source/how-it-works",
+        "open-source/how-to-use-it"
+      ]
     },
     {
       "group": "Guides",
@@ -173,22 +177,38 @@
     {
       "group": "Hosted Walkthrough",
       "pages": [
-        "getting-number",
+        "walkthrough_intro",
+        "setting-up-number",
         "configuring-number",
-        "retrieve-call-data",
+        "setting-up-webhook"
+      ]
+    },
+    {
+      "group": "Guides",
+      "pages": [
+        "agents",
+        "prompts",
+        "prompt-engineering",
+        "voices",
+        "webhooks",
+        "actions",
         "conversational-dials",
-        "setting-up-webhook",
-        "using-actions",
-        "external-actions",
-        "vectordb",
-        "multilingual",
-        "injecting-context",
+        "retrieve-call-data",
         "machine-detection",
-        "ivr-navigation",
-        "hipaa-compliance",
         "do-not-call-detection",
         "bring-your-own-telephony",
         "bring-your-own-openai"
+      ]
+    },
+    {
+      "group": "Beta Features",
+      "pages": [
+        "external-actions",
+        "multilingual",
+        "injecting-context",
+        "ivr-navigation",
+        "vectordb",
+        "hipaa-compliance"
       ]
     }
   ],

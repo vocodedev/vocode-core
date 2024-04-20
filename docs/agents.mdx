@@ -1,10 +1,38 @@
 ---
 title: "Agents"
-description: "🚧 Under construction"
+description: "Powerful AI assistants that you can control"
 ---
 
 # What are agents
 
+Vocode Agents are the core component of the Vocode API. Agents can be deployed to receive
+phone calls by attaching them to [Numbers](/numbers). Agents can also be used to make outbound calls
+via the `calls/create` endpoint.
+
+At its core, the agent is an amalgamation of everything you need to build powerful AI assistants for
+your use cases:
+
+- [Prompts](/prompts) – instructions given to the agent that control its behavior.
+- [Voices](/voices) – the synthetic voice given to your agent.
+- [Webhooks](/webhooks) – mechanism by which you can subscribe to agent events.
+- [Conversational Dials](/conversational-dials) – controls for how the agent communicates, like its interruption sensitivity.
+- [Actions](/actions) – tools available to your agent, like endint the conversation or transferring the call.
+
 # How to configure an agent
 
-# API Schema
+Agents can be configured via our [Dashboard](/dashboard) or via API. As with all of our API objects, Agents have
+`list`, `get`, `create`, and `update` endpoints that allow you to manipulate them as you see fit.
+
+In addition to the other API objects enumerated above, agents have other reference fields that can be used to control
+agent behavior:
+
+- `language` sets the agent language (for more context see [Multilingual Agents](/multilingual))
+- `initial_message` controls the agents first utterance.
+- `initial_message_delay` adds a delay to the initial message from when the call begins
+- `ask_if_human_present_on_idle` allows the agent to speak when there is more than 4s of silence on the call
+- `llm_temperature` controls the behavior of the underlying language model. Values can range from X to Y, with higher
+  values leading to more consistent replies.
+
+# Example: creating an agent
+
+# Example: updating an agent
