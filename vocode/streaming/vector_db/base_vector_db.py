@@ -20,28 +20,33 @@ class VectorDB:
         else:
             self.aiohttp_session = aiohttp.ClientSession()
             self.should_close_session_on_tear_down = True
-        self.async_openai_client = AsyncOpenAI(
-            openai_api_key=os.getenv("OPENAI_API_KEY")
+        self.async_openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    async def create_openai_embedding(self, text: str) -> List[float]:
+        """
+        Create an embedding for the given text using the OpenAI API.
+
+        Args:
+            text (str): The text to embed.
+
+        Returns:
+            List[float]: The embedding vector as a list of floats.
+        """
+        # Define the model to use based on environment variable or default
+        model = (
+            os.getenv("AZURE_OPENAI_TEXT_EMBEDDING_ENGINE")
+            or DEFAULT_OPENAI_EMBEDDING_MODEL
         )
 
-    async def create_openai_embedding(
-        self, text, model=DEFAULT_OPENAI_EMBEDDING_MODEL
-    ) -> List[float]:
-        params = {
-            "input": text,
-        }
-
-        engine = os.getenv("AZURE_OPENAI_TEXT_EMBEDDING_ENGINE")
-        if engine:
-            params["engine"] = engine
-        else:
-            params["model"] = model
-
-        return list(
-            (await self.async_openai_client.embeddings.create(**params))["data"][0][
-                "embedding"
-            ]
+        # Create the embedding using the OpenAI API
+        response = await self.async_openai_client.embeddings.create(
+            input=text, model=model
         )
+
+        # Extract the embedding data from the response and convert to list
+        embedding = list(response.data[0].embedding)
+
+        return embedding
 
     async def add_texts(
         self,

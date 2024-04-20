@@ -68,21 +68,27 @@ class GoodbyeModel:
         return np.max(similarity_results) > SIMILARITY_THRESHOLD
 
     async def create_embedding(self, text) -> np.ndarray:
-        params = {
-            "input": text,
-        }
+        """
+        Create an embedding for the given text using the OpenAI API.
 
-        engine = getenv("AZURE_OPENAI_TEXT_EMBEDDING_ENGINE")
-        if engine:
-            params["engine"] = engine
-        else:
-            params["model"] = "text-embedding-ada-002"
+        Args:
+            text (str): The text to embed.
 
-        return np.array(
-            (await self.async_openai_client.embeddings.create(**params))["data"][0][
-                "embedding"
-            ]
+        Returns:
+            np.ndarray: The embedding vector as a numpy array.
+        """
+        # Define the model to use
+        model = getenv("AZURE_OPENAI_TEXT_EMBEDDING_ENGINE") or "text-embedding-ada-002"
+
+        # Create the embedding using the OpenAI API
+        response = await self.async_openai_client.embeddings.create(
+            input=text, model=model
         )
+
+        # # Extract the embedding data from the response
+        embedding = np.array(response.data[0].embedding)
+
+        return embedding
 
 
 if __name__ == "__main__":
