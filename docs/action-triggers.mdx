@@ -1,11 +1,13 @@
 ---
-title: "[Beta] Phrase Triggers"
-description: "Configure Vocode actions to run based on spoken phrases by the agent"
+title: "Action Triggers"
+description: "Configure Vocode actions to run based on different triggers"
 ---
+
+# Phrase Triggers
 
 Phrase triggers allow users to more explicitly control the behavior of their agents by configuring actions to run only once a bot has spoken a particular phrase. For example, you can configure an agent to transfer a call to a human agent only after the bot has said "I will transfer now".
 
-# Creating a phrase trigger
+## Creating a phrase trigger
 
 You can create a phrase trigger as follows:
 
@@ -36,7 +38,7 @@ In this example, the action that this phrase trigger is attached to will fire on
 
 `"phrase_condition_type_contains"` is the only condition type supported at this time, and does not match case, so in the above example, if the bot said "Okay, you can speak to a human now", the phrase trigger would still fire.
 
-# Configuring your action
+## Configuring your action
 
 ```python
 from vocode import (
@@ -57,7 +59,11 @@ vocode_client.agents.update_agent(
 )
 ```
 
-To switch back to the default behavior, use a `FunctionCallActionTrigger`.
+# [Default] Function Call Triggers
+
+To switch back to the default behavior, use a `FunctionCallActionTrigger`. These are open ended, meaning the
+Agent will decide when to use the action based on its prompting. Note that is is primarily achieved via the [Prompt](/prompts)
+but for [External Actions](/external-actions), it is also dependent on the description field.
 
 ```python
 from vocode import FunctionCallActionTrigger

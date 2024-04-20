@@ -13,12 +13,10 @@ over the voice of your agents. Our current list of supported model providers is:
 - [Rime](https://rime.ai)
 - [Azure](https://azure.com)
 
-## Vocode curated voices
+## [Coming Soon] Vocode curated voices
 
 Choosing a voice isn't easy, so the Vocode team has curated a list of voices that we think are the best
-across the different providers and use cases. These can be found here:
-
-[]
+across the different providers and use cases.
 
 We also are compatible with any stock voice from our provider list. You can reach us on Slack and we can add it to our
 voice list.
@@ -28,15 +26,46 @@ voice list.
 For enterprise customers, we can add cloned voices on a case-by-case basis. Please reach out to us on Slack if you'd like
 to explore custom cloned voices.
 
-## Setting up your voides
+## Setting up new voices
 
 ### Play.ht voice
 
+```python
+voice = vocode_client.voices.create_voice(
+    request={
+        "type": "voice_play_ht",
+        "voice_id": "voice_id",
+        "version": "2",
+    },
+)
+```
+
 ### ElevenLabs voice
+
+```python
+voice = vocode_client.voices.create_voice(
+    request={
+        "type": "voice_eleven_labs",
+        "voice_id": "06oPEcZqPWhZ2IeTcOJc",
+        "stability": ".2",
+        "similarity_boost": ".75",
+        "model_id": "eleven_turbo_v2",
+        "optimize_streaming_latency": "4",
+    }
+)
+```
 
 ### Rime voice
 
-### Azure voice
+```python
+voice = vocode_client.voices.create_voice(
+    request={
+        "type": "voice_rime",
+        "speaker": "amber",
+        "model_id": "mist",
+    },
+)
+```
 
 ### [Legacy] BYO TTS
 

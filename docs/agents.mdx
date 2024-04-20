@@ -30,9 +30,5 @@ agent behavior:
 - `initial_message` controls the agents first utterance.
 - `initial_message_delay` adds a delay to the initial message from when the call begins
 - `ask_if_human_present_on_idle` allows the agent to speak when there is more than 4s of silence on the call
-- `llm_temperature` controls the behavior of the underlying language model. Values can range from X to Y, with higher
-  values leading to more consistent replies.
-
-# Example: creating an agent
-
-# Example: updating an agent
+- `llm_temperature` controls the behavior of the underlying language model. Values can range from 0 to 1, with higher
+  values leading to more diverse and creative results. Lower values generate more consistent outputs.

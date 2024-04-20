@@ -1,6 +1,221 @@
 ---
 title: "Actions"
-description: "🚧 Under construction"
+description: "Give your agents the ability to execute actions"
 ---
 
-#
+Vocode agents can decide to take actions synchronously during calls. There are two ways to configure actions:
+
+1. Phrase Triggers
+2. Function Call Triggers (default)
+
+See [Action Triggers](/action-triggers) for information on how to configure triggers. Below is the list of actions that an agent can perform:
+
+#### EndConversation
+
+`EndConversation` allows the agent to end the call, e.g. if the user says "Goodbye!"
+
+  <CodeGroup>
+
+```python Python
+vocode_client.actions.create_action(
+  request={
+      "type": "action_end_conversation",
+  }
+)
+```
+
+```typescript TypeScript
+const number = await vocode.actions.createAction({
+  type: "action_end_conversation",
+});
+```
+
+```bash cURL
+curl --request POST \
+  --url https://api.vocode.dev/v1/actions/create \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
+  --data '{
+  "type": "action_end_conversation"
+}'
+```
+
+</CodeGroup>
+
+#### DTMF
+
+`DTMF` allows the agent to hit dial tones during a call, e.g. navigating a phone tree
+
+  <CodeGroup>
+
+```python Python
+vocode_client.actions.create_action(
+  request={
+      "type":"action_dtmf",
+  }
+)
+```
+
+```typescript TypeScript
+const number = await vocode.actions.createAction({
+  type: "action_dtmf",
+});
+```
+
+```bash cURL
+curl --request POST \
+  --url https://api.vocode.dev/v1/actions/create \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
+  --data '{
+  "type": "action_dtmf"
+}'
+```
+
+</CodeGroup>
+
+#### TransferCall
+
+`TransferCall` allows the agent to transfer the call to another phone number
+
+  <CodeGroup>
+
+```python Python
+vocode_client.actions.create_action(
+  request={
+      "type":"action_transfer_call",
+      "config":{
+          "phone_number":"11234567890"
+      }
+  }
+)
+```
+
+```typescript TypeScript
+const number = await vocode.actions.createAction({
+  type: "action_transfer_call",
+  config: {
+    phoneNumber: "11234567890",
+  },
+});
+```
+
+```bash cURL
+curl --request POST \
+  --url https://api.vocode.dev/v1/actions/create \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
+  --data '{
+  "type": "action_transfer_call",
+  "config": {
+    "phone_number": "11234567890"
+  }
+}'
+```
+
+</CodeGroup>
+
+You can attach these as IDs to your phone number agent as follows:
+
+  <CodeGroup>
+
+```python Python
+from vocode import AgentUpdateParams
+
+vocode_client.numbers.update_number(
+  phone_number="11234567890",
+  inbound_agent=AgentUpdateParams(
+      actions=["<ACTION UUID>"]
+  )
+)
+```
+
+```typescript TypeScript
+vocode.numbers.updateNumber({
+  phoneNumber: "11234567890",
+  inboundAgent: {
+    actions: ["<ACTION UUID>"],
+  },
+});
+```
+
+```bash cURL
+curl --request POST \
+  --url https://api.vocode.dev/v1/numbers/update?phone_number=11234567890 \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
+  --data '{
+  "inbound_agent": {
+    "actions": ["<ACTION UUID>"]
+  }
+}'
+```
+
+</CodeGroup>
+
+You can also add these as actions as raw payloads as follows:
+
+  <CodeGroup>
+
+```python Python
+from vocode import AgentUpdateParams, TransferCallActionUpdateParams
+
+vocode_client.numbers.update_number(
+  phone_number="11234567890",
+  inbound_agent=AgentUpdateParams(
+      actions=[TransferCallActionUpdateParams(
+          type="action_transfer_call",
+          config={
+              "phone_number":"11234567890"
+          }
+      )]
+  )
+)
+```
+
+```typescript TypeScript
+vocode.numbers.updateNumber({
+  phoneNumber: "11234567890",
+  inboundAgent: {
+    actions: [
+      {
+        type: "action_transfer_call",
+        config: {
+          phoneNumber: "11234567890",
+        },
+      },
+    ],
+  },
+});
+```
+
+```bash cURL
+curl --request POST \
+  --url https://api.vocode.dev/v1/numbers/update?phone_number=11234567890 \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <API_KEY>'
+  --data '{
+  "inbound_agent": {
+    "actions": [{
+      "type": "action_transfer_call",
+      "config": {
+          "phone_number": "11234567890"
+      }
+    }]
+  }
+}'
+```
+
+</CodeGroup>
+
+#### [Beta] ExternalAction
+
+`ExternalAction` allows your agent communicate with an External API and include the response as context in the conversation.
+
+See [External Actions](/external-actions).
+
+#### [Beta] Warm Transfer
+
+Allows your agent to conference in another party into the call.
+
+See [Warm Transfer](/warm-transfer).
