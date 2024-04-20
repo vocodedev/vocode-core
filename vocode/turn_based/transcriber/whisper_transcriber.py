@@ -1,11 +1,10 @@
-from typing import Optional
-from pydub import AudioSegment
 import io
+from typing import Optional
+
+from pydub import AudioSegment
 from openai import OpenAI
 
-client = OpenAI(api_key=getenv("OPENAI_API_KEY", api_key))
 from vocode import getenv
-
 from vocode.turn_based.transcriber.base_transcriber import BaseTranscriber
 
 
