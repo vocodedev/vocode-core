@@ -19,5 +19,7 @@ class WhisperTranscriber(BaseTranscriber):
         audio_segment.export(in_memory_wav, format="wav")  # type: ignore
         in_memory_wav.seek(0)
         in_memory_wav.name = "whisper.wav"
-        transcript = self.openai_client.audio.transcribe("whisper-1", in_memory_wav)
+        transcript = self.openai_client.audio.transcriptions.create(
+            model="whisper-1", file=in_memory_wav
+        )
         return transcript.text
