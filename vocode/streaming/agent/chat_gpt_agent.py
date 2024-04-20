@@ -32,8 +32,11 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         super().__init__(
             agent_config=agent_config, action_factory=action_factory, logger=logger
         )
+        self.async_openai_client: Union[AsyncAzureOpenAI, AsyncOpenAI]
+        self.openai_client: Union[AzureOpenAI, OpenAI]
+
         if agent_config.azure_params:
-            self.aync_openai_client = AsyncAzureOpenAI(
+            self.async_openai_client = AsyncAzureOpenAI(
                 api_version=agent_config.azure_params.api_version,
                 api_key=getenv("AZURE_OPENAI_API_KEY"),
                 azure_endpoint=getenv("AZURE_OPENAI_API_BASE"),
@@ -44,12 +47,10 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
                 azure_endpoint=getenv("AZURE_OPENAI_API_BASE"),
             )
         else:
-            self.aync_openai_client = AsyncOpenAI(
-                api_base="https://api.openai.com/v1",
+            self.async_openai_client = AsyncOpenAI(
                 api_key=openai_api_key or getenv("OPENAI_API_KEY"),
             )
             self.openai_client = OpenAI(
-                api_base="https://api.openai.com/v1",
                 api_key=openai_api_key or getenv("OPENAI_API_KEY"),
             )
         if not self.openai_client.api_key:
@@ -132,7 +133,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
             text = self.first_response
         else:
             chat_parameters = self.get_chat_parameters()
-            chat_completion = await self.async_openai_client.ChatCompletion.acreate(
+            chat_completion = await self.async_openai_client.chat.completions.create(
                 **chat_parameters
             )
             text = chat_completion.choices[0].message.content
@@ -180,7 +181,9 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfig]):
         else:
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
-        stream = await self.asyn_openai_client.ChatCompletion.acreate(**chat_parameters)
+        stream = await self.async_openai_client.chat.completions.create(
+            **chat_parameters
+        )
         async for message in collate_response_async(
             openai_get_tokens(stream), get_functions=True
         ):

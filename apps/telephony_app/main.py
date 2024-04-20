@@ -73,7 +73,6 @@ telephony_server = TelephonyServer(
                 account_sid=os.environ["TWILIO_ACCOUNT_SID"],
                 auth_token=os.environ["TWILIO_AUTH_TOKEN"],
             ),
-            logger=logger,
         )
     ],
     agent_factory=SpellerAgentFactory(),

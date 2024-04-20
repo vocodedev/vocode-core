@@ -45,16 +45,9 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
             raise ValueError("OPENAI_API_KEY must be set in environment or passed in")
         self.async_openai_client = AsyncOpenAI(
             api_key=openai_api_key,
-            model=self.agent_config.model_name,
-            temperature=self.agent_config.temperature,
-            max_tokens=self.agent_config.max_tokens,
-            stop=self.agent_config.stop_tokens,
         )
         self.llm = OpenAI(  # type: ignore
-            model_name=self.agent_config.model_name,
-            temperature=self.agent_config.temperature,
-            max_tokens=self.agent_config.max_tokens,
-            openai_api_key=openai_api_key,
+            api_key=openai_api_key,
         )
         self.stop_tokens = [f"{recipient}:"]
         self.first_response = (
