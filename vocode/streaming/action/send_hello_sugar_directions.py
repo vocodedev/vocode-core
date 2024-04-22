@@ -1,13 +1,11 @@
-import asyncio
 import logging
 import os
+from typing import Type
+
 import aiohttp
 from aiohttp import BasicAuth
-from typing import Type
 from pydantic import BaseModel, Field
-from vocode.streaming.action.phone_call_action import TwilioPhoneCallAction
 from vocode.streaming.action.base_action import BaseAction
-
 from vocode.streaming.models.actions import (
     ActionConfig,
     ActionInput,
@@ -15,10 +13,7 @@ from vocode.streaming.models.actions import (
     ActionType,
 )
 
-from telephony_app.integrations.hello_sugar.hello_sugar_location_getter import (
-    get_all_google_locations,
-    get_cached_hello_sugar_locations,
-)
+from telephony_app.integrations.boulevard_client import retrieve_next_appointment_by_phone_number, get_lost_directions
 
 
 class SendHelloSugarDirectionsActionConfig(
@@ -29,7 +24,6 @@ class SendHelloSugarDirectionsActionConfig(
 
 class SendHelloSugarDirectionsParameters(BaseModel):
     to_phone: str
-    location: str
 
 
 class SendHelloSugarDirectionsResponse(BaseModel):
@@ -53,7 +47,7 @@ class SendHelloSugarDirections(
         SendHelloSugarDirectionsResponse
     )
 
-    async def send_hello_sugar_directions(self, to_phone, location):
+    async def send_hello_sugar_directions(self, to_phone):
         twilio_account_sid = os.environ["TWILIO_ACCOUNT_SID"]
         twilio_auth_token = os.environ["TWILIO_AUTH_TOKEN"]
         from_phone = self.action_config.from_phone
@@ -61,29 +55,13 @@ class SendHelloSugarDirections(
         if len(to_phone) == 9:
             to_phone = "1" + to_phone
 
-        hello_sugar_google_locations = get_all_google_locations(
-            f"hello sugar | {location}"
-        )
-        # log location
-        logging.error(f"locations: {hello_sugar_google_locations}")
-
-        if hello_sugar_google_locations:
-            searched_hello_sugar_location = hello_sugar_google_locations["places"][0][
-                "id"
-            ]
-            cached_hello_sugar_locations = get_cached_hello_sugar_locations()
+        next_appointment = retrieve_next_appointment_by_phone_number(to_phone)
+        logging.info(f"The next appointment's details are {next_appointment}")
+        if next_appointment:
             try:
-                if searched_hello_sugar_location not in cached_hello_sugar_locations:
-                    raise ValueError(
-                        f"The location does not exist {searched_hello_sugar_location} in hello sugar's locations"
-                    )
-
-                message = f"The directions are {cached_hello_sugar_locations[searched_hello_sugar_location]['directions']}"
-                # log searched and cached locations
-                logging.error(f"searched location: {searched_hello_sugar_location}")
-                logging.error(
-                    f"cached location: {cached_hello_sugar_locations[searched_hello_sugar_location]}"
-                )
+                lost_directions = get_lost_directions(next_appointment)
+                logging.info(f"The directions to the destination are: {lost_directions}")
+                message = f"To reach Hello Sugar: {lost_directions}"
                 url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_account_sid}/Messages.json"
                 payload = {"To": to_phone, "From": from_phone, "Body": message}
                 auth = BasicAuth(twilio_account_sid, twilio_auth_token)
@@ -101,15 +79,14 @@ class SendHelloSugarDirections(
                 return complete_error_message
             except Exception as e:
                 return f"Error sending text message: {e}"
+        return f"Error finding next appointment: client does not have an upcoming appointment"
 
     async def run(
-        self, action_input: ActionInput[SendHelloSugarDirectionsParameters]
+            self, action_input: ActionInput[SendHelloSugarDirectionsParameters]
     ) -> ActionOutput[SendHelloSugarDirectionsResponse]:
-        location = action_input.params.location
         to_phone = action_input.params.to_phone
-        response = await self.send_hello_sugar_directions(to_phone, location)
-        # response = await self.wait_for_response(self.action_config.to_phone)
-        if "error sending text message" in str(response).lower():
+        response = await self.send_hello_sugar_directions(to_phone)
+        if "error" in str(response).lower():
             return ActionOutput(
                 action_type=action_input.action_config.type,
                 response=SendHelloSugarDirectionsResponse(
@@ -119,6 +96,7 @@ class SendHelloSugarDirections(
         return ActionOutput(
             action_type=action_input.action_config.type,
             response=SendHelloSugarDirectionsResponse(
-                status=f"Details about '{location}' have been sent via text to: {to_phone}. The messages sent is: {response}"
+                status=f"Directions to their next appointment location have been sent via text to: {to_phone}. "
+                       f"The messages sent is: {response}"
             ),
         )

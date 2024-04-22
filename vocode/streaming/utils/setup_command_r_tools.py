@@ -89,15 +89,10 @@ all_optional_tools = {
     },
     ActionType.SEND_HELLO_SUGAR_DIRECTIONS: {
         "name": "send_hello_sugar_directions",
-        "description": "Sends a text with directions to the caller given a specific location and the number they're calling from.",
+        "description": "Sends a text with directions on how to arrive at Hello Sugar.",
         "parameter_definitions": {
             "to_phone": {
                 "description": "The phone number to which the directions will be texted",
-                "type": "str",
-                "required": True,
-            },
-            "location": {
-                "description": "The rough location the client is trying to get to, including the city and state",
                 "type": "str",
                 "required": True,
             },

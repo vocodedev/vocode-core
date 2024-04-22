@@ -1,13 +1,11 @@
-import asyncio
 import logging
 import os
+from typing import Type
+
 import aiohttp
 from aiohttp import BasicAuth
-from typing import Type
 from pydantic import BaseModel, Field
-from vocode.streaming.action.phone_call_action import TwilioPhoneCallAction
 from vocode.streaming.action.base_action import BaseAction
-
 from vocode.streaming.models.actions import (
     ActionConfig,
     ActionInput,
@@ -16,8 +14,7 @@ from vocode.streaming.models.actions import (
 )
 
 from telephony_app.integrations.hello_sugar.hello_sugar_location_getter import (
-    get_all_google_locations,
-    get_cached_hello_sugar_locations,
+    get_cached_hello_sugar_locations, search_all_locations,
 )
 
 
@@ -57,33 +54,16 @@ class SendHelloSugarBookingInstructions(
         twilio_account_sid = os.environ["TWILIO_ACCOUNT_SID"]
         twilio_auth_token = os.environ["TWILIO_AUTH_TOKEN"]
         from_phone = self.action_config.from_phone
-        # if to_phone has 9 digits, add +1 to the beginning
         if len(to_phone) == 9:
             to_phone = "1" + to_phone
 
-        hello_sugar_google_locations = get_all_google_locations(
-            f"hello sugar | {location}"
-        )
+        hello_sugar_locations = search_all_locations(query=location,
+                                                     location_data=get_cached_hello_sugar_locations())
 
-        if hello_sugar_google_locations:
-            searched_hello_sugar_location = hello_sugar_google_locations["places"][0][
-                "id"
-            ]
-            cached_hello_sugar_locations = get_cached_hello_sugar_locations()
+        logging.info(f"Searched for the following locations: {hello_sugar_locations}")
+        if hello_sugar_locations:
             try:
-                logging.error(
-                    f"The searched_hello_sugar_location is {searched_hello_sugar_location} while the location is {location}"
-                )
-                if not location:
-                    raise ValueError(
-                        f"Could not understand which location was being input. Please input a new location to book an appointment for."
-                    )
-                if searched_hello_sugar_location not in cached_hello_sugar_locations:
-                    raise ValueError(
-                        f"The location does not exist {searched_hello_sugar_location} in hello sugar's locations"
-                    )
-
-                message = f"The booking_url is {cached_hello_sugar_locations[searched_hello_sugar_location]['booking_url']}"
+                message = f"Hello, tap this link to book an appointment: {hello_sugar_locations[0]['booking_url']}"
                 url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_account_sid}/Messages.json"
                 payload = {"To": to_phone, "From": from_phone, "Body": message}
                 auth = BasicAuth(twilio_account_sid, twilio_auth_token)
