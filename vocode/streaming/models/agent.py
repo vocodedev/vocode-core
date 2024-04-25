@@ -75,7 +75,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):
     allowed_idle_time_seconds: Optional[float] = None
     allow_agent_to_be_cut_off: bool = True
     end_conversation_on_goodbye: bool = False
-    use_filler_words: bool = True
+    use_filler_words: bool = False
     webhook_config: Optional[WebhookConfig] = None
     track_bot_sentiment: bool = False
     actions: Optional[List[ActionConfig]] = None
@@ -109,7 +109,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
     azure_params: Optional[AzureOpenAIConfig] = None
     vector_db_config: Optional[VectorDBConfig] = None
     pending_action: Optional[FunctionCall] = None
-    use_filler_words: bool = True
+    use_filler_words: bool = False
     language: Optional[str] = "en-US"
 
 
@@ -123,7 +123,7 @@ class CommandAgentConfig(AgentConfig, type=AgentType.COMMAND.value):
     azure_params: Optional[AzureOpenAIConfig] = None
     vector_db_config: Optional[VectorDBConfig] = None
     pending_action: Optional[FunctionCall] = None
-    use_filler_words: bool = True
+    use_filler_words: bool = False
     language: Optional[str] = "en-US"
 
 
