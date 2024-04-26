@@ -238,14 +238,19 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 await asyncio.sleep(silence_threshold)
                 self.conversation.logger.debug("Sending filler audio to output")
                 self.conversation.logger.info(f"BOT (filler): {filler_audio.message.text}")
-                self.filler_audio_started_event = threading.Event()
-                await self.conversation.send_speech_to_output(
-                    filler_audio.message.text,
-                    filler_synthesis_result,
-                    item.interruption_event,
-                    filler_audio.seconds_per_chunk,
-                    started_event=self.filler_audio_started_event,
-                )
+                if filler_synthesis_result.chunk_generator is not None:
+                    self.filler_audio_started_event = threading.Event()
+                    await self.conversation.send_speech_to_output(
+                        filler_audio.message.text,
+                        filler_synthesis_result,
+                        item.interruption_event,
+                        filler_audio.seconds_per_chunk,
+                        started_event=self.filler_audio_started_event,
+                    )
+                else:
+                    self.conversation.logger.warning(
+                        "Filler audio synthesis result has no chunk generator"
+                    )  # FIXME: handle it better.
                 item.agent_response_tracker.set()
             except asyncio.CancelledError:
                 pass
