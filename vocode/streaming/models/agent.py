@@ -32,6 +32,7 @@ class AgentType(str, Enum):
     CHAT_GPT_ALPHA = "agent_chat_gpt_alpha"
     CHAT_GPT = "agent_chat_gpt"
     CHAT_GPT_CUSTOM = "agent_chat_gpt_custom"
+    LLAMA3 = "agent_llama3"
     CHAT_ANTHROPIC = "agent_chat_anthropic"
     CHAT_VERTEX_AI = "agent_chat_vertex_ai"
     ECHO = "agent_echo"
@@ -146,6 +147,15 @@ class ChatGPTAgentConfigOLD(AgentConfig, type=AgentType.CHAT_GPT_CUSTOM.value):
     timeout_generator_seconds: float = 3  # timeout to get generator from GPT. FAST
     max_retries: int = 4
     retry_time_increment_seconds: float = 1
+
+
+class LLAMA3AgentConfig(AgentConfig, type=AgentType.LLAMA3.value):
+    prompt_preamble: str
+    model_name: str = "accounts/fireworks/models/llama-v3-70b-instruct"
+    api_base: str = "https://api.fireworks.ai/inference/v1"
+    initial_message_model_name: str = "accounts/fireworks/models/llama-v3-70b-instruct"
+    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
+    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
 
 
 class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):
