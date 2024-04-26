@@ -786,15 +786,10 @@ class ChatGPTAgentOld(RespondAgent[ChatGPTAgentConfigOLD]):
         else:
             chat_parameters = self.get_chat_parameters()
         chat_parameters["stream"] = True
-        # chat_parameters["seed"] = self.seed
+        chat_parameters["seed"] = self.seed
 
         self.logger.info('Attempting to stream response.')
-        chat_parameters["model"] = "accounts/fireworks/models/llama-v3-70b-instruct"
-        stream = await openai.ChatCompletion.acreate(**chat_parameters,
-                                          api_base="https://api.fireworks.ai/inference/v1",
-                                          api_key="#",
-                                          )
-        async for message in collate_response_async(
-                openai_get_tokens(stream), get_functions=True
-        ):
-            yield message, True
+        async for response, is_successful in self.__attempt_stream_with_retries(
+                chat_parameters, self.agent_config.timeout_seconds,
+                max_retries=self.agent_config.max_retries):
+            yield response, is_successful
