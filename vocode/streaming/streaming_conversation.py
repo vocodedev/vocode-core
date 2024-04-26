@@ -367,7 +367,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.goodbye_token = "<ENDCALL>"  # FIXME PARAMETRIZE
 
         async def custom_goodbye(self, message: BaseMessage):
-            if message.text == self.goodbye_token:
+            if self.goodbye_token in message.text:
                 await self.goodbye_terminate()
 
         async def goodbye_terminate(self):

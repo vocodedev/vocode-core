@@ -10,8 +10,7 @@ from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.agent.utils import (
     format_openai_chat_messages_from_transcript,
-    collate_response_async,
-    openai_get_tokens)
+    openai_get_tokens, llama3_collate_response_async)
 from vocode.streaming.models.actions import FunctionCall
 from vocode.streaming.models.agent import LLAMA3AgentConfig
 from vocode.streaming.models.transcript import Transcript
@@ -71,7 +70,7 @@ class LLAMA3Agent(RespondAgent[LLAMA3AgentConfig]):
         parameters["stream"] = True
         self.logger.info('Attempting to stream response for first message.')
         stream = await openai.ChatCompletion.acreate(**parameters)
-        async for message in collate_response_async(
+        async for message in llama3_collate_response_async(
                 openai_get_tokens(stream)
         ):
             yield message, True
@@ -124,7 +123,7 @@ class LLAMA3Agent(RespondAgent[LLAMA3AgentConfig]):
 
         self.logger.info('Attempting to stream response.')
         stream = await openai.ChatCompletion.acreate(**chat_parameters)
-        async for message in collate_response_async(
+        async for message in llama3_collate_response_async(
                 openai_get_tokens(stream)
         ):
             yield message, True

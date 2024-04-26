@@ -27,10 +27,53 @@ from vocode.streaming.models.transcript import (
 
 SENTENCE_ENDINGS = [".", "!", "?", "\n"]
 
-logger = logging.getLogger(__name__)
-
 
 async def collate_response_async(
+        gen: AsyncIterable[Union[str, FunctionFragment]],
+        sentence_endings: List[str] = SENTENCE_ENDINGS,
+        get_functions: Literal[True, False] = False,
+) -> AsyncGenerator[Union[str, FunctionCall], None]:
+    sentence_endings_pattern = "|".join(map(re.escape, sentence_endings))
+    list_item_ending_pattern = r"\n"
+    buffer = ""
+    function_name_buffer = ""
+    function_args_buffer = ""
+    prev_ends_with_money = False
+    async for token in gen:
+        if not token:
+            continue
+        if isinstance(token, str):
+            if prev_ends_with_money and token.startswith(" "):
+                yield buffer.strip()
+                buffer = ""
+
+            buffer += token
+            possible_list_item = bool(re.match(r"^\d+[ .]", buffer))
+            ends_with_money = bool(re.findall(r"\$\d+.$", buffer))
+            if re.findall(
+                    list_item_ending_pattern
+                    if possible_list_item
+                    else sentence_endings_pattern,
+                    token,
+            ):
+                if not ends_with_money:
+                    to_return = buffer.strip()
+                    if to_return:
+                        yield to_return
+                    buffer = ""
+            prev_ends_with_money = ends_with_money
+        elif isinstance(token, FunctionFragment):
+            function_name_buffer += token.name
+            function_args_buffer += token.arguments
+    to_return = buffer.strip()
+    if to_return:
+        yield to_return
+    if function_name_buffer and get_functions:
+        yield FunctionCall(name=function_name_buffer, arguments=function_args_buffer)
+
+
+# FIXME: quick and dirty. Rewrite function to have a single collator.
+async def llama3_collate_response_async(
         gen: AsyncIterable[Union[str, FunctionFragment]],
         sentence_endings: List[str] = SENTENCE_ENDINGS,
         get_functions: Literal[True, False] = False,
@@ -46,7 +89,6 @@ async def collate_response_async(
         if isinstance(token, str):
             # Split the token by sentence ending patterns, retaining the punctuation
             parts = re.split(f"({sentence_endings_pattern})", token)
-            logger.info(f"parts: {parts}")
 
             for part in parts:
                 if not part:
@@ -64,12 +106,8 @@ async def collate_response_async(
                 buffer = ""
             function_name_buffer += token.name
             function_args_buffer += token.arguments
-
     if buffer:
         yield buffer
-
-    if get_functions and (function_name_buffer or function_args_buffer):
-        yield FunctionCall(name=function_name_buffer, arguments=function_args_buffer)
 
 
 async def openai_get_tokens(gen) -> AsyncGenerator[Union[str, FunctionFragment], None]:
