@@ -212,8 +212,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 ]
             }
             try:
-                response = await openai.ChatCompletion.create(**chat_parameters)
+                response = await openai.ChatCompletion.acreate(**chat_parameters)
                 decision = json.loads(response['choices'][0]['message']['content'].strip().lower())
+                self.conversation.logger.info(f"Decision: {decision}")
                 return decision['interrupt'] == 'true'
             except Exception as e:
                 # Log the exception or handle it as per your error handling policy
@@ -233,13 +234,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
             #     )
             #     if self.conversation.current_transcription_is_interrupt:
             #         self.conversation.logger.debug("sending interrupt")
-            condition = (transcription.is_final and self.conversation.is_bot_talking)
-            if condition:
-                self.conversation.logger.info(
-                    f"Testing if bot should be interrupted: {transcription.message}"
-                )
 
-                return False
+            self.conversation.logger.info(
+                f"Testing if bot should be interrupted: {transcription.message}"
+            )
+            is_interrupt = await self.classify_transcription(transcription)
+            if is_interrupt:
+                self.conversation.broadcast_interrupt()
+                return True
+            return False
 
         async def process(self, transcription: Transcription):
             if transcription.message.strip() == "":
@@ -248,10 +251,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 # TODO human_speaking should be set here as this is the only place with is_final=false.
                 self.conversation.logger.info(f"Ignoring empty transcription {transcription}")
                 return
-            intterupt_bot = await self.handle_interrupt(transcription)
-            if not intterupt_bot:
-                self.conversation.logger.info(f"Not interrupting bot")
-                return
+            if transcription.is_final and self.conversation.is_bot_talking:
+                interrupt = await self.handle_interrupt(transcription)
+                if not interrupt:
+                    self.conversation.logger.info(
+                        f"Bot is talking, ignoring final transcription: {transcription.message}"
+                    )
+                    return
+
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
             )
