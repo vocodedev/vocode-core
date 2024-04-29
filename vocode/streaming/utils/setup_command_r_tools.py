@@ -9,11 +9,11 @@ from vocode.streaming.models.actions import (
 
 standard_tools = [
     {
-        "name": "send_direct_response",
-        "description": "Continue the conversation, given the conversation history. Must include the message.",
+        "name": "answer",
+        "description": "Default tool that directly responds to the user, given the conversation history. Must include the message.",
         "parameter_definitions": {
             "message": {
-                "description": "Your reply to the user.",
+                "description": "Response to the user.",
                 "type": "str",
                 "required": True,
             }
@@ -22,6 +22,47 @@ standard_tools = [
 ]
 
 all_optional_tools = {
+    ActionType.CREATE_AGENT: {
+        "name": "create_agent",
+        "description": "Create a new agent with the specified attributes.",
+        "parameter_definitions": {
+            "name": {
+                "description": "The name of the agent.",
+                "type": "str",
+                "required": True,
+            },
+            "gender": {
+                "description": "The gender of the agent.",
+                "type": "str",
+                "required": True,
+            },
+            "job_title": {
+                "description": "The job title of the agent.",
+                "type": "str",
+                "required": True,
+            },
+            "employer": {
+                "description": "The employer of the agent.",
+                "type": "str",
+                "required": True,
+            },
+            "allow_interruptions": {
+                "description": "Whether the agent allows interruptions.",
+                "type": "bool",
+                "required": True,
+            },
+            "agent_description": {
+                "description": "A description of the agent.",
+                "type": "str",
+                "required": True,
+            },
+            "base_message": {
+                "description": "The base message the agent will use.",
+                "type": "str",
+                "required": True,
+            },
+        },
+    },
     ActionType.TRANSFER_CALL: {
         "name": "transfer_call",
         "description": "Transfers when the agent agrees to transfer the call.",
@@ -35,7 +76,7 @@ all_optional_tools = {
                 "description": "The reason for transferring the call, limited to 120 characters",
                 "type": "str",
                 "required": True,
-            }
+            },
         },
     },
     ActionType.HANGUP_CALL: {
@@ -43,7 +84,7 @@ all_optional_tools = {
         "description": "Hangup the call if the instructions are to do so.",
         "parameter_definitions": {
             "end_reason": {
-                "description": "The reason for ending the call, limited to 120 characters",
+                "description": "The reason for ending the call",
                 "type": "str",
                 "required": True,
             }
@@ -51,7 +92,7 @@ all_optional_tools = {
     },
     ActionType.RETRIEVE_INSTRUCTIONS: {
         "name": "retrieve_instruction",
-        "description": "Certain steps specify an instruction id to retrieve before moving on. This action retrieves the instruction.",
+        "description": "Retrieve the instruction with the given ID.",
         "parameter_definitions": {
             "id": {
                 "description": "The ID number of the instruction to retrieve",
@@ -62,26 +103,26 @@ all_optional_tools = {
     },
     ActionType.SEARCH_ONLINE: {
         "name": "search_online",
-        "description": "Searches online when the agent says they will look something up.",
+        "description": "Search online for the query provided.",
         "parameter_definitions": {
             "query": {
-                "description": "The search query to be sent to the online search API",
+                "description": "The query to search for",
                 "type": "str",
                 "required": True,
             }
         },
     },
     ActionType.SEND_TEXT: {
-        "name": "send_text",
-        "description": "Send an sms to a phone number.",
+        "name": "sms",
+        "description": "Send an sms to the provided phone number.",
         "parameter_definitions": {
             "to_phone": {
-                "description": "The phone number to which the text message will be sent",
+                "description": "The phone number to which the SMS will be sent",
                 "type": "str",
                 "required": True,
             },
-            "message": {
-                "description": "The message to be sent, limited to 120 characters",
+            "contents": {
+                "description": "The text to be sent",
                 "type": "str",
                 "required": True,
             },
@@ -100,7 +141,7 @@ all_optional_tools = {
     },
     ActionType.SEND_HELLO_SUGAR_BOOKING_INSTRUCTIONS: {
         "name": "send_hello_sugar_booking_instructions",
-        "description": "Sends instructions on how to actually book an appointment at a specific Hello Sugar location.",
+        "description": "Sends a link to book an appointment at a specific Hello Sugar location. The location must be a city, landmark, or address.",
         "parameter_definitions": {
             "to_phone": {
                 "description": "The phone number to which the instructions will be sent",
@@ -108,7 +149,7 @@ all_optional_tools = {
                 "required": True,
             },
             "location": {
-                "description": "The rough appointment location",
+                "description": "The location to book an appointment at",
                 "type": "str",
                 "required": True,
             },
@@ -212,5 +253,4 @@ def setup_command_r_tools(action_config: CommandAgentConfig, logger: logging.Log
         tool = all_optional_tools[action_type]
         if tool:
             optional_tools.append(tool)
-
     return optional_tools + standard_tools.copy()

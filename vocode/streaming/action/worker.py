@@ -40,6 +40,11 @@ class ActionsWorker(InterruptibleWorker):
         action_input = item.payload
         action = self.action_factory.create_action(action_input.action_config)
         action.attach_conversation_state_manager(self.conversation_state_manager)
+
+        # Run the action in the background
+        asyncio.create_task(self._run_action_and_produce_event(action, action_input))
+
+    async def _run_action_and_produce_event(self, action, action_input):
         action_output = await action.run(action_input)
         self.produce_interruptible_agent_response_event_nonblocking(
             ActionResultAgentInput(

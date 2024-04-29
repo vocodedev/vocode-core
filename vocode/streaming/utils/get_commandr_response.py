@@ -1,4 +1,5 @@
 from copy import deepcopy
+import json
 from logging import Logger
 from typing import Any, Dict, List, Optional
 import aiohttp
@@ -47,7 +48,7 @@ def render_chat_history(_conversation: list[dict]) -> str:
         else:  # role == system
             chat_hist_str += "<|SYSTEM_TOKEN|>"
         chat_hist_str += turn["content"]
-    chat_hist_str += "<|END_OF_TURN_TOKEN|>"
+        chat_hist_str += "<|END_OF_TURN_TOKEN|>"
     return chat_hist_str
 
 
@@ -129,26 +130,26 @@ def format_command_function_completion_from_transcript(
         tokenize=False,
         add_generation_prompt=True,
     )
-    input_ids = input_ids.replace("directly_answer", "send_direct_response")
-    input_ids = input_ids.replace("directly-answer", "send_direct_response")
+    input_ids = input_ids.replace("directly_answer", "answer")
+    input_ids = input_ids.replace("directly-answer", "answer")
     to_replace = "You are a powerful conversational AI trained by Cohere to help people. You are augmented by a number of tools, and your job is to use and consume the output of these tools to best help the user. You will see a conversation history between yourself and a user, ending with an utterance from the user. You will then see a specific instruction instructing you what kind of response to generate. When you answer the user's requests, you cite your sources in your answers, according to those instructions."
     replace_with = "You are a capable telephone AI. You have been developed and trained by a company called OpenCall to help people over the phone. You are augmented by a number of tools, and your job is to converse with the user, while simultaneously using and consuming these tools only when your instructions indicate to do so. You will see a conversation history between yourself and a user, either ending with an utterance from the user or an indication from the system regarding the status of any tools being run."
     input_ids = input_ids.replace(to_replace, replace_with)
 
     to_replace = "## Available Tools"
     replace_with = """## Style Guide
-To respond to the user or consume the output of a tool, you must use the send_direct_response tool. Only use tools as instructed and do not use tools again if the system indicates that the tool has completed.
+To respond to the user or consume the output of a tool, you must use the answer tool. Only use tools as instructed and do not use tools again if the system indicates that the tool has completed.
 
 ## Available Tools"""
     input_ids = input_ids.replace(to_replace, replace_with)
 
-    to_replace = "You can use any of the supplied tools any number of times, but you should aim to execute the minimum number of necessary actions for the input."
-    replace_with = "Critically, you may only use a single tool per turn. As such, the json formatted list of actions you return should only contain a single action."
-    input_ids = input_ids.replace(to_replace, replace_with)
+    # to_replace = "You can use any of the supplied tools any number of times, but you should aim to execute the minimum number of necessary actions for the input."
+    # replace_with = "Critically, you may only use a single tool per turn. As such, the json formatted list of actions you return should only contain a single action."
+    # input_ids = input_ids.replace(to_replace, replace_with)
 
-    to_replace = "of actions that you want to perform"
-    replace_with = "containing a single action that you want to perform"
-    input_ids = input_ids.replace(to_replace, replace_with)
+    # to_replace = "of actions that you want to perform"
+    # replace_with = "containing a single action that you want to perform"
+    # input_ids = input_ids.replace(to_replace, replace_with)
 
     return input_ids, merged_messages
 
@@ -211,11 +212,8 @@ def format_command_grounded_completion_from_transcript(
 
 
 def format_commandr_chat_completion_from_transcript(
-    tokenizer: AutoTokenizer,
     transcript: Transcript,
     prompt_preamble: Optional[str] = None,
-    did_action: str = None,
-    reason: str = "",
 ) -> str:
     # Initialize the messages list
     messages = []
@@ -276,36 +274,37 @@ def format_commandr_chat_completion_from_transcript(
     try:
         # Use the tokenizer to convert merged messages to text
         input_ids = render_chat_history(merged_messages)
-        # if not did_action:
-        #     input_ids += "<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>Agent did not perform an action.<|END_OF_TURN_TOKEN|>"
-        # if not did_action:
-        #     input_ids += f"<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>Agent performed an action: {did_action}<|END_OF_TURN_TOKEN|>"
-        if len(reason) > 0:
-            input_ids += f"<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>No action taken because: {reason}<|END_OF_TURN_TOKEN|>"
         input_ids += "<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>"
-        input_ids = input_ids.replace("directly_answer", "send_direct_response")
-        input_ids = input_ids.replace("directly-answer", "send_direct_response")
+        input_ids = input_ids.replace("directly_answer", "answer")
+        input_ids = input_ids.replace("directly-answer", "answer")
     except Exception as e:
         raise e
-
     return input_ids, merged_messages
 
 
-async def get_commandr_response(prompt_buffer: str, logger: Logger):
+async def get_commandr_response(prompt_buffer: str, model: str, logger: Logger):
     response_text = ""
-    prompt_buffer = prompt_buffer.replace("directly_answer", "send_direct_response")
-    prompt_buffer = prompt_buffer.replace("directly-answer", "send_direct_response")
+    prompt_buffer = prompt_buffer.replace("directly_answer", "answer")
+    prompt_buffer = prompt_buffer.replace("directly-answer", "answer")
     async with aiohttp.ClientSession() as session:
-        base_url = getenv("AI_API_BASE")
+        # log the model
+        logger.info(f"Model: {model}")
+        # TODO: Change at some point, this is bc haproxy can't do ngrok
+        if "medusa" in model.lower():
+            base_url = getenv("AI_API_HUGE_BASE")
+            model = getenv("AI_MODEL_NAME_HUGE")
+        else:
+            base_url = getenv("AI_API_BASE")
+            model = getenv("AI_MODEL_NAME_LARGE")
         data = {
-            "model": getenv("AI_MODEL_NAME_LARGE"),
+            "model": model,
             "prompt": prompt_buffer,
             "stream": False,
             "stop": ["<|END_OF_TURN_TOKEN|>"],
-            "max_tokens": 500,
-            "top_p": 1,
-            "temperature": 0,
-            "include_stop_str_in_output": True,
+            "max_tokens": 250,
+            "top_p": 0.9,
+            "temperature": 0.1,
+            "include_stop_str_in_output": False,
         }
 
         async with session.post(
@@ -326,3 +325,101 @@ async def get_commandr_response(prompt_buffer: str, logger: Logger):
     # remove end of turn
     response_text = response_text.replace("<|END_OF_TURN_TOKEN|>", "")
     return response_text
+
+
+async def get_commandr_response_streaming(
+    prompt_buffer: str, model: str, logger: Logger
+):
+    prompt_buffer = prompt_buffer.replace("directly_answer", "answer")
+    prompt_buffer = prompt_buffer.replace("directly-answer", "answer")
+    to_add = '''Action: ```json
+[
+      {
+          "tool_name": "'''
+    prompt_buffer += to_add
+    # log the prompt buffer
+    async with aiohttp.ClientSession() as session:
+        # TODO: Change at some point, this is bc haproxy can't do ngrok
+        if "medusa" in model.lower():
+            base_url = getenv("AI_API_HUGE_BASE")
+            model = getenv("AI_MODEL_NAME_HUGE")
+        else:
+            base_url = getenv("AI_API_BASE")
+            model = getenv("AI_MODEL_NAME_LARGE")
+        data = {
+            "model": model,
+            "prompt": prompt_buffer,
+            "stream": True,  # Changed to True to make it stream the output
+            "stop": ["<|END_OF_TURN_TOKEN|>"],
+            "max_tokens": 250,
+            "top_p": 0.9,
+            "temperature": 0.1,
+            "include_stop_str_in_output": False,
+        }
+        async with session.post(
+            f"{base_url}/completions", headers=HEADERS, json=data
+        ) as response:
+            # first yield out the prefix
+            yield to_add
+            # Since we are streaming, we need to process the response as it arrives
+            async for chunk in response.content:
+                if chunk == b"\n":
+                    continue
+                chunk = chunk.decode("utf-8")
+                if chunk.startswith("data:"):
+                    # Decode payload
+                    try:
+                        json_payload = json.loads(chunk.lstrip("data:").rstrip("/n"))
+                        text = json_payload.get("choices", "")[0].get("text", "")
+                        yield text.replace("SYSTEM", "").replace(
+                            "<|END_OF_TURN_TOKEN|>", ""
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Error while processing response. Error was: {str(e)} and the response was: {chunk}"
+                        )
+
+
+async def get_commandr_response_chat_streaming(
+    transcript: Transcript, model: str, prompt_preamble: str, logger: Logger
+):
+    prompt_buffer, messages = format_commandr_chat_completion_from_transcript(
+        prompt_preamble=prompt_preamble,
+        transcript=transcript,
+    )
+    # TODO: Change at some point, this is bc haproxy can't do ngrok
+    if "medusa" in model.lower():
+        base_url = getenv("AI_API_HUGE_BASE")
+        model = getenv("AI_MODEL_NAME_HUGE")
+    else:
+        base_url = getenv("AI_API_BASE")
+        model = getenv("AI_MODEL_NAME_LARGE")
+    async with aiohttp.ClientSession() as session:
+        base_url = base_url
+        data = {
+            "model": model,
+            "prompt": prompt_buffer,
+            "stream": True,
+            "stop": ["<|END_OF_TURN_TOKEN|>"],
+            "max_tokens": 250,
+            "top_p": 0.9,
+            "include_stop_str_in_output": False,
+            "temperature": 0.1,
+        }
+
+        async with session.post(
+            f"{base_url}/completions", headers=HEADERS, json=data
+        ) as response:
+            async for chunk in response.content:
+                if chunk == b"\n":
+                    continue
+                chunk = chunk.decode("utf-8")
+                if chunk.startswith("data:"):
+                    try:
+                        json_payload = json.loads(chunk.lstrip("data:").rstrip("/n"))
+                        text = json_payload.get("choices", "")[0].get("text", "")
+                        yield text.replace("SYSTEM", "").replace(
+                            "<|END_OF_TURN_TOKEN|>", ""
+                        )
+                    except Exception as e:
+                        logger.error(f"Error while processing response: {str(e)}")

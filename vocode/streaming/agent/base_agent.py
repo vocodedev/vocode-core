@@ -230,7 +230,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 affirmative_phrase=affirmative_phrase,
                 conversation_id=conversation_id,
                 agent_span_first=agent_span_first,
-                agent_input=agent_input
+                agent_input=agent_input,
             )
         else:
             function_call = await self.respond_with_functions(
@@ -238,7 +238,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 affirmative_phrase=affirmative_phrase,
                 conversation_id=conversation_id,
                 agent_span_first=agent_span_first,
-                agent_input=agent_input
+                agent_input=agent_input,
             )
 
         await asyncio.sleep(0)
@@ -323,7 +323,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             ).affirmative_phrase
             self.logger.debug("Responding to transcription")
             should_stop = False
-            if not USE_STREAMING and (("transcription" not in locals()) or (transcription is None)):
+            if not USE_STREAMING and (
+                ("transcription" not in locals()) or (transcription is None)
+            ):
                 # transcription = Transcription(
                 #     message="Is the action completed?", confidence=1.0, is_final=True
                 # )
@@ -472,7 +474,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         stream_output: bool = True,
     ) -> str:
         raise NotImplementedError
-    
+
     def generate_completion_streaming(
         self,
         human_input,
@@ -499,7 +501,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             affirmative_phrase=affirmative_phrase if affirmative_phrase else None,
             conversation_id=conversation_id,
             is_interrupt=transcription.is_interrupt,
-        ) 
+        )
 
         if isinstance(response, FunctionCall):
             function_call = response
@@ -532,7 +534,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             affirmative_phrase=affirmative_phrase if affirmative_phrase else None,
             conversation_id=conversation_id,
             is_interrupt=transcription.is_interrupt,
-        ) 
+        )
         is_first_response = True
         async for response, is_interruptible in responses:
             self.logger.debug(f"Generated response: {response}")

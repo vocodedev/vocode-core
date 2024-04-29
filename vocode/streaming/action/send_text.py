@@ -21,7 +21,7 @@ class SendTextActionConfig(ActionConfig, type=ActionType.SEND_TEXT):
 
 class SendTextParameters(BaseModel):
     to_phone: str
-    message: str
+    contents: str
 
 
 class SendTextResponse(BaseModel):
@@ -35,7 +35,7 @@ class SendText(BaseAction[SendTextActionConfig, SendTextParameters, SendTextResp
     parameters_type: Type[SendTextParameters] = SendTextParameters
     response_type: Type[SendTextResponse] = SendTextResponse
 
-    async def send_text(self, to_phone, message):
+    async def sms(self, to_phone, contents):
         twilio_account_sid = os.environ["TWILIO_ACCOUNT_SID"]
         twilio_auth_token = os.environ["TWILIO_AUTH_TOKEN"]
         from_phone = self.action_config.from_phone
@@ -44,7 +44,7 @@ class SendText(BaseAction[SendTextActionConfig, SendTextParameters, SendTextResp
             to_phone = "1" + to_phone
 
         url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_account_sid}/Messages.json"
-        payload = {"To": to_phone, "From": from_phone, "Body": message}
+        payload = {"To": to_phone, "From": from_phone, "Body": contents}
         try:
             auth = BasicAuth(twilio_account_sid, twilio_auth_token)
 
@@ -92,9 +92,9 @@ class SendText(BaseAction[SendTextActionConfig, SendTextParameters, SendTextResp
     async def run(
         self, action_input: ActionInput[SendTextParameters]
     ) -> ActionOutput[SendTextResponse]:
-        message = action_input.params.message
+        contents = action_input.params.contents
         to_phone = action_input.params.to_phone
-        response = await self.send_text(to_phone, message)
+        response = await self.sms(to_phone, contents)
         # response = await self.wait_for_response(self.action_config.to_phone)
         if "error sending text message" in str(response).lower():
             return ActionOutput(
@@ -106,6 +106,6 @@ class SendText(BaseAction[SendTextActionConfig, SendTextParameters, SendTextResp
         return ActionOutput(
             action_type=action_input.action_config.type,
             response=SendTextResponse(
-                status=f"Message to {to_phone} has been sent successfully with the content: '{message}'."
+                status=f"Message to {to_phone} has been sent successfully with the content: '{contents}'."
             ),
         )

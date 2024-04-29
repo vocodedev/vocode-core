@@ -64,6 +64,13 @@ class Transcript(BaseModel):
             for event in self.event_logs
         )
 
+    def copy(self):
+        return Transcript(
+            event_logs=self.event_logs.copy(),
+            start_time=self.start_time,
+            events_manager=self.events_manager,
+        )
+
     def maybe_publish_transcript_event_from_message(
         self, message: Message, conversation_id: str
     ):

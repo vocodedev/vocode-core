@@ -4,14 +4,26 @@ from vocode.streaming.models.actions import ActionConfig
 from vocode.streaming.action.hangup_call import HangUpCall, HangUpCallActionConfig
 from vocode.streaming.action.transfer_call import TransferCall, TransferCallActionConfig
 from vocode.streaming.action.search_online import SearchOnline, SearchOnlineActionConfig
-
+from vocode.streaming.action.create_agent import CreateAgent, CreateAgentActionConfig
 from vocode.streaming.action.send_text import SendText, SendTextActionConfig
 from vocode.streaming.action.get_train import GetTrain, GetTrainActionConfig
 from vocode.streaming.action.use_calendly import UseCalendly, CalendlyActionConfig
-from vocode.streaming.action.send_hello_sugar_directions import SendHelloSugarDirections, SendHelloSugarDirectionsActionConfig
-from vocode.streaming.action.send_hello_sugar_booking_instructions import SendHelloSugarBookingInstructions, SendHelloSugarBookingInstructionsActionConfig
-from vocode.streaming.action.check_calendar_availability import CheckCalendarAvailability, CheckCalendarAvailabilityActionConfig
-from vocode.streaming.action.book_calendar_appointment import BookCalendarAppointment, BookCalendarAppointmentActionConfig
+from vocode.streaming.action.send_hello_sugar_directions import (
+    SendHelloSugarDirections,
+    SendHelloSugarDirectionsActionConfig,
+)
+from vocode.streaming.action.send_hello_sugar_booking_instructions import (
+    SendHelloSugarBookingInstructions,
+    SendHelloSugarBookingInstructionsActionConfig,
+)
+from vocode.streaming.action.check_calendar_availability import (
+    CheckCalendarAvailability,
+    CheckCalendarAvailabilityActionConfig,
+)
+from vocode.streaming.action.book_calendar_appointment import (
+    BookCalendarAppointment,
+    BookCalendarAppointmentActionConfig,
+)
 
 # use_instructions
 from vocode.streaming.action.retrieve_instructions import (
@@ -50,5 +62,7 @@ class ActionFactory:
             return CheckCalendarAvailability(action_config)
         elif isinstance(action_config, BookCalendarAppointmentActionConfig):
             return CheckCalendarAvailability(action_config)
+        elif isinstance(action_config, CreateAgentActionConfig):
+            return CreateAgent(action_config)
         else:
             raise Exception("Invalid action type")

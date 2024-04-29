@@ -62,12 +62,12 @@ def format_qwen_chat_completion_from_transcript(
                 formatted_conversation += (
                     f"<|im_start|>{role}\n{event_log.text}<|im_end|>\n"
                 )
-            elif isinstance(event_log, ActionStart):
-                formatted_conversation += f"<|im_start|>user\nSYSTEM: Submitted: Function call: {event_log.action_type} with arguments {event_log.action_input.params.json()}\nDo not answer the user's associated query until a response is received from the system.<|im_end|>\n"
-            elif isinstance(event_log, ActionFinish):
-                formatted_conversation += f"<|im_start|>user\nSYSTEM: Completed: Function {event_log.action_type}.\nResponse was: {event_log.action_output.response.json()}\nNow you can use the response in the conversation.<|im_end|>\n"
-
-    return formatted_conversation.strip()
+        elif isinstance(event_log, ActionStart):
+            formatted_conversation += f"<|im_start|>user\nSYSTEM: Submitted: Function call: {event_log.action_type} with arguments {event_log.action_input.params.json()}\nDo not answer the user's associated query until a response is received from the system.<|im_end|>\n"
+        elif isinstance(event_log, ActionFinish):
+            formatted_conversation += f"<|im_start|>user\nSYSTEM: Completed: Function {event_log.action_type}.\nResponse was: {event_log.action_output.response.json()}\nNow you can use the response in the conversation.<|im_end|>\n"
+    formatted_conversation += "<|im_start|>assistant\n"
+    return formatted_conversation
 
 
 async def get_qwen_response(
@@ -77,13 +77,6 @@ async def get_qwen_response(
     retries_remaining: int = 40,
 ):
     sentence_buffer = ""
-    if prompt_buffer[-1] == "\n" or prompt_buffer[-1] == " ":
-        prompt_buffer = prompt_buffer[:-1]
-
-    # check if it ends with "I see."
-    if not prompt_buffer.endswith("I see."):
-        # add in the last turn and the affirmative phrase
-        prompt_buffer += f"\n<|im_start|>assistant\nI see."
     async with aiohttp.ClientSession() as session:
         base_url = "http://148.64.105.83:4000/v1"
         data = {
@@ -92,6 +85,8 @@ async def get_qwen_response(
             "stream": True,
             "stop": ["?", "SYSTEM"],
             "max_tokens": 120,
+            "temperature": 0.1,
+            "top_p": 0.9,
             "include_stop_str_in_output": True,
         }
 
@@ -182,7 +177,12 @@ async def get_qwen_response(
             else:
                 if retries_remaining > 0:
                     logger.info("Qwen failed, retrying")
-                    async for chunk in get_qwen_response(prompt_buffer=prompt_buffer, logger=logger, stream_output=stream_output, retries_remaining=retries_remaining-1):
+                    async for chunk in get_qwen_response(
+                        prompt_buffer=prompt_buffer,
+                        logger=logger,
+                        stream_output=stream_output,
+                        retries_remaining=retries_remaining - 1,
+                    ):
                         yield chunk
                     return
                 logger.error(f"Error while streaming from OpenAI: {str(response)}")

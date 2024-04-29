@@ -123,8 +123,11 @@ class CommandAgentConfig(AgentConfig, type=AgentType.COMMAND.value):
     azure_params: Optional[AzureOpenAIConfig] = None
     vector_db_config: Optional[VectorDBConfig] = None
     pending_action: Optional[FunctionCall] = None
-    use_filler_words: bool = False
+    use_filler_words: bool = True
+    use_streaming: bool = False
+    allow_interruptions: bool = False
     language: Optional[str] = "en-US"
+    ai_profile_id: Optional[str] = None
 
 
 class MistralAgentConfig(AgentConfig, type=AgentType.MISTRAL.value):

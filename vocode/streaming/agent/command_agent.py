@@ -1,9 +1,14 @@
 import asyncio
+import copy
 import json
 import logging
 import random
+import re
 import string
 import time
+
+from vocode import getenv
+
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -59,6 +64,8 @@ from vocode.streaming.utils.get_commandr_response import (
     format_commandr_chat_completion_from_transcript,
     format_prefix_completion_from_transcript,
     get_commandr_response,
+    get_commandr_response_chat_streaming,
+    get_commandr_response_streaming,
 )
 from vocode.streaming.utils.get_qwen_response import (
     QWEN_MODEL_NAME,
@@ -111,7 +118,6 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         self.can_send = False
         self.conversation_id = None
         self.twilio_sid = None
-        model_id = "CohereForAI/c4ai-command-r-v01"
         self.tool_message = ""
 
         self.agent_config.pending_action = None
@@ -212,11 +218,8 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         # add an
         formatted_completion, messages = (
             format_commandr_chat_completion_from_transcript(
-                self.tokenizer,
                 self.transcript,
                 self.agent_config.prompt_preamble,
-                did_action=did_action,
-                reason=reason,
             )
         )
         # self.logger.debug(f"Formatted completion: {formatted_completion}")
@@ -389,37 +392,107 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 self.agent_config.prompt_preamble,
             )
         )
-        commandr_chat_buffer, arra = format_commandr_chat_completion_from_transcript(
-            self.tokenizer,
-            self.transcript,
-            self.agent_config.prompt_preamble,
-        )  # unused for now
         if "Do not provide" in messageArray[-1]["content"]:
             self.logger.info("Skipping tool use due to tool use.")
             return None  # TODO: investigate if this is why it needs to be prompted to do async tools
         use_qwen = self.agent_config.model_name.lower() == QWEN_MODEL_NAME.lower()
 
-        async def get_qwen_response_future():
-            response = ""
-            if not use_qwen:
-                return response
-            qwen_prompt_buffer = format_qwen_chat_completion_from_transcript(
-                self.transcript, self.agent_config.prompt_preamble
-            )
-            async for response_chunk in get_qwen_response(
-                prompt_buffer=qwen_prompt_buffer, logger=self.logger
+        commandr_response = None
+        self.tool_message = ""
+        frozen_transcript = self.transcript.copy()
+        if self.agent_config.use_streaming and not use_qwen:
+            commandr_response = ""
+            current_utterance = ""
+            self.logger.info(f"CALLING")
+            if use_qwen:
+                model_to_use = getenv("AI_MODEL_NAME_LARGE")
+            else:
+                model_to_use = self.agent_config.model_name
+            async for response_chunk in get_commandr_response_streaming(
+                prompt_buffer=commandr_prompt_buffer,
+                model=model_to_use,
+                logger=self.logger,
             ):
-                response += response_chunk[0] + " "
-                if response_chunk[1]:
-                    break
-            return response
+                stripped = response_chunk.rstrip()
+                if len(stripped) != len(response_chunk):
+                    response_chunk = stripped + " "
+                response_chunk = response_chunk.replace("\n", " ")
+                response_chunk = response_chunk.replace(
+                    r"\\n", " "
+                )  # the r makes it a raw string which is needed for the backslash
+                response_chunk = response_chunk.replace("  ", " ")
+                commandr_response += response_chunk
+                split_pattern = re.compile(r"([.!?,]) ")
+                split_pattern2 = re.compile(r'([.!?,])"')
+                last_answer_index = commandr_response.rfind('"answer"')
+                if (
+                    last_answer_index != -1
+                    and '"message": "' in commandr_response[last_answer_index:]
+                    and not "}," in commandr_response[last_answer_index:]
+                ):
+                    current_utterance += response_chunk
+                    current_utterance = re.sub(r"[^\w .,!?'@-]", "", current_utterance)
+                    current_utterance = current_utterance.replace("  ", " ")
+                    current_utterance = current_utterance.replace('"', "")
+                    # split on pattern with punctuation and space, producing an interruptible of the stuff before (including the punctuation) and keeping the stuff after.
+                    parts = split_pattern.split(current_utterance)
+                    # join everything up to the last part
+                    if (
+                        len(parts) > 0
+                        and len("".join(parts[:-1]).split(" ")) >= 3
+                        and len("".join(parts[:-1]).split(" ")[-1])
+                        > 3  # this is to avoid splitting on mr mrs
+                        and any(char.isalpha() for char in "".join(parts[:-1]))
+                    ):
+                        self.produce_interruptible_agent_response_event_nonblocking(
+                            AgentResponseMessage(
+                                message=BaseMessage(
+                                    text="".join(
+                                        [
+                                            part + " " if part[-1] in ".,!?" else part
+                                            for part in parts[:-1]
+                                        ]
+                                    )
+                                )
+                            )
+                        )
+                        await asyncio.sleep(0.1)
+                        current_utterance = parts[-1]
 
-        commandr_response, qwen_response = await asyncio.gather(
-            get_commandr_response(
-                prompt_buffer=commandr_prompt_buffer, logger=self.logger
-            ),
-            get_qwen_response_future(),
-        )
+            if len(current_utterance) > 0 and any(
+                char.isalpha() for char in current_utterance
+            ):
+                # only keep the part before split pattern 2
+                parts = split_pattern2.split(current_utterance)
+                current_utterance = "".join(parts[:2])
+                self.logger.info(f"Current utterance: {current_utterance}")
+
+                self.produce_interruptible_agent_response_event_nonblocking(
+                    AgentResponseMessage(message=BaseMessage(text=current_utterance))
+                )
+                current_utterance = ""
+
+            # if "send_direct_response" in commandr_response:
+            #     return None
+        if not commandr_response:
+            self.logger.info(f"There was not a streaming response")
+            if self.agent_config.model_name.lower() == QWEN_MODEL_NAME.lower():
+                commandr_response, qwen_response = await asyncio.gather(
+                    get_commandr_response(
+                        prompt_buffer=commandr_prompt_buffer,
+                        model=getenv("AI_MODEL_NAME_LARGE"),
+                        logger=self.logger,
+                    ),
+                    self.get_qwen_response_future(frozen_transcript),
+                )
+            else:
+                commandr_response = await get_commandr_response(
+                    prompt_buffer=commandr_prompt_buffer,
+                    model=self.agent_config.model_name,
+                    logger=self.logger,
+                )
+        elif self.agent_config.model_name.lower() == QWEN_MODEL_NAME.lower():
+            qwen_response = await self.get_qwen_response_future(frozen_transcript)
 
         if not commandr_response.startswith("Action: ```json"):
             self.logger.error(f"ACTION RESULT DID NOT LOOK RIGHT: {commandr_response}")
@@ -427,6 +500,9 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
             commandr_response_json_str = commandr_response[
                 len("Action: ```json") :
             ].strip()
+            commandr_response_json_str = commandr_response_json_str.replace(
+                "```<|END_OF_TURN_TOKEN|>", ""
+            )
             if commandr_response_json_str.endswith("```"):
                 commandr_response_json_str = commandr_response_json_str[:-3].strip()
             try:
@@ -441,23 +517,22 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     f"UNEXPECTED ERROR: {e} with response: {commandr_response_json_str}"
                 )
                 return None
-
-            if (
-                not isinstance(commandr_response_data, list)
-                or not commandr_response_data
-            ):
+            if not commandr_response_data:
                 self.logger.error(
                     f"RESPONSE FORMAT ERROR: Expected a list with data, got: {commandr_response_data}"
                 )
                 return None
 
+            if not isinstance(commandr_response_data, list):
+                commandr_response_data = [commandr_response_data]
+            tools_used = None
             self.logger.info(f"Response was: {commandr_response_data}")
             for tool in commandr_response_data:
                 tool_name = tool.get("tool_name")
                 tool_params = tool.get("parameters")
                 self.logger.info(f"running tool: {tool_name}")
 
-                if tool_name == "send_direct_response":
+                if tool_name == "answer":
                     self.logger.info(
                         f"No tool, model wants to directly respond: {tool_params}"
                     )
@@ -467,64 +542,50 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                         self.tool_message = qwen_response.strip()
                     elif "message" in tool_params:
                         self.tool_message = tool_params["message"]
-                    return None
-
-                if (
-                    tool_name
-                    and tool_params is not None
-                    and messageArray[-1]["role"] != "system"
-                ):
+                    # return None
+                    continue
+                elif tool_name and tool_params is not None:
                     try:
-                        while not self.can_send:
-                            await asyncio.sleep(0.05)
-                        await self.call_function(
-                            FunctionCall(
-                                name=tool_name, arguments=json.dumps(tool_params)
-                            ),
-                            TranscriptionAgentInput(
-                                transcription=Transcription(
-                                    message="I am doing that for you now.",
-                                    confidence=1.0,
-                                    is_final=True,
-                                    time_silent=0.0,
+                        asyncio.ensure_future(
+                            self.call_function(
+                                FunctionCall(
+                                    name=tool_name, arguments=json.dumps(tool_params)
                                 ),
-                                conversation_id=self.conversation_id,
-                                twilio_sid=self.twilio_sid,
-                            ),
+                                TranscriptionAgentInput(
+                                    transcription=Transcription(
+                                        message="I am doing that for you now.",
+                                        confidence=1.0,
+                                        is_final=True,
+                                        time_silent=0.0,
+                                    ),
+                                    conversation_id=self.conversation_id,
+                                    twilio_sid=self.twilio_sid,
+                                ),
+                            )
                         )
-                        self.can_send = False
+                        # self.can_send = False
                         self.tool_message = ""
-                        return {
-                            "tool_name": tool_name,
-                            "tool_params": json.dumps(tool_params),
-                        }
+                        if not tools_used:
+                            tools_used = [
+                                {
+                                    "tool_name": tool_name,
+                                    "tool_params": json.dumps(tool_params),
+                                }
+                            ]
+                        else:
+                            tools_used.append(
+                                {
+                                    "tool_name": tool_name,
+                                    "tool_params": json.dumps(tool_params),
+                                }
+                            )
 
                     except Exception as e:
                         self.logger.error(f"ERROR CREATING FUNCTION CALL: {e}")
                         break  # If there's an error, we stop processing further tools
-            return None
-        return None
-
-    async def respond(
-        self,
-        human_input,
-        conversation_id: str,
-        is_interrupt: bool = False,
-    ) -> Tuple[str, bool]:
-        assert self.transcript is not None
-        if is_interrupt and self.agent_config.cut_off_response:
-            cut_off_response = self.get_cut_off_response()
-            return cut_off_response, False
-        if self.is_first_response and self.first_response:
-            self.is_first_response = False
-            text = self.first_response
-        else:
-            chat_parameters = self.get_chat_parameters()
-            chat_completion = await self.aclient.chat.completions.create(
-                **chat_parameters
-            )
-            text = chat_completion.choices[0].message.content
-        return text, False
+            self.can_send = False
+            return tools_used
+        return tools_used
 
     async def generate_completion(
         self,
@@ -534,26 +595,6 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         is_interrupt: bool = False,
         stream_output: bool = True,
     ) -> str:
-        # if there arent equal event start and event finish wait
-
-        digits = [
-            "zero",
-            "one",
-            "two",
-            "three",
-            "four",
-            "five",
-            "six",
-            "seven",
-            "eight",
-            "nine",
-        ]
-        # replace all written numbers with digits
-        current_index = -1
-        count = 0
-        # get the preamble
-        preamble = self.agent_config.prompt_preamble
-
         if self.agent_config.language != "en-US":
             # Modify the transcript for the latest user message that matches human_input
             latest_human_message = next(
@@ -578,28 +619,48 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         tool_call = None
         if self.agent_config.actions:
             # prefix = await self.gen_prefix() TODO how to do
-            tool_call = await self.gen_tool_call(conversation_id)
-            if tool_call is not None:
-                self.logger.info(f"Should continue: {tool_call}")
-                # action_config = self._get_action_config(function_call.name)
-                name = tool_call["tool_name"]
-                params = eval(tool_call["tool_params"])
-                self.logger.info(f"Name: {name}, Params: {params}")
-                action_config = self._get_action_config(name)
-                try:
-                    action = self.action_factory.create_action(action_config)
-                    action_input = action.create_action_input(
-                        conversation_id, params, user_message_tracker=None
-                    )
-                    self.transcript.add_action_start_log(
-                        action_input=action_input,
-                        conversation_id=conversation_id,
-                    )
-                except Exception as e:
-                    self.logger.error(f"Error creating action: {e}")
-                    self.tool_message = ""
+            tool_calls = await self.gen_tool_call(conversation_id)
+            if tool_calls:
+                for tool_call in tool_calls:
+                    if tool_call is not None:
+                        name = tool_call["tool_name"]
+                        params = eval(
+                            tool_call["tool_params"]
+                            .replace("null", "None")
+                            .replace("false", "False")
+                            .replace("true", "True")
+                        )
+                        self.logger.info(f"Name: {name}, Params: {params}")
+                        action_config = self._get_action_config(name)
+                        try:
+                            action = self.action_factory.create_action(action_config)
+                            action_input = action.create_action_input(
+                                conversation_id, params, user_message_tracker=None
+                            )
+                            self.transcript.add_action_start_log(
+                                action_input=action_input,
+                                conversation_id=conversation_id,
+                            )
+                            if "qwen" in self.agent_config.model_name.lower():
+                                self.logger.info(
+                                    f"Re-doing qwen due to tool call. Transcript: {self.transcript.to_string()}"
+                                )
+                                self.tool_message = await self.get_qwen_response_future(
+                                    self.transcript  # not frozen because we want the latest tool call
+                                )
+                        except Exception as e:
+                            self.logger.error(f"Error creating action: {e}")
+                            self.tool_message = ""
+        if (
+            self.agent_config.use_streaming
+            and self.tool_message
+            and len(self.tool_message) > 0
+        ):
+            if "qwen" in self.agent_config.model_name.lower():
+                return self.tool_message, True
+            self.logger.info(f"NO TOOL CALLS")
+            return "", True
 
-        self.logger.debug(f"COMPLETION IS RESPONDING")
         if len(self.tool_message) > 0:
             return self.tool_message, True
         if affirmative_phrase:
@@ -619,59 +680,86 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         if len(prompt_buffer) == 0:
             self.logger.info("Prompt buffer is empty, returning")
             return
-        latest_agent_response = ""
         if not prompt_buffer or len(prompt_buffer) < len(chat_parameters["prompt"]):
             prompt_buffer = chat_parameters["prompt"]
 
-        # Get the full response and store it
-        async def gen_command_response_chat_future_fallback(prompt_buffer):
-            # self.logger.info(f"Prompt buffer: {prompt_buffer}")
-            response_text = ""
-            async with aiohttp.ClientSession() as session:
-                base_url = getenv("AI_API_BASE")
-                data = {
-                    "model": getenv("AI_MODEL_NAME_LARGE"),
-                    "prompt": prompt_buffer,
-                    "stream": False,
-                    "stop": ["?", "SYSTEM", "<|END_OF_TURN_TOKEN|>"],
-                    "max_tokens": 120,
-                    "top_p": 1,
-                    "temperature": 0,
-                    "include_stop_str_in_output": True,
-                }
-
-                async with session.post(
-                    f"{base_url}/completions", headers=HEADERS, json=data
-                ) as response:
-                    if response.status == 200:
-                        response_data = await response.json()
-                        if "choices" in response_data and response_data["choices"]:
-                            response_text = (
-                                response_data["choices"][0]
-                                .get("text", "")
-                                .replace("SYSTEM", "")
-                            )
-                    else:
-                        self.logger.error(
-                            f"Error while getting chat response from command-r: {str(response)}\nThe request data was: {data}"
-                        )
-            return response_text
-
-        if len(self.tool_message) > 0:
+        if len(self.tool_message) > 0 and not self.agent_config.use_streaming:
             return self.tool_message, True
-        latest_agent_response = await gen_command_response_chat_future_fallback(
-            prompt_buffer
+        elif len(self.tool_message) > 0 and self.agent_config.use_streaming:
+            return "", True
+        if "qwen" in self.agent_config.model_name.lower():
+            model_to_use = getenv("AI_MODEL_NAME_LARGE")
+        else:
+            model_to_use = self.agent_config.model_name
+        commandr_response = ""
+        current_utterance = ""
+        # log that we're in fallback mode
+        self.logger.info(f"We're entering fallback mode now")
+        if self.agent_config.use_streaming:
+            async for response_chunk in get_commandr_response_chat_streaming(
+                transcript=self.transcript,
+                model=model_to_use,
+                prompt_preamble=self.agent_config.prompt_preamble,
+                logger=self.logger,
+            ):
+                stripped = response_chunk.rstrip()
+                if len(stripped) != len(response_chunk):
+                    response_chunk = stripped + " "
+                response_chunk = response_chunk.replace("\n", " ")
+                split_pattern = re.compile(r"([.!?,]) ")
+                split_pattern2 = re.compile(r'([.!?])"')
+                current_utterance += response_chunk
+                # split on pattern with punctuation and space, producing an interruptible of the stuff before (including the punctuation) and keeping the stuff after.
+                parts = split_pattern.split(current_utterance)
+                if (
+                    len(parts) > 2
+                    and len("".join(parts[:2]).split(" ")) > 2
+                    and len("".join(parts[:2]).split(" ")[-1]) > 4
+                    and any(char.isalpha() for char in "".join(parts[:2]))
+                ):
+                    self.produce_interruptible_agent_response_event_nonblocking(
+                        AgentResponseMessage(
+                            message=BaseMessage(text="".join(parts[:2]))
+                        )
+                    )
+                    await asyncio.sleep(0.01)
+                    current_utterance = "".join(parts[2:])
+                    # log each part
+                commandr_response += response_chunk
+            if len(current_utterance) > 0 and any(
+                char.isalpha() for char in current_utterance
+            ):
+                # only keep the part before split pattern 2
+                parts = split_pattern2.split(current_utterance)
+                current_utterance = "".join(parts[:2])
+                self.produce_interruptible_agent_response_event_nonblocking(
+                    AgentResponseMessage(message=BaseMessage(text=current_utterance))
+                )
+            self.can_send = False
+            return "", True
+        else:
+            commandr_response = await get_commandr_response(
+                prompt_buffer=prompt_buffer,
+                model=model_to_use,
+                logger=self.logger,
+            )
+            self.logger.info(
+                f"Commandr non-streaming fallback response: {commandr_response}"
+            )
+            return commandr_response, True
+
+    async def get_qwen_response_future(self, transcript):
+        response = ""
+        qwen_prompt_buffer = format_qwen_chat_completion_from_transcript(
+            transcript, self.agent_config.prompt_preamble
         )
-        latest_agent_response = latest_agent_response.replace(
-            "<|END_OF_TURN_TOKEN|>", ""
-        )
-        # Run the nonblocking checks in the background
-        # if self.agent_config.actions:
-        #     asyncio.create_task(
-        #         self.gen_tool_call(latest_agent_response=latest_agent_response)
-        #     )
-        self.can_send = False
-        return latest_agent_response, True
+        async for response_chunk in get_qwen_response(
+            prompt_buffer=qwen_prompt_buffer, logger=self.logger
+        ):
+            response += response_chunk[0] + " "
+            if response_chunk[1]:
+                break
+        return response
 
     async def generate_response(
         self,
@@ -733,7 +821,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         data = {
             "model": chat_parameters["model"],
             "messages": chat_parameters["messages"],
-            "stream": True,
+            "stream": self.agent_config.use_streaming,
             "stop": ["?", "SYSTEM"],
             "include_stop_str_in_output": True,
         }
@@ -776,6 +864,9 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                                                 messageBuffer += message
                                                 all_messages.append(messageBuffer)
                                                 yield messageBuffer, True
+                                                logging.info(
+                                                    f"Yielded: {messageBuffer}"
+                                                )
                                                 messageBuffer = ""
                                             else:
                                                 messageBuffer += message
