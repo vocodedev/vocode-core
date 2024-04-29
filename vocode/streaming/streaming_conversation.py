@@ -203,6 +203,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async def classify_transcription(self, transcription: Transcription) -> bool:
             last_bot_message = self.conversation.transcript.get_last_bot_text()
             transcript_message = transcription.message
+            # TODO: must be parametrized.
             chat_parameters = {
                 "model": "gpt-3.5-turbo",
                 "messages": [
@@ -223,33 +224,26 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
             return False
 
+        async def simple_interrupt(self, transcription: Transcription) -> bool:
+            return not self.conversation.is_human_speaking and self.conversation.is_interrupt(transcription)
+
         async def handle_interrupt(self, transcription: Transcription) -> bool:
-            # TODO: make it compatible with this old code.
-            # if (
-            #         not self.conversation.is_human_speaking
-            #         and self.conversation.is_interrupt(transcription)
-            # ):
-            #     self.conversation.current_transcription_is_interrupt = (
-            #         self.conversation.broadcast_interrupt()
-            #     )
-            #     if self.conversation.current_transcription_is_interrupt:
-            #         self.conversation.logger.debug("sending interrupt")
+            if self.use_interrupt_agent:
+                self.conversation.logger.info(
+                    f"Testing if bot should be interrupted: {transcription.message}"
+                )
+                is_interrupt = await self.classify_transcription(transcription)
 
-            self.conversation.logger.info(
-                f"Testing if bot should be interrupted: {transcription.message}"
-            )
-            is_interrupt = await self.classify_transcription(transcription)
-
-            if is_interrupt:
-                self.conversation.broadcast_interrupt()
-                return True
-            return False
+                if is_interrupt:
+                    self.conversation.broadcast_interrupt()
+                    return True
+                return False
+            else:
+                return await self.simple_interrupt(transcription)
 
         async def process(self, transcription: Transcription):
             if transcription.message.strip() == "":
                 # This is often received when the person starts talking. We don't know if they will use filler word.
-                # TODO set a timer here, if transcription does not arrive on time, assume the person keeps talking and need to interrupt the bot.
-                # TODO human_speaking should be set here as this is the only place with is_final=false.
                 self.conversation.logger.info(f"Ignoring empty transcription {transcription}")
                 return
             if transcription.is_final and self.conversation.is_bot_talking:
@@ -265,7 +259,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
-                self.conversation.logger.info(f"User: {transcription.message}")
                 self.conversation.mark_last_action_timestamp()
                 # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
 
@@ -637,6 +630,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
 
         self.is_human_speaking = False
+        self.use_interrupt_agent = True
         self.bot_talking_lock = Lock()
         self.is_bot_speaking = False
         self.active = False
