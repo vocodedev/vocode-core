@@ -94,11 +94,8 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
     async def pick_filler(self, bot_message: str, user_message: str) -> Optional[FillerAudio]:
         if self.filler_picker is not None:
-            self.logger.info(f'Using filler picker for "{bot_message}" and "{user_message}"')
             pick = self.filler_picker.predict_filler_phrase(bot_message, user_message)
-            self.logger.info("Picking filler")
             if pick is not None:
-                self.logger.info(f"Filler picked: {pick}")
                 audio_data = self.get_cached_audio(pick)
                 if audio_data is None:
                     # Create & cache missing filler.
@@ -329,8 +326,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         if not self.ignore_cache:
             cached_audio = self.get_cached_audio(message.text)
             if cached_audio is not None:
-                self.logger.info(f"Using cached audio for message: {message.text}")
-
                 async def generator():
                     yield SynthesisResult.ChunkResult(cached_audio, True)
 

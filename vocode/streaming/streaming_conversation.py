@@ -239,6 +239,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 f"Testing if bot should be interrupted: {transcription.message}"
             )
             is_interrupt = await self.classify_transcription(transcription)
+
             if is_interrupt:
                 self.conversation.broadcast_interrupt()
                 return True
@@ -432,8 +433,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 self.conversation.mark_last_action_timestamp()  # once speech started creating.
                 end_time = time.time()
-                self.conversation.logger.info(
-                    "Getting response from Synth took {} seconds".format(end_time - start_time))
+                # self.conversation.logger.info(
+                #     "Getting response from Synth took {} seconds".format(end_time - start_time))
                 self.produce_interruptible_agent_response_event_nonblocking(
                     (agent_response_message.message, synthesis_result),
                     is_interruptible=item.is_interruptible,
@@ -937,8 +938,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             if first_chunk:
                 generating_end_time = time.time()
                 first_chunk = False
-                self.logger.info(
-                    f"Generating first chunk took {generating_end_time - generating_start_time} seconds for message {message}")
+                # self.logger.info(
+                #     f"Generating first chunk took {generating_end_time - generating_start_time} seconds for message {message}")
 
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
