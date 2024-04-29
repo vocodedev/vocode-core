@@ -213,7 +213,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             is_interrupt=transcription.is_interrupt,
             conversation_id=conversation_id,
         )
-        self.logger.info("AGENT: Got generator from OpenAI for user transcription: %s", transcription.message)
         is_first_response = True
         function_call = None
         self.logger.info("Agent is generating responses")

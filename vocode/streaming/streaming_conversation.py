@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import queue
 import threading
 import time
 import typing
+from asyncio import Lock
 from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 
+import openai
 from azure.ai.textanalytics.aio import TextAnalyticsClient
 
 from vocode.streaming.action.worker import ActionsWorker
@@ -69,6 +72,85 @@ BOT_TALKING_SINCE_LAST_FILLER_TIME_LIMIT = 3.0
 BOT_TALKING_SINCE_LAST_ACTION_TIME_LIMIT = 0.1
 
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
+# TODO:MOVE IT, just WIP TEMP
+INTERRUPTION_PROMPT = """
+**Objective:**
+
+Your primary task is to detect instances where the customer intends to interrupt the rep to stop the ongoing conversation. You only get the words said by customer and you have to base your decision on them.
+
+You must differentiate between two types of customer interjections:
+
+1. **Non-interrupting acknowledgements**: These are phrases which signify the customer is following along but does not wish to interrupt the rep. Are close to words like this:
+
+"Ok"
+"Got it"
+"Understood"
+ "I see"
+"Right"
+"I follow"
+"Yes"
+"I agree"
+"That makes sense"
+"Sure"
+"Sounds good"
+"Indeed"
+"Absolutely"
+"Of course"
+"Go on"
+"Keep going"
+"I'm with you"
+"Continue"
+"That's clear"
+"Perfect"
+
+2. **Interrupting requests**: These include phrases indicating the customer's desire to interrupt the conversation.
+Are close to words like this:
+"Please, stop"
+"stop"
+"hold"
+"No, no"
+"Wait"
+"what"
+"No"
+"Hold on"
+"That's not right"
+"I disagree"
+"Just a moment"
+"Listen"
+"That's incorrect"
+"I need to say something"
+"Excuse me"
+"Stop for a second"
+"Hang on"
+"That's not what I meant"
+"Let me speak"
+"I have a concern"
+"That doesn't sound right"
+"I need to correct you"
+"Can I just say something"
+"I don't think so"
+"You're misunderstanding"
+
+**Input Specification:**
+
+You get words said by the customer.
+
+
+**Output Specification:**
+
+You must return a JSON object indicating whether the rep should be interrupted based on the customer's interjections.
+
+- Return `{"interrupt": "true"}` if the customer's interjection is an interrupting request.
+- Return `{"interrupt": "false"}` if the customer's interjection is a non-interrupting acknowledgement.
+
+
+RULES: 
+IF the customer is saying some information about his situation, assume interruption is needed and set it to TRUE.
+
+
+Example of output:
+{"interrupt": "true"}
+"""
 
 
 class StreamingConversation(Generic[OutputDeviceType]):
@@ -118,65 +200,64 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.interruptible_event_factory = interruptible_event_factory
             self.let_bot_finish_speaking = let_bot_finish_speaking
 
+        async def classify_transcription(self, transcription: Transcription) -> bool:
+            last_bot_message = self.conversation.transcript.get_last_bot_text()
+            transcript_message = transcription.message
+            chat_parameters = {
+                "model": "gpt-3.5-turbo",
+                "messages": [
+                    {"role": "system", "content": INTERRUPTION_PROMPT},
+                    {"role": "user", "content": transcript_message},
+                    {"role": "assistant", "content": last_bot_message},
+                ]
+            }
+            try:
+                response = await openai.ChatCompletion.create(**chat_parameters)
+                decision = json.loads(response['choices'][0]['message']['content'].strip().lower())
+                return decision['interrupt'] == 'true'
+            except Exception as e:
+                # Log the exception or handle it as per your error handling policy
+                self.conversation.logger.error(f"Error in GPT-3.5 API call: {str(e)}")
+                return False
+
+            return False
+
+        async def handle_interrupt(self, transcription: Transcription) -> bool:
+            # TODO: make it compatible with this old code.
+            # if (
+            #         not self.conversation.is_human_speaking
+            #         and self.conversation.is_interrupt(transcription)
+            # ):
+            #     self.conversation.current_transcription_is_interrupt = (
+            #         self.conversation.broadcast_interrupt()
+            #     )
+            #     if self.conversation.current_transcription_is_interrupt:
+            #         self.conversation.logger.debug("sending interrupt")
+            condition = (transcription.is_final and self.conversation.is_bot_talking)
+            if condition:
+                self.conversation.logger.info(
+                    f"Testing if bot should be interrupted: {transcription.message}"
+                )
+
+                return False
+
         async def process(self, transcription: Transcription):
-            self.conversation.logger.info(
-                f"Got transcription event: {transcription.message}, {transcription.confidence}, {transcription.is_final}, {transcription.is_interrupt}")
             if transcription.message.strip() == "":
                 # This is often received when the person starts talking. We don't know if they will use filler word.
                 # TODO set a timer here, if transcription does not arrive on time, assume the person keeps talking and need to interrupt the bot.
                 # TODO human_speaking should be set here as this is the only place with is_final=false.
                 self.conversation.logger.info(f"Ignoring empty transcription {transcription}")
                 return
-            # TODO: rework or remove completely.
-            # # Prevent interrupt.
-            since_last_filler_time = time.time() - self.conversation.last_filler_timestamp
-            silence_since_last_action = time.time() - self.conversation.last_action_timestamp
-            if (
-                    since_last_filler_time < self.conversation.filler_audio_config.silence_threshold_seconds + BOT_TALKING_SINCE_LAST_FILLER_TIME_LIMIT
-                    or silence_since_last_action < BOT_TALKING_SINCE_LAST_ACTION_TIME_LIMIT):
-                # I could clear since_last_filler_time after first response is generated in the synthesizer, but this is complicated to detect, which audio is which.
-                bot_still_talking = True
-                self.conversation.logger.info(
-                    f'Bot still talking, because filler was said recently. since_last_filler_time: {since_last_filler_time}, silence_since_last_action: {silence_since_last_action}')
-
-            else:
-                has_task = self.conversation.synthesis_results_worker.current_task is not None
-                bot_still_talking = has_task and not self.conversation.synthesis_results_worker.current_task.done() if has_task else False
-
-            if bot_still_talking and self.let_bot_finish_speaking:
-                self.conversation.logger.info(
-                    f'The user said "{transcription.message}" during the bot was talking. We are letting the bot finish speaking. Message is not sent to the agent.')
-                # Detect if the bot is talking. This may fail if the current task is done and another not started yet. But playing the audio takes most of the time.
-                return  # just ignore the transcription for now.
-
-            if bot_still_talking and self.conversation.over_talking_filler_detector:
-                self.conversation.logger.info(
-                    f'The user said "{transcription.message}" during the bot was talking. Testing to ignore filler words and confirmation words.')
-                if self.conversation.over_talking_filler_detector.detect_filler(transcription.message):
-                    return
-
-            if transcription.is_final:
-                self.conversation.logger.debug(
-                    "Got transcription {}, confidence: {}, is_final: {}".format(
-                        transcription.message, transcription.confidence, transcription.is_final
-                    )
-                )
-
-            if (
-                    not self.conversation.is_human_speaking
-                    and self.conversation.is_interrupt(transcription)
-            ):
-                self.conversation.current_transcription_is_interrupt = (
-                    self.conversation.broadcast_interrupt()
-                )
-                if self.conversation.current_transcription_is_interrupt:
-                    self.conversation.logger.debug("sending interrupt")
-
+            intterupt_bot = await self.handle_interrupt(transcription)
+            if not intterupt_bot:
+                self.conversation.logger.info(f"Not interrupting bot")
+                return
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
+                self.conversation.logger.info(f"User: {transcription.message}")
                 self.conversation.mark_last_action_timestamp()
                 # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
 
@@ -398,6 +479,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     conversation_id=self.conversation.id,
                     publish_to_events_manager=False,
                 )
+                await self.conversation.set_started_speaking()
                 message_sent, cut_off = await self.conversation.send_speech_to_output(
                     message.text,
                     synthesis_result,
@@ -433,6 +515,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         pass
             except asyncio.CancelledError:
                 pass
+            finally:
+                await self.conversation.set_stopped_speaking()
 
     def __init__(
             self,
@@ -545,6 +629,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
 
         self.is_human_speaking = False
+        self.bot_talking_lock = Lock()
+        self.is_bot_speaking = False
         self.active = False
         self.terminate_called = False
 
@@ -563,6 +649,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
         self.logger.info("Finished creating conversation")
+
+    async def set_started_speaking(self):
+        async with self.bot_talking_lock:
+            self.is_bot_talking = True
+            self.logger.debug("Bot starts speaking.")
+
+    async def set_stopped_speaking(self):
+        async with self.bot_talking_lock:
+            self.is_bot_talking = False
+            self.logger.debug("Bot stops speaking.")
 
     def create_state_manager(self) -> ConversationStateManager:
         return ConversationStateManager(conversation=self)
