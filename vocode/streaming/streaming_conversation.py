@@ -200,6 +200,18 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.interruptible_event_factory = interruptible_event_factory
             self.let_bot_finish_speaking = let_bot_finish_speaking
 
+        async def propagate_transcription(self, transcription: Transcription):
+            event = self.interruptible_event_factory.create_interruptible_event(
+                TranscriptionAgentInput(
+                    transcription=transcription,
+                    conversation_id=self.conversation.id,
+                    vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
+                    twilio_sid=getattr(self.conversation, "twilio_sid", None),
+                )
+            )
+            self.output_queue.put_nowait(event)
+            self.conversation.logger.info(f"USER: {transcription.message}")
+
         async def classify_transcription(self, transcription: Transcription) -> bool:
             last_bot_message = self.conversation.transcript.get_last_bot_text()
             transcript_message = transcription.message
@@ -228,14 +240,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
             return not self.conversation.is_human_speaking and self.conversation.is_interrupt(transcription)
 
         async def handle_interrupt(self, transcription: Transcription) -> bool:
-            if self.use_interrupt_agent:
+            if self.conversation.use_interrupt_agent:
                 self.conversation.logger.info(
                     f"Testing if bot should be interrupted: {transcription.message}"
                 )
                 is_interrupt = await self.classify_transcription(transcription)
 
-                if is_interrupt:
-                    self.conversation.broadcast_interrupt()
+                if is_interrupt and self.conversation.is_bot_speaking:
+                    if self.conversation.is_bot_speaking:
+                        self.conversation.broadcast_interrupt()
+                    return True
+                elif (self.conversation.bot_last_stopped_speaking and
+                      (time.time() - self.conversation.bot_last_stopped_speaking) < 0.2 and
+                      not self.conversation.is_human_speaking):
+                    # we don't interrupt but only propagate the transcription if the bot has stopped speaking.
                     return True
                 return False
             else:
@@ -247,7 +265,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.info(f"Ignoring empty transcription {transcription}")
                 return
             self.conversation.mark_last_action_timestamp()  # received transcription.
-            if transcription.is_final and self.conversation.is_bot_talking:
+            if transcription.is_final and self.conversation.is_bot_speaking:
                 interrupt = await self.handle_interrupt(transcription)
                 if not interrupt:
                     self.conversation.logger.info(
@@ -260,16 +278,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
-                event = self.interruptible_event_factory.create_interruptible_event(
-                    TranscriptionAgentInput(
-                        transcription=transcription,
-                        conversation_id=self.conversation.id,
-                        vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
-                        twilio_sid=getattr(self.conversation, "twilio_sid", None),
-                    )
-                )
-                self.output_queue.put_nowait(event)
-                self.conversation.logger.info(f"USER: {transcription.message}")
+                await self.propagate_transcription(transcription)
 
     class FillerAudioWorker(InterruptibleAgentResponseWorker):
         """
@@ -631,6 +640,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.use_interrupt_agent = True
         self.bot_talking_lock = Lock()
         self.is_bot_speaking = False
+        self.bot_last_stopped_speaking = None
         self.active = False
         self.terminate_called = False
 
@@ -652,13 +662,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     async def set_started_speaking(self):
         async with self.bot_talking_lock:
-            self.is_bot_talking = True
+            self.is_bot_speaking = True
             self.logger.debug("Bot starts speaking.")
 
     async def set_stopped_speaking(self):
         async with self.bot_talking_lock:
-            self.is_bot_talking = False
+            self.is_bot_speaking = False
             self.logger.debug("Bot stops speaking.")
+            self.bot_last_stopped_speaking = time.time()
 
     def create_state_manager(self) -> ConversationStateManager:
         return ConversationStateManager(conversation=self)
