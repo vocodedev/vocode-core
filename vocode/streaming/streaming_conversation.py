@@ -246,6 +246,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 # This is often received when the person starts talking. We don't know if they will use filler word.
                 self.conversation.logger.info(f"Ignoring empty transcription {transcription}")
                 return
+            self.conversation.mark_last_action_timestamp()  # received transcription.
             if transcription.is_final and self.conversation.is_bot_talking:
                 interrupt = await self.handle_interrupt(transcription)
                 if not interrupt:
@@ -259,9 +260,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             self.conversation.is_human_speaking = not transcription.is_final
             if transcription.is_final:
-                self.conversation.mark_last_action_timestamp()
-                # we use getattr here to avoid the dependency cycle between VonageCall and StreamingConversation
-
                 event = self.interruptible_event_factory.create_interruptible_event(
                     TranscriptionAgentInput(
                         transcription=transcription,
