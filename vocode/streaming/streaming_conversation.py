@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import queue
 import threading
@@ -10,7 +9,6 @@ import typing
 from asyncio import Lock
 from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 
-import openai
 from azure.ai.textanalytics.aio import TextAnalyticsClient
 
 from vocode.streaming.action.worker import ActionsWorker
@@ -68,9 +66,6 @@ from vocode.streaming.utils.worker import (
     InterruptibleEventFactory,
     InterruptibleAgentResponseEvent,
 )
-
-BOT_TALKING_SINCE_LAST_FILLER_TIME_LIMIT = 3.0
-BOT_TALKING_SINCE_LAST_ACTION_TIME_LIMIT = 0.1
 
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
 
@@ -142,6 +137,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.mark_last_action_timestamp()  # received transcription.
             if transcription.is_final and self.conversation.is_bot_speaking:
                 self.conversation.interrupt_worker.input_queue.put_nowait(transcription)
+                return  # gets processed by interrupt worker.
 
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt

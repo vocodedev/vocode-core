@@ -122,9 +122,9 @@ class InterruptWorker(AsyncQueueWorker):
         return not self.conversation.is_human_speaking and self.conversation.is_interrupt(transcription)
 
     async def process(self, transcription: Transcription):
-        if transcription.message.strip() and transcription.is_final and self.conversation.is_bot_speaking:
-            if await self.handle_interrupt(transcription):
-                self.conversation.broadcast_interrupt()
+        is_propagate = await self.handle_interrupt(transcription)
+        if is_propagate:
+            await self.conversation.transcriptions_worker.propagate_transcription(transcription)
 
     async def handle_interrupt(self, transcription: Transcription) -> bool:
         if self.conversation.use_interrupt_agent:
