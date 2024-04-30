@@ -5,88 +5,8 @@ import time
 import openai
 
 from vocode.streaming.transcriber.base_transcriber import Transcription
+from vocode.streaming.utils.default_prompts.interrupt_prompt import INTERRUPTION_PROMPT
 from vocode.streaming.utils.worker import AsyncQueueWorker
-
-# TODO:MOVE IT, just WIP TEMP
-INTERRUPTION_PROMPT = """
-**Objective:**
-
-Your primary task is to detect instances where the customer intends to interrupt the rep to stop the ongoing conversation. You only get the words said by customer and you have to base your decision on them.
-
-You must differentiate between two types of customer interjections:
-
-1. **Non-interrupting acknowledgements**: These are phrases which signify the customer is following along but does not wish to interrupt the rep. Are close to words like this:
-
-"Ok"
-"Got it"
-"Understood"
- "I see"
-"Right"
-"I follow"
-"Yes"
-"I agree"
-"That makes sense"
-"Sure"
-"Sounds good"
-"Indeed"
-"Absolutely"
-"Of course"
-"Go on"
-"Keep going"
-"I'm with you"
-"Continue"
-"That's clear"
-"Perfect"
-
-2. **Interrupting requests**: These include phrases indicating the customer's desire to interrupt the conversation.
-Are close to words like this:
-"Please, stop"
-"stop"
-"hold"
-"No, no"
-"Wait"
-"what"
-"No"
-"Hold on"
-"That's not right"
-"I disagree"
-"Just a moment"
-"Listen"
-"That's incorrect"
-"I need to say something"
-"Excuse me"
-"Stop for a second"
-"Hang on"
-"That's not what I meant"
-"Let me speak"
-"I have a concern"
-"That doesn't sound right"
-"I need to correct you"
-"Can I just say something"
-"I don't think so"
-"You're misunderstanding"
-
-**Input Specification:**
-
-You get words said by the customer.
-
-
-**Output Specification:**
-
-You must return a JSON object indicating whether the rep should be interrupted based on the customer's interjections.
-
-- Return `{"interrupt": "true"}` if the customer's interjection is an interrupting request.
-- Return `{"interrupt": "false"}` if the customer's interjection is a non-interrupting acknowledgement.
-
-
-RULES: 
-IF the customer is saying some information about his situation, assume interruption is needed and set it to TRUE.
-
-
-Example of output:
-{"interrupt": "true"}
-"""
-
 
 class InterruptWorker(AsyncQueueWorker):
     """Processes transcriptions to determine if an interrupt is needed."""
@@ -122,22 +42,27 @@ class InterruptWorker(AsyncQueueWorker):
         return not self.conversation.is_human_speaking and self.conversation.is_interrupt(transcription)
 
     async def process(self, transcription: Transcription):
-        is_propagate = await self.handle_interrupt(transcription)
+        current_turn = self.conversation.turn_index
+        is_propagate = await self.handle_interrupt(transcription, current_turn)
         if is_propagate:
             await self.conversation.transcriptions_worker.propagate_transcription(transcription)
 
-    async def handle_interrupt(self, transcription: Transcription) -> bool:
+    async def handle_interrupt(self, transcription: Transcription, current_turn: int) -> bool:
         if self.conversation.use_interrupt_agent:
             self.conversation.logger.info(
                 f"Testing if bot should be interrupted: {transcription.message}"
             )
             is_interrupt = await self.classify_transcription(transcription)
-
+            if self.conversation.turn_index != current_turn:
+                # The conversation has moved on since this transcription was processed.
+                self.conversation.logger.info(
+                    f"Conversation has moved on since transcription was processed. Current turn: {current_turn}, index: {self.conversation.turn_index} ")
+                return False
             if is_interrupt and self.conversation.is_bot_speaking:
                 if self.conversation.is_bot_speaking:
                     self.conversation.broadcast_interrupt()
                 return True
-            elif (self.conversation.bot_last_stopped_speaking and
+            elif (is_interrupt and self.conversation.bot_last_stopped_speaking and
                   (time.time() - self.conversation.bot_last_stopped_speaking) < 0.2 and
                   not self.conversation.is_human_speaking):
                 # we don't interrupt but only propagate the transcription if the bot has stopped speaking.

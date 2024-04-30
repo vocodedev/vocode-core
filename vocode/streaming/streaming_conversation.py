@@ -414,6 +414,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         self.logger.info("Creating conversation")
         self.call_start = time.time()
+        self.turn_index = 0
         self.call_initial_delay = 1.5
         self.output_device = output_device
         self.transcriber = transcriber
@@ -541,6 +542,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.debug("Bot stops speaking.")
             self.bot_last_stopped_speaking = time.time()
 
+    def increment_turn_index(self):
+        self.turn_index += 1
     def create_state_manager(self) -> ConversationStateManager:
         return ConversationStateManager(conversation=self)
 
