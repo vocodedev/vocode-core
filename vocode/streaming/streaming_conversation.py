@@ -59,6 +59,7 @@ from vocode.streaming.transcriber.base_transcriber import (
 from vocode.streaming.utils import create_conversation_id, get_chunk_size_per_second
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager, RedisEventsManager
+from vocode.streaming.utils.interruption_worker import InterruptWorker
 from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
@@ -133,8 +134,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.output_queue.put_nowait(event)
             self.conversation.logger.info(f"USER: {transcription.message}")
 
-
-
         async def process(self, transcription: Transcription):
             if transcription.message.strip() == "":
                 # This is often received when the person starts talking. We don't know if they will use filler word.
@@ -142,7 +141,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             self.conversation.mark_last_action_timestamp()  # received transcription.
             if transcription.is_final and self.conversation.is_bot_speaking:
-               self.conversation.interrupt_worker.input_queue.put_nowait(transcription)
+                self.conversation.interrupt_worker.input_queue.put_nowait(transcription)
 
             transcription.is_interrupt = (
                 self.conversation.current_transcription_is_interrupt
@@ -451,6 +450,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             conversation=self,
             interruptible_event_factory=self.interruptible_event_factory,
         )
+        self.interrupt_worker = InterruptWorker(
+            input_queue=asyncio.Queue(),
+            conversation=self
+        )
         self.agent.attach_conversation_state_manager(self.state_manager)
         self.agent_responses_worker = self.AgentResponsesWorker(
             input_queue=self.agent.get_output_queue(),
@@ -585,6 +588,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.logger.info("Starting conversation")
         self.transcriber.start()
         self.transcriptions_worker.start()
+        self.interrupt_worker.start()
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
         self.output_device.start()
@@ -914,6 +918,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriber.terminate()
         self.logger.debug("Terminating transcriptions worker")
         self.transcriptions_worker.terminate()
+        self.interrupt_worker.terminate()
         self.logger.debug("Terminating final transcriptions worker")
         self.agent_responses_worker.terminate()
         self.logger.debug("Terminating synthesis results worker")
