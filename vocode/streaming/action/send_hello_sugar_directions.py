@@ -16,6 +16,10 @@ from vocode.streaming.models.actions import (
 from telephony_app.integrations.boulevard_client import retrieve_next_appointment_by_phone_number, get_lost_directions
 from telephony_app.utils.twilio_call_helper import get_twilio_config
 
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 class SendHelloSugarDirectionsActionConfig(
     ActionConfig, type=ActionType.SEND_HELLO_SUGAR_DIRECTIONS
@@ -61,11 +65,11 @@ class SendHelloSugarDirections(
             to_phone = "1" + to_phone
 
         next_appointment = retrieve_next_appointment_by_phone_number(to_phone)
-        logging.info(f"The next appointment's details are {next_appointment}")
+        logger.info(f"The next appointment's details are {next_appointment}")
         if next_appointment:
             try:
                 lost_directions = get_lost_directions(next_appointment)
-                logging.info(f"The directions to the destination are: {lost_directions}")
+                logger.info(f"The directions to the destination are: {lost_directions}")
                 message = f"To reach Hello Sugar: {lost_directions}"
                 url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_account_sid}/Messages.json"
                 payload = {"To": to_phone, "From": from_phone, "Body": message}
