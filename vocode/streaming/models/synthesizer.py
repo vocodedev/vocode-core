@@ -75,7 +75,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):
 
 
 AZURE_SYNTHESIZER_DEFAULT_PITCH = 0
-AZURE_SYNTHESIZER_DEFAULT_RATE = 15
+AZURE_SYNTHESIZER_DEFAULT_RATE = 60
 
 
 class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE.value):
