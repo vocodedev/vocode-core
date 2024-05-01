@@ -3,7 +3,7 @@ import os
 import aiohttp
 
 from aiohttp import BasicAuth
-from typing import Type
+from typing import Type, Dict
 from pydantic import BaseModel, Field
 
 from vocode.streaming.action.phone_call_action import TwilioPhoneCallAction
@@ -14,9 +14,12 @@ from vocode.streaming.models.actions import (
     ActionType,
 )
 
+from telephony_app.utils.twilio_call_helper import get_twilio_config
+
 
 class TransferCallActionConfig(ActionConfig, type=ActionType.TRANSFER_CALL):
-    pass
+    credentials: Dict
+    twilio_account_sid: str
 
 
 class TransferCallParameters(BaseModel):
@@ -41,8 +44,10 @@ class TransferCall(
     response_type: Type[TransferCallResponse] = TransferCallResponse
 
     async def transfer_call(self, twilio_call_sid, to_phone):
-        twilio_account_sid = os.environ["TWILIO_ACCOUNT_SID"]
-        twilio_auth_token = os.environ["TWILIO_AUTH_TOKEN"]
+        twilio_config = await get_twilio_config(credentials=self.action_config.credentials,
+                                                twilio_account_sid=self.action_config.twilio_account_sid)
+        twilio_account_sid = twilio_config.account_sid
+        twilio_auth_token = twilio_config.auth_token
 
         url = "https://api.twilio.com/2010-04-01/Accounts/{twilio_account_sid}/Calls/{twilio_auth_token}.json".format(
             twilio_account_sid=twilio_account_sid, twilio_auth_token=twilio_call_sid
