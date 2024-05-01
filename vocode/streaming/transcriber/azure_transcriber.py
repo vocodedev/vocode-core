@@ -67,9 +67,9 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
                 )
             )
 
-            speech_params[
-                "auto_detect_source_language_config"
-            ] = auto_detect_source_language_config
+            speech_params["auto_detect_source_language_config"] = (
+                auto_detect_source_language_config
+            )
         else:
             speech_params["language"] = self.transcriber_config.language
 

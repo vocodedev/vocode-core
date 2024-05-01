@@ -20,7 +20,7 @@ from vocode.streaming.models.agent import (
     InformationRetrievalAgentConfig,
     LLMAgentConfig,
     RESTfulUserImplementedAgentConfig,
-    LlamacppAgentConfig
+    LlamacppAgentConfig,
 )
 
 

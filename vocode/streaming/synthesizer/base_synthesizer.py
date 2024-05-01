@@ -248,12 +248,12 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         chunk_size: int,
         create_speech_span: Optional[Span],
     ) -> AsyncGenerator[SynthesisResult.ChunkResult, None]:
-        miniaudio_worker_input_queue: asyncio.Queue[
-            Union[bytes, None]
-        ] = asyncio.Queue()
-        miniaudio_worker_output_queue: asyncio.Queue[
-            Tuple[bytes, bool]
-        ] = asyncio.Queue()
+        miniaudio_worker_input_queue: asyncio.Queue[Union[bytes, None]] = (
+            asyncio.Queue()
+        )
+        miniaudio_worker_output_queue: asyncio.Queue[Tuple[bytes, bool]] = (
+            asyncio.Queue()
+        )
         miniaudio_worker = MiniaudioWorker(
             self.synthesizer_config,
             chunk_size,

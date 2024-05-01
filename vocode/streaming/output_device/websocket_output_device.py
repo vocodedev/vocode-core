@@ -9,7 +9,6 @@ from vocode.streaming.models.websocket import TranscriptMessage
 from vocode.streaming.models.transcript import TranscriptEvent
 
 
-
 class WebsocketOutputDevice(BaseOutputDevice):
     def __init__(
         self, ws: WebSocket, sampling_rate: int, audio_encoding: AudioEncoding

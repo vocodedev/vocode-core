@@ -8,7 +8,11 @@ import numpy as np
 from urllib.parse import urlencode
 from vocode import getenv
 
-from vocode.streaming.models.transcriber import AssemblyAITranscriberConfig, TimeEndpointingConfig, PunctuationEndpointingConfig
+from vocode.streaming.models.transcriber import (
+    AssemblyAITranscriberConfig,
+    TimeEndpointingConfig,
+    PunctuationEndpointingConfig,
+)
 from vocode.streaming.models.websocket import AudioMessage
 from vocode.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
@@ -57,13 +61,22 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
         self.buffer = bytearray()
         self.audio_cursor = 0
 
-        if isinstance(self.transcriber_config.endpointing_config, (TimeEndpointingConfig, PunctuationEndpointingConfig)):
-            self.transcriber_config.end_utterance_silence_threshold_milliseconds = int(self.transcriber_config.endpointing_config.time_cutoff_seconds * 1000)
+        if isinstance(
+            self.transcriber_config.endpointing_config,
+            (TimeEndpointingConfig, PunctuationEndpointingConfig),
+        ):
+            self.transcriber_config.end_utterance_silence_threshold_milliseconds = int(
+                self.transcriber_config.endpointing_config.time_cutoff_seconds * 1000
+            )
         self.terminate_msg = json.dumps({"terminate_session": True})
         self.end_utterance_silence_threshold_msg = (
-            None if self.transcriber_config.end_utterance_silence_threshold_milliseconds is None 
+            None
+            if self.transcriber_config.end_utterance_silence_threshold_milliseconds
+            is None
             else json.dumps(
-                {"end_utterance_silence_threshold": self.transcriber_config.end_utterance_silence_threshold_milliseconds}
+                {
+                    "end_utterance_silence_threshold": self.transcriber_config.end_utterance_silence_threshold_milliseconds
+                }
             )
         )
 

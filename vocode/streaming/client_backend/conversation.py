@@ -78,9 +78,11 @@ class ConversationRouter(BaseRouter):
             agent=self.agent_thunk(),
             synthesizer=synthesizer,
             conversation_id=start_message.conversation_id,
-            events_manager=TranscriptEventManager(output_device, self.logger)
-            if start_message.subscribe_transcript
-            else None,
+            events_manager=(
+                TranscriptEventManager(output_device, self.logger)
+                if start_message.subscribe_transcript
+                else None
+            ),
             logger=self.logger,
         )
 

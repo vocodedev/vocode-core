@@ -10,9 +10,11 @@ class GPT4AllAgent(RespondAgent[GPT4AllAgentConfig]):
         self.turn_based_agent = TurnBasedGPT4AllAgent(
             model_path=agent_config.model_path,
             system_prompt=agent_config.prompt_preamble,
-            initial_message=agent_config.initial_message.text
-            if agent_config.initial_message
-            else None,
+            initial_message=(
+                agent_config.initial_message.text
+                if agent_config.initial_message
+                else None
+            ),
         )
 
     async def respond(
