@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Type
+from typing import Type, Dict
 
 import aiohttp
 from aiohttp import BasicAuth
@@ -14,12 +14,15 @@ from vocode.streaming.models.actions import (
 )
 
 from telephony_app.integrations.boulevard_client import retrieve_next_appointment_by_phone_number, get_lost_directions
+from telephony_app.utils.twilio_call_helper import get_twilio_config
 
 
 class SendHelloSugarDirectionsActionConfig(
     ActionConfig, type=ActionType.SEND_HELLO_SUGAR_DIRECTIONS
 ):
+    credentials: Dict
     from_phone: str
+    twilio_account_sid: str
 
 
 class SendHelloSugarDirectionsParameters(BaseModel):
@@ -48,8 +51,10 @@ class SendHelloSugarDirections(
     )
 
     async def send_hello_sugar_directions(self, to_phone):
-        twilio_account_sid = os.environ["TWILIO_ACCOUNT_SID"]
-        twilio_auth_token = os.environ["TWILIO_AUTH_TOKEN"]
+        twilio_config = await get_twilio_config(credentials=self.action_config.credentials,
+                                                twilio_account_sid=self.action_config.twilio_account_sid)
+        twilio_account_sid = twilio_config.account_sid
+        twilio_auth_token = twilio_config.auth_token
         from_phone = self.action_config.from_phone
         # if to_phone has 9 digits, add +1 to the beginning
         if len(to_phone) == 9:
