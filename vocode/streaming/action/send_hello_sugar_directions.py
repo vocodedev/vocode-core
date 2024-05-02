@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import Type, Dict
 
 import aiohttp
@@ -13,7 +12,7 @@ from vocode.streaming.models.actions import (
     ActionType,
 )
 
-from telephony_app.integrations.boulevard_client import retrieve_next_appointment_by_phone_number, get_lost_directions
+from telephony_app.integrations.boulevard.boulevard_client import retrieve_next_appointment_by_phone_number, get_lost_directions
 from telephony_app.utils.twilio_call_helper import get_twilio_config
 
 logging.basicConfig()
