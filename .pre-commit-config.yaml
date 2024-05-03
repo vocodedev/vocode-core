@@ -1,13 +1,13 @@
 repos:
--   repo: https://github.com/psf/black
-    rev: 23.1.0
-    hooks:
-    -   id: black
--   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
-    hooks:
-    -   id: mypy
-        args: [--ignore-missing-imports, ./]
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
+    - repo: https://github.com/psf/black
+      rev: 24.4.2
+      hooks:
+          - id: black
+    - repo: https://github.com/pre-commit/mirrors-mypy
+      rev: v1.8.0
+      hooks:
+          - id: mypy
+            args: [--ignore-missing-imports, ./]
+            language: system
+            pass_filenames: false
+            stages: [pre-push]

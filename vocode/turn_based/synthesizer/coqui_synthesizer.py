@@ -42,12 +42,11 @@ class CoquiSynthesizer(BaseSynthesizer):
         response = requests.get(sample["audio_url"])
         return AudioSegment.from_wav(io.BytesIO(response.content))  # type: ignore
 
-
     def split_text(self, string):
         # Base case: if the string is less than or equal to MAX_TEXT_LENGTH characters, return it as a single element array
         if len(string) <= MAX_TEXT_LENGTH:
             return [string.strip()]
-        
+
         # Recursive case: find the index of the last sentence ender in the first MAX_TEXT_LENGTH characters of the string
         sentence_enders = [".", "!", "?"]
         index = -1
@@ -55,20 +54,20 @@ class CoquiSynthesizer(BaseSynthesizer):
             i = string[:MAX_TEXT_LENGTH].rfind(ender)
             if i > index:
                 index = i
-        
+
         # If there is a sentence ender, split the string at that index plus one and strip any spaces from both parts
         if index != -1:
-            first_part = string[:index + 1].strip()
-            second_part = string[index + 1:].strip()
-        
+            first_part = string[: index + 1].strip()
+            second_part = string[index + 1 :].strip()
+
         # If there is no sentence ender, find the index of the last comma in the first MAX_TEXT_LENGTH characters of the string
         else:
             index = string[:MAX_TEXT_LENGTH].rfind(",")
             # If there is a comma, split the string at that index plus one and strip any spaces from both parts
             if index != -1:
-                first_part = string[:index + 1].strip()
-                second_part = string[index + 1:].strip()
-            
+                first_part = string[: index + 1].strip()
+                second_part = string[index + 1 :].strip()
+
             # If there is no comma, find the index of the last space in the first MAX_TEXT_LENGTH characters of the string
             else:
                 index = string[:MAX_TEXT_LENGTH].rfind(" ")
@@ -76,24 +75,21 @@ class CoquiSynthesizer(BaseSynthesizer):
             if index != -1:
                 first_part = string[:index].strip()
                 second_part = string[index:].strip()
-            
+
             # If there is no space, split the string at MAX_TEXT_LENGTH characters and strip any spaces from both parts
             else:
                 first_part = string[:MAX_TEXT_LENGTH].strip()
                 second_part = string[MAX_TEXT_LENGTH:].strip()
-        
+
         # Append the first part to the result array
         result = [first_part]
-        
+
         # Call the function recursively on the remaining part of the string and extend the result array with it, unless it is empty
         if second_part != "":
             result.extend(self.split_text(second_part))
-        
+
         # Return the result array
         return result
-
-
-
 
     async def async_synthesize(self, text: str) -> AudioSegment:
         # This method is similar to the synthesize method, but it uses async IO to synthesize each chunk in parallel
@@ -133,7 +129,9 @@ class CoquiSynthesizer(BaseSynthesizer):
                     # Return an AudioSegment object from the audio data
                     return AudioSegment.from_wav(io.BytesIO(audio_data))  # type: ignore
 
-    def get_request(self, text: str) -> typing.Tuple[str, typing.Dict[str, str], typing.Dict[str, object]]:
+    def get_request(
+        self, text: str
+    ) -> typing.Tuple[str, typing.Dict[str, str], typing.Dict[str, object]]:
         url = COQUI_BASE_URL
         headers = {
             "Authorization": f"Bearer {self.api_key}",

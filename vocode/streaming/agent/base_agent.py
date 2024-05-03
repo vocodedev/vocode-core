@@ -140,9 +140,9 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
         interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
         logger: Optional[logging.Logger] = None,
     ):
-        self.input_queue: asyncio.Queue[
-            InterruptibleEvent[AgentInput]
-        ] = asyncio.Queue()
+        self.input_queue: asyncio.Queue[InterruptibleEvent[AgentInput]] = (
+            asyncio.Queue()
+        )
         self.output_queue: asyncio.Queue[
             InterruptibleAgentResponseEvent[AgentResponse]
         ] = asyncio.Queue()
@@ -154,9 +154,9 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
             interruptible_event_factory=interruptible_event_factory,
         )
         self.action_factory = action_factory
-        self.actions_queue: asyncio.Queue[
-            InterruptibleEvent[ActionInput]
-        ] = asyncio.Queue()
+        self.actions_queue: asyncio.Queue[InterruptibleEvent[ActionInput]] = (
+            asyncio.Queue()
+        )
         self.logger = logger or logging.getLogger(__name__)
         self.goodbye_model = None
         if self.agent_config.end_conversation_on_goodbye:
