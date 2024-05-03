@@ -20,7 +20,7 @@ logger.setLevel(logging.DEBUG)
 
 
 class SearchOnlineActionConfig(ActionConfig, type=ActionType.SEARCH_ONLINE):
-    pass
+    starting_phrase: str
 
 
 class SearchOnlineParameters(BaseModel):

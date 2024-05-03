@@ -12,7 +12,7 @@ from vocode import getenv
 
 
 class NylasSendEmailActionConfig(ActionConfig, type=ActionType.NYLAS_SEND_EMAIL):
-    pass
+    starting_phrase: str
 
 
 class NylasSendEmailParameters(BaseModel):

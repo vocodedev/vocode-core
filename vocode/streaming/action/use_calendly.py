@@ -27,7 +27,7 @@ class CalendlyActionType(Enum):
 
 
 class CalendlyActionConfig(ActionConfig, type=ActionType.USE_CALENDLY):
-    pass
+    starting_phrase: str
 
 
 class CalendlyParameters(BaseModel):

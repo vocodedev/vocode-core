@@ -239,6 +239,17 @@ all_optional_tools = {
             },
         },
     },
+    ActionType.SEARCH_DOCUMENTS: {
+        "name": "search_documents",
+        "description": "Get an answer to a question by asking the document system provided to the agent. Must include a query.",
+        "parameter_definitions": {
+            "query": {
+                "description": "A natural language query for the document system to answer",
+                "type": "str",
+                "required": True,
+            },
+        },
+    },
 }
 
 

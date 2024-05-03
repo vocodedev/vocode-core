@@ -20,11 +20,13 @@ from telephony_app.utils.twilio_call_helper import get_twilio_config
 class TransferCallActionConfig(ActionConfig, type=ActionType.TRANSFER_CALL):
     credentials: Dict
     twilio_account_sid: str
+    starting_phrase: str
 
 
 class TransferCallParameters(BaseModel):
     phone_number_to_transfer_to: str = Field(
-        ..., description="The phone number to transfer the call to",
+        ...,
+        description="The phone number to transfer the call to",
     )
 
 
@@ -44,8 +46,10 @@ class TransferCall(
     response_type: Type[TransferCallResponse] = TransferCallResponse
 
     async def transfer_call(self, twilio_call_sid, to_phone):
-        twilio_config = await get_twilio_config(credentials=self.action_config.credentials,
-                                                twilio_account_sid=self.action_config.twilio_account_sid)
+        twilio_config = await get_twilio_config(
+            credentials=self.action_config.credentials,
+            twilio_account_sid=self.action_config.twilio_account_sid,
+        )
         twilio_account_sid = twilio_config.account_sid
         twilio_auth_token = twilio_config.auth_token
 
@@ -77,8 +81,10 @@ class TransferCall(
         await asyncio.sleep(
             6.5
         )  # to provide small gap between speaking and transfer ring
-        await self.transfer_call(twilio_call_sid=twilio_call_sid,
-                                 to_phone=action_input.params.phone_number_to_transfer_to)
+        await self.transfer_call(
+            twilio_call_sid=twilio_call_sid,
+            to_phone=action_input.params.phone_number_to_transfer_to,
+        )
 
         return ActionOutput(
             action_type=action_input.action_config.type,

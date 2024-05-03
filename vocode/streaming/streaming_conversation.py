@@ -513,7 +513,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async def process(self, transcription: Transcription):
             # Ignore the transcription if we are currently in-flight (i.e., the agent is speaking)
             # log the current transcript
-
+            if self.conversation.agent.block_inputs:
+                self.conversation.logger.debug(
+                    "Ignoring transcription since we are awaiting a tool call."
+                )
+                return
             if self.block_inputs and not self.agent.agent_config.allow_interruptions:
                 self.conversation.logger.debug(
                     "Ignoring transcription since we are in-flight"

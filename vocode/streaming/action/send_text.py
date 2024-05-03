@@ -21,6 +21,7 @@ class SendTextActionConfig(ActionConfig, type=ActionType.SEND_TEXT):
     credentials: Dict
     from_phone: str
     twilio_account_sid: str
+    starting_phrase: str
 
 
 class SendTextParameters(BaseModel):
@@ -40,8 +41,10 @@ class SendText(BaseAction[SendTextActionConfig, SendTextParameters, SendTextResp
     response_type: Type[SendTextResponse] = SendTextResponse
 
     async def sms(self, to_phone, contents):
-        twilio_config = await get_twilio_config(credentials=self.action_config.credentials,
-                                                twilio_account_sid=self.action_config.twilio_account_sid)
+        twilio_config = await get_twilio_config(
+            credentials=self.action_config.credentials,
+            twilio_account_sid=self.action_config.twilio_account_sid,
+        )
         twilio_account_sid = twilio_config.account_sid
         twilio_auth_token = twilio_config.auth_token
         from_phone = self.action_config.from_phone
@@ -96,7 +99,7 @@ class SendText(BaseAction[SendTextActionConfig, SendTextParameters, SendTextResp
         return "No response received after 1 minute"
 
     async def run(
-            self, action_input: ActionInput[SendTextParameters]
+        self, action_input: ActionInput[SendTextParameters]
     ) -> ActionOutput[SendTextResponse]:
         contents = action_input.params.contents
         to_phone = action_input.params.to_phone

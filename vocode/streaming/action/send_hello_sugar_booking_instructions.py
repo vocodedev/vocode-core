@@ -14,7 +14,8 @@ from vocode.streaming.models.actions import (
 )
 
 from telephony_app.integrations.hello_sugar.hello_sugar_location_getter import (
-    get_cached_hello_sugar_locations, search_all_locations,
+    get_cached_hello_sugar_locations,
+    search_all_locations,
 )
 from telephony_app.utils.twilio_call_helper import get_twilio_config
 
@@ -25,6 +26,9 @@ class SendHelloSugarBookingInstructionsActionConfig(
     credentials: Dict
     from_phone: str
     twilio_account_sid: str
+    starting_phrase: str = Field(
+        ..., description="What the agent should say when starting the action"
+    )
 
 
 class SendHelloSugarBookingInstructionsParameters(BaseModel):
@@ -54,16 +58,19 @@ class SendHelloSugarBookingInstructions(
     )
 
     async def send_hello_sugar_booking_instructions(self, to_phone, location):
-        twilio_config = await get_twilio_config(credentials=self.action_config.credentials,
-                                                twilio_account_sid=self.action_config.twilio_account_sid)
+        twilio_config = await get_twilio_config(
+            credentials=self.action_config.credentials,
+            twilio_account_sid=self.action_config.twilio_account_sid,
+        )
         twilio_account_sid = twilio_config.account_sid
         twilio_auth_token = twilio_config.auth_token
         from_phone = self.action_config.from_phone
         if len(to_phone) == 9:
             to_phone = "1" + to_phone
 
-        hello_sugar_locations = search_all_locations(query=location,
-                                                     location_data=get_cached_hello_sugar_locations())
+        hello_sugar_locations = search_all_locations(
+            query=location, location_data=get_cached_hello_sugar_locations()
+        )
 
         logging.info(f"Searched for the following locations: {hello_sugar_locations}")
         if hello_sugar_locations:

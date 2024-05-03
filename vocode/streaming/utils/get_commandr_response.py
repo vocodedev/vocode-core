@@ -107,6 +107,18 @@ def format_command_function_completion_from_transcript(
                 "content": f"Action: ```json\n{{\n    \"tool_name\": \"{current_doc['action_type']}\",\n    \"parameters\": {current_doc['action_input']}\n}}\n\nThe above action is being run. Please wait for the response.```",
             }
         )
+        # wrap the last user message in a text that says a tool is being run
+        # we do this to avoid hallucinations during the phase when the tool is pending
+        for i in range(len(messages) - 1, -1, -1):
+            if (
+                messages[i]["role"] == "user"
+                and len(str(messages[i]["content"]).strip()) > 0
+            ):
+                messages[i]["content"] = (
+                    messages[i]["content"]
+                    + f"\n\nRemember: The action {current_doc['action_type']} is still being run. Please wait for the response."
+                )
+                break
     # Merge consecutive messages from the same sender
     merged_messages = []
     idx = 0

@@ -18,7 +18,7 @@ logger.setLevel(logging.DEBUG)
 
 
 class GetTrainActionConfig(ActionConfig, type=ActionType.GET_TRAIN):
-    pass
+    starting_phrase: str
 
 
 class GetTrainParameters(BaseModel):

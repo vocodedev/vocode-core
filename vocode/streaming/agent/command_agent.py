@@ -119,7 +119,8 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         self.conversation_id = None
         self.twilio_sid = None
         self.tool_message = ""
-
+        self.block_inputs = False
+        self.streamed = False
         self.agent_config.pending_action = None
         if agent_config.azure_params:
             self.aclient = AsyncAzureOpenAI(
@@ -416,10 +417,6 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 stripped = response_chunk.rstrip()
                 if len(stripped) != len(response_chunk):
                     response_chunk = stripped + " "
-                response_chunk = response_chunk.replace("\n", " ")
-                response_chunk = response_chunk.replace(
-                    r"\\n", " "
-                )  # the r makes it a raw string which is needed for the backslash
                 response_chunk = response_chunk.replace("  ", " ")
                 commandr_response += response_chunk
                 split_pattern = re.compile(r"([.!?,]) ")
@@ -431,7 +428,16 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     and not "}," in commandr_response[last_answer_index:]
                 ):
                     current_utterance += response_chunk
-                    current_utterance = re.sub(r"[^\w .,!?'@-]", "", current_utterance)
+                    if current_utterance.endswith("\\"):
+                        self.logger.debug(
+                            "current_utterance ends with a backslash, waiting for more data."
+                        )
+                        continue
+                    # remove unescaped new line
+                    current_utterance = re.sub(r"\\n", "\n", current_utterance)
+                    # remove both kinds of brackets
+                    current_utterance = re.sub(r"[{}]", "", current_utterance)
+                    # current_utterance = re.sub(r"[^\w .,!?'@-]", "", current_utterance)
                     current_utterance = current_utterance.replace("  ", " ")
                     current_utterance = current_utterance.replace('"', "")
                     # split on pattern with punctuation and space, producing an interruptible of the stuff before (including the punctuation) and keeping the stuff after.
@@ -444,6 +450,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                         > 3  # this is to avoid splitting on mr mrs
                         and any(char.isalpha() for char in "".join(parts[:-1]))
                     ):
+                        self.streamed = True
                         self.produce_interruptible_agent_response_event_nonblocking(
                             AgentResponseMessage(
                                 message=BaseMessage(
@@ -542,29 +549,13 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                         self.tool_message = qwen_response.strip()
                     elif "message" in tool_params:
                         self.tool_message = tool_params["message"]
+                        # self.logger.info(f"set tool message: {self.tool_message}")
                     # return None
                     continue
                 elif tool_name and tool_params is not None:
                     try:
-                        asyncio.ensure_future(
-                            self.call_function(
-                                FunctionCall(
-                                    name=tool_name, arguments=json.dumps(tool_params)
-                                ),
-                                TranscriptionAgentInput(
-                                    transcription=Transcription(
-                                        message="I am doing that for you now.",
-                                        confidence=1.0,
-                                        is_final=True,
-                                        time_silent=0.0,
-                                    ),
-                                    conversation_id=self.conversation_id,
-                                    twilio_sid=self.twilio_sid,
-                                ),
-                            )
-                        )
+
                         # self.can_send = False
-                        self.tool_message = ""
                         if not tools_used:
                             tools_used = [
                                 {
@@ -637,20 +628,78 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                             action_input = action.create_action_input(
                                 conversation_id, params, user_message_tracker=None
                             )
-                            self.transcript.add_action_start_log(
-                                action_input=action_input,
-                                conversation_id=conversation_id,
-                            )
-                            if "qwen" in self.agent_config.model_name.lower():
-                                self.logger.info(
-                                    f"Re-doing qwen due to tool call. Transcript: {self.transcript.to_string()}"
+
+                            # check if starting_phrase exists and is true in the action config
+                            if (
+                                not action_config.starting_phrase
+                                and action_config.starting_phrase != ""
+                            ):
+                                # the value of starting_phrase is the message it says during the action
+                                to_say_start = action_config.starting_phrase
+                                if not self.streamed:
+                                    self.produce_interruptible_agent_response_event_nonblocking(
+                                        AgentResponseMessage(
+                                            message=BaseMessage(text=to_say_start)
+                                        )
+                                    )
+                                self.transcript.add_action_start_log(
+                                    action_input=action_input,
+                                    conversation_id=conversation_id,
                                 )
-                                self.tool_message = await self.get_qwen_response_future(
-                                    self.transcript  # not frozen because we want the latest tool call
+                                self.block_inputs = True
+                                action_output = await action.run(action_input)
+                                self.transcript.add_action_finish_log(
+                                    action_input=action_input,
+                                    action_output=action_output,
+                                    conversation_id=conversation_id,
                                 )
+                                if "ending_phrase" in action_output:
+                                    self.produce_interruptible_agent_response_event_nonblocking(
+                                        AgentResponseMessage(
+                                            message=BaseMessage(
+                                                text=action_output["ending_phrase"]
+                                            )
+                                        )
+                                    )
+                                    self.tool_message = action_output["ending_phrase"]
+                                    self.streamed = True
+                                else:
+                                    self.tool_message = ""
+                                self.block_inputs = False
+                            else:
+                                await self.call_function(
+                                    FunctionCall(
+                                        name=name,
+                                        arguments=json.dumps(params),
+                                    ),
+                                    TranscriptionAgentInput(
+                                        transcription=Transcription(
+                                            message="I am doing that for you now.",
+                                            confidence=1.0,
+                                            is_final=True,
+                                            time_silent=0.0,
+                                        ),
+                                        conversation_id=self.conversation_id,
+                                        twilio_sid=self.twilio_sid,
+                                    ),
+                                )
+                                self.transcript.add_action_start_log(
+                                    action_input=action_input,
+                                    conversation_id=conversation_id,
+                                )
+                                if "qwen" in self.agent_config.model_name.lower():
+                                    self.logger.info(
+                                        f"Re-doing qwen due to tool call. Transcript: {self.transcript.to_string()}"
+                                    )
+                                    self.tool_message = await self.get_qwen_response_future(
+                                        self.transcript  # not frozen because we want the latest tool call
+                                    )
                         except Exception as e:
                             self.logger.error(f"Error creating action: {e}")
                             self.tool_message = ""
+        if self.streamed:
+            self.streamed = False
+            return "", True
         if (
             self.agent_config.use_streaming
             and self.tool_message

@@ -5,6 +5,10 @@ from vocode.streaming.action.hangup_call import HangUpCall, HangUpCallActionConf
 from vocode.streaming.action.transfer_call import TransferCall, TransferCallActionConfig
 from vocode.streaming.action.search_online import SearchOnline, SearchOnlineActionConfig
 from vocode.streaming.action.create_agent import CreateAgent, CreateAgentActionConfig
+from vocode.streaming.action.search_documents import (
+    SearchDocuments,
+    SearchDocumentsActionConfig,
+)
 from vocode.streaming.action.send_text import SendText, SendTextActionConfig
 from vocode.streaming.action.get_train import GetTrain, GetTrainActionConfig
 from vocode.streaming.action.use_calendly import UseCalendly, CalendlyActionConfig
@@ -64,5 +68,7 @@ class ActionFactory:
             return CheckCalendarAvailability(action_config)
         elif isinstance(action_config, CreateAgentActionConfig):
             return CreateAgent(action_config)
+        elif isinstance(action_config, SearchDocumentsActionConfig):
+            return SearchDocuments(action_config)
         else:
             raise Exception("Invalid action type")

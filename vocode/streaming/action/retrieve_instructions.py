@@ -20,7 +20,7 @@ logger.setLevel(logging.DEBUG)
 class RetrieveInstructionsActionConfig(
     ActionConfig, type=ActionType.RETRIEVE_INSTRUCTIONS
 ):
-    pass
+    starting_phrase: str
 
 
 class RetrieveInstructionsParameters(BaseModel):
@@ -30,6 +30,9 @@ class RetrieveInstructionsParameters(BaseModel):
 class RetrieveInstructionsResponse(BaseModel):
     agent_profile: str = Field(
         None, description="The agent profile fetched from the database"
+    )
+    ending_phrase: str = Field(
+        None, description="What the agent should say when ending the action"
     )
 
 
@@ -130,7 +133,8 @@ class RetrieveInstructions(
             return ActionOutput(
                 action_type=action_input.action_config.type,
                 response=RetrieveInstructionsResponse(
-                    agent_profile=agent_profile["user_plaintext_prompt"]
+                    agent_profile=agent_profile["user_plaintext_prompt"],
+                    ending_phrase=agent_profile["base_message"],
                 ),
             )
         else:

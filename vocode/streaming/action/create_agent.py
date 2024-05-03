@@ -28,6 +28,9 @@ class CreateAgentActionConfig(ActionConfig, type=ActionType.CREATE_AGENT):
     ai_profile_id: int = Field(
         ..., description="The ID of the AI profile to use for creating the agent"
     )
+    starting_phrase: str = Field(
+        ..., description="What the agent should say when starting the action"
+    )
 
 
 class CreateAgentParameters(BaseModel):

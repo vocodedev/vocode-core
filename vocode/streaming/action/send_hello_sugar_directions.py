@@ -12,7 +12,10 @@ from vocode.streaming.models.actions import (
     ActionType,
 )
 
-from telephony_app.integrations.boulevard.boulevard_client import retrieve_next_appointment_by_phone_number, get_lost_directions
+from telephony_app.integrations.boulevard.boulevard_client import (
+    retrieve_next_appointment_by_phone_number,
+    get_lost_directions,
+)
 from telephony_app.utils.twilio_call_helper import get_twilio_config
 
 logging.basicConfig()
@@ -26,6 +29,9 @@ class SendHelloSugarDirectionsActionConfig(
     credentials: Dict
     from_phone: str
     twilio_account_sid: str
+    starting_phrase: str = Field(
+        ..., description="What the agent should say when starting the action"
+    )
 
 
 class SendHelloSugarDirectionsParameters(BaseModel):
@@ -54,8 +60,10 @@ class SendHelloSugarDirections(
     )
 
     async def send_hello_sugar_directions(self, to_phone):
-        twilio_config = await get_twilio_config(credentials=self.action_config.credentials,
-                                                twilio_account_sid=self.action_config.twilio_account_sid)
+        twilio_config = await get_twilio_config(
+            credentials=self.action_config.credentials,
+            twilio_account_sid=self.action_config.twilio_account_sid,
+        )
         twilio_account_sid = twilio_config.account_sid
         twilio_auth_token = twilio_config.auth_token
         from_phone = self.action_config.from_phone
@@ -90,7 +98,7 @@ class SendHelloSugarDirections(
         return f"Error finding next appointment: client does not have an upcoming appointment"
 
     async def run(
-            self, action_input: ActionInput[SendHelloSugarDirectionsParameters]
+        self, action_input: ActionInput[SendHelloSugarDirectionsParameters]
     ) -> ActionOutput[SendHelloSugarDirectionsResponse]:
         to_phone = action_input.params.to_phone
         response = await self.send_hello_sugar_directions(to_phone)
@@ -105,6 +113,6 @@ class SendHelloSugarDirections(
             action_type=action_input.action_config.type,
             response=SendHelloSugarDirectionsResponse(
                 status=f"Directions to their next appointment location have been sent via text to: {to_phone}. "
-                       f"The messages sent is: {response}"
+                f"The message sent is: {response}"
             ),
         )
