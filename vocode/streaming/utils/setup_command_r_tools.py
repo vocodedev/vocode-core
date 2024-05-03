@@ -130,7 +130,7 @@ all_optional_tools = {
     },
     ActionType.SEND_HELLO_SUGAR_DIRECTIONS: {
         "name": "send_hello_sugar_directions",
-        "description": "Sends a text with directions on how to arrive at Hello Sugar.",
+        "description": "Retrieve and send specialized directions to a particular phone number. Scheduled appointment is required to get directions.",
         "parameter_definitions": {
             "to_phone": {
                 "description": "The phone number to which the directions will be texted",
