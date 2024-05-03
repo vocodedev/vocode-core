@@ -631,7 +631,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
 
                             # check if starting_phrase exists and is true in the action config
                             if (
-                                not action_config.starting_phrase
+                                action_config.starting_phrase
                                 and action_config.starting_phrase != ""
                             ):
                                 # the value of starting_phrase is the message it says during the action
