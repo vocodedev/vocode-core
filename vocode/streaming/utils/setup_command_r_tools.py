@@ -10,10 +10,10 @@ from vocode.streaming.models.actions import (
 standard_tools = [
     {
         "name": "answer",
-        "description": "Default tool that directly responds to the user, given the conversation history. Must include the message.",
+        "description": "Continue the conversation, given the conversation history. Always include the message.",
         "parameter_definitions": {
             "message": {
-                "description": "Response to the user.",
+                "description": "Your direct response to the user",
                 "type": "str",
                 "required": True,
             }

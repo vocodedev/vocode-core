@@ -151,61 +151,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             else:
                 return
 
-        def _update_or_add_word(self, new_word):
-            overlap_indices = []
-
-            for i, existing_word in enumerate(self.buffer):
-                if self._is_overlap(new_word, existing_word):
-                    overlap_indices.append(i)
-
-            if not overlap_indices:
-                self.buffer.append(new_word)
-            else:
-                for i in sorted(overlap_indices, reverse=True):
-                    del self.buffer[i]
-                self.buffer.append(new_word)
-
-            self.buffer.sort(key=lambda x: x["start"])
-
-        def _is_overlap(self, word1, word2, tolerance=0.05):
-            # Adjust the start and end times of the words by a tolerance to account for slight shifts
-            adjusted_word1_start = word1["start"] - tolerance
-            adjusted_word1_end = word1["end"] + tolerance
-            adjusted_word2_start = word2["start"] - tolerance
-            adjusted_word2_end = word2["end"] + tolerance
-
-            # Check for overlap with adjusted timings
-            return not (
-                adjusted_word1_end <= adjusted_word2_start
-                or adjusted_word1_start >= adjusted_word2_end
-            )
-
-        def _merge_and_clean_buffer(self):
-            merged_buffer = []
-            for word in self.buffer:
-                if not merged_buffer:
-                    merged_buffer.append(word)
-                else:
-                    last_word = merged_buffer[-1]
-                    if not self._is_overlap(word, last_word):
-                        merged_buffer.append(word)
-                    else:
-                        # If the words overlap, merge them
-                        if word["end"] > last_word["end"]:
-                            last_word["end"] = word["end"]
-                        if "confidence" in word and "confidence" in last_word:
-                            # Take the maximum confidence of the overlapping words
-                            last_word["confidence"] = max(
-                                last_word["confidence"], word["confidence"]
-                            )
-                        # If the words are the same, keep the one with higher confidence
-                        elif word["word"] == last_word["word"]:
-                            if word.get("confidence", 0) > last_word.get(
-                                "confidence", 0
-                            ):
-                                merged_buffer[-1] = word
-            self.buffer = merged_buffer
-
         def clear(self):
             self.buffer = []
 
@@ -231,8 +176,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.time_silent = 0.0
             self.buffer_avg_confidence = 0.0
             self.buffer_check_task: asyncio.Task = None
-            # removed the buffer_utterances
-            # self.num_buffer_utterances = 0
             self.block_inputs = True  # this flag controls if we are accepting new transcriptions, when true, the agent is speaking and we are not taking in new transcriptions
             self.silenceCache = (
                 {}
@@ -248,96 +191,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.triggered_affirmative = False
             self.chosen_filler_phrase = None
 
-        async def get_expected_silence_duration(self, buffer: str) -> float:
-            if self.conversation.agent.agent_config.language != "en-US":
-                buffer = translate_message(
-                    self.conversation.logger,
-                    buffer,
-                    self.conversation.agent.agent_config.language,
-                    "en-US",
-                )
-            previous_agent_message = next(
-                (
-                    message["content"]
-                    for message in reversed(
-                        format_openai_chat_messages_from_transcript(
-                            self.conversation.transcript
-                        )
-                    )
-                    if message["role"] == "assistant"
-                    and message["content"].strip() != ""
-                ),
-                "The conversation has just started. There are no previous agent messages.",
-            )
-
-            # Define a constant for max silence time
-            MAX_SILENCE_TIME = MAX_SILENCE_DURATION
-
-            # Prepare the data for the POST request
-            data = {
-                "question": previous_agent_message,
-                "response": buffer,
-            }
-
-            # Prepare headers for the POST request
-            headers = {
-                "Content-Type": "application/json",
-            }
-            self.conversation.logger.debug(
-                f"Sending classification request with data: {data}"
-            )
-            # Perform the POST request to classify the dialogue asynchronously
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    "http://148.64.105.83:58000/inference/", headers=headers, json=data
-                ) as response:
-                    if response.status == 200:
-                        response_data = await response.json()
-                        classification = response_data["classification"]
-                        confidence = response_data["confidence"]
-
-                        # Handle the classification cases and calculate expected silence duration
-                        if classification == "paused":
-                            # In the paused case, we do the filler word and wait based on confidence
-                            expected_silence_duration = confidence * MAX_SILENCE_TIME
-                            self.last_classification = "paused"
-                            self.conversation.logger.debug(
-                                f"Classification: {classification}, Confidence: {confidence}, Expected silence: {expected_silence_duration}"
-                            )
-                            return expected_silence_duration
-                        elif classification == "truncated":
-                            # In the truncated case, we say no filler word and we wait on confidence
-                            expected_silence_duration = confidence * MAX_SILENCE_TIME
-                            self.last_classification = "truncated"
-                            self.conversation.logger.debug(
-                                f"Classification: {classification}, Confidence: {confidence}, Expected silence: {expected_silence_duration}"
-                            )
-                            return expected_silence_duration
-                        elif classification == "full":
-                            self.conversation.logger.error(
-                                f"Full classification received: {classification}"
-                            )
-                            # invert confidence
-                            expected_silence_duration = (
-                                1 - confidence
-                            ) * MAX_SILENCE_TIME
-                            self.last_classification = "full"
-                            self.conversation.logger.debug(
-                                f"Classification: {classification}, Confidence: {confidence}, Expected silence: {expected_silence_duration}"
-                            )
-                            return expected_silence_duration
-                        else:
-                            self.conversation.logger.error(
-                                f"Unexpected classification received: {classification}"
-                            )
-                            return 0.0
-                    else:
-                        self.conversation.logger.error(
-                            f"Failed to get classification, status code: {response.status}"
-                        )
-                        return 0.0
-
-        async def _buffer_check(self, initial_buffer):
+        async def _buffer_check(self, initial_buffer: str):
             if (
                 len(initial_buffer) == 0
             ):  # it might be empty if the its just started and no final one has been sent in
@@ -352,44 +206,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 is_final=True,
                 time_silent=self.time_silent,
             )
-            # # Calculate the expected silence duration after the current buffer
-            # start_expected_duration = time.time()
-            # expected_silence_duration = (
-            #     await self.get_expected_silence_duration(initial_buffer)
-            #     - self.time_silent
-            # )
-            # elapsed_time_duration = time.time() - start_expected_duration
-            # expected_silence_duration -= elapsed_time_duration
-
-            # # Ensure the sleep time is at least 0.1 seconds
-            # self.current_sleep_time = max(expected_silence_duration, 0.5)
-
-            # # Log the time taken for classification and the calculated sleep duration
-            # self.conversation.logger.info(
-            #     f"Classification took: {elapsed_time_duration}\nSleep duration: {self.current_sleep_time}"
-            # )
-
-            # # choose a random affirmative phrase until it's different from the previous one
-            # previous_phrase = self.chosen_affirmative_phrase
-            # if self.conversation.synthesizer.affirmative_audios:
-            #     while True:
-            #         self.chosen_affirmative_phrase = random.choice(
-            #             self.conversation.synthesizer.affirmative_audios
-            #         ).message.text
-            #         if self.chosen_affirmative_phrase != previous_phrase:
-            #             break
-            # # Create an interruptible event with the transcription data
             current_phrase = self.chosen_affirmative_phrase
             # if self.conversation.agent.agent_config.pending_action == "pending":
-            #     current_phrase = "I see."
-            #     # make the transcription tell the agent to wait
-            #     transcription = Transcription(
-            #         message="SYSTEM: There is a pending request still.\nUser: "
-            #         + transcription.message,
-            #         confidence=1.0,  # We assume full confidence as it's not explicitly provided
-            #         is_final=True,
-            #         time_silent=self.time_silent,
-            #     )
+
             event = self.interruptible_event_factory.create_interruptible_event(
                 payload=TranscriptionAgentInput(
                     transcription=transcription,
@@ -399,9 +218,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     twilio_sid=getattr(self.conversation, "twilio_sid", None),
                 ),
             )
-
-            sleeping_time = self.current_sleep_time
-
             # Place the event in the output queue for further processing
             self.output_queue.put_nowait(event)
 
@@ -409,100 +225,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
             # Set the buffer status to HOLD, indicating we're not ready to send it yet
             self.ready_to_send = BufferStatus.HOLD
-            # HERE, we will send of the affirmative audio if the sleeping time > 1.5 and the time since last filler is > 3
-
-            # log_interval = 1.0  # Log at most every 1 second
-            # time_since_last_log = 0.0
-            # while sleeping_time > 0.01:
-            #     sleeping_time = self.current_sleep_time
-            #     # self.sleeping_time = min(1.5, sleeping_time)
-            #     if self.last_classification == "paused":
-            #         if (
-            #             time.time() - self.last_filler_time > 4
-            #             and time.time() - self.last_affirmative_time > 2
-            #             and len(self.buffer.to_message().strip().split(" ")) > 3
-            #         ):
-            #             self.conversation.agent_responses_worker.send_filler_audio(
-            #                 asyncio.Event()
-            #             )
-            #             self.last_filler_time = time.time()
-            #     if (
-            #         sleeping_time > 0.5
-            #         and time.time() - self.last_filler_time > 2
-            #         and len(initial_buffer.strip().split(" ")) > 3
-            #         and time.time() - self.last_affirmative_time > 3
-            #         and not self.triggered_affirmative
-            #         and self.last_classification == "full"
-            #     ) or (
-            #         self.time_silent > 0.7
-            #         and not self.triggered_affirmative
-            #         and time.time() - self.last_filler_time > 1.5
-            #         and time.time() - self.last_affirmative_time > 3
-            #         and not self.last_classification == "paused"
-            #     ):
-            #         self.triggered_affirmative = True
-
-            #         self.conversation.logger.info(
-            #             f"Sending affirmative audio, sleeping time: {self.current_sleep_time}"
-            #         )
-            #         self.conversation.agent_responses_worker.send_affirmative_audio(
-            #             # self.interruptible_event_factory.create_interruptible_event(
-            #             #     payload=None
-            #             # )
-            #             asyncio.Event(),
-            #             phrase=self.chosen_affirmative_phrase,
-            #         )
-            #         self.last_affirmative_time = time.time()
-            #     if not self.synthesis_done and self.current_sleep_time < 0.02:
-
-            #         self.conversation.logger.debug(
-            #             f"Added sleep for synthesis to finish..."
-            #         )
-            #         self.current_sleep_time = 0.02
-            #         if (
-            #             not self.triggered_affirmative
-            #             and time.time() - self.last_filler_time > 1.0
-            #             and time.time() - self.last_affirmative_time > 2.0
-            #             # and self.last_classification == "full"
-            #         ):
-            #             self.triggered_affirmative = True
-            #             self.conversation.agent_responses_worker.send_affirmative_audio(
-            #                 asyncio.Event(),
-            #                 phrase=self.chosen_affirmative_phrase,
-            #             )
-            #             self.last_affirmative_time = time.time()
-
-            #     await asyncio.sleep(0.01)
-            #     if self.current_sleep_time > 0:
-            #         self.current_sleep_time -= 0.01
-            #     time_since_last_log += 0.01
-            #     if time_since_last_log >= log_interval:
-            #         self.conversation.logger.info(
-            #             f"Sleeping... {self.current_sleep_time} seconds left"
-            #         )
-            #         time_since_last_log = 0.0
-            #     if self.synthesis_done:
-            #         # self.conversation.logger.info("Synthesis done, still sleeping")
-            #         if (
-            #             time.time() - self.last_filler_time > 1.0
-            #             and time.time() - self.last_affirmative_time > 2.0
-            #             and self.time_silent > 0.5
-            #             # and not self.last_classification == "paused"
-            #         ):
-            #             self.triggered_affirmative = True
-            #             self.last_affirmative_time = time.time()
-
-            #             # self.conversation.logger.info(
-            #             #     f"Sending affirmative audio, sleeping time: {self.current_sleep_time}"
-            #             # )
-            #             self.conversation.agent_responses_worker.send_affirmative_audio(
-            #                 # self.interruptible_event_factory.create_interruptible_event(
-            #                 #     payload=None
-            #                 # )
-            #                 asyncio.Event(),
-            #                 phrase=self.chosen_affirmative_phrase,
-            #             )
-            #             self.last_affirmative_time = time.time()
 
             self.conversation.logger.info(f"Marking as send")
             self.ready_to_send = BufferStatus.SEND
@@ -517,6 +239,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.debug(
                     "Ignoring transcription since we are awaiting a tool call."
                 )
+                self.conversation.mark_last_action_timestamp()
                 return
             if self.block_inputs and not self.agent.agent_config.allow_interruptions:
                 self.conversation.logger.debug(
@@ -539,16 +262,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.logger.info(
                         "Adding waiting chunk to buffer check task due to VAD"
                     )
-                    # self.current_sleep_time = min(
-                    #     2,
-                    #     max(
-                    #         self.vad_time,
-                    #         min(
-                    #             self.current_sleep_time * 1.5,
-                    #             self.current_sleep_time + 2,
-                    #         ),
-                    #     ),
-                    # )
+
                     self.current_sleep_time = self.vad_time
                     self.vad_time = self.vad_time / 3
                     # when we wait more, they were silent so we want to push out a filler audio
@@ -561,10 +275,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 # when we wait more, they were silent so we want to push out a filler audio
                 self.conversation.logger.info("Ignoring transcription, zero words.")
                 return
-            self.conversation.stop_event.set()  # slower more precise
+
             self.conversation.logger.debug(
                 f"Transcription message: {' '.join(word['word'] for word in json.loads(transcription.message)['words'])}"
             )
+            if self.agent.agent_config.allow_interruptions:
+                self.conversation.stop_event.set()  # slower more precise
+                await self.conversation.output_device.clear()
+                self.conversation.logger.info("Cleared the output device")
+
             # Strip the transcription message and log the time silent
             transcription.message = transcription.message
             self.conversation.logger.info(f"Time silent: {self.time_silent}s")
@@ -579,16 +298,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             # Update the buffer with the new message if it contains new content and log it
             new_words = json.loads(transcription.message)["words"]
-            # if len(new_words) != len(self.buffer.get_buffer()):
-            #     self.conversation.logger.info(
-            #         f"changed, old: {len(self.buffer.get_buffer())}"
-            #     )
-            #     self.buffer.update_buffer(new_words)
-            #     self.conversation.logger.info(len(f"changed, new: {new_words}"))
-            # else:
-            #     self.conversation.logger.info(
-            #         f"buffer was not changed: {self.buffer.to_message()}"
-            #     )
+
             self.buffer.update_buffer(new_words, transcription.is_final)
             # we also want to update the last user message
 
@@ -659,9 +369,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 audio = bytearray()
                 async for chunk in filler_synthesis_result.chunk_generator:
                     audio.extend(chunk.chunk)
-                # silence_threshold = (
-                #     self.conversation.filler_audio_config.silence_threshold_seconds
-                # )
+
                 # await asyncio.sleep(silence_threshold)
                 self.conversation.logger.debug("Sending filler audio to output")
                 self.filler_audio_started_event = threading.Event()
@@ -873,7 +581,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         self.conversation.agent.agent_config.prompt_preamble
                     )
 
-                    if self.conversation.agent.agent_config.language != "en-US":
+                    if not self.conversation.agent.agent_config.language.startswith(
+                        "en"
+                    ):
                         self.conversation.logger.debug(
                             f"Translating message from English to {self.conversation.agent.agent_config.language} {agent_response_message.message.text}"
                         )
@@ -959,6 +669,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     message.text,
                     synthesis_result,
                     self.conversation.stop_event,
+                    self.conversation.started_event,
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
                     transcript_message=transcript_message,
                 )
@@ -973,6 +684,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         is_interruptible=True,
                     )
                 )
+
                 # Place the interruptible event into the output queue for further processing.
                 self.output_queue.put_nowait(interruptible_event)
 
@@ -980,6 +692,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 try:
                     # Await the completion of the speech output task and retrieve the message sent and cutoff status.
                     message_sent, cut_off = await self.current_task
+                    self.conversation.started_event.clear()
                 except Exception as e:
                     # If an exception occurs, log it and set the message as cut off.
                     self.conversation.logger.debug(f"Detected Task cancelled: {e}")
@@ -1003,12 +716,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 item.agent_response_tracker.set()
                 # Log the message that was successfully sent.
                 self.conversation.logger.debug(f"Message sent: {message_sent}")
-
-                # If the message was cut off, update the last bot message accordingly.
-                # if cut_off:
-                #     self.conversation.agent.update_last_bot_message_on_cut_off(
-                #         message_sent
-                #     )
 
                 # Check if the conversation should end after the agent says goodbye.
                 if self.conversation.agent.agent_config.end_conversation_on_goodbye:
@@ -1052,6 +759,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         # threadingevent
         self.stop_event = threading.Event()
+        self.started_event = threading.Event()
         self.output_device = output_device
         self.transcriber = transcriber
         self.agent = agent
@@ -1240,9 +948,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.transcriptions_worker.block_inputs
             and not self.agent.agent_config.allow_interruptions
         ):
-            # self.transcriptions_worker.is_final = False
-            # self.transcriptions_worker.buffer = ""
-            # self.transcriptions_worker.time_silent = 0.0
+
             return
         self.transcriptions_worker.consume_nonblocking(transcription)
 
@@ -1290,9 +996,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         message: str,
         synthesis_result: SynthesisResult,
         stop_event: threading.Event,
+        started_event: threading.Event,
         seconds_per_chunk: int,
         transcript_message: Optional[Message] = None,
-        started_event: Optional[threading.Event] = None,
     ):
         # Check if both the synthesis result and message are available, if not, return empty message and False flag
         if not (synthesis_result and message):
@@ -1331,6 +1037,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async for chunk_result in synthesis_result.chunk_generator:
             if len(speech_data) > chunk_size:
                 self.transcriptions_worker.synthesis_done = True
+                started_event.set()
             if stop_event.is_set() and self.agent.agent_config.allow_interruptions:
                 return "", False
             if len(speech_data) > chunk_size:
@@ -1342,25 +1049,27 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 if self.agent.agent_config.allow_interruptions:
                     self.mark_last_action_timestamp()
-                    for _ in range(10):
+                    for _ in range(1):
                         # Check if the stop event is set before sending each piece
-                        await asyncio.sleep(seconds_per_chunk / 10)
                         if stop_event.is_set():
                             return "", False
                         # Calculate the size of each piece
-                        piece_size = len(speech_data) // 10
+                        piece_size = len(speech_data) // 1
                         # Send the piece to the output device
-                        self.output_device.consume_nonblocking(speech_data[:piece_size])
+                        await self.output_device.consume_nonblocking(
+                            speech_data[:piece_size]
+                        )
                         # Remove the sent piece from the speech data
                         speech_data = speech_data[piece_size:]
                         # Sleep for a tenth of the chunk duration
+                        await asyncio.sleep(seconds_per_chunk / 1)
                     if not buffer_cleared and not stop_event.is_set():
                         buffer_cleared = True
                         self.transcriptions_worker.buffer.clear()
                 else:
                     self.transcriptions_worker.buffer.clear()
                     self.mark_last_action_timestamp()
-                    self.output_device.consume_nonblocking(speech_data)
+                    await self.output_device.consume_nonblocking(speech_data)
                     speech_data = bytearray()
                     # sleep for the length of the speech
                     await asyncio.sleep(seconds_per_chunk)
@@ -1370,9 +1079,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
             speech_data.extend(chunk_result.chunk)
 
-        # # If no speech data is generated, return empty message and False flag
-        # if len(speech_data) == 0:
-        #     return "", False
         self.transcriptions_worker.synthesis_done = True
 
         # If a buffer check task exists, wait for it to complete before proceeding
@@ -1383,12 +1089,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 if self.transcriptions_worker.buffer_check_task.cancelled():
                     self.logger.debug("Buffer check task was cancelled.")
                     return "", False
-                # # Handle non-send status after buffer check completion
-                # elif self.transcriptions_worker.ready_to_send != BufferStatus.SEND:
-                #     self.logger.debug(
-                #         "Buffer check completed but buffer status is not SEND."
-                #     )
-                #     return "", False
+
             except asyncio.CancelledError:
                 # Handle external cancellation of the buffer check task
                 self.logger.debug(
@@ -1410,7 +1111,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # Send the generated speech data to the output device
         start_time = time.time()
         if len(speech_data) > 0:
-            self.output_device.consume_nonblocking(speech_data)
+            await self.output_device.consume_nonblocking(speech_data)
         end_time = time.time()
 
         # Calculate the length of the speech in seconds
@@ -1436,10 +1137,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             - self.per_chunk_allowance_seconds,
             0,
         )
-        # if message_sent and len(message_sent.strip()) > 0:  # TODO check here
-        #     self.logger.info(
-        #         f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message_sent}"
-        #     )
+
         await asyncio.sleep(sleep_time)
 
         # Log the successful sending of speech data

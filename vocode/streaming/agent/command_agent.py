@@ -478,17 +478,16 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                         self.streamed = (
                             True  # we said something so no need for fall back
                         )
+                        output = "".join(
+                            [
+                                part + " " if part[-1] in ".,!?" else part
+                                for part in parts[:-1]
+                            ]
+                        )
+                        output = output.replace("] ```", "")
+
                         self.produce_interruptible_agent_response_event_nonblocking(
-                            AgentResponseMessage(
-                                message=BaseMessage(
-                                    text="".join(
-                                        [
-                                            part + " " if part[-1] in ".,!?" else part
-                                            for part in parts[:-1]
-                                        ]
-                                    )
-                                )
-                            )
+                            AgentResponseMessage(message=BaseMessage(text=output))
                         )
                         await asyncio.sleep(0.1)
                         current_utterance = parts[-1]
@@ -832,18 +831,26 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 # split on pattern with punctuation and space, producing an interruptible of the stuff before (including the punctuation) and keeping the stuff after.
                 parts = split_pattern.split(current_utterance)
                 if (
-                    len(parts) > 2
-                    and len("".join(parts[:2]).split(" ")) > 2
-                    and len("".join(parts[:2]).split(" ")[-1]) > 4
-                    and any(char.isalpha() for char in "".join(parts[:2]))
+                    len(parts) > 0
+                    and len("".join(parts[:-1]).split(" ")) >= 3
+                    and len("".join(parts[:-1]).split(" ")[-1])
+                    > 3  # this is to avoid splitting on mr mrs
+                    and any(char.isalpha() for char in "".join(parts[:-1]))
                 ):
                     self.produce_interruptible_agent_response_event_nonblocking(
                         AgentResponseMessage(
-                            message=BaseMessage(text="".join(parts[:2]))
+                            message=BaseMessage(
+                                text="".join(
+                                    [
+                                        part + " " if part[-1] in ".,!?" else part
+                                        for part in parts[:-1]
+                                    ]
+                                )
+                            )
                         )
                     )
+                    current_utterance = parts[-1]
                     await asyncio.sleep(0.01)
-                    current_utterance = "".join(parts[2:])
                     # log each part
                 commandr_response += response_chunk
             if len(current_utterance) > 0 and any(
