@@ -1488,7 +1488,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.mark_terminated()
         self.broadcast_interrupt()
         if self.synthesis_results_worker.current_task:
-            self.synthesis_results_worker.current_task.interrupt()
+            self.synthesis_results_worker.current_task.cancel()
         self.events_manager.publish_event(
             TranscriptCompleteEvent(conversation_id=self.id, transcript=self.transcript)
         )

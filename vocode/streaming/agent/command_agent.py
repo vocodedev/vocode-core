@@ -655,9 +655,23 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                         action_config = self._get_action_config(name)
                         try:
                             action = self.action_factory.create_action(action_config)
-                            action_input = action.create_action_input(
-                                conversation_id, params, user_message_tracker=None
-                            )
+                            action_input: ActionInput
+                            if isinstance(action, TwilioPhoneCallAction):
+                                assert (
+                                    self.twilio_sid is not None
+                                ), "Cannot use TwilioPhoneCallActionFactory unless the attached conversation is a TwilioCall"
+                                action_input = action.create_phone_call_action_input(
+                                    self.conversation_id,
+                                    params,
+                                    self.twilio_sid,
+                                    user_message_tracker=None,
+                                )
+                            else:
+                                action_input = action.create_action_input(
+                                    conversation_id=self.conversation_id,
+                                    params=params,
+                                    user_message_tracker=None,
+                                )
 
                             # check if starting_phrase exists and has content
                             if (
