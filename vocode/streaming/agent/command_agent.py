@@ -499,6 +499,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 parts = split_pattern2.split(current_utterance)
                 current_utterance = "".join(parts[:2])
                 self.logger.info(f"Current utterance: {current_utterance}")
+                current_utterance = current_utterance.replace("] ```", "")
                 self.streamed = True  # we said something so no need for fall back
                 self.produce_interruptible_agent_response_event_nonblocking(
                     AgentResponseMessage(message=BaseMessage(text=current_utterance))
@@ -837,15 +838,17 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     > 3  # this is to avoid splitting on mr mrs
                     and any(char.isalpha() for char in "".join(parts[:-1]))
                 ):
+                    output = "".join(
+                        [
+                            part + " " if part[-1] in ".,!?" else part
+                            for part in parts[:-1]
+                        ]
+                    )
+                    output = output.replace("] ```", "")
                     self.produce_interruptible_agent_response_event_nonblocking(
                         AgentResponseMessage(
                             message=BaseMessage(
-                                text="".join(
-                                    [
-                                        part + " " if part[-1] in ".,!?" else part
-                                        for part in parts[:-1]
-                                    ]
-                                )
+                                text=output,
                             )
                         )
                     )
@@ -859,6 +862,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 # only keep the part before split pattern 2
                 parts = split_pattern2.split(current_utterance)
                 current_utterance = "".join(parts[:2])
+                current_utterance = current_utterance.replace("] ```", "")
                 self.produce_interruptible_agent_response_event_nonblocking(
                     AgentResponseMessage(message=BaseMessage(text=current_utterance))
                 )
