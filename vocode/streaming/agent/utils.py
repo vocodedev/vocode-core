@@ -75,29 +75,31 @@ async def collate_response_async(
 
 async def openai_get_tokens(gen) -> AsyncGenerator[Union[str, FunctionFragment], None]:
     async for event in gen:
-        choices = event.get("choices", [])
+        choices = event.choices
         if len(choices) == 0:
             continue
         choice = choices[0]
         if choice.finish_reason:
             break
-        delta = choice.get("delta", {})
-        if "text" in delta and delta["text"] is not None:
-            token = delta["text"]
+        delta = choice.delta
+
+        if hasattr(delta, "text") and delta.text:
+            token = delta.text
             yield token
-        if "content" in delta and delta["content"] is not None:
-            token = delta["content"]
+        if hasattr(delta, "content") and delta.content:
+            token = delta.content
             yield token
-        elif "function_call" in delta and delta["function_call"] is not None:
+        elif hasattr(delta, "function_call") and delta.function_call:
             yield FunctionFragment(
                 name=(
-                    delta["function_call"]["name"]
-                    if "name" in delta["function_call"]
+                    delta.function_call.name
+                    if hasattr(delta.function_call, "name") and delta.function_call.name
                     else ""
                 ),
                 arguments=(
-                    delta["function_call"]["arguments"]
-                    if "arguments" in delta["function_call"]
+                    delta.function_call.arguments
+                    if hasattr(delta.function_call, "arguments")
+                    and delta.function_call.arguments
                     else ""
                 ),
             )
