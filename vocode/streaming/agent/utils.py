@@ -13,7 +13,7 @@ from typing import (
     Union,
 )
 
-from openai.openai_object import OpenAIObject
+# from openai.openai_object import OpenAIObject
 from vocode.streaming.models.actions import FunctionCall, FunctionFragment
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import (

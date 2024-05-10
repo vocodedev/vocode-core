@@ -76,7 +76,7 @@ class GoodbyeModel:
             params["model"] = "text-embedding-ada-002"
 
         return np.array(
-            (await openai.Embedding.acreate(**params))["data"][0]["embedding"]
+            (await openai.embeddings.create(**params))["data"][0]["embedding"]
         )
 
 

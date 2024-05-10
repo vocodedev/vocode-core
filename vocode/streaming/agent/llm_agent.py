@@ -101,7 +101,7 @@ class LLMAgent(RespondAgent[LLMAgentConfig]):
         return response, False
 
     async def _stream_sentences(self, prompt):
-        stream = await openai.Completion.acreate(
+        stream = await openai.completions.create(
             prompt=prompt,
             max_tokens=self.agent_config.max_tokens,
             temperature=self.agent_config.temperature,
