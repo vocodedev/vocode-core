@@ -1,5 +1,5 @@
 import logging
-from telephony_app.utils.date_parser import get_availability_for_day, Interval
+from telephony_app.utils.date_parser import calculate_daily_free_intervals, Interval
 from telephony_app.integrations.oauth import OauthCredentials
 from datetime import datetime
 from dateutil import tz
@@ -22,7 +22,7 @@ class CheckCalendarAvailabilityActionConfig(
     ActionConfig, type=ActionType.CHECK_CALENDAR_AVAILABILITY
 ):
     credentials: OauthCredentials
-    all_availability: List[Interval]
+    busy_times: List[Interval]
     starting_phrase: str
 
 
@@ -35,11 +35,10 @@ class CheckCalendarAvailabilityResponse(BaseModel):
 
 
 # assumes UTC, i.e. 2024-04-11T16:00:00Z
-def natural_lang_date(iso: str) -> str:
+def natural_lang_date(utc: datetime.datetime) -> str:
     from_zone = tz.gettz("UTC")
     to_zone = tz.gettz("America/New_York")
 
-    utc = datetime.datetime.strptime(iso, "%Y-%m-%dT%H:%M:%S")
     utc = utc.replace(tzinfo=from_zone)
     local = utc.astimezone(to_zone)
     date = local.strftime("%A, %B %d")  # Wednesday, June 12
@@ -65,8 +64,11 @@ class CheckCalendarAvailability(
     async def run(
         self, action_input: ActionInput[CheckCalendarAvailabilityParameters]
     ) -> ActionOutput[CheckCalendarAvailabilityResponse]:
-        raw_availability = get_availability_for_day(
-            self.action_config.all_availability, action_input.params.day
+        raw_availability = calculate_daily_free_intervals(
+            busy_times=self.action_config.busy_times,
+            start_of_day=14,
+            end_of_day=22,
+            date=action_input.params.day
         )
         availability = [natural_lang_date(slot["start"]) for slot in raw_availability]
         logger.info(f"availability: {availability}")
