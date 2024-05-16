@@ -16,7 +16,7 @@ from telephony_app.integrations.boulevard.boulevard_client import (
     retrieve_next_appointment_by_phone_number,
     get_lost_directions,
 )
-from telephony_app.utils.twilio_call_helper import get_twilio_config
+from vocode.streaming.models.telephony import TwilioConfig
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -26,9 +26,8 @@ logger.setLevel(logging.DEBUG)
 class SendHelloSugarDirectionsActionConfig(
     ActionConfig, type=ActionType.SEND_HELLO_SUGAR_DIRECTIONS
 ):
-    credentials: Dict
+    twilio_config: TwilioConfig
     from_phone: str
-    twilio_account_sid: str
     starting_phrase: str = Field(
         ..., description="What the agent should say when starting the action"
     )
@@ -60,12 +59,8 @@ class SendHelloSugarDirections(
     )
 
     async def send_hello_sugar_directions(self, to_phone):
-        twilio_config = await get_twilio_config(
-            credentials=self.action_config.credentials,
-            twilio_account_sid=self.action_config.twilio_account_sid,
-        )
-        twilio_account_sid = twilio_config.account_sid
-        twilio_auth_token = twilio_config.auth_token
+        twilio_account_sid = self.action_config.twilio_config.account_sid
+        twilio_auth_token = self.action_config.twilio_config.auth_token
         from_phone = self.action_config.from_phone
         # if to_phone has 9 digits, add +1 to the beginning
         if len(to_phone) == 9:
