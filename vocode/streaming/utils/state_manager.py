@@ -59,8 +59,14 @@ class VonageCallStateManager(ConversationStateManager):
         super().__init__(call)
         self._call = call
 
+    def get_vonage_uuid(self) -> str:
+        return self._call.vonage_uuid
+
 
 class TwilioCallStateManager(ConversationStateManager):
     def __init__(self, call: "TwilioCall"):
         super().__init__(call)
         self._call = call
+
+    def get_twilio_sid(self) -> str:
+        return self._call.twilio_sid

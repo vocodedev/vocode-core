@@ -47,12 +47,12 @@ class ActionsWorker(InterruptibleWorker):
                 action_input=action_input,
                 action_output=action_output,
                 vonage_uuid=(
-                    self.conversation_state_manager._call.vonage_uuid
+                    self.conversation_state_manager.get_vonage_uuid()
                     if isinstance(self.conversation_state_manager, VonageCallStateManager)
                     else None
                 ),
                 twilio_sid=(
-                    self.conversation_state_manager._call.twilio_sid
+                    self.conversation_state_manager.get_twilio_sid()
                     if isinstance(self.conversation_state_manager, TwilioCallStateManager)
                     else None
                 ),
