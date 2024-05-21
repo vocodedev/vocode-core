@@ -218,7 +218,12 @@ all_optional_tools = {
         "description": "Book an appointment for the client on the calendar",
         "parameter_definitions": {
             "date": {
-                "description": "the date and time for the appointment",
+                "description": "the date for the appointment",
+                "type": "str",
+                "required": True,
+            },
+            "time": {
+                "description": "the start time for the appointment",
                 "type": "str",
                 "required": True,
             },

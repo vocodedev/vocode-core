@@ -65,7 +65,7 @@ class ActionFactory:
         elif isinstance(action_config, CheckCalendarAvailabilityActionConfig):
             return CheckCalendarAvailability(action_config)
         elif isinstance(action_config, BookCalendarAppointmentActionConfig):
-            return CheckCalendarAvailability(action_config)
+            return BookCalendarAppointment(action_config)
         elif isinstance(action_config, CreateAgentActionConfig):
             return CreateAgent(action_config)
         elif isinstance(action_config, SearchDocumentsActionConfig):
