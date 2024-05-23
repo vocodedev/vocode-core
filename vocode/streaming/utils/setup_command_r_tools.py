@@ -207,7 +207,7 @@ all_optional_tools = {
         "description": "Check calendar availability for the client's appointment",
         "parameter_definitions": {
             "day": {
-                "description": "the day or date that the client would like to book an appointment",
+                "description": "The day or date to check availability for",
                 "type": "str",
                 "required": True,
             },
@@ -217,28 +217,28 @@ all_optional_tools = {
         "name": "book_calendar_appointment",
         "description": "Book an appointment for the client on the calendar",
         "parameter_definitions": {
+            "details": {
+                "description": "The reason for the appointment",
+                "type": "str",
+                "required": True,
+            },
             "date": {
-                "description": "the date for the appointment",
+                "description": "The appointment date",
                 "type": "str",
                 "required": True,
             },
             "time": {
-                "description": "the start time for the appointment",
+                "description": "The appointment starting time",
                 "type": "str",
                 "required": True,
             },
             "guest_email": {
-                "description": "email of the person who is requesting this appointment",
+                "description": "The email of the person requesting the appointment",
                 "type": "str",
                 "required": True,
             },
             "guest_name": {
-                "description": "name of the person who is requesting this appointment",
-                "type": "str",
-                "required": True,
-            },
-            "description": {
-                "description": "summary of the appointment reason",
+                "description": "The name of the person requesting the appointment",
                 "type": "str",
                 "required": True,
             },

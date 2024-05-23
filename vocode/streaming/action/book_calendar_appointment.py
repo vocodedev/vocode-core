@@ -1,6 +1,9 @@
 import logging
 import os
-from telephony_app.utils.date_parser import parse_natural_language_date, parse_natural_language_time
+from telephony_app.utils.date_parser import (
+    parse_natural_language_date,
+    parse_natural_language_time,
+)
 from telephony_app.integrations.oauth import OauthCredentials
 from telephony_app.integrations.gcal.gcal_helpers import get_google_scopes
 from aiogoogle import Aiogoogle
@@ -28,13 +31,13 @@ class BookCalendarAppointmentActionConfig(
     host_name: str
     appointment_length_minutes: int
     starting_phrase: str
-    business_timezone: str # i.e. EST
+    business_timezone: str  # i.e. EST
 
 
 class BookCalendarAppointmentParameters(BaseModel):
     guest_name: Optional[str]
     guest_email: Optional[str]
-    description: str
+    details: str
     date: str
     time: str
 
@@ -67,16 +70,26 @@ class BookCalendarAppointment(
             "token_uri": "https://oauth2.googleapis.com/token",
         }
         aiogoogle_client_creds = {
-            "scopes": get_google_scopes(oauth_credentials=self.action_config.credentials),
+            "scopes": get_google_scopes(
+                oauth_credentials=self.action_config.credentials
+            ),
             "client_id": os.getenv("GOOGLE_OAUTH_CLIENT_ID"),
             "client_secret": os.getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
         }
         utc = datetime.timezone(datetime.timedelta(hours=0))
-        async with Aiogoogle(user_creds=aiogoogle_user_creds, client_creds=aiogoogle_client_creds) as aiogoogle:
+        async with Aiogoogle(
+            user_creds=aiogoogle_user_creds, client_creds=aiogoogle_client_creds
+        ) as aiogoogle:
             calendar_v3 = await aiogoogle.discover("calendar", "v3")
-            start_date: datetime.datetime = parse_natural_language_date(action_input.params.date, self.action_config.business_timezone)
-            start_time: datetime.time = parse_natural_language_time(action_input.params.time)
-            start_datetime = start_date.replace(hour=start_time.hour, minute=start_time.minute)
+            start_date: datetime.datetime = parse_natural_language_date(
+                action_input.params.date, self.action_config.business_timezone
+            )
+            start_time: datetime.time = parse_natural_language_time(
+                action_input.params.time
+            )
+            start_datetime = start_date.replace(
+                hour=start_time.hour, minute=start_time.minute
+            )
 
             duration = datetime.timedelta(
                 minutes=self.action_config.appointment_length_minutes
@@ -84,7 +97,9 @@ class BookCalendarAppointment(
 
             start_str = start_datetime.strftime("%Y-%m-%dT%H:%M:%S%z")
             end_str = (start_datetime + duration).strftime("%Y-%m-%dT%H:%M:%S%z")
-            logger.info(f"full datetime {start_datetime}. start is {start_str} end is {end_str}")
+            # logger.info(
+            #     f"full datetime {start_datetime}. start is {start_str} end is {end_str}"
+            # )
 
             response = await aiogoogle.as_user(
                 calendar_v3.events.insert(
@@ -106,14 +121,13 @@ class BookCalendarAppointment(
                                 "organizer": True,
                             },
                         ],
-                        "description": action_input.params.description,
+                        "description": action_input.params.details,
                         "summary": "Appointment",
                         "start": {"dateTime": start_str},
                         "end": {"dateTime": end_str},
                     },
                 )
             )
-            logger.info(f"cal booking response: {response}")
             return True
 
     async def run(

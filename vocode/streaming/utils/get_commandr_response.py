@@ -259,6 +259,18 @@ def format_commandr_chat_completion_from_transcript(
             current_doc["action_input"] = event_log.action_input.params.json()
         elif isinstance(event_log, ActionFinish):
             current_doc["action_output"] = event_log.action_output.response.json()
+    if (  # don't miss it if it's the last one
+        len(current_doc["action_type"]) > 0
+        and len(current_doc["action_input"]) > 0
+        and len(current_doc["action_output"]) > 0
+    ):
+        messages.append(
+            {
+                "role": "system",
+                "content": f"Action Completed: ```json\n{{\n    \"tool_name\": \"{current_doc['action_type']}\",\n    \"parameters\": {current_doc['action_input']},\n    \"tool_output\": {current_doc['action_output']}\n}}\n\nYou may directly respond to the user.```",
+            }
+        )
+        current_doc = {"action_type": "", "action_input": "", "action_output": ""}
     # if there is action type and action input, put it in the messages
     if len(current_doc["action_type"]) > 0 and len(current_doc["action_input"]) > 0:
         messages.append(

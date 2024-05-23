@@ -26,6 +26,7 @@ class CheckCalendarAvailabilityActionConfig(
     start_of_day: int
     end_of_day: int
     business_timezone_utc_offset: int
+    appointment_length_minutes: int
 
 
 class CheckCalendarAvailabilityParameters(BaseModel):
@@ -33,8 +34,7 @@ class CheckCalendarAvailabilityParameters(BaseModel):
 
 
 class CheckCalendarAvailabilityResponse(BaseModel):
-    availability: List[str]
-
+    availability: str
 
 
 class CheckCalendarAvailability(
@@ -52,8 +52,10 @@ class CheckCalendarAvailability(
         CheckCalendarAvailabilityResponse
     )
 
-    def format_for_ai(self, slot_start: datetime.datetime) -> str:
-        local = slot_start.astimezone(timezone(timedelta(hours=self.action_config.business_timezone_utc_offset)))
+    def format_for_ai(self, date: datetime.datetime) -> str:
+        local = date.astimezone(
+            timezone(timedelta(hours=self.action_config.business_timezone_utc_offset))
+        )
         # date = local.strftime("%A, %B %d")  # Wednesday, June 12
         return local.strftime("%I:%M %p")  # 08:35 am
         # return date + " at " + time
@@ -65,12 +67,28 @@ class CheckCalendarAvailability(
             busy_times=self.action_config.busy_times,
             start_of_day=self.action_config.start_of_day or 10,
             end_of_day=self.action_config.end_of_day or 18,
-            date=action_input.params.day
+            date=action_input.params.day,
+            appointment_length_minutes=self.action_config.appointment_length_minutes,
         )
-        availability = [self.format_for_ai(slot["start"]) for slot in raw_availability]
-        logger.info(f"availability: {availability}")
+
+        # Format the raw availability into a natural language, numbered list
+        formatted_availability = [
+            f"Block {index + 1}: Available from {self.format_for_ai(interval['start'])} to {self.format_for_ai(interval['end'])}"
+            for index, interval in enumerate(raw_availability)
+        ]
+        formatted_availability = "\n".join(formatted_availability)
+        formatted_availability = (
+            f"The schedule on {action_input.params.day} is:\n\n{formatted_availability}"
+        )
+        formatted_availability = (
+            formatted_availability
+            + "\n"
+            + f"When scheduling, events are typically {self.action_config.appointment_length_minutes} minutes long and must fit within an available block."
+        )
 
         return ActionOutput(
             action_type=action_input.action_config.type,
-            response=CheckCalendarAvailabilityResponse(availability=availability),
+            response=CheckCalendarAvailabilityResponse(
+                availability=formatted_availability
+            ),
         )
