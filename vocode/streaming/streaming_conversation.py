@@ -190,6 +190,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.chosen_affirmative_phrase = None
             self.triggered_affirmative = False
             self.chosen_filler_phrase = None
+            self.initial_message = None
 
         async def _buffer_check(self, initial_buffer: str):
             if (
@@ -311,6 +312,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.info(
                     f"BufferCancel? {self.buffer_check_task.cancel()}"
                 )
+            # if there is an initial message, we're in outbound mode and we should say it right off
+            if self.initial_message:
+                asyncio.create_task(
+                    self.conversation.send_initial_message(self.initial_message)
+                )  # TODO: this seems like its hanging, why not await?
+                self.initial_message = None
+                return
 
             # Broadcast an interrupt and set the buffer status to DISCARD
             self.conversation.broadcast_interrupt()
@@ -845,8 +853,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
-        self.transcriber.mute()
-        # mute at the start
+        if self.agent.get_agent_config().call_type == CallType.INBOUND:
+            self.transcriber.mute()
         self.transcriptions_worker.start()
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
@@ -876,13 +884,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.agent.twilio_sid = getattr(self, "twilio_sid", None)
         initial_message = self.agent.get_agent_config().initial_message
         call_type = self.agent.get_agent_config().call_type
+        self.agent.attach_transcript(self.transcript)
 
         if initial_message and call_type == CallType.INBOUND:
-            asyncio.create_task(self.send_initial_message(initial_message))
+            asyncio.create_task(
+                self.send_initial_message(initial_message)
+            )  # TODO: this seems like its hanging, why not await?
+        elif initial_message and call_type == CallType.OUTBOUND:
+            self.transcriptions_worker.initial_message = initial_message
         else:
-            # unmute if no initial message so they can speak first
-            self.transcriber.unmute()
-        self.agent.attach_transcript(self.transcript)
+            self.logger.debug("ERROR: INVALID CALL TYPE")
         if mark_ready:
             await mark_ready()
         if self.synthesizer.get_synthesizer_config().sentiment_config:
