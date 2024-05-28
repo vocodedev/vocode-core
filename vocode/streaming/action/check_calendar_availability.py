@@ -63,11 +63,17 @@ class CheckCalendarAvailability(
     async def run(
         self, action_input: ActionInput[CheckCalendarAvailabilityParameters]
     ) -> ActionOutput[CheckCalendarAvailabilityResponse]:
+        # god help us
+        tz = "PDT"
+        if self.action_config.business_timezone_utc_offset > -6:
+            tz = "EDT"
+
         raw_availability = calculate_daily_free_intervals(
             busy_times=self.action_config.busy_times,
             start_of_day=self.action_config.start_of_day or 10,
             end_of_day=self.action_config.end_of_day or 18,
             date=action_input.params.day,
+            tz=tz,
             appointment_length_minutes=self.action_config.appointment_length_minutes,
         )
 
