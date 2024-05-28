@@ -79,7 +79,7 @@ class CheckCalendarAvailability(
 
         # Format the raw availability into a natural language, numbered list
         formatted_availability = [
-            f"Block {index + 1}: Available from {self.format_for_ai(interval['start'])} to {self.format_for_ai(interval['end']) - self.action_config.appointment_length_minutes}"
+            f"Block {index + 1}: Available from {self.format_for_ai(interval['start'])} to {self.format_for_ai(interval['end'] - self.action_config.appointment_length_minutes)}"
             for index, interval in enumerate(raw_availability)
         ]
         formatted_availability = "\n".join(formatted_availability)
