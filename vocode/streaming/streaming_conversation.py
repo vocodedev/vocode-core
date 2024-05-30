@@ -616,6 +616,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         )
                         agent_response_message.message.text = current_message
                     else:
+                        self.conversation.logger.info(
+                            f"[{self.conversation.agent.agent_config.call_type}:{self.conversation.agent.agent_config.current_call_id}] Agent: {agent_response_message.message.text}"
+                        )
                         synthesis_result = (
                             await self.conversation.synthesizer.create_speech(
                                 agent_response_message.message,
