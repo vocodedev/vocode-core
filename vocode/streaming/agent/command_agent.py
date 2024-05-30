@@ -636,6 +636,18 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{latest_human_message.text}"
                 )
                 latest_human_message.text = translated_message
+        elif self.agent_config.language == "en-US":
+            latest_human_message = next(
+                (
+                    event
+                    for event in reversed(self.transcript.event_logs)
+                    if event.sender == Sender.HUMAN and event.text.strip()
+                ),
+                None,
+            )
+            self.logger.info(
+                f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{latest_human_message.text}"
+            )
 
         assert self.transcript is not None
 
