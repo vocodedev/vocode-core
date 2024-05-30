@@ -204,10 +204,15 @@ all_optional_tools = {
     },
     ActionType.CHECK_CALENDAR_AVAILABILITY: {
         "name": "check_calendar_availability",
-        "description": "Check calendar availability for the client's appointment",
+        "description": "Given a time and day, check the calendar.",
         "parameter_definitions": {
+            "time": {
+                "description": "The requested time to check availability, in the format HH:MM",
+                "type": "str",
+                "required": True,
+            },
             "day": {
-                "description": "The day or date to check availability for",
+                "description": "The requested day, specified in natural language ('today', 'tomorrow', 'next thursday'), or in the format MM/DD/YYYY",
                 "type": "str",
                 "required": True,
             },
