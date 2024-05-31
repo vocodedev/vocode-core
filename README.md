@@ -1,152 +1,73 @@
-<div align="center">
+# 🤫 Vocode 0.0.112 Early Preview
 
-![Hero](https://user-images.githubusercontent.com/6234599/228337850-e32bb01d-3701-47ef-a433-3221c9e0e56e.png)
+👋 Hey there, Vocode Explorer!
 
-[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/vocodehq.svg?style=social&label=Follow%20%40vocodehq)](https://twitter.com/vocodehq) [![GitHub Repo stars](https://img.shields.io/github/stars/vocodedev/vocode-python?style=social)](https://github.com/vocodedev/vocode-python)
-[![Downloads](https://static.pepy.tech/badge/vocode/month)](https://pepy.tech/project/vocode)
+Congratulations! You've stumbled upon the Vocode 0.0.112 Early Preview Repo! Whether we (the Vocode team) sent you this link or you found it through your own detective work, we want to celebrate your awesomeness in the Vocode community with this exclusive sneak peek of our latest work!
 
-[Community](https://discord.gg/NaU4mMgcnC) | [Docs](https://docs.vocode.dev) | [Dashboard](https://app.vocode.dev)
+## 🎉 What's Next?
 
-</div>
+We'd love to invite you to our private channel on Discord! [(Join us here!)](https://discord.gg/MVQD5bmf49) This is your VIP pass to chat with Vocode team members, get help, ask questions, and maybe even contribute to the 0.0.112 release!
 
-# <span><img style='vertical-align:middle; display:inline;' src="https://user-images.githubusercontent.com/6234599/228339858-95a0873a-2d40-4542-963a-6358d19086f5.svg"  width="5%" height="5%">&nbsp; vocode</span>
+## 🚨 Need Access?
 
-### **Build voice-based LLM apps in minutes**
+If you can see this but don't have access to the new channels, just reach out to Mac, Ajay, George, or any other Vocode team member. We'll make sure you get in!
 
-Vocode is an open source library that makes it easy to build voice-based LLM apps. Using Vocode, you can build real-time streaming conversations with LLMs and deploy them to phone calls, Zoom meetings, and more. You can also build personal assistants or apps like voice-based chess. Vocode provides easy abstractions and integrations so that everything you need is in a single library.
+## 🤐 Keep It Under Wraps
 
-We're actively looking for community maintainers, so please reach out if interested!
+We’re super excited to share this with you, but we’d appreciate it if you could keep this on the down-low for now. While we know you might share this with close friends, please avoid posting it in public places. We're still polishing things up for the big public launch!
 
-# ⭐️ Features
+## 📝 Brief Changelog
 
-- 🗣 [Spin up a conversation with your system audio](https://docs.vocode.dev/python-quickstart)
-- ➡️ 📞 [Set up a phone number that responds with a LLM-based agent](https://docs.vocode.dev/telephony#inbound-calls)
-- 📞 ➡️ [Send out phone calls from your phone number managed by an LLM-based agent](https://docs.vocode.dev/telephony#outbound-calls)
-- 🧑‍💻 [Dial into a Zoom call](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/telephony/hosted/zoom_dial_in.py)
-- 🤖 [Use an outbound call to a real phone number in a Langchain agent](https://docs.vocode.dev/langchain-agent)
-- Out of the box integrations with:
-  - Transcription services, including:
-    - [AssemblyAI](https://www.assemblyai.com/)
-    - [Deepgram](https://deepgram.com/)
-    - [Gladia](https://gladia.io)
-    - [Google Cloud](https://cloud.google.com/speech-to-text)
-    - [Microsoft Azure](https://azure.microsoft.com/en-us/products/cognitive-services/speech-to-text)
-    - [RevAI](https://www.rev.ai/)
-    - [Whisper](https://openai.com/blog/introducing-chatgpt-and-whisper-apis)
-    - [Whisper.cpp](https://github.com/ggerganov/whisper.cpp)
-    
-  - LLMs, including:
-    - [ChatGPT](https://openai.com/blog/chatgpt)
-    - [GPT-4](https://platform.openai.com/docs/models/gpt-4)
-    - [Anthropic](https://www.anthropic.com/)
-    - [GPT4All](https://github.com/nomic-ai/gpt4all)
-  - Synthesis services, including:
-    - [Rime.ai](https://rime.ai)
-    - [Microsoft Azure](https://azure.microsoft.com/en-us/products/cognitive-services/text-to-speech/)
-    - [Google Cloud](https://cloud.google.com/text-to-speech)
-    - [Play.ht](https://play.ht)
-    - [Eleven Labs](https://elevenlabs.io/)
-    - [Coqui](https://coqui.ai/)
-    - [Coqui (OSS)](https://github.com/coqui-ai/TTS)
-    - [gTTS](https://gtts.readthedocs.io/)
-    - [StreamElements](https://streamelements.com/)
-    - [Bark](https://github.com/suno-ai/bark)
-    - [AWS Polly](https://aws.amazon.com/polly/)
+### 🧱Vocode Core Abstractions Revamp
 
-Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)!
+- Improved Abstractions to enable faster customization of:
+    - Agents
+    - Transcribers
+    - Synthesizers
+    - Telephony Providers
 
-# 🫂 Contribution and Roadmap
+### 👥 Conversation Mechanics
 
-We're an open source project and are extremely open to contributors adding new features, integrations, and documentation! Please don't hesitate to reach out and get started building with us.
+- Better endpointing (agnostic of transcribers)
+- Better interruption handling
 
-For more information on contributing, see our [Contribution Guide](https://github.com/vocodedev/vocode-python/blob/main/contributing.md).
+### 🕵️ Agents
 
-And check out our [Roadmap](https://github.com/vocodedev/vocode-python/blob/main/roadmap.md).
+- ✨NEW✨ Anthropic-based Agent
+    - Supports all Claude 3 Models
+- OpenAI GPT-4o Support
+- Azure OpenAI revamp
 
-We'd love to talk to you on [Discord](https://discord.gg/NaU4mMgcnC) about new ideas and contributing!
+### 💪 Actions
 
-# 🚀 Quickstart
+- ✨NEW✨ External Actions
+- Improved Call Transfer
+- ✨NEW✨ Wait Actions (IVR Navigation)
+- ✨NEW✨ Phrase triggers for actions (instead of function calls)
 
-```bash
-pip install 'vocode'
-```
+### 🗣️ Synthesizers
 
-```python
-import asyncio
-import logging
-import signal
-from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.helpers import create_streaming_microphone_input_and_speaker_output
-from vocode.streaming.transcriber import *
-from vocode.streaming.agent import *
-from vocode.streaming.synthesizer import *
-from vocode.streaming.models.transcriber import *
-from vocode.streaming.models.agent import *
-from vocode.streaming.models.synthesizer import *
-from vocode.streaming.models.message import BaseMessage
-import vocode
+- ElevenLabs
+    - ✨NEW✨ Websocket-based Client
+    - Updated RESTful client
+- ✨NEW✨ PlayHT Synthesizer “v2” with [PlayHT On-Prem](https://docs.play.ht/reference/on-prem) Support
+- [Rime Mist](https://rimelabs.mintlify.app/api-reference/models) support
 
-# these can also be set as environment variables
-vocode.setenv(
-    OPENAI_API_KEY="<your OpenAI key>",
-    DEEPGRAM_API_KEY="<your Deepgram key>",
-    AZURE_SPEECH_KEY="<your Azure key>",
-    AZURE_SPEECH_REGION="<your Azure region>",
-)
+### ✍️ Transcribers
 
+- ✨NEW✨ Deepgram [built-in endpointing](https://developers.deepgram.com/docs/endpointing)
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+### 📞 Telephony
 
+- Twilio
+    - Stronger interruption handling by [clearing audio queues](https://www.twilio.com/docs/voice/media-streams/websocket-messages#send-a-clear-message)
+- Vonage
+    - Koala Noise Suppression
 
-async def main():
-    (
-        microphone_input,
-        speaker_output,
-    ) = create_streaming_microphone_input_and_speaker_output(
-        use_default_devices=False,
-        logger=logger,
-        use_blocking_speaker_output=True
-    )
+### 🎉 Miscellaneous
 
-    conversation = StreamingConversation(
-        output_device=speaker_output,
-        transcriber=DeepgramTranscriber(
-            DeepgramTranscriberConfig.from_input_device(
-                microphone_input,
-                endpointing_config=PunctuationEndpointingConfig(),
-            )
-        ),
-        agent=ChatGPTAgent(
-            ChatGPTAgentConfig(
-                initial_message=BaseMessage(text="What up"),
-                prompt_preamble="""The AI is having a pleasant conversation about life""",
-            )
-        ),
-        synthesizer=AzureSynthesizer(
-            AzureSynthesizerConfig.from_output_device(speaker_output)
-        ),
-        logger=logger,
-    )
-    await conversation.start()
-    print("Conversation started, press Ctrl+C to end")
-    signal.signal(
-        signal.SIGINT, lambda _0, _1: asyncio.create_task(conversation.terminate())
-    )
-    while conversation.is_active():
-        chunk = await microphone_input.get_audio()
-        conversation.receive_audio(chunk)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-# 📞 Phone call quickstarts
-
-- [Telephony Server - Self-hosted](https://docs.vocode.dev/telephony)
-
-# 🌱 Documentation
-
-[docs.vocode.dev](https://docs.vocode.dev/)
+- ✨NEW✨  Loguru for improved logging formatting
+    - Some new utilities to make setting up loguru in your projects fast and easy 😉
+- Sentry for Metric / Error Collection
+- Clean handling of content filters in ChatGPT agents
+- Redis Message Queue for tracking mid-call events across different instances
