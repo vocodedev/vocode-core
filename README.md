@@ -1,4 +1,4 @@
-# 🤫 Vocode 0.0.112 Early Preview
+# 🚀 Vocode 0.0.112 Early Preview
 
 👋 Hey there, Vocode Explorer!
 
