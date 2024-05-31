@@ -1,25 +1,21 @@
 from __future__ import annotations
+
 import asyncio
+from typing import List
 
+from loguru import logger
 
-from vocode.streaming.models.events import Event
-
-
-async def flush_event(event):
-    if event:
-        del event
+from vocode.streaming.models.events import Event, EventType
 
 
 class EventsManager:
-    def __init__(self, subscriptions=None):
-        if subscriptions is None:
-            subscriptions = []
+    def __init__(self, subscriptions: List[EventType] = []):
         self.queue: asyncio.Queue[Event] = asyncio.Queue()
         self.subscriptions = set(subscriptions)
         self.active = False
 
     def publish_event(self, event: Event):
-        if event.type in self.subscriptions:
+        if event and event.type in self.subscriptions:
             self.queue.put_nowait(event)
 
     async def start(self):
@@ -27,19 +23,27 @@ class EventsManager:
         while self.active:
             try:
                 event = await self.queue.get()
-                await self.handle_event(event)
             except asyncio.QueueEmpty:
                 await asyncio.sleep(1)
+            except asyncio.CancelledError:
+                break
+            await self.handle_event(event)
 
     async def handle_event(self, event: Event):
-        pass  # Default implementation, can be overridden
+        pass
 
-    async def flush(self, timeout=30):
+    async def flush(self):
+        self.active = False
         while True:
             try:
-                event = await asyncio.wait_for(self.queue.get(), timeout)
-                await flush_event(event)
-            except asyncio.TimeoutError:
-                break
+                event = self.queue.get_nowait()
+                await self.handle_event(event)
             except asyncio.QueueEmpty:
                 break
+            except TypeError as e:
+                if "NoneType can't be used in 'await' expression" in str(e):
+                    logger.error(
+                        "Handle event was overridden with non-async function. Please override with async function."
+                    )
+                else:
+                    raise e from e

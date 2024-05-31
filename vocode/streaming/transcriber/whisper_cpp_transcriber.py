@@ -1,19 +1,15 @@
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
 import ctypes
 import io
 import pathlib
 import wave
-from pydub import AudioSegment
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
-from vocode.streaming.agent.utils import SENTENCE_ENDINGS
-from vocode.streaming.models.transcriber import WhisperCPPTranscriberConfig
-from vocode.streaming.transcriber.base_transcriber import (
-    BaseAsyncTranscriber,
-    BaseThreadAsyncTranscriber,
-    Transcription,
-)
+from pydub import AudioSegment
+
+from vocode.streaming.constants import SENTENCE_ENDINGS
+from vocode.streaming.models.transcriber import Transcription, WhisperCPPTranscriberConfig
+from vocode.streaming.transcriber.base_transcriber import BaseThreadAsyncTranscriber
 from vocode.utils.whisper_cpp.helpers import transcribe
 from vocode.utils.whisper_cpp.whisper_params import WhisperFullParams
 
@@ -72,18 +68,12 @@ class WhisperCPPTranscriber(BaseThreadAsyncTranscriber[WhisperCPPTranscriberConf
             if audio_buffer.tell() >= self.buffer_size * 2:
                 audio_buffer.seek(0)
                 audio_segment = AudioSegment.from_wav(audio_buffer)
-                message, confidence = transcribe(
-                    self.whisper, self.params, self.ctx, audio_segment
-                )
+                message, confidence = transcribe(self.whisper, self.params, self.ctx, audio_segment)
                 message_buffer += message
-                is_final = any(
-                    message_buffer.endswith(ending) for ending in SENTENCE_ENDINGS
-                )
+                is_final = any(message_buffer.endswith(ending) for ending in SENTENCE_ENDINGS)
                 in_memory_wav, audio_buffer = self.create_new_buffer()
                 self.output_queue.put_nowait(
-                    Transcription(
-                        message=message_buffer, confidence=confidence, is_final=is_final
-                    )
+                    Transcription(message=message_buffer, confidence=confidence, is_final=is_final)
                 )
                 if is_final:
                     message_buffer = ""

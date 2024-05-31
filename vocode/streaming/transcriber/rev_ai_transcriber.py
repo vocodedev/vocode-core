@@ -1,22 +1,19 @@
 import asyncio
 import json
-import logging
-from typing import Optional
-import websockets
-from websockets.client import WebSocketClientProtocol
-from vocode import getenv
 import time
+from typing import Optional
 
-from vocode.streaming.transcriber.base_transcriber import (
-    BaseAsyncTranscriber,
-    Transcription,
-)
+import websockets
+from loguru import logger
+from websockets.client import WebSocketClientProtocol
+
+from vocode import getenv
 from vocode.streaming.models.transcriber import (
     RevAITranscriberConfig,
-    EndpointingType,
     TimeEndpointingConfig,
+    Transcription,
 )
-
+from vocode.streaming.transcriber.base_transcriber import BaseAsyncTranscriber
 
 NUM_RESTARTS = 5
 
@@ -30,7 +27,6 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
         self,
         transcriber_config: RevAITranscriberConfig,
         api_key: Optional[str] = None,
-        logger: Optional[logging.Logger] = None,
     ):
         super().__init__(transcriber_config)
         self.api_key = api_key or getenv("REV_AI_API_KEY")
@@ -40,7 +36,6 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
             )
         self.closed = False
         self.is_ready = True
-        self.logger = logger or logging.getLogger(__name__)
         self.last_signal_seconds = 0
 
     async def ready(self):
@@ -53,7 +48,9 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
         audio_format = "S16LE"
         channels = 1
 
-        content_type = f"{codec};layout={layout};rate={rate};format={audio_format};channels={channels}"
+        content_type = (
+            f"{codec};layout={layout};rate={rate};format={audio_format};channels={channels}"
+        )
 
         url_params_dict = {
             "access_token": self.api_key,
@@ -61,7 +58,7 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
         }
 
         url_params_arr = [f"{key}={value}" for (key, value) in url_params_dict.items()]
-        url = f"wss://api.rev.ai/speechtotext/v1/stream?" + "&".join(url_params_arr)
+        url = "wss://api.rev.ai/speechtotext/v1/stream?" + "&".join(url_params_arr)
         return url
 
     async def _run_loop(self):
@@ -69,9 +66,7 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
         while not self.closed and restarts < NUM_RESTARTS:
             await self.process()
             restarts += 1
-            self.logger.debug(
-                "Rev AI connection died, restarting, num_restarts: %s", restarts
-            )
+            logger.debug(f"Rev AI connection died, restarting, num_restarts: {restarts}")
 
     async def process(self):
         async with websockets.connect(self.get_rev_ai_url()) as ws:
@@ -84,7 +79,7 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
                         break
                     await ws.send(data)
                 await ws.close()
-                self.logger.debug("Terminating Rev.AI transcriber sender")
+                logger.debug("Terminating Rev.AI transcriber sender")
 
             async def receiver(ws: WebSocketClientProtocol):
                 buffer = ""
@@ -93,7 +88,7 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
                     try:
                         msg = await ws.recv()
                     except Exception as e:
-                        self.logger.debug(f"Got error {e} in Rev.AI receiver")
+                        logger.debug(f"Got error {e} in Rev.AI receiver")
                         break
                     data = json.loads(msg)
 
@@ -124,9 +119,7 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
                     confidence = 1.0
                     if is_done:
                         self.output_queue.put_nowait(
-                            Transcription(
-                                message=buffer, confidence=confidence, is_final=True
-                            )
+                            Transcription(message=buffer, confidence=confidence, is_final=True)
                         )
                         buffer = ""
                     else:
@@ -138,7 +131,7 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
                             )
                         )
 
-                self.logger.debug("Terminating Rev.AI transcriber receiver")
+                logger.debug("Terminating Rev.AI transcriber receiver")
 
             await asyncio.gather(sender(ws), receiver(ws))
 

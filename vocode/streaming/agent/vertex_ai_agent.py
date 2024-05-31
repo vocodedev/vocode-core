@@ -1,28 +1,24 @@
-from concurrent.futures import ThreadPoolExecutor
 import asyncio
-import logging
-from typing import Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor
+from typing import Tuple
+
 from langchain import ConversationChain
+from langchain.memory import ConversationBufferMemory
+from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
+from langchain.schema import SystemMessage
+from langchain_community.chat_models import ChatVertexAI
+from loguru import logger
+
 from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.agent import ChatVertexAIAgentConfig
-from langchain_community.chat_models import ChatVertexAI
-from langchain.prompts import (
-    ChatPromptTemplate,
-    MessagesPlaceholder,
-    HumanMessagePromptTemplate,
-)
-
-from langchain.schema import HumanMessage, SystemMessage, AIMessage
-from langchain.memory import ConversationBufferMemory
 
 
 class ChatVertexAIAgent(RespondAgent[ChatVertexAIAgentConfig]):
     def __init__(
         self,
         agent_config: ChatVertexAIAgentConfig,
-        logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(agent_config=agent_config, logger=logger)
+        super().__init__(agent_config=agent_config)
 
         self.prompt = ChatPromptTemplate.from_messages(
             [
@@ -38,9 +34,7 @@ class ChatVertexAIAgent(RespondAgent[ChatVertexAIAgentConfig]):
             SystemMessage(content=self.agent_config.prompt_preamble)
         )
 
-        self.conversation = ConversationChain(
-            memory=self.memory, prompt=self.prompt, llm=self.llm
-        )
+        self.conversation = ConversationChain(memory=self.memory, prompt=self.prompt, llm=self.llm)
         if agent_config.initial_message:
             raise NotImplementedError("initial_message not supported for Vertex AI")
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
@@ -58,5 +52,5 @@ class ChatVertexAIAgent(RespondAgent[ChatVertexAIAgentConfig]):
             human_input,
         )
 
-        self.logger.debug(f"LLM response: {text}")
+        logger.debug(f"LLM response: {text}")
         return text, False

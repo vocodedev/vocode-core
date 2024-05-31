@@ -1,30 +1,29 @@
-from concurrent.futures import ThreadPoolExecutor
 import asyncio
-import logging
-from typing import AsyncGenerator, Optional, Tuple, Any, Union
 import typing
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, AsyncGenerator, Optional, Tuple, Union
+
 from langchain import ConversationChain
-from vocode.streaming.agent.base_agent import RespondAgent
-from vocode.streaming.models.agent import LlamacppAgentConfig
-from vocode.streaming.agent.utils import collate_response_async
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.callbacks.manager import CallbackManager
 from langchain.llms import LlamaCpp
-from langchain.prompts import (
-    ChatPromptTemplate,
-    MessagesPlaceholder,
-    HumanMessagePromptTemplate,
-)
-from pydantic.v1 import BaseModel
-from langchain.schema import LLMResult, SystemMessage, get_buffer_string
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import (
     ChatPromptTemplate,
-    MessagesPlaceholder,
     HumanMessagePromptTemplate,
+    MessagesPlaceholder,
     PromptTemplate,
 )
+from langchain.schema import LLMResult, SystemMessage, get_buffer_string
 from langchain_core.prompts.string import DEFAULT_FORMATTER_MAPPING
+from loguru import logger
+from pydantic.v1 import BaseModel
+
+from vocode.streaming.agent.base_agent import RespondAgent
+from vocode.streaming.agent.streaming_utils import collate_response_async
+from vocode.streaming.models.agent import LlamacppAgentConfig
+
+raise DeprecationWarning("This Agent is deprecated and will be removed in the future.")
 
 ALPACA_TEMPLATE_WITH_HISTORY = """### Instruction:
 Your previous conversation history:
@@ -65,9 +64,8 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
     def __init__(
         self,
         agent_config: LlamacppAgentConfig,
-        logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(agent_config=agent_config, logger=logger)
+        super().__init__(agent_config=agent_config)
 
         self.prompt: Union[PromptTemplate, ChatPromptTemplate]
         if type(agent_config.prompt_template) is str:
@@ -77,9 +75,7 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
                     template=ALPACA_TEMPLATE_WITH_HISTORY,
                 )
             else:
-                raise ValueError(
-                    f"Unknown prompt template {agent_config.prompt_template}"
-                )
+                raise ValueError(f"Unknown prompt template {agent_config.prompt_template}")
         else:
             if agent_config.prompt_template is None:
                 self.prompt = ChatPromptTemplate.from_messages(
@@ -94,18 +90,14 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
         self.callback_queue: asyncio.Queue = asyncio.Queue()
         callback = CustomStreamingCallbackHandler(self.callback_queue)
         callback_manager = CallbackManager([callback])
-        self.llm = LlamaCpp(
-            callback_manager=callback_manager, **agent_config.llamacpp_kwargs
-        )
+        self.llm = LlamaCpp(callback_manager=callback_manager, **agent_config.llamacpp_kwargs)
 
         self.memory = ConversationBufferMemory(return_messages=True)
         self.memory.chat_memory.messages.append(
             SystemMessage(content=self.agent_config.prompt_preamble)
         )
 
-        self.conversation = ConversationChain(
-            memory=self.memory, prompt=self.prompt, llm=self.llm
-        )
+        self.conversation = ConversationChain(memory=self.memory, prompt=self.prompt, llm=self.llm)
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
     async def respond(
@@ -120,7 +112,7 @@ class LlamacppAgent(RespondAgent[LlamacppAgentConfig]):
             human_input,
         )
 
-        self.logger.debug(f"LLM response: {text}")
+        logger.debug(f"LLM response: {text}")
         return text, False
 
     async def llamacpp_get_tokens(self):

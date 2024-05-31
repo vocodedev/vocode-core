@@ -1,12 +1,12 @@
-import logging
-from typing import Iterable, List, Optional, Tuple
 import uuid
+from typing import Iterable, List, Optional, Tuple
+
 from langchain.docstore.document import Document
+from loguru import logger
+
 from vocode import getenv
 from vocode.streaming.models.vector_db import PineconeConfig
 from vocode.streaming.vector_db.base_vector_db import VectorDB
-
-logger = logging.getLogger(__name__)
 
 
 class PineconeDB(VectorDB):
@@ -16,12 +16,8 @@ class PineconeDB(VectorDB):
 
         self.index_name = self.config.index
         self.pinecone_api_key = getenv("PINECONE_API_KEY") or self.config.api_key
-        self.pinecone_environment = (
-            getenv("PINECONE_ENVIRONMENT") or self.config.api_environment
-        )
-        self.pinecone_url = (
-            f"https://{self.index_name}.svc.{self.pinecone_environment}.pinecone.io"
-        )
+        self.pinecone_environment = getenv("PINECONE_ENVIRONMENT") or self.config.api_environment
+        self.pinecone_url = f"https://{self.index_name}.svc.{self.pinecone_environment}.pinecone.io"
         self._text_key = "text"
 
     async def add_texts(
@@ -109,7 +105,5 @@ class PineconeDB(VectorDB):
                 score = res["score"]
                 docs.append((Document(page_content=text, metadata=metadata), score))
             else:
-                logger.warning(
-                    f"Found document with no `{self._text_key}` key. Skipping."
-                )
+                logger.warning(f"Found document with no `{self._text_key}` key. Skipping.")
         return docs

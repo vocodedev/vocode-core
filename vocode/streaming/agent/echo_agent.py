@@ -1,6 +1,8 @@
-from typing import AsyncGenerator, Generator, Optional, Tuple
-from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
+from typing import AsyncGenerator, Tuple
+
+from vocode.streaming.agent.base_agent import GeneratedResponse, RespondAgent
 from vocode.streaming.models.agent import EchoAgentConfig
+from vocode.streaming.models.message import BaseMessage
 
 
 class EchoAgent(RespondAgent[EchoAgentConfig]):
@@ -17,8 +19,9 @@ class EchoAgent(RespondAgent[EchoAgentConfig]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[Tuple[str, bool], None]:
-        yield human_input, True
+        bot_was_in_medias_res: bool = False,
+    ) -> AsyncGenerator[GeneratedResponse, None]:
+        yield GeneratedResponse(message=BaseMessage(text=human_input), is_interruptible=True)
 
     def update_last_bot_message_on_cut_off(self, message: str):
         pass

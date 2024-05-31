@@ -1,12 +1,15 @@
 from typing import Any, List, Tuple
-from pydantic.v1 import BaseModel as PydanticBaseModel
+
+from pydantic.v1 import BaseModel as Pydantic1BaseModel
 
 
-class BaseModel(PydanticBaseModel):
+class BaseModel(Pydantic1BaseModel):
     def __init__(self, **data):
         for key, value in data.items():
             if isinstance(value, dict):
-                if "type" in value:
+                if (
+                    "type" in value and key != "action_trigger"
+                ):  # TODO: this is a quick workaround until we get a vocode object version of action trigger (ajay has approved it)
                     data[key] = TypedModel.parse_obj(value)
             if isinstance(value, list):
                 for i, v in enumerate(value):
@@ -16,11 +19,11 @@ class BaseModel(PydanticBaseModel):
         super().__init__(**data)
 
 
-# Adapted from https://github.com/pydantic.v1/pydantic.v1/discussions/3091
+# Adapted from https://github.com/pydantic/pydantic/discussions/3091
 class TypedModel(BaseModel):
     _subtypes_: List[Tuple[Any, Any]] = []
 
-    def __init_subclass__(cls, type=None):
+    def __init_subclass__(cls, type=None):  # type: ignore
         cls._subtypes_.append((type, cls))
 
     @classmethod

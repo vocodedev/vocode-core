@@ -1,6 +1,7 @@
 from typing import Optional
-import sounddevice as sd
+
 import numpy as np
+import sounddevice as sd
 from pydub import AudioSegment
 
 from vocode.turn_based.output_device.base_output_device import BaseOutputDevice

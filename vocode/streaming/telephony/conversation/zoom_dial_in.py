@@ -1,12 +1,10 @@
-import logging
 from typing import Optional
+
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.models.telephony import TwilioConfig
 from vocode.streaming.models.transcriber import TranscriberConfig
-from vocode.streaming.telephony.config_manager.base_config_manager import (
-    BaseConfigManager,
-)
+from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
 from vocode.streaming.telephony.conversation.outbound_call import OutboundCall
 
 
@@ -20,11 +18,10 @@ class ZoomDialIn(OutboundCall):
         from_phone: str,
         config_manager: BaseConfigManager,
         agent_config: AgentConfig,
+        twilio_config: TwilioConfig,
         transcriber_config: Optional[TranscriberConfig] = None,
         synthesizer_config: Optional[SynthesizerConfig] = None,
-        twilio_config: Optional[TwilioConfig] = None,
         conversation_id: Optional[str] = None,
-        logger: Optional[logging.Logger] = None,
     ):
         digits = f"wwww{zoom_meeting_id}#"
         if zoom_meeting_password:
@@ -38,10 +35,8 @@ class ZoomDialIn(OutboundCall):
             transcriber_config=transcriber_config,
             agent_config=agent_config,
             synthesizer_config=synthesizer_config,
-            twilio_config=twilio_config,
+            telephony_config=twilio_config,
             conversation_id=conversation_id,
-            logger=logger,
-            mobile_only=False,
             digits=digits,
         )
 

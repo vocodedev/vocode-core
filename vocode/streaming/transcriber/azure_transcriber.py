@@ -1,31 +1,28 @@
-import logging
 import queue
+from datetime import datetime, timezone
 from typing import Optional
 
+import sentry_sdk
 from azure.cognitiveservices.speech.audio import (
-    PushAudioInputStream,
     AudioStreamFormat,
     AudioStreamWaveFormat,
+    PushAudioInputStream,
 )
+from loguru import logger
 
 from vocode import getenv
-
-from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.transcriber.base_transcriber import (
-    BaseThreadAsyncTranscriber,
-    Transcription,
-)
-from vocode.streaming.models.transcriber import AzureTranscriberConfig
+from vocode.streaming.models.audio import AudioEncoding
+from vocode.streaming.models.transcriber import AzureTranscriberConfig, Transcription
+from vocode.streaming.transcriber.base_transcriber import BaseThreadAsyncTranscriber
+from vocode.utils.sentry_utils import CustomSentrySpans, sentry_create_span
 
 
 class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
     def __init__(
         self,
         transcriber_config: AzureTranscriberConfig,
-        logger: Optional[logging.Logger] = None,
     ):
         super().__init__(transcriber_config)
-        self.logger = logger
 
         format = None
         if self.transcriber_config.audio_encoding == AudioEncoding.LINEAR16:
@@ -67,9 +64,7 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
                 )
             )
 
-            speech_params["auto_detect_source_language_config"] = (
-                auto_detect_source_language_config
-            )
+            speech_params["auto_detect_source_language_config"] = auto_detect_source_language_config
         else:
             speech_params["language"] = self.transcriber_config.language
 
@@ -79,6 +74,12 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
         self.is_ready = False
 
     def recognized_sentence_final(self, evt):
+
+        sentry_create_span(
+            sentry_callable=sentry_sdk.start_span,
+            op=CustomSentrySpans.LATENCY_OF_CONVERSATION,
+            start_timestamp=datetime.now(tz=timezone.utc),
+        )
         self.output_janus_queue.sync_q.put_nowait(
             Transcription(message=evt.result.text, confidence=1.0, is_final=True)
         )
@@ -92,21 +93,19 @@ class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):
         stream = self.generator()
 
         def stop_cb(evt):
-            self.logger.debug("CLOSING on {}".format(evt))
+            logger.debug("CLOSING on {}".format(evt))
             self.speech.stop_continuous_recognition()
             self._ended = True
 
         self.speech.recognizing.connect(lambda x: self.recognized_sentence_stream(x))
         self.speech.recognized.connect(lambda x: self.recognized_sentence_final(x))
         self.speech.session_started.connect(
-            lambda evt: self.logger.debug("SESSION STARTED: {}".format(evt))
+            lambda evt: logger.debug("SESSION STARTED: {}".format(evt))
         )
         self.speech.session_stopped.connect(
-            lambda evt: self.logger.debug("SESSION STOPPED {}".format(evt))
+            lambda evt: logger.debug("SESSION STOPPED {}".format(evt))
         )
-        self.speech.canceled.connect(
-            lambda evt: self.logger.debug("CANCELED {}".format(evt))
-        )
+        self.speech.canceled.connect(lambda evt: logger.debug("CANCELED {}".format(evt)))
 
         self.speech.session_stopped.connect(stop_cb)
         self.speech.canceled.connect(stop_cb)

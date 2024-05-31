@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Optional
+
 from .model import TypedModel
 
 DEFAULT_EMBEDDINGS_MODEL = "text-embedding-ada-002"
@@ -10,12 +11,12 @@ class VectorDBType(str, Enum):
     PINECONE = "vector_db_pinecone"
 
 
-class VectorDBConfig(TypedModel, type=VectorDBType.BASE.value):
+class VectorDBConfig(TypedModel, type=VectorDBType.BASE.value):  # type: ignore
     embeddings_model: str = DEFAULT_EMBEDDINGS_MODEL
 
 
-class PineconeConfig(VectorDBConfig, type=VectorDBType.PINECONE.value):
+class PineconeConfig(VectorDBConfig, type=VectorDBType.PINECONE.value):  # type: ignore
     index: str
-    api_key: Optional[str] = None
-    api_environment: Optional[str] = None
+    api_key: Optional[str]
+    api_environment: Optional[str]
     top_k: int = 3

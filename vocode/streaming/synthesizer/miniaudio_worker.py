@@ -1,14 +1,16 @@
 from __future__ import annotations
-import queue
 
-from typing import Optional, Tuple, Union
 import asyncio
+import queue
+from typing import Tuple, Union
+
 import miniaudio
+from loguru import logger
 
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.utils import convert_wav
 from vocode.streaming.utils.mp3_helper import decode_mp3
-from vocode.streaming.utils.worker import ThreadAsyncWorker, logger
+from vocode.streaming.utils.worker import ThreadAsyncWorker
 
 
 class MiniaudioWorker(ThreadAsyncWorker[Union[bytes, None]]):
@@ -41,9 +43,7 @@ class MiniaudioWorker(ThreadAsyncWorker[Union[bytes, None]]):
             if mp3_chunk is None:
                 current_mp3_buffer.clear()
                 current_wav_buffer.clear()
-                self.output_janus_queue.sync_q.put(
-                    (bytes(current_wav_output_buffer), True)
-                )
+                self.output_janus_queue.sync_q.put((bytes(current_wav_output_buffer), True))
                 current_wav_output_buffer.clear()
                 continue
             try:

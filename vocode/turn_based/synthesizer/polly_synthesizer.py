@@ -1,8 +1,9 @@
 import io
-from pydub import AudioSegment
-from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 import boto3
+from pydub import AudioSegment
+
+from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 DEFAULT_SAMPLING_RATE = 16000
 DEFAULT_LANGUAGE_CODE = "en-US"

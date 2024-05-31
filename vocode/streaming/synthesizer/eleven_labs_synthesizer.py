@@ -1,72 +1,83 @@
 import asyncio
-import logging
-import time
-from typing import Any, AsyncGenerator, Optional, Tuple, Union
-import wave
-import aiohttp
-from opentelemetry.trace import Span
+import hashlib
+from typing import Optional
 
-from vocode import getenv
-from vocode.streaming.synthesizer.base_synthesizer import (
-    BaseSynthesizer,
-    SynthesisResult,
-    encode_as_wav,
-    tracer,
-)
-from vocode.streaming.models.synthesizer import (
-    ElevenLabsSynthesizerConfig,
-    SynthesizerType,
-)
-from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
+from elevenlabs import Voice, VoiceSettings
+from elevenlabs.client import AsyncElevenLabs
+from loguru import logger
+
+from vocode.streaming.models.audio import AudioEncoding, SamplingRate
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.utils.mp3_helper import decode_mp3
-from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
+from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
 
-
-ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
+STREAMED_CHUNK_SIZE = 16000 * 2 // 4  # 1/8 of a second of 16kHz audio with 16-bit samples
 
 
 class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: ElevenLabsSynthesizerConfig,
-        logger: Optional[logging.Logger] = None,
-        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config, aiohttp_session)
+        super().__init__(synthesizer_config)
 
-        import elevenlabs
+        assert synthesizer_config.api_key is not None, "API key must be set"
+        assert synthesizer_config.voice_id is not None, "Voice ID must be set"
+        self.api_key = synthesizer_config.api_key
 
-        self.elevenlabs = elevenlabs
+        self.elevenlabs_client = AsyncElevenLabs(
+            api_key=self.api_key,
+        )
 
-        self.api_key = synthesizer_config.api_key or getenv("ELEVEN_LABS_API_KEY")
-        self.voice_id = synthesizer_config.voice_id or ADAM_VOICE_ID
+        self.voice_id = synthesizer_config.voice_id
         self.stability = synthesizer_config.stability
         self.similarity_boost = synthesizer_config.similarity_boost
         self.model_id = synthesizer_config.model_id
         self.optimize_streaming_latency = synthesizer_config.optimize_streaming_latency
         self.words_per_minute = 150
-        self.experimental_streaming = synthesizer_config.experimental_streaming
 
-    async def create_speech(
+        if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
+            match self.synthesizer_config.sampling_rate:
+                case SamplingRate.RATE_16000:
+                    self.output_format = "pcm_16000"
+                case SamplingRate.RATE_22050:
+                    self.output_format = "pcm_22050"
+                case SamplingRate.RATE_24000:
+                    self.output_format = "pcm_24000"
+                case SamplingRate.RATE_44100:
+                    self.output_format = "pcm_44100"
+                case _:
+                    raise ValueError(
+                        f"Unsupported sampling rate: {self.synthesizer_config.sampling_rate}. Elevenlabs only supports 16000, 22050, 24000, and 44100 Hz."
+                    )
+        elif self.synthesizer_config.audio_encoding == AudioEncoding.MULAW:
+            self.output_format = "ulaw_8000"
+        else:
+            raise ValueError(
+                f"Unsupported audio encoding: {self.synthesizer_config.audio_encoding}"
+            )
+
+    async def create_speech_uncached(
         self,
         message: BaseMessage,
         chunk_size: int,
-        bot_sentiment: Optional[BotSentiment] = None,
+        is_first_text_chunk: bool = False,
+        is_sole_text_chunk: bool = False,
     ) -> SynthesisResult:
-        voice = self.elevenlabs.Voice(voice_id=self.voice_id)
+        self.total_chars += len(message.text)
+        voice = Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
-            voice.settings = self.elevenlabs.VoiceSettings(
+            voice.settings = VoiceSettings(
                 stability=self.stability, similarity_boost=self.similarity_boost
             )
-        url = ELEVEN_LABS_BASE_URL + f"text-to-speech/{self.voice_id}"
-
-        if self.experimental_streaming:
-            url += "/stream"
-
+        url = (
+            ELEVEN_LABS_BASE_URL
+            + f"text-to-speech/{self.voice_id}/stream?output_format={self.output_format}"
+        )
         if self.optimize_streaming_latency:
-            url += f"?optimize_streaming_latency={self.optimize_streaming_latency}"
+            url += f"&optimize_streaming_latency={self.optimize_streaming_latency}"
         headers = {"xi-api-key": self.api_key}
         body = {
             "text": message.text,
@@ -75,44 +86,59 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
         if self.model_id:
             body["model_id"] = self.model_id
 
-        create_speech_span = tracer.start_span(
-            f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.create_total",
+        chunk_queue: asyncio.Queue[Optional[bytes]] = asyncio.Queue()
+        asyncio_create_task_with_done_error_log(
+            self.get_chunks(url, headers, body, chunk_size, chunk_queue),
         )
 
-        session = self.aiohttp_session
-
-        response = await session.request(
-            "POST",
-            url,
-            json=body,
-            headers=headers,
-            timeout=aiohttp.ClientTimeout(total=15),
+        return SynthesisResult(
+            self.chunk_result_generator_from_queue(chunk_queue),
+            lambda seconds: self.get_message_cutoff_from_voice_speed(message, seconds, 150),
         )
-        if not response.ok:
-            raise Exception(f"ElevenLabs API returned {response.status} status code")
-        if self.experimental_streaming:
-            return SynthesisResult(
-                self.experimental_mp3_streaming_output_generator(
-                    response, chunk_size, create_speech_span
-                ),  # should be wav
-                lambda seconds: self.get_message_cutoff_from_voice_speed(
-                    message, seconds, self.words_per_minute
+
+    @classmethod
+    def get_voice_identifier(cls, synthesizer_config: ElevenLabsSynthesizerConfig):
+        hashed_api_key = hashlib.sha256(f"{synthesizer_config.api_key}".encode("utf-8")).hexdigest()
+        return ":".join(
+            (
+                "eleven_labs",
+                hashed_api_key,
+                str(synthesizer_config.voice_id),
+                str(synthesizer_config.model_id),
+                str(synthesizer_config.stability),
+                str(synthesizer_config.similarity_boost),
+                str(synthesizer_config.optimize_streaming_latency),
+                synthesizer_config.audio_encoding,
+            )
+        )
+
+    async def get_chunks(
+        self,
+        url: str,
+        headers: dict,
+        body: dict,
+        chunk_size: int,
+        chunk_queue: asyncio.Queue[Optional[bytes]],
+    ):
+        try:
+            async_client = self.async_requestor.get_client()
+            stream = await async_client.send(
+                async_client.build_request(
+                    "POST",
+                    url,
+                    headers=headers,
+                    json=body,
                 ),
+                stream=True,
             )
-        else:
-            audio_data = await response.read()
-            create_speech_span.end()
-            convert_span = tracer.start_span(
-                f"synthesizer.{SynthesizerType.ELEVEN_LABS.value.split('_', 1)[-1]}.convert",
-            )
-            output_bytes_io = decode_mp3(audio_data)
 
-            result = self.create_synthesis_result_from_wav(
-                synthesizer_config=self.synthesizer_config,
-                file=output_bytes_io,
-                message=message,
-                chunk_size=chunk_size,
-            )
-            convert_span.end()
-
-            return result
+            if not stream.is_success:
+                error = await stream.aread()
+                logger.error(f"ElevenLabs API failed: {stream.status_code} {error.decode('utf-8')}")
+                raise Exception(f"ElevenLabs API returned {stream.status_code} status code")
+            async for chunk in stream.aiter_bytes(chunk_size):
+                chunk_queue.put_nowait(chunk)
+        except asyncio.CancelledError:
+            pass
+        finally:
+            chunk_queue.put_nowait(None)  # treated as sentinel

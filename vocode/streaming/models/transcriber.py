@@ -3,17 +3,19 @@ from typing import List, Optional
 
 from pydantic.v1 import validator
 
+from .audio import AudioEncoding
+from .model import TypedModel
 from vocode.streaming.input_device.base_input_device import BaseInputDevice
 from vocode.streaming.models.client_backend import InputAudioConfig
+from vocode.streaming.models.model import BaseModel
 from vocode.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_SAMPLING_RATE,
 )
-from .audio_encoding import AudioEncoding
-from .model import TypedModel
 
 AZURE_DEFAULT_LANGUAGE = "en-US"
+DEEPGRAM_API_WS_URL = "wss://api.deepgram.com"
 
 
 class TranscriberType(str, Enum):
@@ -33,21 +35,21 @@ class EndpointingType(str, Enum):
     PUNCTUATION_BASED = "endpointing_punctuation_based"
 
 
-class EndpointingConfig(TypedModel, type=EndpointingType.BASE):
+class EndpointingConfig(TypedModel, type=EndpointingType.BASE):  # type: ignore
     pass
 
 
-class TimeEndpointingConfig(EndpointingConfig, type=EndpointingType.TIME_BASED):
+class TimeEndpointingConfig(EndpointingConfig, type=EndpointingType.TIME_BASED):  # type: ignore
     time_cutoff_seconds: float = 0.4
 
 
 class PunctuationEndpointingConfig(
-    EndpointingConfig, type=EndpointingType.PUNCTUATION_BASED
+    EndpointingConfig, type=EndpointingType.PUNCTUATION_BASED  # type: ignore
 ):
     time_cutoff_seconds: float = 0.4
 
 
-class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
+class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):  # type: ignore
     sampling_rate: int
     audio_encoding: AudioEncoding
     chunk_size: int
@@ -103,30 +105,32 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):
         )
 
 
-class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM.value):
+class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM.value):  # type: ignore
     language: Optional[str] = None
     model: Optional[str] = "nova"
     tier: Optional[str] = None
     version: Optional[str] = None
     keywords: Optional[list] = None
+    on_prem: bool = False
+    ws_url: str = DEEPGRAM_API_WS_URL
 
 
-class GladiaTranscriberConfig(TranscriberConfig, type=TranscriberType.GLADIA.value):
+class GladiaTranscriberConfig(TranscriberConfig, type=TranscriberType.GLADIA.value):  # type: ignore
     buffer_size_seconds: float = 0.1
 
 
-class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.value):
+class GoogleTranscriberConfig(TranscriberConfig, type=TranscriberType.GOOGLE.value):  # type: ignore
     model: Optional[str] = None
     language_code: str = "en-US"
 
 
-class AzureTranscriberConfig(TranscriberConfig, type=TranscriberType.AZURE.value):
+class AzureTranscriberConfig(TranscriberConfig, type=TranscriberType.AZURE.value):  # type: ignore
     language: str = AZURE_DEFAULT_LANGUAGE
     candidate_languages: Optional[List[str]] = None
 
 
 class AssemblyAITranscriberConfig(
-    TranscriberConfig, type=TranscriberType.ASSEMBLY_AI.value
+    TranscriberConfig, type=TranscriberType.ASSEMBLY_AI.value  # type: ignore
 ):
     buffer_size_seconds: float = 0.1
     word_boost: Optional[List[str]] = None
@@ -134,12 +138,40 @@ class AssemblyAITranscriberConfig(
 
 
 class WhisperCPPTranscriberConfig(
-    TranscriberConfig, type=TranscriberType.WHISPER_CPP.value
+    TranscriberConfig, type=TranscriberType.WHISPER_CPP.value  # type: ignore
 ):
     buffer_size_seconds: float = 1
     libname: str
     fname_model: str
 
 
-class RevAITranscriberConfig(TranscriberConfig, type=TranscriberType.REV_AI.value):
+class RevAITranscriberConfig(TranscriberConfig, type=TranscriberType.REV_AI.value):  # type: ignore
     pass
+
+
+class Transcription(BaseModel):
+    message: str
+    confidence: float
+    is_final: bool
+    is_interrupt: bool = False
+    bot_was_in_medias_res: bool = False
+    duration_seconds: Optional[float] = None  # gets added only on final transcription
+
+    def __str__(self):
+        return (
+            f"Transcription(message={self.message}, "
+            + f"confidence={self.confidence}, "
+            + f"is_final={self.is_final}, "
+            + f"is_interrupt={self.is_interrupt}, "
+            + f"bot_was_in_medias_res={self.bot_was_in_medias_res}, "
+            + f"duration_seconds={self.duration_seconds}, "
+            + f"wpm={self.wpm()}"
+            + ")"
+        )
+
+    def wpm(self) -> Optional[float]:
+        return (
+            60 * len(self.message.split()) / self.duration_seconds
+            if self.duration_seconds
+            else None
+        )

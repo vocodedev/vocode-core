@@ -1,9 +1,10 @@
 import io
 from typing import Optional
-from pydub import AudioSegment
-from vocode import getenv
-import numpy
 
+import numpy
+from pydub import AudioSegment
+
+from vocode import getenv
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 

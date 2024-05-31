@@ -1,9 +1,9 @@
 import io
+
 import requests
-from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
-
-
 from pydub import AudioSegment
+
+from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 
 class StreamElementsSynthesizer(BaseSynthesizer):

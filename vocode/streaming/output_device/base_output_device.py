@@ -1,4 +1,4 @@
-from vocode.streaming.models.audio_encoding import AudioEncoding
+from vocode.streaming.models.audio import AudioEncoding
 
 
 class BaseOutputDevice:
@@ -11,9 +11,6 @@ class BaseOutputDevice:
 
     def consume_nonblocking(self, chunk: bytes):
         raise NotImplemented
-
-    def maybe_send_mark_nonblocking(self, message):
-        pass
 
     def terminate(self):
         pass

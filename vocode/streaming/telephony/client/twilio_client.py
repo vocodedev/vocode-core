@@ -1,25 +1,34 @@
-from typing import Optional
-from twilio.rest import Client
+import os
+from typing import Dict, Optional
 
-from vocode.streaming.models.telephony import BaseCallConfig, TwilioConfig
-from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
-from vocode.streaming.telephony.templater import Templater
+import aiohttp
+from loguru import logger
+
+from vocode.streaming.models.telephony import TwilioConfig
+from vocode.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
+from vocode.streaming.telephony.templater import get_connection_twiml
+from vocode.streaming.utils.async_requester import AsyncRequestor
 
 
-class TwilioClient(BaseTelephonyClient):
-    def __init__(self, base_url: str, twilio_config: TwilioConfig):
-        super().__init__(base_url)
-        self.twilio_config = twilio_config
-        # TODO: this is blocking
-        self.twilio_client = Client(twilio_config.account_sid, twilio_config.auth_token)
-        try:
-            # Test credentials
-            self.twilio_client.api.accounts(twilio_config.account_sid).fetch()
-        except Exception as e:
-            raise RuntimeError(
-                "Could not create Twilio client. Invalid credentials"
-            ) from e
-        self.templater = Templater()
+class TwilioBadRequestException(ValueError):
+    pass
+
+
+class TwilioClient(AbstractTelephonyClient):
+    def __init__(
+        self,
+        base_url: str,
+        maybe_twilio_config: Optional[TwilioConfig] = None,
+    ):
+        self.twilio_config = maybe_twilio_config or TwilioConfig(
+            account_sid=os.environ["TWILIO_ACCOUNT_SID"],
+            auth_token=os.environ["TWILIO_AUTH_TOKEN"],
+        )
+        self.auth = aiohttp.BasicAuth(
+            login=self.twilio_config.account_sid,
+            password=self.twilio_config.auth_token,
+        )
+        super().__init__(base_url=base_url)
 
     def get_telephony_config(self):
         return self.twilio_config
@@ -29,48 +38,49 @@ class TwilioClient(BaseTelephonyClient):
         conversation_id: str,
         to_phone: str,
         from_phone: str,
-        record: bool = False,
-        digits: Optional[str] = None,
+        record: bool = False,  # currently no-op
+        digits: Optional[str] = None,  # currently no-op
+        telephony_params: Optional[Dict[str, str]] = None,
     ) -> str:
-        # TODO: Make this async. This is blocking.
-        twiml = self.get_connection_twiml(conversation_id=conversation_id)
-        twilio_call = self.twilio_client.calls.create(
-            twiml=twiml.body.decode("utf-8"),
-            to=to_phone,
-            from_=from_phone,
-            send_digits=digits,
-            record=record,
-            **self.get_telephony_config().extra_params,
-        )
-        return twilio_call.sid
+        data = {
+            "Twiml": self.get_connection_twiml(conversation_id=conversation_id).body.decode(
+                "utf-8"
+            ),
+            "To": f"+{to_phone}",
+            "From": f"+{from_phone}",
+            **(telephony_params or {}),
+        }
+        if digits:
+            data["SendDigits"] = digits
+        async with AsyncRequestor().get_session().post(
+            f"https://api.twilio.com/2010-04-01/Accounts/{self.twilio_config.account_sid}/Calls.json",
+            auth=self.auth,
+            data=data,
+        ) as response:
+            if not response.ok:
+                if response.status == 400:
+                    logger.error(
+                        f"Failed to create call: {response.status} {response.reason} {await response.json()}"
+                    )
+                    raise TwilioBadRequestException(
+                        "Telephony provider rejected call; this is usually due to a bad/malformed number. "
+                        "If this persists, and you're sure that the number is well-formed, "
+                        "please contact us."
+                    )
+                raise RuntimeError(f"Failed to create call: {response.status} {response.reason}")
+            response = await response.json()
+            return response["sid"]
 
     def get_connection_twiml(self, conversation_id: str):
-        return self.templater.get_connection_twiml(
-            base_url=self.base_url, call_id=conversation_id
-        )
+        return get_connection_twiml(call_id=conversation_id, base_url=self.base_url)
 
     async def end_call(self, twilio_sid):
-        # TODO: Make this async. This is blocking.
-        response = self.twilio_client.calls(twilio_sid).update(status="completed")
-        return response.status == "completed"
-
-    def validate_outbound_call(
-        self,
-        to_phone: str,
-        from_phone: str,
-        mobile_only: bool = True,
-    ):
-        if len(to_phone) < 8:
-            raise ValueError("Invalid 'to' phone")
-
-        if not mobile_only:
-            return
-        line_type_intelligence = (
-            self.twilio_client.lookups.v2.phone_numbers(to_phone)
-            .fetch(fields="line_type_intelligence")
-            .line_type_intelligence
-        )
-        if not line_type_intelligence or (
-            line_type_intelligence and line_type_intelligence["type"] != "mobile"
-        ):
-            raise ValueError("Can only call mobile phones")
+        async with AsyncRequestor().get_session().post(
+            f"https://api.twilio.com/2010-04-01/Accounts/{self.twilio_config.account_sid}/Calls/{twilio_sid}.json",
+            auth=self.auth,
+            data={"Status": "completed"},
+        ) as response:
+            if not response.ok:
+                raise RuntimeError(f"Failed to end call: {response.status} {response.reason}")
+            response = await response.json()
+            return response["status"] == "completed"

@@ -1,19 +1,8 @@
-import asyncio
-import logging
-import os
-import time
 import queue
-from typing import Optional
-import threading
-from vocode import getenv
 
-from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.transcriber.base_transcriber import (
-    BaseThreadAsyncTranscriber,
-    Transcription,
-)
-from vocode.streaming.models.transcriber import GoogleTranscriberConfig
-from vocode.streaming.utils import create_loop_in_thread
+from vocode.streaming.models.audio import AudioEncoding
+from vocode.streaming.models.transcriber import GoogleTranscriberConfig, Transcription
+from vocode.streaming.transcriber.base_transcriber import BaseThreadAsyncTranscriber
 
 
 # TODO: make this nonblocking so it can run in the main thread, see speech.async_client.SpeechAsyncClient
@@ -21,12 +10,11 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
     def __init__(
         self,
         transcriber_config: GoogleTranscriberConfig,
-        logger: Optional[logging.Logger] = None,
     ):
         super().__init__(transcriber_config)
 
-        from google.cloud import speech
         import google.auth
+        from google.cloud import speech
 
         google.auth.default()
         self.speech = speech
@@ -64,12 +52,9 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
     def _run_loop(self):
         stream = self.generator()
         requests = (
-            self.speech.StreamingRecognizeRequest(audio_content=content)
-            for content in stream
+            self.speech.StreamingRecognizeRequest(audio_content=content) for content in stream
         )
-        responses = self.client.streaming_recognize(
-            self.google_streaming_config, requests
-        )
+        responses = self.client.streaming_recognize(self.google_streaming_config, requests)
         self.process_responses_loop(responses)
 
     def terminate(self):
@@ -96,9 +81,7 @@ class GoogleTranscriber(BaseThreadAsyncTranscriber[GoogleTranscriberConfig]):
         confidence = top_choice.confidence
 
         self.output_janus_queue.sync_q.put_nowait(
-            Transcription(
-                message=message, confidence=confidence, is_final=result.is_final
-            )
+            Transcription(message=message, confidence=confidence, is_final=result.is_final)
         )
 
     def generator(self):

@@ -1,25 +1,38 @@
-from typing import List, Optional, Union
 from enum import Enum
+from typing import List, Literal, Optional, Union
+
 from langchain.prompts import PromptTemplate
-
 from pydantic.v1 import validator
-from vocode.streaming.models.actions import ActionConfig
 
-from vocode.streaming.models.message import BaseMessage
-from .model import TypedModel, BaseModel
+from .model import BaseModel, TypedModel
 from .vector_db import VectorDBConfig
+from vocode.streaming.models.actions import ActionConfig
+from vocode.streaming.models.message import BaseMessage
 
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
 LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
 LLM_AGENT_DEFAULT_MAX_TOKENS = 256
 LLM_AGENT_DEFAULT_MODEL_NAME = "text-curie-001"
-CHAT_GPT_AGENT_DEFAULT_MODEL_NAME = "gpt-3.5-turbo-0613"
+CHAT_GPT_AGENT_DEFAULT_MODEL_NAME = "gpt-3.5-turbo-1106"
+CHAT_GPT_AGENT_16K_MODEL_NAME = "gpt-3.5-turbo-0613-16k"
 ACTION_AGENT_DEFAULT_MODEL_NAME = "gpt-3.5-turbo-0613"
-CHAT_ANTHROPIC_DEFAULT_MODEL_NAME = "claude-v1"
+CHAT_ANTHROPIC_DEFAULT_MODEL_NAME = "claude-3-haiku-20240307"
 CHAT_VERTEX_AI_DEFAULT_MODEL_NAME = "chat-bison@001"
 AZURE_OPENAI_DEFAULT_API_TYPE = "azure"
-AZURE_OPENAI_DEFAULT_API_VERSION = "2023-03-15-preview"
+AZURE_OPENAI_DEFAULT_API_VERSION = "2023-07-01-preview"
 AZURE_OPENAI_DEFAULT_ENGINE = "gpt-35-turbo"
+AZURE_OPENAI_GPT_35_16K_ENGINE = "gpt-35-turbo-16k"
+AZURE_OPENAI_GPT_4_ENGINE = "vocode-api-gpt4"
+OPENAI_GPT_4_MODEL_NAME = "gpt-4"
+OPENAI_GPT_4_32K_MODEL_NAME = "gpt-4-32k"
+OPENAI_GPT_4_O_MODEL_NAME = "gpt-4o"
+OPENAI_GPT_35_TURBO_1106_MODEL_NAME = "gpt-3.5-turbo-1106"
+OPENAI_GPT_4_1106_PREVIEW_MODEL_NAME = "gpt-4-1106-preview"
+ANTHROPIC_CLAUDE_3_HAIKU_MODEL_NAME = "claude-3-haiku-20240307"
+ANTHROPIC_CLAUDE_3_SONNET_MODEL_NAME = "claude-3-sonnet-20240229"
+ANTHROPIC_CLAUDE_3_OPUS_MODEL_NAME = "claude-3-opus-20240229"
+
+InterruptSensitivity = Literal["low", "high"]
 
 
 class AgentType(str, Enum):
@@ -27,7 +40,7 @@ class AgentType(str, Enum):
     LLM = "agent_llm"
     CHAT_GPT_ALPHA = "agent_chat_gpt_alpha"
     CHAT_GPT = "agent_chat_gpt"
-    CHAT_ANTHROPIC = "agent_chat_anthropic"
+    ANTHROPIC = "agent_anthropic"
     CHAT_VERTEX_AI = "agent_chat_vertex_ai"
     ECHO = "agent_echo"
     GPT4ALL = "agent_gpt4all"
@@ -57,67 +70,77 @@ class WebhookConfig(BaseModel):
 
 
 class AzureOpenAIConfig(BaseModel):
+    base_url: str
+    api_key: str
+    region: str
+    deployment_name: str
+    openai_model_name: str
     api_type: str = AZURE_OPENAI_DEFAULT_API_TYPE
     api_version: Optional[str] = AZURE_OPENAI_DEFAULT_API_VERSION
-    engine: str = AZURE_OPENAI_DEFAULT_ENGINE
-
-
-class AgentConfig(TypedModel, type=AgentType.BASE.value):
-    initial_message: Optional[BaseMessage] = None
-    generate_responses: bool = True
-    allowed_idle_time_seconds: Optional[float] = None
-    allow_agent_to_be_cut_off: bool = True
-    end_conversation_on_goodbye: bool = False
-    send_filler_audio: Union[bool, FillerAudioConfig] = False
-    webhook_config: Optional[WebhookConfig] = None
-    track_bot_sentiment: bool = False
-    actions: Optional[List[ActionConfig]] = None
 
 
 class CutOffResponse(BaseModel):
     messages: List[BaseMessage] = [BaseMessage(text="Sorry?")]
 
 
-class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):
+class AgentConfig(TypedModel, type=AgentType.BASE.value):  # type: ignore
+    initial_message: Optional[BaseMessage] = None
+    generate_responses: bool = True
+    allowed_idle_time_seconds: Optional[float] = None
+    num_check_human_present_times: int = 0
+    allow_agent_to_be_cut_off: bool = True
+    end_conversation_on_goodbye: bool = False
+    send_filler_audio: Union[bool, FillerAudioConfig] = False
+    webhook_config: Optional[WebhookConfig] = None
+    actions: Optional[List[ActionConfig]] = None
+    initial_message_delay: float = 0.0
+    goodbye_phrases: Optional[List[str]] = None
+    interrupt_sensitivity: InterruptSensitivity = "low"
+    cut_off_response: Optional[CutOffResponse] = None
+
+
+class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):  # type: ignore
     prompt_preamble: str
-    expected_first_prompt: Optional[str] = None
     model_name: str = LLM_AGENT_DEFAULT_MODEL_NAME
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
-    cut_off_response: Optional[CutOffResponse] = None
 
 
-class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
+class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):  # type: ignore
+    openai_api_key: Optional[str] = None
     prompt_preamble: str
-    expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
-    cut_off_response: Optional[CutOffResponse] = None
     azure_params: Optional[AzureOpenAIConfig] = None
     vector_db_config: Optional[VectorDBConfig] = None
+    # TODO: the below fields should moved up to AgentConfig, and their logic should live in BaseAgent
+    use_backchannels: bool = False
+    backchannel_probability: float = 0.7
+    first_response_filler_message: Optional[str] = None
 
 
-class ChatAnthropicAgentConfig(AgentConfig, type=AgentType.CHAT_ANTHROPIC.value):
+class AnthropicAgentConfig(AgentConfig, type=AgentType.ANTHROPIC.value):  # type: ignore
     prompt_preamble: str
     model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
-    max_tokens_to_sample: int = 200
+    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
+    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
 
 
-class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):
+class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):  # type: ignore
     prompt_preamble: str
     model_name: str = CHAT_VERTEX_AI_DEFAULT_MODEL_NAME
     generate_responses: bool = False  # Google Vertex AI doesn't support streaming
 
 
-class LlamacppAgentConfig(AgentConfig, type=AgentType.LLAMACPP.value):
+class LlamacppAgentConfig(AgentConfig, type=AgentType.LLAMACPP.value):  # type: ignore
     prompt_preamble: str
     llamacpp_kwargs: dict = {}
     prompt_template: Optional[Union[PromptTemplate, str]] = None
 
 
 class InformationRetrievalAgentConfig(
-    AgentConfig, type=AgentType.INFORMATION_RETRIEVAL.value
+    AgentConfig, type=AgentType.INFORMATION_RETRIEVAL.value  # type: ignore
 ):
     recipient_descriptor: str
     caller_descriptor: str
@@ -126,18 +149,18 @@ class InformationRetrievalAgentConfig(
     # TODO: add fields for IVR, voicemail
 
 
-class EchoAgentConfig(AgentConfig, type=AgentType.ECHO.value):
+class EchoAgentConfig(AgentConfig, type=AgentType.ECHO.value):  # type: ignore
     pass
 
 
-class GPT4AllAgentConfig(AgentConfig, type=AgentType.GPT4ALL.value):
+class GPT4AllAgentConfig(AgentConfig, type=AgentType.GPT4ALL.value):  # type: ignore
     prompt_preamble: str
     model_path: str
     generate_responses: bool = False
 
 
 class RESTfulUserImplementedAgentConfig(
-    AgentConfig, type=AgentType.RESTFUL_USER_IMPLEMENTED.value
+    AgentConfig, type=AgentType.RESTFUL_USER_IMPLEMENTED.value  # type: ignore
 ):
     class EndpointConfig(BaseModel):
         url: str
@@ -159,13 +182,13 @@ class RESTfulAgentOutputType(str, Enum):
     END = "restful_agent_end"
 
 
-class RESTfulAgentOutput(TypedModel, type=RESTfulAgentOutputType.BASE):
+class RESTfulAgentOutput(TypedModel, type=RESTfulAgentOutputType.BASE):  # type: ignore
     pass
 
 
-class RESTfulAgentText(RESTfulAgentOutput, type=RESTfulAgentOutputType.TEXT):
+class RESTfulAgentText(RESTfulAgentOutput, type=RESTfulAgentOutputType.TEXT):  # type: ignore
     response: str
 
 
-class RESTfulAgentEnd(RESTfulAgentOutput, type=RESTfulAgentOutputType.END):
+class RESTfulAgentEnd(RESTfulAgentOutput, type=RESTfulAgentOutputType.END):  # type: ignore
     pass
