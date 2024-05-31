@@ -1,9 +1,10 @@
 from typing import Optional
 from xml.etree import ElementTree
+
 from pydub import AudioSegment
 from regex import D
-from vocode import getenv
 
+from vocode import getenv
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 DEFAULT_SAMPLING_RATE = 22050

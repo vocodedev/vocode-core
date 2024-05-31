@@ -1,32 +1,25 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
-import logging
-from typing import Any, Optional
-import aiohttp
 import json
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
-from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
+import boto3
+
 from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.synthesizer import PollySynthesizerConfig
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
-    tracer,
     encode_as_wav,
 )
-from vocode.streaming.models.synthesizer import PollySynthesizerConfig, SynthesizerType
-from vocode.streaming.utils.mp3_helper import decode_mp3
-
-import boto3
 
 
 class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: PollySynthesizerConfig,
-        logger: Optional[logging.Logger] = None,
-        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config, aiohttp_session)
+        super().__init__(synthesizer_config)
 
         client = boto3.client("polly")
 
@@ -83,11 +76,9 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
         self,
         message: BaseMessage,
         chunk_size: int,
-        bot_sentiment: Optional[BotSentiment] = None,
+        is_first_text_chunk: bool = False,
+        is_sole_text_chunk: bool = False,
     ) -> SynthesisResult:
-        create_speech_span = tracer.start_span(
-            f"synthesizer.{SynthesizerType.POLLY.value.split('_', 1)[-1]}.create_total",
-        )
         audio_response = await asyncio.get_event_loop().run_in_executor(
             self.thread_pool_executor, self.synthesize, message.text
         )
@@ -101,8 +92,6 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
             for v in speech_marks_response.get("AudioStream").read().decode().split()
             if v
         ]
-
-        create_speech_span.end()
 
         async def chunk_generator(audio_data_stream, chunk_transform=lambda x: x):
             audio_buffer = await asyncio.get_event_loop().run_in_executor(

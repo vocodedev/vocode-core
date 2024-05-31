@@ -1,12 +1,9 @@
 from enum import Enum
-from typing import Any, Dict, Optional
-from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.models.model import BaseModel, TypedModel
+from typing import Any, Dict, Literal, Optional, Union
+
 from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.synthesizer import (
-    AzureSynthesizerConfig,
-    SynthesizerConfig,
-)
+from vocode.streaming.models.model import BaseModel, TypedModel
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig, SynthesizerConfig
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
@@ -16,25 +13,28 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_SAMPLING_RATE,
-    VONAGE_CHUNK_SIZE,
     VONAGE_AUDIO_ENCODING,
+    VONAGE_CHUNK_SIZE,
     VONAGE_SAMPLING_RATE,
 )
 
 
-class TwilioConfig(BaseModel):
+class TelephonyProviderConfig(BaseModel):
+    record: bool = False
+
+
+class TwilioConfig(TelephonyProviderConfig):
     account_sid: str
     auth_token: str
-    record: bool = False
     extra_params: Optional[Dict[str, Any]] = {}
+    account_supports_any_caller_id: bool = True
 
 
-class VonageConfig(BaseModel):
+class VonageConfig(TelephonyProviderConfig):
     api_key: str
     api_secret: str
     application_id: str
     private_key: str
-    record: bool = False
 
 
 class CallEntity(BaseModel):
@@ -91,12 +91,19 @@ class CallConfigType(str, Enum):
     VONAGE = "call_config_vonage"
 
 
-class BaseCallConfig(TypedModel, type=CallConfigType.BASE.value):
+PhoneCallDirection = Literal["inbound", "outbound"]
+
+
+class BaseCallConfig(TypedModel, type=CallConfigType.BASE.value):  # type: ignore
     transcriber_config: TranscriberConfig
     agent_config: AgentConfig
     synthesizer_config: SynthesizerConfig
     from_phone: str
     to_phone: str
+    sentry_tags: Dict[str, str] = {}
+    conference: bool = False
+    telephony_params: Optional[Dict[str, str]] = None
+    direction: PhoneCallDirection
 
     @staticmethod
     def default_transcriber_config():
@@ -107,7 +114,7 @@ class BaseCallConfig(TypedModel, type=CallConfigType.BASE.value):
         raise NotImplementedError
 
 
-class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):
+class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):  # type: ignore
     twilio_config: TwilioConfig
     twilio_sid: str
 
@@ -130,7 +137,7 @@ class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):
         )
 
 
-class VonageCallConfig(BaseCallConfig, type=CallConfigType.VONAGE.value):
+class VonageCallConfig(BaseCallConfig, type=CallConfigType.VONAGE.value):  # type: ignore
     vonage_config: VonageConfig
     vonage_uuid: str
     output_to_speaker: bool = False
@@ -152,3 +159,6 @@ class VonageCallConfig(BaseCallConfig, type=CallConfigType.VONAGE.value):
             sampling_rate=VONAGE_SAMPLING_RATE,
             audio_encoding=VONAGE_AUDIO_ENCODING,
         )
+
+
+TelephonyConfig = Union[TwilioConfig, VonageConfig]

@@ -1,6 +1,7 @@
 import ctypes
 import re
 from typing import Tuple
+
 import numpy as np
 from pydub import AudioSegment
 
@@ -9,9 +10,9 @@ def transcribe(whisper, params, ctx, audio_segment: AudioSegment) -> Tuple[str, 
     if len(audio_segment) <= 100:
         return "", 0.0
     normalized = (
-        np.frombuffer(
-            audio_segment.set_frame_rate(16000).raw_data, dtype=np.int16
-        ).astype("float32")
+        np.frombuffer(audio_segment.set_frame_rate(16000).raw_data, dtype=np.int16).astype(
+            "float32"
+        )
         / 32768.0
     )
 
@@ -24,9 +25,7 @@ def transcribe(whisper, params, ctx, audio_segment: AudioSegment) -> Tuple[str, 
     if result != 0:
         print("Error: {}".format(result))
         exit(1)
-    text: str = whisper.whisper_full_get_segment_text(ctypes.c_void_p(ctx), 0).decode(
-        "utf-8"
-    )
+    text: str = whisper.whisper_full_get_segment_text(ctypes.c_void_p(ctx), 0).decode("utf-8")
     # heuristic to filter out non-speech
     if not re.search(r"^\w.*", text.strip()):
         return "", 0.0

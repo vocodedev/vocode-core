@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
-from vocode.streaming.models.agent import AgentConfig, AgentType
 
+from vocode.streaming.models.agent import AgentConfig, AgentType
 from vocode.streaming.models.model import BaseModel, TypedModel
 
 
@@ -11,12 +11,12 @@ class WebSocketAgentMessageType(str, Enum):
     STOP = "websocket_agent_stop"
 
 
-class WebSocketAgentMessage(TypedModel, type=WebSocketAgentMessageType.BASE):
+class WebSocketAgentMessage(TypedModel, type=WebSocketAgentMessageType.BASE):  # type: ignore
     conversation_id: Optional[str] = None
 
 
 class WebSocketAgentTextMessage(
-    WebSocketAgentMessage, type=WebSocketAgentMessageType.TEXT
+    WebSocketAgentMessage, type=WebSocketAgentMessageType.TEXT  # type: ignore
 ):
     class Payload(BaseModel):
         text: str
@@ -29,13 +29,13 @@ class WebSocketAgentTextMessage(
 
 
 class WebSocketAgentStopMessage(
-    WebSocketAgentMessage, type=WebSocketAgentMessageType.STOP
+    WebSocketAgentMessage, type=WebSocketAgentMessageType.STOP  # type: ignore
 ):
     pass
 
 
 class WebSocketUserImplementedAgentConfig(
-    AgentConfig, type=AgentType.WEBSOCKET_USER_IMPLEMENTED.value
+    AgentConfig, type=AgentType.WEBSOCKET_USER_IMPLEMENTED.value  # type: ignore
 ):
     class RouteConfig(BaseModel):
         url: str

@@ -1,31 +1,25 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
-import logging
 import os
 import re
-from typing import Any, List, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Optional
 from xml.etree import ElementTree
-import aiohttp
-from vocode import getenv
-from opentelemetry.context.context import Context
-
-from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
-from vocode.streaming.models.message import BaseMessage, SSMLMessage
-
-from vocode.streaming.synthesizer.base_synthesizer import (
-    BaseSynthesizer,
-    SynthesisResult,
-    FILLER_PHRASES,
-    FILLER_AUDIO_PATH,
-    FillerAudio,
-    encode_as_wav,
-    tracer,
-)
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig, SynthesizerType
-from vocode.streaming.models.audio_encoding import AudioEncoding
 
 import azure.cognitiveservices.speech as speechsdk
+from loguru import logger
 
+from vocode import getenv
+from vocode.streaming.models.audio import AudioEncoding, SamplingRate
+from vocode.streaming.models.message import BaseMessage, SSMLMessage
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.synthesizer.base_synthesizer import (
+    FILLER_AUDIO_PATH,
+    FILLER_PHRASES,
+    BaseSynthesizer,
+    FillerAudio,
+    SynthesisResult,
+    encode_as_wav,
+)
 
 NAMESPACES = {
     "mstts": "https://www.w3.org/2001/mstts",
@@ -34,6 +28,8 @@ NAMESPACES = {
 
 ElementTree.register_namespace("", NAMESPACES[""])
 ElementTree.register_namespace("mstts", NAMESPACES["mstts"])
+
+_AZURE_INSIDE_VOICE_REGEX = r"<voice[^>]*>(.*?)<\/voice>"
 
 
 class WordBoundaryEventPool:
@@ -60,12 +56,10 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: AzureSynthesizerConfig,
-        logger: Optional[logging.Logger] = None,
         azure_speech_key: Optional[str] = None,
         azure_speech_region: Optional[str] = None,
-        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config, aiohttp_session)
+        super().__init__(synthesizer_config)
         # Instantiates a client
         azure_speech_key = azure_speech_key or getenv("AZURE_SPEECH_KEY")
         azure_speech_region = azure_speech_region or getenv("AZURE_SPEECH_REGION")
@@ -81,23 +75,23 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             subscription=azure_speech_key, region=azure_speech_region
         )
         if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
-            if self.synthesizer_config.sampling_rate == 44100:
+            if self.synthesizer_config.sampling_rate == SamplingRate.RATE_44100:
                 speech_config.set_speech_synthesis_output_format(
                     speechsdk.SpeechSynthesisOutputFormat.Raw44100Hz16BitMonoPcm
                 )
-            if self.synthesizer_config.sampling_rate == 48000:
+            if self.synthesizer_config.sampling_rate == SamplingRate.RATE_48000:
                 speech_config.set_speech_synthesis_output_format(
                     speechsdk.SpeechSynthesisOutputFormat.Raw48Khz16BitMonoPcm
                 )
-            if self.synthesizer_config.sampling_rate == 24000:
+            if self.synthesizer_config.sampling_rate == SamplingRate.RATE_24000:
                 speech_config.set_speech_synthesis_output_format(
                     speechsdk.SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm
                 )
-            elif self.synthesizer_config.sampling_rate == 16000:
+            elif self.synthesizer_config.sampling_rate == SamplingRate.RATE_16000:
                 speech_config.set_speech_synthesis_output_format(
                     speechsdk.SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm
                 )
-            elif self.synthesizer_config.sampling_rate == 8000:
+            elif self.synthesizer_config.sampling_rate == SamplingRate.RATE_8000:
                 speech_config.set_speech_synthesis_output_format(
                     speechsdk.SpeechSynthesisOutputFormat.Raw8Khz16BitMonoPcm
                 )
@@ -113,7 +107,19 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self.pitch = self.synthesizer_config.pitch
         self.rate = self.synthesizer_config.rate
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
-        self.logger = logger or logging.getLogger(__name__)
+
+    @classmethod
+    def get_voice_identifier(cls, synthesizer_config: AzureSynthesizerConfig) -> str:
+        return ":".join(
+            (
+                "azure",
+                synthesizer_config.voice_name,
+                str(synthesizer_config.pitch),
+                str(synthesizer_config.rate),
+                synthesizer_config.language_code,
+                synthesizer_config.audio_encoding,
+            )
+        )
 
     async def get_phrase_filler_audios(self) -> List[FillerAudio]:
         filler_phrase_audios = []
@@ -133,7 +139,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             if os.path.exists(filler_audio_path):
                 audio_data = open(filler_audio_path, "rb").read()
             else:
-                self.logger.debug(f"Generating filler audio for {filler_phrase.text}")
+                logger.debug(f"Generating filler audio for {filler_phrase.text}")
                 ssml = self.create_ssml(filler_phrase.text)
                 result = await asyncio.get_event_loop().run_in_executor(
                     self.thread_pool_executor, self.synthesizer.speak_ssml, ssml
@@ -166,9 +172,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
     def word_boundary_cb(self, evt, pool):
         pool.add(evt)
 
-    def create_ssml(
-        self, message: str, bot_sentiment: Optional[BotSentiment] = None
-    ) -> str:
+    def create_ssml(self, message: str) -> str:
         voice_language_code = self.synthesizer_config.voice_name[:5]
         ssml_root = ElementTree.fromstring(
             f'<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="{voice_language_code}"></speak>'
@@ -181,38 +185,33 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             voice_root = lang
         else:
             voice_root = voice
-        if bot_sentiment and bot_sentiment.emotion:
-            styled = ElementTree.SubElement(
-                voice, "{%s}express-as" % NAMESPACES.get("mstts")
-            )
-            styled.set("style", bot_sentiment.emotion)
-            styled.set(
-                "styledegree", str(bot_sentiment.degree * 2)
-            )  # Azure specific, it's a scale of 0-2
-            voice_root = styled
         # this ugly hack is necessary so we can limit the gap between sentences
         # for normal sentences, it seems like the gap is > 500ms, so we're able to reduce it to 500ms
         # for very tiny sentences, the API hangs - so we heuristically only update the silence gap
         # if there is more than one word in the sentence
         if " " in message:
-            silence = ElementTree.SubElement(
-                voice_root, "{%s}silence" % NAMESPACES.get("mstts")
-            )
+            silence = ElementTree.SubElement(voice_root, "{%s}silence" % NAMESPACES.get("mstts"))
             silence.set("value", "500ms")
             silence.set("type", "Tailing-exact")
         prosody = ElementTree.SubElement(voice_root, "prosody")
         prosody.set("pitch", f"{self.pitch}%")
         prosody.set("rate", f"{self.rate}%")
         prosody.text = message.strip()
-        return ElementTree.tostring(ssml_root, encoding="unicode")
+        ssml = ElementTree.tostring(ssml_root, encoding="unicode")
+        regmatch = re.search(_AZURE_INSIDE_VOICE_REGEX, ssml, re.DOTALL)
+        if regmatch:
+            self.total_chars += len(regmatch.group(1))
+        return ssml
 
     def synthesize_ssml(self, ssml: str) -> speechsdk.AudioDataStream:
         result = self.synthesizer.start_speaking_ssml_async(ssml).get()
         return speechsdk.AudioDataStream(result)
 
-    def ready_synthesizer(self):
-        connection = speechsdk.Connection.from_speech_synthesizer(self.synthesizer)
-        connection.open(True)
+    def ready_synthesizer(self, chunk_size: int):
+        # TODO: remove warming up the synthesizer for now
+        # connection = speechsdk.Connection.from_speech_synthesizer(self.synthesizer)
+        # connection.open(True)
+        pass
 
     # given the number of seconds the message was allowed to go until, where did we get in the message?
     def get_message_up_to(
@@ -234,11 +233,12 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self,
         message: BaseMessage,
         chunk_size: int,
-        bot_sentiment: Optional[BotSentiment] = None,
+        is_first_text_chunk: bool = False,
+        is_sole_text_chunk: bool = False,
     ) -> SynthesisResult:
         # offset = int(self.OFFSET_MS * (self.synthesizer_config.sampling_rate / 1000))
         offset = 0
-        self.logger.debug(f"Synthesizing message: {message}")
+        logger.debug(f"Synthesizing message: {message}")
 
         # Azure will return no audio for certain strings like "-", "[-", and "!"
         # which causes the `chunk_generator` below to hang. Return an empty
@@ -258,15 +258,12 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 lambda: audio_data_stream.read_data(audio_buffer),
             )
             if filled_size != chunk_size:
-                yield SynthesisResult.ChunkResult(
-                    chunk_transform(audio_buffer[offset:]), True
-                )
+                yield SynthesisResult.ChunkResult(chunk_transform(audio_buffer[offset:]), True)
                 return
             else:
-                yield SynthesisResult.ChunkResult(
-                    chunk_transform(audio_buffer[offset:]), False
-                )
+                yield SynthesisResult.ChunkResult(chunk_transform(audio_buffer[offset:]), False)
             while True:
+                audio_buffer = bytes(chunk_size)
                 filled_size = audio_data_stream.read_data(audio_buffer)
                 if filled_size != chunk_size:
                     yield SynthesisResult.ChunkResult(
@@ -279,11 +276,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self.synthesizer.synthesis_word_boundary.connect(
             lambda event: self.word_boundary_cb(event, word_boundary_event_pool)
         )
-        ssml = (
-            message.ssml
-            if isinstance(message, SSMLMessage)
-            else self.create_ssml(message.text, bot_sentiment=bot_sentiment)
-        )
+        ssml = message.ssml if isinstance(message, SSMLMessage) else self.create_ssml(message.text)
         audio_data_stream = await asyncio.get_event_loop().run_in_executor(
             self.thread_pool_executor, self.synthesize_ssml, ssml
         )
@@ -301,3 +294,5 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 message.text, ssml, seconds, word_boundary_event_pool
             ),
         )
+
+    create_speech_uncached = create_speech

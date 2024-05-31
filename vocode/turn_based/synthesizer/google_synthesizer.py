@@ -1,9 +1,11 @@
 import io
 from typing import Optional
+
+from google.cloud import texttospeech_v1beta1 as tts  # type: ignore
 from pydub import AudioSegment
+
 from vocode import getenv
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
-from google.cloud import texttospeech_v1beta1 as tts
 
 DEFAULT_LANGUAGE_CODE = "en-US"
 DEFAULT_VOICE_NAME = "en-US-Neural2-I"
@@ -11,9 +13,7 @@ DEFAULT_PITCH = 0
 DEFAULT_SPEAKING_RATE = 1.2
 DEFAULT_SAMPLE_RATE = 24000
 DEFAULT_AUDIO_ENCODING = tts.AudioEncoding.LINEAR16
-DEFAULT_TIME_POINTING = [
-    tts.SynthesizeSpeechRequest.TimepointType.TIMEPOINT_TYPE_UNSPECIFIED
-]
+DEFAULT_TIME_POINTING = [tts.SynthesizeSpeechRequest.TimepointType.TIMEPOINT_TYPE_UNSPECIFIED]
 
 
 class GoogleSynthesizer(BaseSynthesizer):

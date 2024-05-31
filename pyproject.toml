@@ -1,85 +1,140 @@
 [tool.poetry]
 name = "vocode"
-version = "0.1.112a0"
+version = "0.1.111"
 description = "The all-in-one voice SDK"
 authors = ["Ajay Raj <ajay@vocode.dev>"]
 license = "MIT License"
 readme = "README.md"
 homepage = "https://github.com/vocodedev/vocode-python"
 
+
 [tool.poetry.dependencies]
-python = ">=3.8.1,<3.12"
-pydub = "^0.25.1"
-nltk = "^3.8.1"
-openai = "^0.27.8"
-sounddevice = "^0.4.6"
-azure-cognitiveservices-speech = "^1.27.0"
-websockets = "^11.0.2"
-requests = "^2.28.2"
-uvicorn = "^0.21.1"
-fastapi = "^0.100.1"
-jinja2 = "^3.1.2"
-python-multipart = "^0.0.6"
-six = "^1.16.0"
-opentelemetry-sdk = "^1.17.0"
+python = ">=3.10,<4.0"
+aiohttp = "^3.9.5"
+fastapi = "^0.111.0"
 janus = "^1.0.0"
-scipy = "^1.10.1"
-anthropic = "^0.7.1"
+jinja2 = "^3.1.4"
+jsonschema = "^4.22.0"
+loguru = "^0.7.2"
+opentelemetry-sdk = "^1.24.0"
+phonenumbers = "^8.13.37"
+pydantic = "^2.7.2"
+requests = "^2.32.3"
+sounddevice = "^0.4.7"
+uvicorn = "^0.30.0"
+websockets = "^12.0"
 
-elevenlabs = {version = "^0.2.6", optional = true}
-google-cloud-texttospeech = {version = "^2.16.1", optional = true}
-gtts = {version = "^2.3.1", optional = true}
+# Agents
+anthropic = { version = "^0.28.0", optional = true }
+openai = { version = "^1.30.5", optional = true }
+tiktoken = { version = "0.7.0", optional = true }
 
-google-cloud-speech = {version = "^2.19.0", optional = true}
+# Synthesizers
+azure-cognitiveservices-speech = { version = "^1.37.0", optional = true }
+elevenlabs = { version = "^1.2.2", optional = true }
+google-cloud-texttospeech = { version = "^2.16.3", optional = true }
+miniaudio = { version = "^1.59", optional = true }
+nltk = { version = "^3.8.1", optional = true }
+pvkoala = { version = "^2.0.1", optional = true }
+pydub = { version = "^0.25.1", optional = true }
+pyht = { version = "^0.0.28", optional = true }
 
-redis = {version = "^4.5.4", optional = true}
-twilio = {version = "^8.1.0", optional = true}
-vonage = {version = "^3.5.1", optional = true}
-nylas = {version = "^5.14.0", optional = true}
-speechrecognition = "^3.10.0"
-aiohttp = "^3.8.4"
-langchain = "^0.1.4"
-google-cloud-aiplatform = {version = "^1.26.0", optional = true}
-miniaudio = "^1.59"
-boto3 = "^1.28.28"
-pydantic = "^2.0"
-langchain-community = "^0.0.16"
+# Transcribers
+google-cloud-speech = { version = "^2.26.0", optional = true }
 
+# Telephony
+redis = { version = "^5.0.4", optional = true }
+twilio = { version = "^9.1.0", optional = true }
+vonage = { version = "^3.14.0", optional = true }
+
+# Misc
+langchain = { version = "^0.2.1", optional = true }
+langchain-community = { version = "^0.2.1", optional = true }
+sentry-sdk = { extras = ["fastapi"], version = "^2.3.1", optional = true }
 
 
 [tool.poetry.group.lint.dependencies]
 black = "^24.4.2"
-
-
-[tool.poetry.group.dev.dependencies]
-python-dotenv = "^1.0.0"
-pytest = "^7.4.3"
-pytest-asyncio = "^0.21.0"
-aioresponses = "^0.7.4"
-pre-commit = "^3.3.3"
-pytest-mock = "^3.12.0"
-
+isort = "^5.13.2"
 
 [tool.poetry.group.typing.dependencies]
-mypy = "^1.8.0"
+mypy = "^1.10.0"
 pydub-stubs = "^0.25.1.0"
-types-requests = "^2.30.0.0"
-types-regex = "^2023.5.5.0"
-types-redis = "^4.5.5.2"
+types-redis = "^4.6.0"
+types-regex = "^2024.5.15.20240519"
+types-requests = "^2.32.0.20240523"
 
-[tool.mypy]
-ignore_missing_imports = "True"
-exclude = ["venv", ".venv"]
-explicit_package_bases = "True"
-
+[tool.poetry.group.dev.dependencies]
+aioresponses = "^0.7.6"
+coverage = "^7.5.3"
+fakeredis = "^2.23.2"
+pytest = "^8.2.1"
+pytest-asyncio = "^0.23.7"
+pytest-cov = "^5.0.0"
+pytest-env = "^1.1.3"
+pytest-httpx = "^0.30.0"
+pytest-mock = "^3.14.0"
 
 [tool.poetry.extras]
-synthesizers = ["gtts", "google-cloud-texttospeech", "elevenlabs"]
+agents = ["anthropic", "openai", "tiktoken"]
+synthesizers = [
+    "azure-cognitiveservices-speech",
+    "elevenlabs",
+    "google-cloud-texttospeech",
+    "miniaudio",
+    "nltk",
+    "pvkoala",
+    "pydub",
+    "pyht",
+]
 transcribers = ["google-cloud-speech"]
 telephony = ["twilio", "redis", "vonage"]
-agents = ["google-cloud-aiplatform"]
-actions = ["nylas"]
-all = ["gtts", "google-cloud-texttospeech", "elevenlabs", "google-cloud-speech", "google-cloud-aiplatform", "twilio", "redis", "nylas", "vonage"]
+misc = ["langchain", "langchain-community", "sentry-sdk"]
+all = [
+    "anthropic",
+    "openai",
+    "tiktoken",
+    "azure-cognitiveservices-speech",
+    "elevenlabs",
+    "google-cloud-texttospeech",
+    "miniaudio",
+    "nltk",
+    "pvkoala",
+    "pydub",
+    "pyht",
+    "google-cloud-speech",
+    "twilio",
+    "redis",
+    "vonage",
+    "langchain",
+    "langchain-community",
+    "sentry-sdk",
+]
+
+[tool.mypy]
+ignore_missing_imports = true
+exclude = ["venv", ".venv"]
+explicit_package_bases = true
+
+
+[tool.pytest.ini_options]
+addopts = "--basetemp=/tmp/pytest"
+testpaths = ["tests"]
+
+[tool.pytest_env]
+ENVIRONMENT = "test"
+AZURE_OPENAI_API_BASE_EAST_US = "https://api.openai.com"
+AZURE_OPENAI_API_KEY_EAST_US = "test"
+
+[tool.coverage.run]
+omit = ["tests/*"]
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+line_length = 100
 
 
 [build-system]

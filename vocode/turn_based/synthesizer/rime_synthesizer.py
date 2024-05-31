@@ -1,10 +1,11 @@
 import base64
 import io
 from typing import Optional
-from pydub import AudioSegment
-import requests
-from vocode import getenv
 
+import requests
+from pydub import AudioSegment
+
+from vocode import getenv
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 RIME_BASE_URL = "https://rjmopratfrdjgmfmaios.functions.supabase.co/rime-tts"

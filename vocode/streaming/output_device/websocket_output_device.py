@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+
 from fastapi import WebSocket
-from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.models.websocket import AudioMessage
-from vocode.streaming.models.websocket import TranscriptMessage
+
+from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.transcript import TranscriptEvent
+from vocode.streaming.models.websocket import AudioMessage, TranscriptMessage
+from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
 
 
 class WebsocketOutputDevice(BaseOutputDevice):
-    def __init__(
-        self, ws: WebSocket, sampling_rate: int, audio_encoding: AudioEncoding
-    ):
+    def __init__(self, ws: WebSocket, sampling_rate: int, audio_encoding: AudioEncoding):
         super().__init__(sampling_rate, audio_encoding)
         self.ws = ws
         self.active = False
@@ -20,7 +20,7 @@ class WebsocketOutputDevice(BaseOutputDevice):
 
     def start(self):
         self.active = True
-        self.process_task = asyncio.create_task(self.process())
+        self.process_task = asyncio_create_task_with_done_error_log(self.process())
 
     def mark_closed(self):
         self.active = False

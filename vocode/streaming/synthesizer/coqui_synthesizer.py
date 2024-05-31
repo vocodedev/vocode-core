@@ -1,20 +1,15 @@
 import io
-from typing import Optional, Tuple, Dict
+from typing import Dict, Tuple
+
 import aiohttp
-from pydub import AudioSegment
 
 from vocode import getenv
-from vocode.streaming.synthesizer.base_synthesizer import (
-    BaseSynthesizer,
-    SynthesisResult,
-    tracer,
-)
-from vocode.streaming.models.synthesizer import CoquiSynthesizerConfig, SynthesizerType
-from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.synthesizer import CoquiSynthesizerConfig
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode.streaming.utils.async_requester import AsyncRequestor
 
-from opentelemetry.context.context import Context
-
+raise DeprecationWarning("This Synthesizer is deprecated and will be removed in the future.")
 
 COQUI_BASE_URL = "https://app.coqui.ai/api/v2"
 
@@ -60,14 +55,12 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
         self,
         message: BaseMessage,
         chunk_size: int,
-        bot_sentiment: Optional[BotSentiment] = None,
+        is_first_text_chunk: bool = False,
+        is_sole_text_chunk: bool = False,
     ) -> SynthesisResult:
         url, headers, body = self.get_request(message.text)
 
-        create_speech_span = tracer.start_span(
-            f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.create_total"
-        )
-        async with self.aiohttp_session.request(
+        async with AsyncRequestor().get_session().request(
             "POST",
             url,
             json=body,
@@ -75,15 +68,11 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
             timeout=aiohttp.ClientTimeout(total=15),
         ) as response:
             sample = await response.json()
-            async with self.aiohttp_session.request(
+            async with AsyncRequestor().get_session().request(
                 "GET",
                 sample["audio_url"],
             ) as response:
                 read_response = await response.read()
-                create_speech_span.end()
-                convert_span = tracer.start_span(
-                    f"synthesizer.{SynthesizerType.COQUI.value.split('_', 1)[-1]}.convert",
-                )
 
                 result = self.create_synthesis_result_from_wav(
                     synthesizer_config=self.synthesizer_config,
@@ -91,5 +80,4 @@ class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
                     message=message,
                     chunk_size=chunk_size,
                 )
-                convert_span.end()
                 return result

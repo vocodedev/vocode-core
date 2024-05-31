@@ -1,74 +1,53 @@
-from collections import defaultdict
-import os
-import re
-import json
+raise DeprecationWarning("This playground script is deprecated and will be removed in the future.")
+
 import argparse
 import asyncio
-import logging
-from tqdm import tqdm
+import json
+import os
+from collections import defaultdict
+
 import sounddevice as sd
-from opentelemetry import trace, metrics
+from loguru import logger
+from opentelemetry import metrics, trace
 from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.sdk.metrics.export import (
-    InMemoryMetricReader,
-)
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from opentelemetry.sdk.resources import Resource
+from playground.streaming.tracing_utils import get_final_metrics
+from tqdm import tqdm
+
+from vocode.streaming.agent import ChatGPTAgent
 from vocode.streaming.agent.base_agent import TranscriptionAgentInput
-from vocode.streaming.agent.vertex_ai_agent import ChatVertexAIAgent
 from vocode.streaming.input_device.file_input_device import FileInputDevice
-from vocode.streaming.agent import ChatGPTAgent, ChatAnthropicAgent
 from vocode.streaming.input_device.microphone_input import MicrophoneInput
+from vocode.streaming.models.agent import AzureOpenAIConfig, ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.agent import (
-    AzureOpenAIConfig,
-    ChatGPTAgentConfig,
-    ChatAnthropicAgentConfig,
-    ChatVertexAIAgentConfig,
-)
-from vocode.streaming.models.synthesizer import (
+from vocode.streaming.models.synthesizer import (  # BarkSynthesizerConfig,; CoquiSynthesizerConfig,; CoquiTTSSynthesizerConfig,
     AzureSynthesizerConfig,
-    BarkSynthesizerConfig,
-    CoquiSynthesizerConfig,
-    CoquiTTSSynthesizerConfig,
     ElevenLabsSynthesizerConfig,
-    GTTSSynthesizerConfig,
-    GoogleSynthesizerConfig,
     PlayHtSynthesizerConfig,
     RimeSynthesizerConfig,
-    StreamElementsSynthesizerConfig,
 )
 from vocode.streaming.models.transcriber import (
-    DeepgramTranscriberConfig,
     AssemblyAITranscriberConfig,
+    DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
+    Transcription,
 )
 from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.output_device.file_output_device import FileOutputDevice
-from vocode.streaming.synthesizer import (
-    AzureSynthesizer,
-    BarkSynthesizer,
-    CoquiSynthesizer,
-    CoquiTTSSynthesizer,
-    ElevenLabsSynthesizer,
-    GTTSSynthesizer,
-    GoogleSynthesizer,
-    PlayHtSynthesizer,
-    RimeSynthesizer,
-    StreamElementsSynthesizer,
-)
-from vocode.streaming.transcriber import DeepgramTranscriber, AssemblyAITranscriber
-from vocode.streaming.transcriber.base_transcriber import Transcription
+from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
+from vocode.streaming.synthesizer.eleven_labs_websocket_synthesizer import ElevenLabsWSSynthesizer
+from vocode.streaming.synthesizer.elevenlabs_synthesizer import ElevenLabsSynthesizer
+from vocode.streaming.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
+from vocode.streaming.synthesizer.play_ht_synthesizer_v2 import PlayHtSynthesizerV2
+from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
+from vocode.streaming.transcriber.assembly_ai_transcriber import AssemblyAITranscriber
+from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode.streaming.utils import get_chunk_size_per_second, remove_non_letters_digits
-from vocode.streaming.utils.worker import InterruptibleEvent
-from playground.streaming.tracing_utils import get_final_metrics
 
-logger = logging.getLogger(__name__)
-logging.basicConfig()
-
-logger.setLevel(logging.DEBUG)
 tracer = trace.get_tracer(__name__)
 meter = metrics.get_meter(__name__)
 
@@ -76,25 +55,27 @@ meter = metrics.get_meter(__name__)
 # Create the parser
 parser = argparse.ArgumentParser(
     description="Benchmark Vocode's transcribers, agents, and synthesizers.\n"
-    + "Example usage: python playground/streaming/benchmark.py --all --all_num_cycles 3 --create_graphs"
+    + "Example usage: python playground/streaming/benchmark.py --all --all_num_cycles 3 --create_graphs",
 )
 
 synthesizer_classes = {
     "elevenlabs": (ElevenLabsSynthesizer, ElevenLabsSynthesizerConfig),
+    "elevenlabsws": (ElevenLabsWSSynthesizer, ElevenLabsSynthesizerConfig),
     "azure": (AzureSynthesizer, AzureSynthesizerConfig),
-    "bark": (BarkSynthesizer, BarkSynthesizerConfig),
+    # "bark": (BarkSynthesizer, BarkSynthesizerConfig),
     # "coqui": (CoquiSynthesizer, CoquiSynthesizerConfig),
     # "coquitts": (CoquiTTSSynthesizer, CoquiTTSSynthesizerConfig),
-    "google": (GoogleSynthesizer, GoogleSynthesizerConfig),
-    "gtts": (GTTSSynthesizer, GTTSSynthesizerConfig),
+    # "google": (GoogleSynthesizer, GoogleSynthesizerConfig),
+    # "gtts": (GTTSSynthesizer, GTTSSynthesizerConfig),
     "playht": (PlayHtSynthesizer, PlayHtSynthesizerConfig),
+    "playht2": (PlayHtSynthesizerV2, PlayHtSynthesizerConfig),
     "rime": (RimeSynthesizer, RimeSynthesizerConfig),
-    "streamelements": (StreamElementsSynthesizer, StreamElementsSynthesizerConfig),
+    # "streamelements": (StreamElementsSynthesizer, StreamElementsSynthesizerConfig),
 }
 
 
 # These synthesizers stream output so they need to be traced within this file.
-STREAMING_SYNTHESIZERS = ["azure", "elevenlabs"]
+STREAMING_SYNTHESIZERS = ["azure", "elevenlabs", "playht2", "elevenlabsws"]
 
 
 TRANSCRIBER_CHOICES = ["deepgram", "assemblyai"]
@@ -102,9 +83,6 @@ AGENT_CHOICES = [
     "gpt_gpt-3.5-turbo",
     "gpt_gpt-4",
     "azuregpt_gpt-35-turbo",
-    "anthropic_claude-v1",
-    "anthropic_claude-instant-v1",
-    "vertex_ai_chat-bison@001",
 ]
 SYNTHESIZER_CHOICES = list(synthesizer_classes)
 
@@ -135,7 +113,7 @@ parser.add_argument(
 parser.add_argument(
     "--transcriber_audio",
     type=str,
-    default="playground/streaming/test.wav",
+    default=f"{os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test.wav')}",
     help="Path to the audio file to transcribe",
 )
 parser.add_argument(
@@ -244,14 +222,14 @@ if args.create_graphs or args.just_graphs:
     except ImportError:
         print(
             "ERROR: The --create_graphs flag requires matplotlib. Please "
-            + "install matplotlib and try again."
+            + "install matplotlib and try again.",
         )
         exit(1)
 
 if args.just_graphs:
     print(
         "--just_graphs is set! Skipping computing statistics and instead "
-        + "generating graphs from the last saved benchmark result JSON file."
+        + "generating graphs from the last saved benchmark result JSON file.",
     )
 
 should_generate_responses = not args.no_generate_responses
@@ -265,13 +243,13 @@ def get_transcriber(transcriber_name, file_input):
             DeepgramTranscriberConfig.from_input_device(
                 file_input,
                 endpointing_config=PunctuationEndpointingConfig(),
-            )
+            ),
         )
     elif transcriber_name == "assemblyai":
         transcriber = AssemblyAITranscriber(
             AssemblyAITranscriberConfig.from_input_device(
                 file_input,
-            )
+            ),
         )
     return transcriber
 
@@ -289,9 +267,7 @@ async def run_agents():
     for agent_name in tqdm(args.agents, desc="Agents"):
         company, model_name = agent_name.rsplit("_", 1)
         length_meter = meter.create_counter(
-            remove_non_letters_digits(
-                f"agent.agent_chat_{company}-{model_name}.total_characters"
-            ),
+            remove_non_letters_digits(f"agent.agent_chat_{company}-{model_name}.total_characters"),
         )
         for _ in tqdm(range(args.agent_num_cycles), desc="Agent Cycles"):
             if company == "gpt":
@@ -302,7 +278,7 @@ async def run_agents():
                         allow_agent_to_be_cut_off=False,
                         model_name=model_name,
                         generate_responses=should_generate_responses,
-                    )
+                    ),
                 )
             elif company == "azuregpt":
                 agent = ChatGPTAgent(
@@ -310,54 +286,34 @@ async def run_agents():
                         initial_message=None,
                         prompt_preamble=args.agent_prompt_preamble,
                         allow_agent_to_be_cut_off=False,
-                        azure_params=AzureOpenAIConfig(engine=model_name),
+                        azure_params=AzureOpenAIConfig(deployment_name=model_name),
                         generate_responses=should_generate_responses,
-                    )
-                )
-            elif company == "anthropic":
-                agent = ChatAnthropicAgent(
-                    ChatAnthropicAgentConfig(
-                        initial_message=None,
-                        allow_agent_to_be_cut_off=False,
-                        model_name=model_name,
-                        generate_responses=should_generate_responses,
-                    )
-                )
-            elif company == "vertex_ai":
-                agent = ChatVertexAIAgent(
-                    ChatVertexAIAgentConfig(
-                        initial_message=None,
-                        prompt_preamble=args.agent_prompt_preamble,
-                        allow_agent_to_be_cut_off=False,
-                        model_name=model_name,
-                        generate_responses=False,
-                    )
+                    ),
                 )
             agent.attach_transcript(Transcript())
-            agent_task = agent.start()
+            agent_task = agent.start()  # noqa: F841
             message = TranscriptionAgentInput(
                 transcription=Transcription(
-                    message=args.agent_first_input, confidence=1.0, is_final=True
+                    message=args.agent_first_input,
+                    confidence=1.0,
+                    is_final=True,
                 ),
                 conversation_id=0,
             )
             agent.consume_nonblocking(
-                agent.interruptible_event_factory.create_interruptible_event(message)
+                agent.interruptible_event_factory.create_interruptible_event(message),
             )
 
             while True:
                 try:
-                    message = await asyncio.wait_for(
-                        agent.output_queue.get(), timeout=15
-                    )
-                    length_meter.add(len(message.payload.message.text))
-                    logger.debug(
-                        f"[Agent: {agent_name}] Response from API: {message.payload.message.text}"
-                    )
+                    message = await asyncio.wait_for(agent.output_queue.get(), timeout=15)
+                    if isinstance(message.payload.message, BaseMessage):
+                        length_meter.add(len(message.payload.message.text))
+                        logger.debug(
+                            f"[Agent: {agent_name}] Response from API: {message.payload.message.text}",
+                        )
                 except asyncio.TimeoutError:
-                    logger.debug(
-                        f"[Agent: {agent_name}] Agent queue is empty, stopping..."
-                    )
+                    logger.debug(f"[Agent: {agent_name}] Agent queue is empty, stopping...")
                     break
 
 
@@ -367,54 +323,57 @@ async def run_synthesizers():
             os.path.join(args.results_dir, f"{synthesizer_name}{extra_info}.wav"),
         )
 
-    for synthesizer_cycle_idx in tqdm(
-        range(args.synthesizer_num_cycles), desc="Synthesizer Cycles"
-    ):
-        for synthesizer_name in args.synthesizers:
-            file_output = create_file_output_device(
-                synthesizer_name, f"-run={synthesizer_cycle_idx}"
+    for synthesizer_name in args.synthesizers:
+        file_output = create_file_output_device(synthesizer_name)
+        synthesizer_class, synthesizer_config_class = synthesizer_classes[synthesizer_name]
+        extra_config = {}
+        if synthesizer_name == "playht":
+            extra_config["voice_id"] = "larry"
+        elif synthesizer_name == "rime":
+            extra_config["speaker"] = "young_male-1"
+        elif synthesizer_name == "playht2":
+            extra_config["voice_id"] = (
+                "s3://voice-cloning-zero-shot/d9ff78ba-d016-47f6-b0ef-dd630f59414e/female-cs/manifest.json"
             )
-            synthesizer_class, synthesizer_config_class = synthesizer_classes[
-                synthesizer_name
-            ]
-            extra_config = {}
-            if synthesizer_name == "playht":
-                extra_config["voice_id"] = "larry"
-            elif synthesizer_name == "rime":
-                extra_config["speaker"] = "young_male_unmarked-1"
-            synthesizer = synthesizer_class(
-                synthesizer_config_class.from_output_device(file_output, **extra_config)
-            )
+            extra_config["version"] = "2"
+        elif synthesizer_name == "elevenlabs":
+            extra_config["experimental_streaming"] = True
+        elif synthesizer_name == "elevenlabsws":
+            extra_config["experimental_websocket"] = True
+        config = synthesizer_config_class.from_output_device(file_output, **extra_config)
+        synthesizer = synthesizer_class(config)
 
-            chunk_size = get_chunk_size_per_second(
-                synthesizer.get_synthesizer_config().audio_encoding,
-                synthesizer.get_synthesizer_config().sampling_rate,
-            )
+        chunk_size = 0.1 * get_chunk_size_per_second(
+            synthesizer.get_synthesizer_config().audio_encoding,
+            synthesizer.get_synthesizer_config().sampling_rate,
+        )
 
-            current_synthesizer_is_streaming = (
-                synthesizer_name in STREAMING_SYNTHESIZERS
-            )
+        current_synthesizer_is_streaming = synthesizer_name in STREAMING_SYNTHESIZERS
+        for _ in tqdm(
+            range(args.synthesizer_num_cycles),
+            desc=f"Synthesizer Cycles ({synthesizer_name})",
+        ):
             if current_synthesizer_is_streaming:
                 total_synthesis_span = tracer.start_span(
-                    f"synthesizer.{synthesizer_name}.create_total"
+                    f"synthesizer.{synthesizer_name}.create_total",
                 )
                 first_synthesis_span = tracer.start_span(
-                    f"synthesizer.{synthesizer_name}.create_first"
+                    f"synthesizer.{synthesizer_name}.create_first",
                 )
 
             try:
-                synthesis_result = await synthesizer.create_speech(
+                synthesis_result = await synthesizer.create_speech_uncached(
                     message=BaseMessage(text=args.synthesizer_text),
-                    chunk_size=chunk_size,
+                    chunk_size=int(chunk_size),
                 )
             except asyncio.TimeoutError:
                 logger.error(
-                    f"[Synthesizer: {synthesizer_name}] Timed out while synthesizing. Skipping {synthesizer_name}..."
+                    f"[Synthesizer: {synthesizer_name}] Timed out while synthesizing. Skipping {synthesizer_name}...",
                 )
                 continue
             except Exception as e:
                 logger.error(
-                    f"[Synthesizer: {synthesizer_name}] Exception while synthesizing: {e}. Skipping {synthesizer_name}..."
+                    f"[Synthesizer: {synthesizer_name}] Exception while synthesizing: {e}. Skipping {synthesizer_name}...",
                 )
                 continue
             chunk_generator = synthesis_result.chunk_generator
@@ -423,16 +382,21 @@ async def run_synthesizers():
                 first_chunk = True
                 while True:
                     pbar.update(1)
-                    chunk_result = await chunk_generator.__anext__()
-                    if current_synthesizer_is_streaming and first_chunk:
-                        first_chunk = False
-                        first_synthesis_span.end()
-                    file_output.consume_nonblocking(chunk_result.chunk)
+                    try:
+                        chunk_result = await chunk_generator.__anext__()
+                        if current_synthesizer_is_streaming and first_chunk:
+                            first_chunk = False
+                            first_synthesis_span.end()
+                        file_output.consume_nonblocking(chunk_result.chunk)
+                    except StopAsyncIteration:
+                        break
                     if chunk_result.is_last_chunk:
                         break
 
             if current_synthesizer_is_streaming:
                 total_synthesis_span.end()
+
+        await synthesizer.tear_down()
 
 
 async def run_transcribers():
@@ -451,13 +415,14 @@ async def run_transcribers():
         )
 
     for transcriber_cycle_idx in tqdm(
-        range(args.transcriber_num_cycles), desc="Transcriber Cycles"
+        range(args.transcriber_num_cycles),
+        desc="Transcriber Cycles",
     ):
         for transcriber_name in tqdm(args.transcribers, desc="Transcribers"):
             transcriber = get_transcriber(transcriber_name, input_device)
             if not args.transcriber_use_mic:
                 input_device.load()
-            transcriber_task = transcriber.start()
+            transcriber_task = transcriber.start()  # noqa: F841
 
             if args.transcriber_use_mic:
 
@@ -485,14 +450,15 @@ async def run_transcribers():
             )
             while True:
                 try:
-                    transcription = await asyncio.wait_for(
-                        transcriber.output_queue.get(), timeout=5
+                    transcription = await asyncio.wait_for(  # noqa: F841
+                        transcriber.output_queue.get(),
+                        timeout=5,
                     )
                     # update the progress bar status
                     pbar.update(round(transcriber.audio_cursor - pbar.n, 2))
                 except asyncio.TimeoutError:
                     logger.debug(
-                        f"[Transcriber: {transcriber_name}] Transcriber queue is empty, stopping transcription..."
+                        f"[Transcriber: {transcriber_name}] Transcriber queue is empty, stopping transcription...",
                     )
                     send_audio.cancel()
                     break

@@ -1,6 +1,7 @@
-import logging
 from typing import Optional
+
 import aiohttp
+
 from vocode.streaming.models.vector_db import PineconeConfig, VectorDBConfig
 from vocode.streaming.vector_db.base_vector_db import VectorDB
 from vocode.streaming.vector_db.pinecone import PineconeDB

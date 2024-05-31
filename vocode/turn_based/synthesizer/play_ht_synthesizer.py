@@ -1,13 +1,14 @@
 import io
 from typing import Optional
-from pydub import AudioSegment
-import requests
-from vocode import getenv
-from vocode.streaming.telephony.constants import DEFAULT_SAMPLING_RATE
 
+import requests
+from pydub import AudioSegment
+
+from vocode import getenv
+from vocode.streaming.models.audio import SamplingRate
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
-DEFAULT_SAMPLING_RATE = 24000
+DEFAULT_SAMPLING_RATE = SamplingRate.RATE_24000
 TTS_ENDPOINT = "https://play.ht/api/v2/tts/stream"
 
 
@@ -50,8 +51,6 @@ class PlayHtSynthesizer(BaseSynthesizer):
 
         response = requests.post(TTS_ENDPOINT, headers=headers, json=body, timeout=5)
         if not response.ok:
-            raise Exception(
-                f"Play.ht API error: {response.status_code}, {response.text}"
-            )
+            raise Exception(f"Play.ht API error: {response.status_code}, {response.text}")
 
         return AudioSegment.from_mp3(io.BytesIO(response.content))  # type: ignore

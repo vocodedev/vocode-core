@@ -1,15 +1,17 @@
-import logging
-from typing import Optional, Tuple
 import typing
+from typing import Optional, Tuple
+
+from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
+from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.models.agent import AgentConfig, AgentType, ChatGPTAgentConfig
-from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
-from vocode.streaming.agent.factory import AgentFactory
 
 
 class SpellerAgentConfig(AgentConfig, type="agent_speller"):
     """Configuration for SpellerAgent. Inherits from AgentConfig."""
+
     pass
+
 
 class SpellerAgent(RespondAgent[SpellerAgentConfig]):
     """SpellerAgent class. Inherits from RespondAgent.
@@ -47,18 +49,14 @@ class SpellerAgent(RespondAgent[SpellerAgentConfig]):
         return "".join(c + " " for c in human_input), False
 
 
-
-class SpellerAgentFactory(AgentFactory):
+class SpellerAgentFactory(AbstractAgentFactory):
     """Factory class for creating agents based on the provided agent configuration."""
 
-    def create_agent(
-        self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
-    ) -> BaseAgent:
+    def create_agent(self, agent_config: AgentConfig) -> BaseAgent:
         """Creates an agent based on the provided agent configuration.
 
         Args:
             agent_config (AgentConfig): The configuration for the agent to be created.
-            logger (Optional[logging.Logger]): The logger to be used by the agent.
 
         Returns:
             BaseAgent: The created agent.

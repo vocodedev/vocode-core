@@ -1,29 +1,28 @@
-from .base_agent import BaseAgent, RespondAgent
-from ..models.agent import (
-    RESTfulUserImplementedAgentConfig,
+from typing import Optional, Tuple, cast
+
+import aiohttp
+from loguru import logger
+
+from vocode.streaming.agent.base_agent import RespondAgent
+from vocode.streaming.models.agent import (
     RESTfulAgentInput,
     RESTfulAgentOutput,
     RESTfulAgentOutputType,
     RESTfulAgentText,
+    RESTfulUserImplementedAgentConfig,
 )
-from typing import Generator, Optional, Tuple, cast
-import requests
-import logging
-import aiohttp
 
 
 class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig]):
     def __init__(
         self,
         agent_config: RESTfulUserImplementedAgentConfig,
-        logger=None,
     ):
         super().__init__(agent_config)
         if self.agent_config.generate_responses:
             raise NotImplementedError(
                 "Use the WebSocket user implemented agent to stream responses"
             )
-        self.logger = logger or logging.getLogger(__name__)
 
     async def respond(
         self,
@@ -45,9 +44,7 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
                     timeout=aiohttp.ClientTimeout(total=15),
                 ) as response:
                     assert response.status == 200
-                    output: RESTfulAgentOutput = RESTfulAgentOutput.parse_obj(
-                        await response.json()
-                    )
+                    output: RESTfulAgentOutput = RESTfulAgentOutput.parse_obj(await response.json())
                     output_response = None
                     should_stop = False
                     if output.type == RESTfulAgentOutputType.TEXT:
@@ -56,5 +53,5 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
                         should_stop = True
                     return output_response, should_stop
         except Exception as e:
-            self.logger.error(f"Error in response from RESTful agent: {e}")
+            logger.error(f"Error in response from RESTful agent: {e}")
             return None, True

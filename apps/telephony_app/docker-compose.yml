@@ -3,14 +3,14 @@ services:
     image: redis:7.0.9-alpine
     command: redis-server --bind 0.0.0.0
     ports:
-      - 6379:6379
+    - 6379:6379
   app:
     image: vocode-telephony-app
     env_file:
-      - .env
+    - .env
     ports:
-      - 3000:3000
+    - 3000:3000
     depends_on:
-      - redis
+    - redis
     environment:
-      - REDISHOST=redis
+    - REDISHOST=redis

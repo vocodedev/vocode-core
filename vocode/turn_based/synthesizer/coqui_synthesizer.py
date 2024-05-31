@@ -1,13 +1,17 @@
+import asyncio
 import io
 import re
 import typing
-from typing import Optional, List
-from pydub import AudioSegment
+from typing import List, Optional
+
+import aiohttp
 import requests
+from pydub import AudioSegment
+
 from vocode import getenv
 from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
-import aiohttp
-import asyncio
+
+raise DeprecationWarning("This Synthesizer is deprecated and will be removed in the future.")
 
 COQUI_BASE_URL = "https://app.coqui.ai/api/v2/samples"
 DEFAULT_SPEAKER_ID = "d2bd7ccb-1b65-4005-9578-32c4e02d8ddf"
@@ -98,10 +102,7 @@ class CoquiSynthesizer(BaseSynthesizer):
         text_chunks = self.split_text(text)
 
         # Create a list of tasks for each chunk using asyncio.create_task()
-        tasks = [
-            asyncio.create_task(self.async_synthesize_chunk(chunk))
-            for chunk in text_chunks
-        ]
+        tasks = [asyncio.create_task(self.async_synthesize_chunk(chunk)) for chunk in text_chunks]
 
         # Wait for all tasks to complete using asyncio.gather()
         audio_chunks = await asyncio.gather(*tasks)
