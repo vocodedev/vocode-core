@@ -2,7 +2,7 @@
 
 👋 Hey there, Vocode Explorer!
 
-Congratulations! You've stumbled upon the Vocode 0.0.112 Early Preview Repo! Whether we (the Vocode team) sent you this link or you found it through your own detective work, we want to celebrate your awesomeness in the Vocode community with this exclusive sneak peek of our latest work!
+Congratulations! You've stumbled upon the Vocode 0.0.112 Early Preview Repo! Whether we (the Vocode team) sent you this link or you found it through your own detective work, we want to celebrate your awesomeness in the Vocode community with this sneak peek of our latest work!
 
 ## 🎉 What's Next?
 
