@@ -142,38 +142,3 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
             body["modelId"] = self.model_id
 
         return body
-
-    async def create_speech(
-        self,
-        message: BaseMessage,
-        chunk_size: int,
-        is_first_text_chunk: bool = False,
-        is_sole_text_chunk: bool = False,
-    ) -> SynthesisResult:
-        headers = {
-            "Authorization": self.api_key,
-            "Content-Type": "application/json",
-        }
-
-        body = self.get_request_body(message.text)
-
-        async with self.async_requestor.get_session().post(
-            self.base_url,
-            headers=headers,
-            json=body,
-            timeout=aiohttp.ClientTimeout(total=15),
-        ) as response:
-            if not response.ok:
-                raise Exception(f"Rime API error: {response.status}, {await response.text()}")
-            data = await response.json()
-
-            audio_file = io.BytesIO(base64.b64decode(data.get("audioContent")))
-
-            result = self.create_synthesis_result_from_wav(
-                synthesizer_config=self.synthesizer_config,
-                file=audio_file,
-                message=message,
-                chunk_size=chunk_size,
-            )
-
-            return result
