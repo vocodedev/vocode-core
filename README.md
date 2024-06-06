@@ -16,6 +16,15 @@ If you can see this but don't have access to the new channels, just reach out to
 
 We’re super excited to share this with you, but we’d appreciate it if you could keep this on the down-low for now. While we know you might share this with close friends, please avoid posting it in public places. We're still polishing things up for the big public launch!
 
+## 📜 Viewing Preview Docs
+
+We'll be updating our existing documentation and adding guides for new functionality (see below) in this fork itself. To view them, use the [Mintlify CLI](https://mintlify.com/docs/development):
+
+```
+/path/to/vocode-python > cd docs
+/path/to/vocode-python/docs > mintlify dev
+```
+
 ## 📝 Brief Changelog
 
 ### 🧱Vocode Core Abstractions Revamp
