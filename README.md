@@ -26,7 +26,7 @@ We’re super excited to share this with you, but we’d appreciate it if you co
     - Synthesizers
     - Telephony Providers
 
-### 👥 Conversation Mechanics
+### 👥 Conversation Mechanics (guide to follow!)
 
 - Better endpointing (agnostic of transcribers)
 - Better interruption handling
@@ -40,10 +40,10 @@ We’re super excited to share this with you, but we’d appreciate it if you co
 
 ### 💪 Actions
 
-- ✨NEW✨ External Actions
+- ✨NEW✨ External Actions (guide to follow!)
 - Improved Call Transfer
 - ✨NEW✨ Wait Actions (IVR Navigation)
-- ✨NEW✨ Phrase triggers for actions (instead of function calls)
+- ✨NEW✨ Phrase triggers for actions (instead of function calls) (guide to follow!)
 
 ### 🗣️ Synthesizers
 
@@ -62,12 +62,12 @@ We’re super excited to share this with you, but we’d appreciate it if you co
 - Twilio
     - Stronger interruption handling by [clearing audio queues](https://www.twilio.com/docs/voice/media-streams/websocket-messages#send-a-clear-message)
 - Vonage
-    - Koala Noise Suppression
+    - Koala Noise Suppression (guide to follow!)
 
 ### 🎉 Miscellaneous
 
 - ✨NEW✨  Loguru for improved logging formatting
-    - Some new utilities to make setting up loguru in your projects fast and easy 😉
-- Sentry for Metric / Error Collection
+    - Some new utilities to make setting up loguru in your projects fast and easy 😉 (guide to follow!)
+- Sentry for Metric / Error Collection (guide to follow!)
 - Clean handling of content filters in ChatGPT agents
 - Redis Message Queue for tracking mid-call events across different instances
