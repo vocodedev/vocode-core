@@ -1,3 +1,4 @@
+from typing import Type
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
     ElevenLabsSynthesizerConfig,
@@ -8,7 +9,9 @@ from vocode.streaming.models.synthesizer import (
 )
 from vocode.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
 from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
+from vocode.streaming.synthesizer.eleven_labs_websocket_synthesizer import ElevenLabsWSSynthesizer
 from vocode.streaming.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
 from vocode.streaming.synthesizer.play_ht_synthesizer_v2 import PlayHtSynthesizerV2
 from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
@@ -23,7 +26,10 @@ class DefaultSynthesizerFactory(AbstractSynthesizerFactory):
         if isinstance(synthesizer_config, AzureSynthesizerConfig):
             return AzureSynthesizer(synthesizer_config)
         elif isinstance(synthesizer_config, ElevenLabsSynthesizerConfig):
-            return ElevenLabsSynthesizer(synthesizer_config)
+            eleven_labs_synthesizer_class_type: Type[BaseSynthesizer] = ElevenLabsSynthesizer
+            if synthesizer_config.experimental_websocket:
+                eleven_labs_synthesizer_class_type = ElevenLabsWSSynthesizer
+            return eleven_labs_synthesizer_class_type(synthesizer_config)
         elif isinstance(synthesizer_config, PlayHtSynthesizerConfig):
             if synthesizer_config.version == "2":
                 return PlayHtSynthesizerV2(synthesizer_config)
