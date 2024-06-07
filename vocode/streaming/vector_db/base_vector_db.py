@@ -1,11 +1,13 @@
 import os
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union
 
 import aiohttp
-from langchain.docstore.document import Document
 from openai import AsyncAzureOpenAI, AsyncOpenAI
 
 from vocode.streaming.models.agent import AZURE_OPENAI_DEFAULT_API_VERSION
+
+if TYPE_CHECKING:
+    from langchain.docstore.document import Document
 
 DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-ada-002"
 
@@ -64,7 +66,7 @@ class VectorDB:
         query: str,
         filter: Optional[dict] = None,
         namespace: Optional[str] = None,
-    ) -> List[Tuple[Document, float]]:
+    ) -> List[Tuple["Document", float]]:
         raise NotImplementedError
 
     async def tear_down(self):

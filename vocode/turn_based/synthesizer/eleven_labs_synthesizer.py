@@ -2,7 +2,7 @@ import io
 from typing import Optional
 
 from elevenlabs import Voice, VoiceSettings
-from elevenlabs.client import AsyncElevenLabs
+from elevenlabs.client import ElevenLabs
 from pydub import AudioSegment
 
 from vocode import getenv
@@ -21,7 +21,7 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
         self.voice_id = voice_id
         self.api_key = getenv("ELEVEN_LABS_API_KEY", api_key)
 
-        self.elevenlabs_client = AsyncElevenLabs(
+        self.elevenlabs_client = ElevenLabs(
             api_key=self.api_key,
         )
         self.validate_stability_and_similarity_boost(stability, similarity_boost)
@@ -35,11 +35,15 @@ class ElevenLabsSynthesizer(BaseSynthesizer):
             raise ValueError("Both stability and similarity_boost must be set or not set.")
 
     def synthesize(self, text: str) -> AudioSegment:
-        voice = Voice(voice_id=self.voice_id)
         if self.stability is not None and self.similarity_boost is not None:
-            voice.settings = VoiceSettings(
-                stability=self.stability, similarity_boost=self.similarity_boost
+            voice = Voice(
+                voice_id=self.voice_id,
+                settings=VoiceSettings(
+                    stability=self.stability, similarity_boost=self.similarity_boost
+                ),
             )
+        else:
+            voice = Voice(voice_id=self.voice_id)
 
         audio = self.elevenlabs_client.generate(text=text, voice=voice)
 

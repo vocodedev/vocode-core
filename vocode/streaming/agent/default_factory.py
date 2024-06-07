@@ -9,7 +9,6 @@ from vocode.streaming.models.agent import (
     AnthropicAgentConfig,
     ChatGPTAgentConfig,
     EchoAgentConfig,
-    LlamacppAgentConfig,
     RESTfulUserImplementedAgentConfig,
 )
 

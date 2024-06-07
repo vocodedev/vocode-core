@@ -111,6 +111,7 @@ class DeepgramTranscriberConfig(TranscriberConfig, type=TranscriberType.DEEPGRAM
     tier: Optional[str] = None
     version: Optional[str] = None
     keywords: Optional[list] = None
+    api_key: Optional[str] = None
     on_prem: bool = False
     ws_url: str = DEEPGRAM_API_WS_URL
 

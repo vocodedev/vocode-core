@@ -1,18 +1,11 @@
 import functools
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple
 
+import sentry_sdk
 from loguru import logger
+from sentry_sdk.tracing import Span, Transaction, _SpanRecorder
 
 from vocode import get_serialized_ctx_wrappers
-
-try:
-    import sentry_sdk
-    from sentry_sdk.tracing import Span, Transaction, _SpanRecorder
-
-    SENTRY_SDK_AVAILABLE = True
-except ImportError:
-    logger.debug("Sentry SDK not detected -- disabling metrics!")
-    SENTRY_SDK_AVAILABLE = False
 
 if TYPE_CHECKING:
     from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
@@ -86,14 +79,11 @@ class SentryConfiguredContextManager:
     @property
     def is_configured(self) -> bool:
         """
-        Checks if Sentry is available and configured.
+        Checks if Sentry is configured.
 
         Returns:
             bool: True if Sentry is configured, False otherwise.
         """
-        if not SENTRY_SDK_AVAILABLE:
-            return False
-
         client = sentry_sdk.Hub.current.client
         if client is not None and client.options is not None and "dsn" in client.options:
             return True

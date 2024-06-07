@@ -115,6 +115,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
             response = await self._handle_ws_message(message)
             if response == TwilioPhoneConversationWebsocketAction.CLOSE_WEBSOCKET:
                 break
+        await ws.close(code=1000, reason=None)
         await self.terminate()
 
     async def _wait_for_twilio_start(self, ws: WebSocket):

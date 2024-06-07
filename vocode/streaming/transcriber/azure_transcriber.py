@@ -1,6 +1,5 @@
 import queue
 from datetime import datetime, timezone
-from typing import Optional
 
 import sentry_sdk
 from azure.cognitiveservices.speech.audio import (

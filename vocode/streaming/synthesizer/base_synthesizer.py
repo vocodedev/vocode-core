@@ -435,5 +435,22 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         finally:
             miniaudio_worker.terminate()
 
+    def _resample_chunk(
+        self,
+        chunk: bytes,
+        current_sample_rate: int,
+        target_sample_rate: int,
+    ) -> bytes:
+        resampled_chunk, _ = audioop.ratecv(
+            chunk,
+            2,
+            1,
+            current_sample_rate,
+            target_sample_rate,
+            None,
+        )
+
+        return resampled_chunk
+
     async def tear_down(self):
         pass
