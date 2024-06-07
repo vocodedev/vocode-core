@@ -1,7 +1,6 @@
 from enum import Enum
 from typing import List, Literal, Optional, Union
 
-from langchain.prompts import PromptTemplate
 from pydantic.v1 import validator
 
 from .model import BaseModel, TypedModel
@@ -106,6 +105,11 @@ class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):  # type: ignore
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
 
 
+class LLMFallback(BaseModel):
+    provider: Literal["openai", "azure"]
+    model_name: str
+
+
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):  # type: ignore
     openai_api_key: Optional[str] = None
     prompt_preamble: str
@@ -118,6 +122,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):  # type: i
     use_backchannels: bool = False
     backchannel_probability: float = 0.7
     first_response_filler_message: Optional[str] = None
+    llm_fallback: Optional[LLMFallback] = None
 
 
 class AnthropicAgentConfig(AgentConfig, type=AgentType.ANTHROPIC.value):  # type: ignore
@@ -131,12 +136,6 @@ class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):
     prompt_preamble: str
     model_name: str = CHAT_VERTEX_AI_DEFAULT_MODEL_NAME
     generate_responses: bool = False  # Google Vertex AI doesn't support streaming
-
-
-class LlamacppAgentConfig(AgentConfig, type=AgentType.LLAMACPP.value):  # type: ignore
-    prompt_preamble: str
-    llamacpp_kwargs: dict = {}
-    prompt_template: Optional[Union[PromptTemplate, str]] = None
 
 
 class InformationRetrievalAgentConfig(

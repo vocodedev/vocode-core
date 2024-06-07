@@ -1,8 +1,6 @@
 import os
 from typing import Any, Dict, List, Optional
 
-import vonage
-
 from vocode.streaming.models.telephony import VonageConfig
 from vocode.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
 from vocode.streaming.telephony.constants import VONAGE_CONTENT_TYPE
@@ -20,6 +18,11 @@ class VonageClient(AbstractTelephonyClient):
         maybe_vonage_config: Optional[VonageConfig] = None,
         record_calls: bool = False,
     ):
+
+        import vonage
+
+        self.vonage = vonage
+
         super().__init__(
             base_url=base_url,
         )
@@ -31,7 +34,7 @@ class VonageClient(AbstractTelephonyClient):
             record=record_calls,
         )
         # Vonage's sync client: only used for authentication helpers
-        self.client = vonage.Client(
+        self.client = self.vonage.Client(
             key=self.vonage_config.api_key,
             secret=self.vonage_config.api_secret,
             application_id=self.vonage_config.application_id,

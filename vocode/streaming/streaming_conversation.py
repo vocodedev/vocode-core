@@ -421,7 +421,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     if self.last_agent_response_tracker is not None:
                         await self.last_agent_response_tracker.wait()
                     item.agent_response_tracker.set()
-                    self.conversation.mark_terminated(bot_disconnect=True)
+                    await self.conversation.mark_terminated(bot_disconnect=True)
                     return
 
                 agent_response_message = typing.cast(AgentResponseMessage, agent_response)
@@ -674,6 +674,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
 
+        self.idle_time_threshold = (
+            self.agent.get_agent_config().allowed_idle_time_seconds or ALLOWED_IDLE_TIME
+        )
+
     def create_state_manager(self) -> ConversationStateManager:
         return ConversationStateManager(conversation=self)
 
@@ -741,23 +745,23 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         await self.initial_message_tracker.wait()
 
+    async def action_on_idle(self):
+        logger.debug("Conversation idle for too long, terminating")
+        await self.mark_terminated(bot_disconnect=True)
+        return
+
     async def check_for_idle(self):
         """Asks if human is still on the line if no activity is detected, and terminates the conversation if not."""
         await self.initial_message_tracker.wait()
         check_human_present_count = 0
         check_human_present_threshold = self.agent.get_agent_config().num_check_human_present_times
-        idle_time_threshold = (
-            self.agent.get_agent_config().allowed_idle_time_seconds or ALLOWED_IDLE_TIME
-        )
         while self.is_active():
             if (
                 not self.check_for_idle_paused
-            ) and time.time() - self.last_action_timestamp > idle_time_threshold:
+            ) and time.time() - self.last_action_timestamp > self.idle_time_threshold:
                 if check_human_present_count >= check_human_present_threshold:
                     # Stop the phone call after some retries to prevent infinitely long call where human is just silent.
-                    logger.debug("Conversation idle for too long, terminating")
-                    self.mark_terminated(bot_disconnect=True)
-                    return
+                    await self.action_on_idle()
                 await self.send_single_message(
                     message=BaseMessage(text=random.choice(CHECK_HUMAN_PRESENT_MESSAGE_CHOICES)),
                 )
@@ -957,11 +961,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
             synthesis_result.synthesis_total_span.finish()
         return message_sent, cut_off
 
-    def mark_terminated(self, bot_disconnect: bool = False):
+    async def mark_terminated(self, bot_disconnect: bool = False):
         self.active = False
 
     async def terminate(self):
-        self.mark_terminated()
+        await self.mark_terminated()
         self.broadcast_interrupt()
         self.events_manager.publish_event(
             TranscriptCompleteEvent(

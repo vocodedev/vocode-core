@@ -1,6 +1,5 @@
 import asyncio
 import json
-import os
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple, Union
 from urllib.parse import urlencode
@@ -11,6 +10,7 @@ from loguru import logger
 from pydantic.v1 import BaseModel, Field
 from websockets.client import WebSocketClientProtocol
 
+from vocode import getenv
 from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.transcriber import (
     DEEPGRAM_API_WS_URL,
@@ -80,7 +80,11 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         transcriber_config: DeepgramTranscriberConfig,
     ):
         super().__init__(transcriber_config)
-        self.api_key = os.environ["DEEPGRAM_API_KEY"]
+        self.api_key = self.transcriber_config.api_key or getenv("DEEPGRAM_API_KEY")
+        if not self.api_key:
+            raise ValueError(
+                "Please set DEEPGRAM_API_KEY environment variable or pass it as a parameter"
+            )
         self._ended = False
         self.is_ready = False
         self.audio_cursor = 0.0
