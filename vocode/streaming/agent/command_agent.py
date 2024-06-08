@@ -475,7 +475,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     # join everything up to the last part
                     if (
                         len(parts) > 0
-                        and len("".join(parts[:-1]).split(" ")) >= 3
+                        and len("".join(parts[:-1]).split(" ")) >= 1
                         and len("".join(parts[:-1]).split(" ")[-1])
                         > 3  # this is to avoid splitting on mr mrs
                         and any(char.isalnum() for char in "".join(parts[:-1]))
@@ -880,7 +880,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 parts = split_pattern.split(current_utterance)
                 if (
                     len(parts) > 0
-                    and len("".join(parts[:-1]).split(" ")) >= 3
+                    and len("".join(parts[:-1]).split(" ")) >= 1
                     and len("".join(parts[:-1]).split(" ")[-1])
                     > 3  # this is to avoid splitting on mr mrs
                     and any(char.isalnum() for char in "".join(parts[:-1]))
