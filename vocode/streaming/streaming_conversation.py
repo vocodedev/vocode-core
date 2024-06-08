@@ -12,6 +12,7 @@ from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, 
 import logging
 import time
 import typing
+import numpy
 import requests
 import aiohttp
 from telephony_app.models.call_type import CallType
@@ -255,7 +256,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             if transcription.message.strip() == "vad":
 
                 if len(self.buffer) == 0:
-                    self.conversation.logger.info("Ignoring vad, empty message.")
                     return
 
                 # If a buffer check task is running, extend the current sleep time
@@ -270,20 +270,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                 return
             if "words" not in json.loads(transcription.message):
-                self.conversation.logger.info("Ignoring transcription, no words.")
+                self.conversation.logger.info(
+                    "Ignoring transcription, no word content."
+                )
                 return
             elif len(json.loads(transcription.message)["words"]) == 0:
                 # when we wait more, they were silent so we want to push out a filler audio
-                self.conversation.logger.info("Ignoring transcription, zero words.")
+                self.conversation.logger.info(
+                    "Ignoring transcription, zero words in words."
+                )
                 return
 
             self.conversation.logger.debug(
                 f"Transcription message: {' '.join(word['word'] for word in json.loads(transcription.message)['words'])}"
             )
-            if self.agent.agent_config.allow_interruptions:
-                self.conversation.stop_event.set()  # slower more precise
-                await self.conversation.output_device.clear()
-                self.conversation.logger.info("Cleared the output device")
 
             # Strip the transcription message and log the time silent
             transcription.message = transcription.message
@@ -297,6 +297,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     return
                 self.time_silent += transcription.time_silent
                 return
+            self.time_silent = 0.0
             # Update the buffer with the new message if it contains new content and log it
             new_words = json.loads(transcription.message)["words"]
 
@@ -319,9 +320,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )  # TODO: this seems like its hanging, why not await?
                 self.initial_message = None
                 return
-
+            stashed_buffer = deepcopy(self.buffer)
             # Broadcast an interrupt and set the buffer status to DISCARD
-            self.conversation.broadcast_interrupt()
+            await self.conversation.broadcast_interrupt()
+            if stashed_buffer != self.buffer:
+                self.conversation.logger.info(
+                    f"Buffer changed on interrupt, putting stashed buffer back"
+                )
+                self.buffer = stashed_buffer
             self.ready_to_send = BufferStatus.DISCARD
 
             # Start a new buffer check task to recalculate the timing
@@ -580,7 +586,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     for char in agent_response_message.message.text
                 ):
                     self.conversation.logger.debug(
-                        "SYNTH: Ignoring empty or non-letter agent response message"
+                        f"SYNTH: Ignoring empty or non-letter agent response message: {agent_response_message.message.text}"
                     )
                     return
                 # get the prompt preamble
@@ -618,6 +624,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     else:
                         self.conversation.logger.info(
                             f"[{self.conversation.agent.agent_config.call_type}:{self.conversation.agent.agent_config.current_call_id}] Agent: {agent_response_message.message.text}"
+                        )
+                        agent_response_message.message.text = (
+                            agent_response_message.message.text.strip()
                         )
                         synthesis_result = (
                             await self.conversation.synthesizer.create_speech(
@@ -688,7 +697,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
                     transcript_message=transcript_message,
                 )
-
                 # Create an asynchronous task for the coroutine and store it as the current task.
                 self.current_task = asyncio.create_task(send_speech_coroutine)
 
@@ -974,12 +982,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
     def mark_last_action_timestamp(self):
         self.last_action_timestamp = time.time()
 
-    def broadcast_interrupt(self):
+    async def broadcast_interrupt(self):
         """Stops all inflight events and cancels all workers that are sending output
 
         Returns true if any events were interrupted - which is used as a flag for the agent (is_interrupt)
         """
         self.logger.debug("Broadcasting interrupt")
+        self.stop_event.set()
+        if isinstance(self.agent, CommandAgent):
+            self.agent.stop = not self.agent.stop
 
         num_interrupts = 0
         while True:
@@ -995,8 +1006,19 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriptions_worker.block_inputs = False
         self.agent.clear_task_queue()
         self.agent_responses_worker.clear_task_queue()
+        await self.output_device.clear()
         if not self.agent.get_agent_config().allow_interruptions:
             self.synthesis_results_worker.clear_task_queue()
+        while True:
+            try:
+                interruptible_event = self.synthesis_results_queue.get_nowait()
+                if not interruptible_event.is_interrupted():
+                    if interruptible_event.interrupt():
+                        self.logger.debug(" Synthesis Results Queue Interrupt Event")
+                        num_interrupts += 1
+            except asyncio.QueueEmpty:
+                break
+
         return num_interrupts > 0
 
     def is_interrupt(self, transcription: Transcription):
@@ -1027,10 +1049,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         """
         # Set the flag indicating that synthesis is not yet complete
         self.transcriptions_worker.synthesis_done = False
-
-        # Mute the transcriber during speech synthesis if configured to do so
-        if self.transcriber.get_transcriber_config().mute_during_speech:
-            self.logger.debug("Muting transcriber")
 
         # Initialize variables to hold the message sent and the cutoff status
         message_sent = message
@@ -1075,7 +1093,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         # Remove the sent piece from the speech data
                         speech_data = speech_data[piece_size:]
                         # Sleep for a tenth of the chunk duration
-                        await asyncio.sleep(seconds_per_chunk / 1)
+                        # await asyncio.sleep(seconds_per_chunk / 1)
                     if not buffer_cleared and not stop_event.is_set():
                         buffer_cleared = True
                         self.transcriptions_worker.buffer.clear()
@@ -1084,13 +1102,21 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.mark_last_action_timestamp()
                     await self.output_device.consume_nonblocking(speech_data)
                     speech_data = bytearray()
-                    # sleep for the length of the speech
-                    await asyncio.sleep(seconds_per_chunk)
                     if not buffer_cleared:
                         buffer_cleared = True
                         self.transcriptions_worker.buffer.clear()
 
             speech_data.extend(chunk_result.chunk)
+        if not stop_event.is_set():
+            self.logger.debug(f"Sending in final synth buffer, len {len(speech_data)}")
+
+            await self.output_device.consume_nonblocking(speech_data)
+            self.transcriptions_worker.time_silent = 0.0
+            # Calculate the remaining time to sleep based on a 16k chunk size
+            remaining_time_to_sleep = (chunk_size - len(speech_data)) / 16000.0
+        else:
+            self.logger.debug("Interrupted speech output on the last chunk")
+            return "", False
 
         self.transcriptions_worker.synthesis_done = True
 
@@ -1113,18 +1139,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             # Proceed if no buffer check task is found
             self.logger.debug("No buffer check task found, proceeding without waiting.")
 
-        # Log the start of sending synthesized speech to the output device
-        self.logger.debug("Sending in synth buffer")
         # Clear the transcription worker's buffer and related attributes before sending
         self.transcriptions_worker.block_inputs = True
         self.transcriptions_worker.time_silent = 0.0
         self.transcriptions_worker.triggered_affirmative = False
         self.transcriptions_worker.buffer.clear()
-
-        # Send the generated speech data to the output device
         start_time = time.time()
-        if len(speech_data) > 0:
-            await self.output_device.consume_nonblocking(speech_data)
         end_time = time.time()
 
         # Calculate the length of the speech in seconds
@@ -1150,11 +1170,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             - self.per_chunk_allowance_seconds,
             0,
         )
-
-        await asyncio.sleep(sleep_time)
-
-        # Log the successful sending of speech data
-        self.logger.debug(f"Sent speech data with size {len(speech_data)}")
 
         # Update the last action timestamp after sending speech
         self.mark_last_action_timestamp()
@@ -1197,7 +1212,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     async def terminate(self):
         self.mark_terminated()
-        self.broadcast_interrupt()
+        await self.broadcast_interrupt()
         if self.synthesis_results_worker.current_task:
             self.synthesis_results_worker.current_task.cancel()
         self.events_manager.publish_event(
@@ -1223,6 +1238,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             # but it is done here because `vector_db.tear_down()` is async and
             # `agent.terminate()` is not async.
             self.logger.debug("Terminating vector db")
+            self.agent.streamed = False
             await self.agent.vector_db.tear_down()
         self.agent.terminate()
         self.logger.debug("Terminating output device")

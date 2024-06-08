@@ -122,6 +122,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
         self.block_inputs = False  # independent of interruptions, actions cannot be interrupted when a starting phrase is present
         self.streamed = False
         self.agent_config.pending_action = None
+        self.stop = False
         if agent_config.azure_params:
             self.aclient = AsyncAzureOpenAI(
                 api_version=agent_config.azure_params.api_version,
@@ -415,6 +416,10 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 model=model_to_use,
                 logger=self.logger,
             ):
+                if self.stop:
+                    self.logger.info("Stopping streaming")
+                    self.stop = False
+                    return None
                 if (
                     '"tool_name":' in commandr_response
                     and not "DONE" in first_tool_name
@@ -473,7 +478,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                         and len("".join(parts[:-1]).split(" ")) >= 3
                         and len("".join(parts[:-1]).split(" ")[-1])
                         > 3  # this is to avoid splitting on mr mrs
-                        and any(char.isalpha() for char in "".join(parts[:-1]))
+                        and any(char.isalnum() for char in "".join(parts[:-1]))
                     ):
                         self.streamed = (
                             True  # we said something so no need for fall back
@@ -485,26 +490,29 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                             ]
                         )
                         output = output.replace("] ```", "")
-
-                        self.produce_interruptible_agent_response_event_nonblocking(
-                            AgentResponseMessage(message=BaseMessage(text=output))
-                        )
-                        await asyncio.sleep(0.1)
-                        current_utterance = parts[-1]
+                        if len(output) > 0:
+                            self.produce_interruptible_agent_response_event_nonblocking(
+                                AgentResponseMessage(message=BaseMessage(text=output))
+                            )
+                            current_utterance = parts[-1]
 
             if len(current_utterance) > 0 and any(
-                char.isalpha() for char in current_utterance
+                char.isalnum() for char in current_utterance
             ):
                 # only keep the part before split pattern 2
                 parts = split_pattern2.split(current_utterance)
                 current_utterance = "".join(parts[:2])
                 self.logger.info(f"Current utterance: {current_utterance}")
                 current_utterance = current_utterance.replace("] ```", "")
-                self.streamed = True  # we said something so no need for fall back
-                self.produce_interruptible_agent_response_event_nonblocking(
-                    AgentResponseMessage(message=BaseMessage(text=current_utterance))
-                )
-                current_utterance = ""
+                if len(current_utterance) > 0:
+                    self.streamed = True  # we said something so no need for fall back
+
+                    self.produce_interruptible_agent_response_event_nonblocking(
+                        AgentResponseMessage(
+                            message=BaseMessage(text=current_utterance)
+                        )
+                    )
+                    current_utterance = ""
 
             # if "send_direct_response" in commandr_response:
             #     return None
@@ -666,9 +674,18 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                             .replace("false", "False")
                             .replace("true", "True")
                         )  # ensure we can interpret it as a dict
+                        pretty_name = name.replace("_", " ")
+                        to_replace = "\\n"
+                        param_descriptions = [
+                            f"'{value.replace(to_replace, ' ')}' as the '{key}'"
+                            for key, value in params.items()
+                        ]
+                        if len(param_descriptions) > 1:
+                            param_descriptions[-1] = "and " + param_descriptions[-1]
                         pretty_function_call = (
-                            f"Tool Call: {name}, Parameters: {params}"
-                        )
+                            f"Tool Call: I'm going to '{pretty_name}', with "
+                            + ", ".join(param_descriptions)
+                        ) + "."
                         self.logger.info(
                             f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {pretty_function_call}"
                         )
@@ -848,6 +865,10 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 prompt_preamble=self.agent_config.prompt_preamble,
                 logger=self.logger,
             ):
+                if self.stop:
+                    self.logger.info("Stopping streaming")
+                    self.stop = False
+                    return "", True
                 stripped = response_chunk.rstrip()
                 if len(stripped) != len(response_chunk):
                     response_chunk = stripped + " "
@@ -862,7 +883,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     and len("".join(parts[:-1]).split(" ")) >= 3
                     and len("".join(parts[:-1]).split(" ")[-1])
                     > 3  # this is to avoid splitting on mr mrs
-                    and any(char.isalpha() for char in "".join(parts[:-1]))
+                    and any(char.isalnum() for char in "".join(parts[:-1]))
                 ):
                     output = "".join(
                         [
@@ -871,27 +892,30 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                         ]
                     )
                     output = output.replace("] ```", "")
-                    self.produce_interruptible_agent_response_event_nonblocking(
-                        AgentResponseMessage(
-                            message=BaseMessage(
-                                text=output,
+                    if len(output) > 0:
+                        self.produce_interruptible_agent_response_event_nonblocking(
+                            AgentResponseMessage(
+                                message=BaseMessage(
+                                    text=output,
+                                )
                             )
                         )
-                    )
                     current_utterance = parts[-1]
-                    await asyncio.sleep(0.01)
                     # log each part
                 commandr_response += response_chunk
             if len(current_utterance) > 0 and any(
-                char.isalpha() for char in current_utterance
+                char.isalnum() for char in current_utterance
             ):
                 # only keep the part before split pattern 2
                 parts = split_pattern2.split(current_utterance)
                 current_utterance = "".join(parts[:2])
                 current_utterance = current_utterance.replace("] ```", "")
-                self.produce_interruptible_agent_response_event_nonblocking(
-                    AgentResponseMessage(message=BaseMessage(text=current_utterance))
-                )
+                if len(current_utterance) > 0:
+                    self.produce_interruptible_agent_response_event_nonblocking(
+                        AgentResponseMessage(
+                            message=BaseMessage(text=current_utterance)
+                        )
+                    )
             self.can_send = False
             return "", True
         else:

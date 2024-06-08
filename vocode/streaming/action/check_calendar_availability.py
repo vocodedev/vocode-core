@@ -151,7 +151,7 @@ class CheckCalendarAvailability(
                     valid_time = True
                     break
                 else:
-                    unavailability_reason = f"the availability block is to short to fit a {self.action_config.appointment_length_minutes}-minute appointment before the next scheduled event."
+                    unavailability_reason = f"the availability block is too short to fit a {self.action_config.appointment_length_minutes}-minute appointment before the next scheduled event."
                     break
             elif start_time_unix < interval_start_unix:
                 unavailability_reason = f"the requested start time is before the next available block starting at {self.format_for_ai(interval['start'])}."

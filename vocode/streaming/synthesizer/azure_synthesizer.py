@@ -134,7 +134,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self.voice_name = self.synthesizer_config.voice_name
         self.pitch = self.synthesizer_config.pitch
         self.rate = self.synthesizer_config.rate
-        self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
+        self.thread_pool_executor = ThreadPoolExecutor(max_workers=4)
         self.logger = logger or logging.getLogger(__name__)
 
     async def get_phrase_filler_audios(self) -> List[FillerAudio]:
@@ -236,8 +236,14 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         message: str,
         bot_sentiment: Optional[BotSentiment] = None,
         volume: int = 1,
-        rate: int = 1,
+        rate: int = -1,
     ) -> str:
+        # remove trailing comma from message, if it exists
+        message = message.strip()
+        if message[-1] == ",":
+            message = message[:-1]
+        if rate == -1:
+            rate = self.rate
         # remove newline from message to prevent it from saying "slash n"
         message = message.replace("\n", " ")
         # remove escaped newline from message
@@ -285,25 +291,30 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             )  # Azure specific, it's a scale of 0-2
             voice_root = styled
 
-        if " " in message and is_neural:
-            silence = ElementTree.SubElement(
-                voice_root, "{%s}silence" % NAMESPACES.get("mstts")
-            )
-            silence.set("value", f"{random.randint(80, 130)}ms")
-            silence.set("type", "comma-exact")
         if is_neural:
             prosody = ElementTree.SubElement(voice_root, "prosody")
             prosody.set("pitch", f"{self.pitch}%")
             prosody.set("rate", f"{rate*self.rate}%")
+            # fixes symbols like euro for some reason
+            message = message.encode("utf-8").decode("utf-8")
             prosody.set("volume", f"-{volume}%")
             prosody.text = message.strip()
+            ElementTree.SubElement(prosody, "break", time="100ms")  # fixes the clicking
 
-        return (
+        self.logger.debug(
+            f"""Created SSML: {ElementTree.tostring(ssml_root, encoding='unicode').replace("ns0:", "").replace(":ns0", "").replace("ns0", "")}"""
+        )
+
+        out = (
             ElementTree.tostring(ssml_root, encoding="unicode")
             .replace("ns0:", "")
             .replace(":ns0", "")
             .replace("ns0", "")
         )
+        out = out.replace(
+            '<break time="100ms" />', '<break time="100ms" /> ...'
+        )  # fixes the clicking
+        return out
 
     def synthesize_ssml(self, ssml: str) -> speechsdk.AudioDataStream:
         result = self.synthesizer.start_speaking_ssml_async(ssml).get()
@@ -392,28 +403,39 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         async def chunk_generator(
             audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
         ):
-            audio_buffer = bytes(chunk_size)
-            filled_size = await asyncio.get_event_loop().run_in_executor(
-                self.thread_pool_executor,
-                lambda: audio_data_stream.read_data(audio_buffer),
-            )
-            if filled_size != chunk_size:
-                yield SynthesisResult.ChunkResult(
-                    chunk_transform(audio_buffer[offset:]), True
-                )
-                return
-            else:
-                yield SynthesisResult.ChunkResult(
-                    chunk_transform(audio_buffer[offset:]), False
-                )
             while True:
-                filled_size = audio_data_stream.read_data(audio_buffer)
+                audio_buffer = bytes(chunk_size)
+                filled_size = await asyncio.get_event_loop().run_in_executor(
+                    self.thread_pool_executor,
+                    lambda: audio_data_stream.read_data(audio_buffer),
+                )
+                self.logger.debug(f"Filled size: {filled_size}")
+                if filled_size == 0:
+                    self.logger.debug(
+                        "No audio data returned, attempting to resume speech"
+                    )
+                    # Recreate the speech and get a new audio data stream
+                    ssml = (
+                        message.ssml
+                        if isinstance(message, SSMLMessage)
+                        else self.create_ssml(
+                            modified_message, bot_sentiment=bot_sentiment
+                        )
+                    )
+                    audio_data_stream = await asyncio.get_event_loop().run_in_executor(
+                        self.thread_pool_executor, self.synthesize_ssml, ssml
+                    )
+                    await asyncio.sleep(0.5)
+                    continue  # Continue the loop to try reading from the new stream
                 if filled_size != chunk_size:
                     yield SynthesisResult.ChunkResult(
-                        chunk_transform(audio_buffer[: filled_size - offset]), True
+                        chunk_transform(audio_buffer[offset:filled_size]), True
                     )
                     break
-                yield SynthesisResult.ChunkResult(chunk_transform(audio_buffer), False)
+                else:
+                    yield SynthesisResult.ChunkResult(
+                        chunk_transform(audio_buffer[offset:]), False
+                    )
 
         word_boundary_event_pool = WordBoundaryEventPool()
         self.synthesizer.synthesis_word_boundary.connect(
@@ -422,7 +444,6 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         ssml = (
             message.ssml
             if isinstance(message, SSMLMessage)
-            # put modified here so it doesnt mess up transcript but says slowly
             else self.create_ssml(modified_message, bot_sentiment=bot_sentiment)
         )
         audio_data_stream = await asyncio.get_event_loop().run_in_executor(
