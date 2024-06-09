@@ -28,6 +28,10 @@ from vocode.streaming.action.book_calendar_appointment import (
     BookCalendarAppointment,
     BookCalendarAppointmentActionConfig,
 )
+from vocode.streaming.action.forward_call_to_moovs import (
+    ForwardCallToMoovs,
+    ForwardCallToMoovsActionConfig,
+)
 
 # use_instructions
 from vocode.streaming.action.retrieve_instructions import (
@@ -70,5 +74,7 @@ class ActionFactory:
             return CreateAgent(action_config)
         elif isinstance(action_config, SearchDocumentsActionConfig):
             return SearchDocuments(action_config)
+        elif isinstance(action_config, ForwardCallToMoovsActionConfig):
+            return ForwardCallToMoovs(action_config)
         else:
             raise Exception("Invalid action type")

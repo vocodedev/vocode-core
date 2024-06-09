@@ -26,6 +26,7 @@ class ActionType(str, Enum):
     BOOK_CALENDAR_APPOINTMENT = "book_calendar_appointment"
     CREATE_AGENT = "create_agent"
     SEARCH_DOCUMENTS = "search_documents"
+    FORWARD_CALL_TO_MOOVS = "get_human_support"
 
 
 class ActionConfig(TypedModel, type=ActionType.BASE):

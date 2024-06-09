@@ -220,7 +220,7 @@ all_optional_tools = {
     },
     ActionType.BOOK_CALENDAR_APPOINTMENT: {
         "name": "book_calendar_appointment",
-        "description": "Book an appointment for the client on the calendar",
+        "description": "Book an appointment for the client on the calendar.",
         "parameter_definitions": {
             "details": {
                 "description": "The reason for the appointment",
@@ -260,6 +260,15 @@ all_optional_tools = {
             },
         },
     },
+    # Design decision: name value and ActionType are different because in the future, we will
+    # want many different customer support queues.
+    # We will preserve the name of the function since we know it will be consistently called
+    # but the underlying implementation of the function call will change
+    ActionType.FORWARD_CALL_TO_MOOVS: {
+        "name": "get_human_support",
+        "description": "Puts a human support agent into the call.",
+        "parameter_definitions": {},
+    }
 }
 
 
