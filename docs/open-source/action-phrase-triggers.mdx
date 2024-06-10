@@ -1,0 +1,86 @@
+---
+title: 'Action Triggers'
+description: 'Activate actions with function calls or specific phrases'
+---
+## What are function calls?
+[Function calls](https://platform.openai.com/docs/guides/function-calling) allow modern Large Language Models (LLMs) like ChatGPT to perform tasks outside of text generation. 
+For example, if I create a math assistant with ChatGPT, I might make a "multiply" function that ChatGPT can call to multiply two numbers together.
+
+If you add an action to a vocode agent, its corresponding function calling schema is added to each ChatGPT query. If the function call is outputted by ChatGPT, the corresponding action is triggered automatically.
+
+***Note:*** *In vocode agents, ChatGPT can return a text response alongside a function call. In this scenario, the text is synthesized and played first, then the action is run.*
+
+## What are phrase triggers?
+
+Phrase triggers are text phrases that activate an action when produced by an agent. Phrase triggers are useful in production use-cases where consistency and reliability are important, since text outputs are easier to control in comparison to function calls.
+
+## Configuring action triggers
+Each vocode action config contains an `action_trigger` field  to specify how the action is triggered. The default trigger is function calling. The examples below demonstrate how to set action triggers for an `EndConversation` action config:
+
+**Function calls:**
+```python
+from vocode.streaming.action.end_conversation import EndConversationVocodeActionConfig
+from vocode.streaming.models.actions import FunctionCallActionTrigger
+
+EndConversationVocodeActionConfig(
+    type="action_end_conversation",
+    action_trigger=FunctionCallActionTrigger(
+        type="action_trigger_function_call"
+    )
+)
+```
+***Note:*** *You can also leave `action_trigger` field empty and vocode will default to function calls.*
+
+**Phrase triggers:**
+
+```python
+from vocode.streaming.action.end_conversation import EndConversationVocodeActionConfig
+from vocode.streaming.models.actions import PhraseBasedActionTrigger, PhraseBasedActionTriggerConfig, PhraseTrigger
+
+EndConversationVocodeActionConfig(
+    type="action_end_conversation",
+    action_trigger=PhraseBasedActionTrigger(
+        type = "action_trigger_phrase_based",
+        config: PhraseBasedActionTriggerConfig(
+            phrase_triggers = [
+                PhraseTrigger(
+                    phrase="Ending conversation now",
+                    condition="phrase_condition_type_contains"
+                ),
+                # Additional phrase triggers can be listed here
+            ]
+        )
+    )
+)
+```
+For the code above, if the agent says 'Ending conversation now', the end conversation action will automatically be taken. 
+You can add multiple phrase triggers for an action by passing a list of `PhraseTrigger` instances. 
+
+The `phrase_condition_type_contains` condition configures the agent to run the action if its output *contains* the phrase. So, the action will also be run if the agent
+says 'I am ending conversation now'.
+
+## Example Scenario
+
+Let's assume we have an action called `TurnOnLight` that turns on your bedroom light when activated. Take the following conversation:
+```plaintext
+Human: Hello
+AI: How can I assist you today?
+Human: Please turn on the lights.
+```
+
+If the action is triggered via a function call, the bot may respond with:
+```plaintext
+AI: Sure!
+BOT_ACTION_START: Running `action_turn_on_light`
+```
+or it may run the action without saying anything.
+
+If we use a phrase trigger instead, we may do the following:
+1. In our prompt, write "If the human asks to turn on the lights, say 'I will turn on the lights now' verbatim"
+2. Configure `TurnOnLight` with "I will turn on the lights now" as its phrase trigger
+
+Then, the bot will respond with:
+```
+AI: I will turn on the lights now.
+BOT_ACTION_START: Running `action_turn_on_light`
+```
