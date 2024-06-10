@@ -4,7 +4,7 @@ import time
 
 from loguru import logger
 from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.output_device.audio_chunk import AudioChunk
+from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.utils import get_chunk_size_per_second
 from vocode.streaming.utils.worker import InterruptibleEvent, InterruptibleWorker
 
@@ -27,6 +27,7 @@ class BaseOutputDevice(InterruptibleWorker[InterruptibleEvent[AudioChunk]], ABC)
 
             if item.is_interrupted():
                 audio_chunk.on_interrupt()
+                audio_chunk.state = ChunkState.INTERRUPTED
                 continue
 
             speech_length_seconds = (len(audio_chunk.data)) / get_chunk_size_per_second(
@@ -35,6 +36,7 @@ class BaseOutputDevice(InterruptibleWorker[InterruptibleEvent[AudioChunk]], ABC)
             )
             await self.play(audio_chunk.data)
             audio_chunk.on_play()
+            audio_chunk.state = ChunkState.PLAYED
             end_time = time.time()
             await asyncio.sleep(
                 max(

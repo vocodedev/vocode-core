@@ -12,16 +12,12 @@ class ChunkState(int, Enum):
 @dataclass
 class AudioChunk:
     data: bytes
-    state: ChunkState
+    state: ChunkState = ChunkState.UNPLAYED
 
-    def on_play(self):
-        self.state = ChunkState.PLAYED
+    @staticmethod
+    def on_play():
+        pass
 
-    def on_interrupt(self):
-        self.state = ChunkState.INTERRUPTED
-
-
-@dataclass
-class UtteranceAudioChunk(AudioChunk):
-    chunk_idx: int
-    processed_event: asyncio.Event
+    @staticmethod
+    def on_interrupt():
+        pass

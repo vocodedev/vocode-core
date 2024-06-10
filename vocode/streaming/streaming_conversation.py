@@ -49,7 +49,7 @@ from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage, BotBackchannel, LLMToken, SilenceMessage
 from vocode.streaming.models.transcriber import TranscriberConfig, Transcription
 from vocode.streaming.models.transcript import Message, Transcript, TranscriptCompleteEvent
-from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState, UtteranceAudioChunk
+from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
@@ -892,77 +892,75 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         Returns the message that was sent up to, and a flag if the message was cut off
         """
+        seconds_spoken = 0.0
 
-        def on_play(utterance_audio_chunk: UtteranceAudioChunk):
-            utterance_audio_chunk.state = ChunkState.PLAYED
-            # super().on_play(utterance_audio_chunk)  # TODO: use proper super dispatch
-            if utterance_audio_chunk.chunk_idx == 0:
-                if started_event:
-                    started_event.set()
-                if first_chunk_span:
-                    self._track_first_chunk(first_chunk_span, synthesis_result)
+        def create_on_play_callback(
+            chunk_idx: int,
+            processed_event: asyncio.Event,
+        ):
+            def _on_play():
+                if chunk_idx == 0:
+                    if started_event:
+                        started_event.set()
+                    if first_chunk_span:
+                        self._track_first_chunk(first_chunk_span, synthesis_result)
 
-            nonlocal seconds_spoken
+                nonlocal seconds_spoken
 
-            self.mark_last_action_timestamp()
+                self.mark_last_action_timestamp()
 
-            seconds_spoken += seconds_per_chunk
-            if transcript_message:
-                transcript_message.text = synthesis_result.get_message_up_to(seconds_spoken)
+                seconds_spoken += seconds_per_chunk
+                if transcript_message:
+                    transcript_message.text = synthesis_result.get_message_up_to(seconds_spoken)
 
-            utterance_audio_chunk.processed_event.set()
+                processed_event.set()
 
-        def on_interrupt(utterance_audio_chunk: UtteranceAudioChunk):
-            utterance_audio_chunk.state = ChunkState.INTERRUPTED
-            # super().on_interrupt(utterance_audio_chunk)  # TODO: use proper super dispatch
-            logger.debug(
-                "Interrupted, stopping text to speech after {} chunks".format(
-                    utterance_audio_chunk.chunk_idx
-                ),
-            )
-            utterance_audio_chunk.processed_event.set()
+            return _on_play
+
+        def create_on_interrupt_callback(
+            chunk_idx: int,
+            processed_event: asyncio.Event,
+        ):
+            def _on_interrupt():
+                logger.debug(
+                    "Interrupted, stopping text to speech after {} chunks".format(chunk_idx),
+                )
+                processed_event.set()
+
+            return _on_interrupt
 
         if self.transcriber.get_transcriber_config().mute_during_speech:
             logger.debug("Muting transcriber")
             self.transcriber.mute()
-        message_sent = message
-        chunk_idx = 0
-        seconds_spoken = 0.0
         logger.debug(f"Start sending speech {message} to output")
 
         first_chunk_span = self._maybe_create_first_chunk_span(synthesis_result, message)
-        utterance_audio_chunks: List[UtteranceAudioChunk] = []
+        audio_chunks: List[AudioChunk] = []
+        processed_events = []
         async for chunk_idx, chunk_result in enumerate_async_iter(synthesis_result.chunk_generator):
             processed_event = asyncio.Event()
-            utterance_audio_chunk = UtteranceAudioChunk(
+            audio_chunk = AudioChunk(
                 data=chunk_result.chunk,
-                state=ChunkState.UNPLAYED,
-                chunk_idx=chunk_idx,
-                processed_event=processed_event,
             )
-            utterance_audio_chunk.on_play = partial(on_play, utterance_audio_chunk)
-            utterance_audio_chunk.on_interrupt = partial(on_interrupt, utterance_audio_chunk)
+            audio_chunk.on_play = create_on_play_callback(chunk_idx, processed_event)
+            audio_chunk.on_interrupt = create_on_interrupt_callback(chunk_idx, processed_event)
             self.output_device.consume_nonblocking(
                 InterruptibleEvent(
-                    payload=utterance_audio_chunk,
+                    payload=audio_chunk,
                     is_interruptible=True,
                     interruption_event=stop_event,
                 ),
             )
-            utterance_audio_chunks.append(utterance_audio_chunk)
+            audio_chunks.append(audio_chunk)
+            processed_events.append(processed_event)
 
-        await asyncio.gather(
-            *(
-                utterance_audio_chunk.processed_event.wait()
-                for utterance_audio_chunk in utterance_audio_chunks
-            )
-        )
+        await asyncio.gather(*(processed_event.wait() for processed_event in processed_events))
 
         maybe_first_interrupted_audio_chunk = next(
             (
-                utterance_audio_chunk
-                for utterance_audio_chunk in utterance_audio_chunks
-                if utterance_audio_chunk.state == ChunkState.INTERRUPTED
+                audio_chunk
+                for audio_chunk in audio_chunks
+                if audio_chunk.state == ChunkState.INTERRUPTED
             ),
             None,
         )
@@ -972,8 +970,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             logger.debug("Unmuting transcriber")
             self.transcriber.unmute()
         if transcript_message:
-            message_sent = transcript_message.text
             transcript_message.is_final = not cut_off
+        message_sent = transcript_message.text if transcript_message and cut_off else message
         if synthesis_result.synthesis_total_span:
             synthesis_result.synthesis_total_span.finish()
         return message_sent, cut_off
