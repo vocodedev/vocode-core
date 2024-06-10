@@ -33,7 +33,7 @@ from vocode.streaming.models.transcriber import DeepgramTranscriberConfig, Punct
 server = InboundCallServer(
     ...
     transcriber_config=DeepgramTranscriberConfig.from_telephone_input_device(
-      endpointing_config=PunctuationEndpointingConfig()
+      endpointing_config=DeepgramEndpointingConfig()
     ),
     ...
 )
@@ -56,7 +56,7 @@ async def main():
         output_device=speaker_output,
         transcriber=DeepgramTranscriber(
             DeepgramTranscriberConfig.from_input_device(
-                microphone_input, endpointing_config=PunctuationEndpointingConfig()
+                microphone_input, endpointing_config=DeepgramEndpointingConfig()
             )
         ),
         ...
@@ -70,7 +70,22 @@ The method takes a `microphone_input` object as an argument and extracts the `sa
 
 Endpointing is the process of understanding when someone has finished speaking. The `EndpointingConfig` controls how this is done. There are a couple of different ways to configure endpointing:
 
+We provide `DeepgramEndpointingConfig()` which has some reasonable defaults and knobs to suit most use-cases (but only works with the Deepgram transcriber).
+
+```
+class DeepgramEndpointingConfig(EndpointingConfig, type="deepgram"):  # type: ignore
+    vad_threshold_ms: int = 500
+    utterance_cutoff_ms: int = 1000
+    time_silent_config: Optional[TimeSilentConfig] = Field(default_factory=TimeSilentConfig)
+    use_single_utterance_endpointing_for_first_utterance: bool = False
+```
+
+- `vad_threshold_ms`: translates to [Deepgram's `endpointing` feature](https://developers.deepgram.com/docs/endpointing#enable-feature)
+- `utterance_cutoff_ms`: uses [Deepgram's Utterance End features](https://developers.deepgram.com/docs/utterance-end)
+- `time_silent_config`: is a Vocode specific parameter that marks an utterance final if we haven't seen any new words in X seconds
+- `use_single_utterance_endpointing_for_first_utterance`: Uses `is_final` instead of `speech_final` for endpointing for the first utterance (works really well for outbound conversations, where the user's first utterance is something like "Hello?") - see [this doc on Deepgram](https://developers.deepgram.com/docs/understand-endpointing-interim-results) for more info.
+
+Endpointing is highly use-case specific - building a realistic experience for this greatly depends on the person speaking to the AI. Here are few paradigms that we've used to help you along the way:
+
 - Time-based endpointing: This method considers the speaker to be finished when there is a certain duration of silence.
 - Punctuation-based endpointing: This method considers the speaker to be finished when there is a certain duration of silence after a punctuation mark.
-
-In the first example, the `PunctuationEndpointingConfig` is used to configure the Deepgram transcriber for punctuation-based endpointing.
