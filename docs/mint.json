@@ -49,7 +49,11 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": ["welcome", "hosted-quickstart", "open-source-quickstart"]
+      "pages": [
+        "welcome",
+        "hosted-quickstart",
+        "open-source-quickstart"
+      ]
     },
     {
       "group": "Vocode 101",
@@ -67,6 +71,7 @@
         "open-source/create-your-own-agent",
         "open-source/langchain-agent",
         "open-source/action-agents",
+        "open-source/action-phrase-triggers",
         "open-source/local-conversation",
         "open-source/events-manager",
         "open-source/using-synthesizers",
@@ -109,7 +114,9 @@
     },
     {
       "group": "Usage",
-      "pages": ["api-reference/usage/get-usage"]
+      "pages": [
+        "api-reference/usage/get-usage"
+      ]
     },
     {
       "group": "Actions",
