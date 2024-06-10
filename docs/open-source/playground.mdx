@@ -8,6 +8,11 @@ test transcribers, agents, and synthesizers.
 
 To begin, clone the [repo](https://github.com/vocodedev/vocode-python).
 
+Install the core packages by running the following:
+```
+poetry install
+```
+
 # Streaming
 
 ## Transcriber
@@ -32,9 +37,11 @@ make chat
 
 ## Synthesizer
 
-1. Update your synthesizer configuration in `playground/streaming/synthesizer/synthesize.py`
+1. Install the synthesizer packages by running `poetry install --extras=synthesizers`
 
-2. Run the following script to synthesize text to speech and play it to your speaker:
+2. Update your synthesizer configuration in `playground/streaming/synthesizer/synthesize.py`
+
+3. Run the following script to synthesize text to speech and play it to your speaker:
 
 ```
 make synthesize
