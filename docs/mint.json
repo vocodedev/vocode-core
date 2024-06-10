@@ -80,7 +80,6 @@
         "open-source/playground",
         "open-source/turn-based-conversation",
         "open-source/language-support",
-        "open-source/tracing",
         "open-source/agent-factory"
       ]
     },
