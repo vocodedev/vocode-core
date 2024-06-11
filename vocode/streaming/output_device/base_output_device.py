@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import asyncio
 import time
 
-from loguru import logger
+from vocode.streaming.constants import PER_CHUNK_ALLOWANCE_SECONDS
 from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.utils import get_chunk_size_per_second
@@ -10,9 +10,15 @@ from vocode.streaming.utils.worker import InterruptibleEvent, InterruptibleWorke
 
 
 class BaseOutputDevice(InterruptibleWorker[InterruptibleEvent[AudioChunk]], ABC):
-    def __init__(self, sampling_rate: int, audio_encoding: AudioEncoding):
+    def __init__(
+        self,
+        sampling_rate: int,
+        audio_encoding: AudioEncoding,
+        per_chunk_allowance_seconds: float = PER_CHUNK_ALLOWANCE_SECONDS,
+    ):
         self.sampling_rate = sampling_rate
         self.audio_encoding = audio_encoding
+        self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
 
     async def _run_loop(self):
         while True:
@@ -40,7 +46,9 @@ class BaseOutputDevice(InterruptibleWorker[InterruptibleEvent[AudioChunk]], ABC)
             end_time = time.time()
             await asyncio.sleep(
                 max(
-                    speech_length_seconds - (end_time - start_time),
+                    speech_length_seconds
+                    - (end_time - start_time)
+                    - self.per_chunk_allowance_seconds,
                     0,
                 ),
             )

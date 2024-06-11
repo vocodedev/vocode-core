@@ -40,7 +40,6 @@ from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.constants import (
     ALLOWED_IDLE_TIME,
     CHECK_HUMAN_PRESENT_MESSAGE_CHOICES,
-    PER_CHUNK_ALLOWANCE_SECONDS,
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
 )
 from vocode.streaming.models.actions import EndOfTurn
@@ -596,7 +595,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         synthesizer: BaseSynthesizer,
         speed_coefficient: float = 1.0,
         conversation_id: Optional[str] = None,
-        per_chunk_allowance_seconds: float = PER_CHUNK_ALLOWANCE_SECONDS,
         events_manager: Optional[EventsManager] = None,
     ):
         self.id = conversation_id or create_conversation_id()
@@ -661,7 +659,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         self.events_manager = events_manager or EventsManager()
         self.events_task: Optional[asyncio.Task] = None
-        self.per_chunk_allowance_seconds = per_chunk_allowance_seconds
         self.transcript = Transcript()
         self.transcript.attach_events_manager(self.events_manager)
 
@@ -936,7 +933,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         first_chunk_span = self._maybe_create_first_chunk_span(synthesis_result, message)
         audio_chunks: List[AudioChunk] = []
-        processed_events = []
+        processed_events: List[asyncio.Event] = []
         async for chunk_idx, chunk_result in enumerate_async_iter(synthesis_result.chunk_generator):
             processed_event = asyncio.Event()
             audio_chunk = AudioChunk(

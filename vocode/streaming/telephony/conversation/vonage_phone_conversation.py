@@ -48,7 +48,6 @@ class VonagePhoneConversation(AbstractPhoneConversation[VonageOutputDevice]):
         events_manager: Optional[EventsManager] = None,
         output_to_speaker: bool = False,
         speed_coefficient: float = 1.0,
-        per_chunk_allowance_seconds: float = 0.01,
         noise_suppression: bool = False,
     ):
         self.speed_coefficient = speed_coefficient
@@ -68,7 +67,6 @@ class VonagePhoneConversation(AbstractPhoneConversation[VonageOutputDevice]):
             transcriber_factory=transcriber_factory,
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
-            per_chunk_allowance_seconds=per_chunk_allowance_seconds,
         )
         self.vonage_config = vonage_config
         self.telephony_client = VonageClient(
