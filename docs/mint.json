@@ -80,6 +80,7 @@
         "open-source/playground",
         "open-source/turn-based-conversation",
         "open-source/language-support",
+        "open-source/logging-with-loguru",
         "open-source/agent-factory"
       ]
     },
