@@ -56,5 +56,5 @@ class BaseOutputDevice(InterruptibleWorker[InterruptibleEvent[AudioChunk]], ABC)
             self.current_task = None
 
     @abstractmethod
-    async def play(chunk: bytes):
+    async def play(self, chunk: bytes):
         pass
