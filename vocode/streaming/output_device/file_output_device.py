@@ -4,7 +4,10 @@ from asyncio import Queue
 
 import numpy as np
 
-from .base_output_device import BaseOutputDevice
+from vocode.streaming.output_device.rate_limit_interruptions_output_device import (
+    RateLimitInterruptionsOutputDevice,
+)
+
 from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.utils.worker import ThreadAsyncWorker
 
@@ -27,7 +30,7 @@ class FileWriterWorker(ThreadAsyncWorker):
         self.wav.close()
 
 
-class FileOutputDevice(BaseOutputDevice):
+class FileOutputDevice(RateLimitInterruptionsOutputDevice):
     DEFAULT_SAMPLING_RATE = 44100
 
     def __init__(
@@ -47,9 +50,13 @@ class FileOutputDevice(BaseOutputDevice):
         self.wav = wav
 
         self.thread_worker = FileWriterWorker(self.queue, wav)
-        self.thread_worker.start()
 
-    def consume_nonblocking(self, chunk):
+    def start(self) -> asyncio.Task:
+        self.thread_worker.start()
+        return super().start()
+
+    async def play(self, chunk: bytes):
+        # TODO: just dispatch out into a thread to write to the file per block, doesn't need a worker
         chunk_arr = np.frombuffer(chunk, dtype=np.int16)
         for i in range(0, chunk_arr.shape[0], self.blocksize):
             block = np.zeros(self.blocksize, dtype=np.int16)
@@ -59,3 +66,4 @@ class FileOutputDevice(BaseOutputDevice):
 
     def terminate(self):
         self.thread_worker.terminate()
+        super().terminate()

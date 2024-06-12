@@ -4,12 +4,12 @@ import time
 
 from vocode.streaming.constants import PER_CHUNK_ALLOWANCE_SECONDS
 from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
+from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
+from vocode.streaming.output_device.audio_chunk import ChunkState
 from vocode.streaming.utils import get_chunk_size_per_second
-from vocode.streaming.utils.worker import InterruptibleEvent, InterruptibleWorker
 
 
-class BaseOutputDevice(InterruptibleWorker[InterruptibleEvent[AudioChunk]], ABC):
+class RateLimitInterruptionsOutputDevice(AbstractOutputDevice):
     def __init__(
         self,
         sampling_rate: int,
@@ -57,4 +57,11 @@ class BaseOutputDevice(InterruptibleWorker[InterruptibleEvent[AudioChunk]], ABC)
 
     @abstractmethod
     async def play(self, chunk: bytes):
+        pass
+
+    async def interrupt(self):
+        """
+        For conversations that use rate-limiting playback as above,
+        no custom logic is needed on interrupt, because to end synthesis, all we need to do is stop sending chunks.
+        """
         pass

@@ -3,8 +3,10 @@ from typing import Optional
 
 from fastapi import WebSocket
 
-from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.output_device.blocking_speaker_output import BlockingSpeakerOutput
+from vocode.streaming.output_device.rate_limit_interruptions_output_device import (
+    RateLimitInterruptionsOutputDevice,
+)
 from vocode.streaming.telephony.constants import (
     PCM_SILENCE_BYTE,
     VONAGE_AUDIO_ENCODING,
@@ -13,7 +15,7 @@ from vocode.streaming.telephony.constants import (
 )
 
 
-class VonageOutputDevice(BaseOutputDevice):
+class VonageOutputDevice(RateLimitInterruptionsOutputDevice):
     def __init__(
         self,
         ws: Optional[WebSocket] = None,

@@ -6,7 +6,9 @@ import numpy as np
 import sounddevice as sd
 
 from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.output_device.rate_limit_interruptions_output_device import (
+    RateLimitInterruptionsOutputDevice,
+)
 from vocode.streaming.utils.worker import ThreadAsyncWorker
 
 DEFAULT_SAMPLING_RATE = 44100
@@ -42,7 +44,7 @@ class _PlaybackWorker(ThreadAsyncWorker[bytes]):
         self.stream.close()
 
 
-class BlockingSpeakerOutput(BaseOutputDevice):
+class BlockingSpeakerOutput(RateLimitInterruptionsOutputDevice):
     DEFAULT_SAMPLING_RATE = 44100
 
     def __init__(

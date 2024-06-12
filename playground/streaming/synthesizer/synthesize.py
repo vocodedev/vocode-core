@@ -2,7 +2,7 @@ import time
 
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
 from vocode.streaming.output_device.blocking_speaker_output import BlockingSpeakerOutput
 from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     async def speak(
         synthesizer: BaseSynthesizer,
-        output_device: BaseOutputDevice,
+        output_device: AbstractOutputDevice,
         message: BaseMessage,
     ):
         message_sent = message.text
