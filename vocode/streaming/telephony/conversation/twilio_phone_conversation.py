@@ -1,10 +1,8 @@
-import asyncio
 import base64
 import json
 import os
-import threading
 from enum import Enum
-from typing import AsyncGenerator, Optional
+from typing import Optional
 
 from fastapi import WebSocket
 from loguru import logger
@@ -15,11 +13,8 @@ from vocode.streaming.models.events import PhoneCallConnectedEvent
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.models.telephony import PhoneCallDirection, TwilioConfig
 from vocode.streaming.models.transcriber import TranscriberConfig
-from vocode.streaming.models.transcript import Message
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
 from vocode.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
-from vocode.streaming.synthesizer.base_synthesizer import SynthesisResult
-from vocode.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
 from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
 from vocode.streaming.telephony.conversation.abstract_phone_conversation import (
@@ -27,13 +22,8 @@ from vocode.streaming.telephony.conversation.abstract_phone_conversation import 
 )
 from vocode.streaming.telephony.conversation.mark_message_queue import (
     ChunkFinishedMarkMessage,
-    MarkMessage,
-    MarkMessageQueue,
-    UtteranceFinishedMarkMessage,
 )
 from vocode.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
-from vocode.streaming.utils import create_utterance_id
-from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.state_manager import TwilioPhoneConversationStateManager
 
