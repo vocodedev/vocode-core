@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 import asyncio
 import threading
 from typing import Any, Generic, Optional, TypeVar
@@ -12,10 +13,24 @@ from vocode.streaming.utils.create_task import asyncio_create_task_with_done_err
 WorkerInputType = TypeVar("WorkerInputType")
 
 
-class AsyncWorker(Generic[WorkerInputType]):
+class AbstractWorker(Generic[WorkerInputType], ABC):
+    @abstractmethod
+    def consume_nonblocking(self, item: WorkerInputType):
+        pass
+
+    @abstractmethod
+    def produce_nonblocking(self, item):
+        pass
+
+    @abstractmethod
+    async def _run_loop(self):
+        pass
+
+
+class AbstractAsyncWorker(AbstractWorker[WorkerInputType]):
     def __init__(
         self,
-        input_queue: asyncio.Queue,
+        input_queue: asyncio.Queue[WorkerInputType],
         output_queue: asyncio.Queue = asyncio.Queue(),
     ) -> None:
         self.worker_task: Optional[asyncio.Task] = None
@@ -36,9 +51,6 @@ class AsyncWorker(Generic[WorkerInputType]):
     def produce_nonblocking(self, item):
         self.output_queue.put_nowait(item)
 
-    async def _run_loop(self):
-        raise NotImplementedError
-
     def terminate(self):
         if self.worker_task:
             return self.worker_task.cancel()
@@ -46,7 +58,7 @@ class AsyncWorker(Generic[WorkerInputType]):
         return False
 
 
-class ThreadAsyncWorker(AsyncWorker[WorkerInputType]):
+class ThreadAsyncWorker(AbstractAsyncWorker[WorkerInputType]):
     def __init__(
         self,
         input_queue: asyncio.Queue[WorkerInputType],
@@ -93,7 +105,7 @@ class ThreadAsyncWorker(AsyncWorker[WorkerInputType]):
         return super().terminate()
 
 
-class AsyncQueueWorker(AsyncWorker):
+class AsyncQueueWorker(AbstractAsyncWorker):
     async def _run_loop(self):
         while True:
             try:
@@ -177,7 +189,7 @@ class InterruptibleEventFactory:
 InterruptibleEventType = TypeVar("InterruptibleEventType", bound=InterruptibleEvent)
 
 
-class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
+class InterruptibleWorker(AbstractAsyncWorker[InterruptibleEventType]):
     def __init__(
         self,
         input_queue: asyncio.Queue[InterruptibleEventType],

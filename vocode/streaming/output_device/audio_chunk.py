@@ -1,6 +1,7 @@
-import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
+from uuid import UUID
+import uuid
 
 
 class ChunkState(int, Enum):
@@ -13,6 +14,7 @@ class ChunkState(int, Enum):
 class AudioChunk:
     data: bytes
     state: ChunkState = ChunkState.UNPLAYED
+    chunk_id: UUID = field(default_factory=uuid.uuid4)
 
     @staticmethod
     def on_play():
@@ -21,3 +23,6 @@ class AudioChunk:
     @staticmethod
     def on_interrupt():
         pass
+
+    def __hash__(self) -> int:
+        return hash(self.chunk_id)

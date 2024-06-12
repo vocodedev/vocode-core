@@ -5,7 +5,7 @@ from pydantic.v1 import BaseModel
 
 
 class ChunkFinishedMarkMessage(BaseModel):
-    chunk_idx: int
+    chunk_id: str
 
 
 class UtteranceFinishedMarkMessage(BaseModel):

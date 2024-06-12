@@ -8,7 +8,7 @@ from typing import Generic, Optional, TypeVar, Union
 from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.transcriber import TranscriberConfig, Transcription
 from vocode.streaming.utils.speed_manager import SpeedManager
-from vocode.streaming.utils.worker import AsyncWorker, ThreadAsyncWorker
+from vocode.streaming.utils.worker import AbstractAsyncWorker, ThreadAsyncWorker
 
 TranscriberConfigType = TypeVar("TranscriberConfigType", bound=TranscriberConfig)
 
@@ -58,16 +58,16 @@ class AbstractTranscriber(Generic[TranscriberConfigType], ABC):
         pass
 
 
-class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWorker):
+class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AbstractAsyncWorker):
     def __init__(self, transcriber_config: TranscriberConfigType):
         AbstractTranscriber.__init__(self, transcriber_config)
-        AsyncWorker.__init__(self, self.input_queue, self.output_queue)
+        AbstractAsyncWorker.__init__(self, self.input_queue, self.output_queue)
 
     async def _run_loop(self):
         raise NotImplementedError
 
     def terminate(self):
-        AsyncWorker.terminate(self)
+        AbstractAsyncWorker.terminate(self)
 
 
 class BaseThreadAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], ThreadAsyncWorker):
