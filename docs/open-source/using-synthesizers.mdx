@@ -16,10 +16,10 @@ Vocode currently supports the following synthesizers:
 3. Eleven Labs
 4. Rime
 5. Play.ht
-6. Coqui TTS
-7. GTTS (Google Text-to-Speech)
-8. Stream Elements
-9. Bark
+6. GTTS (Google Text-to-Speech)
+7. Stream Elements
+8. Bark
+9. Amazon Polly
 
 These synthesizers are defined using their respective configuration classes, which are subclasses of the `SynthesizerConfig` class.
 
@@ -46,6 +46,43 @@ server = InboundCallServer(
 In this example, the `ElevenLabsSynthesizerConfig.from_telephone_output_device()` method is used to create a configuration object for the Eleven Labs synthesizer.
 The method hardcodes some values like the `sampling_rate` and `audio_encoding` for compatibility with telephone output devices.
 
+#### ElevenLabs Input Streaming
+
+You can try out our experimental implementation of ElevenLabs' [input streaming API](https://elevenlabs.io/docs/api-reference/websockets) by passing in `experimental_websocket=True` into the config and using the `ElevenLabsWSSynthesizer`, like:
+
+```python
+from vocode.streaming.synthesizer.eleven_labs_websocket_synthesizer import ElevenLabsWSSynthesizer
+from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
+
+...
+synthesizer_config=ElevenLabsSynthesizerConfig.from_telephone_output_device(
+    api_key=os.getenv("ELEVENLABS_API_KEY"),
+    voice_id=os.getenv("YOUR VOICE ID"),
+    experimental_websocket=True
+)
+...
+synthesizer=ElevenLabsWSSynthesizer(ElevenLabsSynthesizerConfig.from_output_device(
+    speaker_output,
+    api_key=os.getenv("ELEVENLABS_API_KEY"),
+    voice_id=os.getenv("YOUR VOICE ID"),
+    experimental_websocket=True
+))
+...
+```
+
+#### Play.ht v2
+
+We now support Play.ht's new [gRPC streaming API](https://docs.play.ht/reference/python-sdk-audio-streaming), which runs much faster than their HTTP API and is designed for realtime communication.
+
+```python
+...
+synthesizer_config=PlayHtSynthesizerConfig.from_telephone_output_device(
+    api_key=os.getenv("PLAY_HT_API_KEY"),
+    user_id=os.getenv("PLAY_HT_USER_ID"),
+)
+...
+```
+
 ### Example 2: Using Azure in StreamingConversation locally
 
 ```python
@@ -67,22 +104,3 @@ conversation = StreamingConversation(
 
 In this example, the `AzureSynthesizerConfig.from_output_device()` method is used to create a configuration object for the Azure synthesizer.
 The method takes a `speaker_output` object as an argument, and extracts the `sampling_rate` and `audio_encoding` from the output device.
-
-## When to Use Configs vs. Synthesizer Objects
-
-- For everything except `StreamingConversation`, you must use configuration objects.
-- For `StreamingConversation`, you can use the actual synthesizer object, but you still need to initialize it with a configuration object.
-
-## Synthesizer Comparisons
-
-| Provider          | Latency | Voice Cloning | Natural Sounding | Notes       |
-| ----------------- | ------- | ------------- | ---------------- | ----------- |
-| Azure (Microsoft) | Low     | No            |                  |             |
-| Google            | Low     | No            |                  |             |
-| Eleven Labs       | High    | Yes           |                  |             |
-| Rime              | Low     | No            |                  |             |
-| Play.ht           | High    | Yes           |                  |             |
-| Coqui TTS         |         |               |                  | Open source |
-| GTTS              |         |               |                  |             |
-| Stream Elements   |         |               |                  |             |
-| Bark              |         |               |                  |             |
