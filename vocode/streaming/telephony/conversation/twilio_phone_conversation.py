@@ -13,15 +13,15 @@ from vocode.streaming.models.events import PhoneCallConnectedEvent
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.models.telephony import PhoneCallDirection, TwilioConfig
 from vocode.streaming.models.transcriber import TranscriberConfig
-from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
+from vocode.streaming.output_device.twilio_output_device import (
+    ChunkFinishedMarkMessage,
+    TwilioOutputDevice,
+)
 from vocode.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
 from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
 from vocode.streaming.telephony.conversation.abstract_phone_conversation import (
     AbstractPhoneConversation,
-)
-from vocode.streaming.telephony.conversation.mark_message_queue import (
-    ChunkFinishedMarkMessage,
 )
 from vocode.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
@@ -130,9 +130,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
             self.receive_audio(chunk)
         if data["event"] == "mark":
             chunk_id = data["mark"]["name"]
-            self.output_device.mark_message_queue.put_nowait(
-                ChunkFinishedMarkMessage(chunk_id=chunk_id)
-            )
+            self.output_device.enqueue_mark_message(ChunkFinishedMarkMessage(chunk_id=chunk_id))
         elif data["event"] == "stop":
             logger.debug(f"Media WS: Received event 'stop': {message}")
             logger.debug("Stopping...")

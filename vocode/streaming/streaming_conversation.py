@@ -919,10 +919,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
             chunk_idx: int,
             processed_event: asyncio.Event,
         ):
+            logged = False
+
             def _on_interrupt():
-                logger.debug(
-                    "Interrupted, stopping text to speech after {} chunks".format(chunk_idx),
-                )
+                nonlocal logged
+                if not logged:
+                    logger.debug(
+                        "Interrupted, stopping text to speech after {} chunks".format(chunk_idx),
+                    )
+                    logged = True
                 processed_event.set()
 
             return _on_interrupt
@@ -952,6 +957,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             audio_chunks.append(audio_chunk)
             processed_events.append(processed_event)
 
+        # TODO (output device refactor): consider ramifications of asyncio.gather
         await asyncio.gather(*(processed_event.wait() for processed_event in processed_events))
 
         maybe_first_interrupted_audio_chunk = next(

@@ -3,17 +3,24 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
-from typing import Optional
+from typing import Optional, Union
 import uuid
 
 from fastapi import WebSocket
+from pydantic import BaseModel
 
 from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
 from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
-from vocode.streaming.telephony.conversation.mark_message_queue import MarkMessage
 from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
 from vocode.streaming.utils.worker import InterruptibleEvent
+
+
+class ChunkFinishedMarkMessage(BaseModel):
+    chunk_id: str
+
+
+MarkMessage = Union[ChunkFinishedMarkMessage]  # space for more mark messages
 
 
 class TwilioOutputDevice(AbstractOutputDevice):
@@ -28,6 +35,22 @@ class TwilioOutputDevice(AbstractOutputDevice):
         self.unprocessed_audio_chunks_queue: asyncio.Queue[InterruptibleEvent[AudioChunk]] = (
             asyncio.Queue()
         )
+
+    def consume_nonblocking(self, item: InterruptibleEvent[AudioChunk]):
+        # TODO (output device refactor): think about when interrupted messages enter the queue + synchronicity with the clear message
+        if not item.is_interrupted():
+            self._send_audio_chunk_and_mark(item.payload.data)
+            self.unprocessed_audio_chunks_queue.put_nowait(item)
+
+    async def play(self, chunk: bytes):
+        """
+        For Twilio, we send all of the audio chunks to be played at once,
+        and then consume the mark messages to know when to send the on_play / on_interrupt callbacks
+        """
+        pass
+
+    def interrupt(self):
+        self._send_clear_message()
 
     def enqueue_mark_message(self, mark_message: MarkMessage):
         self.mark_message_queue.put_nowait(mark_message)
@@ -46,7 +69,7 @@ class TwilioOutputDevice(AbstractOutputDevice):
             try:
                 mark_message = await self.mark_message_queue.get()
                 item = await self.unprocessed_audio_chunks_queue.get()
-                # TODO: cross reference chunk IDs?
+                # TODO (output device refactor): cross reference chunk IDs between mark message and audio chunks?
             except asyncio.CancelledError:
                 return
 
@@ -73,20 +96,7 @@ class TwilioOutputDevice(AbstractOutputDevice):
         )
         await asyncio.gather(send_twilio_messages_task, process_mark_messages_task)
 
-    def consume_nonblocking(self, item: InterruptibleEvent[AudioChunk]):
-        # TODO: think about when interrupted messages enter the queue + synchronicity with the clear message
-        if not item.is_interrupted():
-            self.send_audio_chunk_and_mark(item.payload.data)
-            self.unprocessed_audio_chunks_queue.put_nowait(item)
-
-    async def play(self, chunk: bytes):
-        # TODO comment
-        pass
-
-    def interrupt(self):
-        self.send_clear_message()
-
-    def send_audio_chunk_and_mark(self, chunk: bytes):
+    def _send_audio_chunk_and_mark(self, chunk: bytes):
         media_message = {
             "event": "media",
             "streamSid": self.stream_sid,
@@ -102,7 +112,7 @@ class TwilioOutputDevice(AbstractOutputDevice):
         }
         self.twilio_events_queue.put_nowait(json.dumps(mark_message))
 
-    def send_clear_message(self):
+    def _send_clear_message(self):
         clear_message = {
             "event": "clear",
             "streamSid": self.stream_sid,

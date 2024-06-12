@@ -56,7 +56,7 @@ class FileOutputDevice(RateLimitInterruptionsOutputDevice):
         return super().start()
 
     async def play(self, chunk: bytes):
-        # TODO: just dispatch out into a thread to write to the file per block, doesn't need a worker
+        # TODO (output device refactor): just dispatch out into a thread to write to the file per block, doesn't need a worker
         chunk_arr = np.frombuffer(chunk, dtype=np.int16)
         for i in range(0, chunk_arr.shape[0], self.blocksize):
             block = np.zeros(self.blocksize, dtype=np.int16)
