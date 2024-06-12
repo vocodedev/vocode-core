@@ -723,13 +723,13 @@ websockets = ">=11.0"
 
 [[package]]
 name = "email-validator"
-version = "2.1.2"
+version = "2.1.1"
 description = "A robust email address syntax and deliverability validation library."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "email_validator-2.1.2-py3-none-any.whl", hash = "sha256:d89f6324e13b1e39889eab7f9ca2f91dc9aebb6fa50a6d8bd4329ab50f251115"},
-    {file = "email_validator-2.1.2.tar.gz", hash = "sha256:14c0f3d343c4beda37400421b39fa411bbe33a75df20825df73ad53e06a9f04c"},
+    {file = "email_validator-2.1.1-py3-none-any.whl", hash = "sha256:97d882d174e2a65732fb43bfce81a3a834cbc1bde8bf419e30ef5ea976370a05"},
+    {file = "email_validator-2.1.1.tar.gz", hash = "sha256:200a70680ba08904be6d1eef729205cc0d687634399a5924d842533efb824b84"},
 ]
 
 [package.dependencies]
@@ -1575,19 +1575,19 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "langchain"
-version = "0.2.5"
+version = "0.2.4"
 description = "Building applications with LLMs through composability"
 optional = true
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langchain-0.2.5-py3-none-any.whl", hash = "sha256:9aded9a65348254e1c93dcdaacffe4d1b6a5e7f74ef80c160c88ff78ad299228"},
-    {file = "langchain-0.2.5.tar.gz", hash = "sha256:ffdbf4fcea46a10d461bcbda2402220fcfd72a0c70e9f4161ae0510067b9b3bd"},
+    {file = "langchain-0.2.4-py3-none-any.whl", hash = "sha256:a04813215c30f944df006031e2febde872af8fab628dcee825d969e07b6cd621"},
+    {file = "langchain-0.2.4.tar.gz", hash = "sha256:e704b5b06222d5eba2d02c76f891321d1bac8952ed54e093831b2bdabf99dcd5"},
 ]
 
 [package.dependencies]
 aiohttp = ">=3.8.3,<4.0.0"
 async-timeout = {version = ">=4.0.0,<5.0.0", markers = "python_version < \"3.11\""}
-langchain-core = ">=0.2.7,<0.3.0"
+langchain-core = ">=0.2.6,<0.3.0"
 langchain-text-splitters = ">=0.2.0,<0.3.0"
 langsmith = ">=0.1.17,<0.2.0"
 numpy = [
@@ -1602,25 +1602,22 @@ tenacity = ">=8.1.0,<9.0.0"
 
 [[package]]
 name = "langchain-community"
-version = "0.2.5"
+version = "0.2.4"
 description = "Community contributed LangChain integrations."
 optional = true
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langchain_community-0.2.5-py3-none-any.whl", hash = "sha256:bf37a334952e42c7676d083cf2d2c4cbfbb7de1949c4149fe19913e2b06c485f"},
-    {file = "langchain_community-0.2.5.tar.gz", hash = "sha256:476787b8c8c213b67e7b0eceb53346e787f00fbae12d8e680985bd4f93b0bf64"},
+    {file = "langchain_community-0.2.4-py3-none-any.whl", hash = "sha256:8582e9800f4837660dc297cccd2ee1ddc1d8c440d0fe8b64edb07620f0373b0e"},
+    {file = "langchain_community-0.2.4.tar.gz", hash = "sha256:2bb6a1a36b8500a564d25d76469c02457b1a7c3afea6d4a609a47c06b993e3e4"},
 ]
 
 [package.dependencies]
 aiohttp = ">=3.8.3,<4.0.0"
 dataclasses-json = ">=0.5.7,<0.7"
-langchain = ">=0.2.5,<0.3.0"
-langchain-core = ">=0.2.7,<0.3.0"
+langchain = ">=0.2.0,<0.3.0"
+langchain-core = ">=0.2.0,<0.3.0"
 langsmith = ">=0.1.0,<0.2.0"
-numpy = [
-    {version = ">=1,<2", markers = "python_version < \"3.12\""},
-    {version = ">=1.26.0,<2.0.0", markers = "python_version >= \"3.12\""},
-]
+numpy = ">=1,<2"
 PyYAML = ">=5.3"
 requests = ">=2,<3"
 SQLAlchemy = ">=1.4,<3"
@@ -2257,13 +2254,13 @@ files = [
 
 [[package]]
 name = "phonenumbers"
-version = "8.13.39"
+version = "8.13.38"
 description = "Python version of Google's common library for parsing, formatting, storing and validating international phone numbers."
 optional = false
 python-versions = "*"
 files = [
-    {file = "phonenumbers-8.13.39-py2.py3-none-any.whl", hash = "sha256:3ad2d086fa71e7eef409001b9195ac54bebb0c6e3e752209b558ca192c9229a0"},
-    {file = "phonenumbers-8.13.39.tar.gz", hash = "sha256:db7ca4970d206b2056231105300753b1a5b229f43416f8c2b3010e63fbb68d77"},
+    {file = "phonenumbers-8.13.38-py2.py3-none-any.whl", hash = "sha256:d22aa747fb591ef2a18afec13cab5a0e294ab20fce5a1560e4949e459e70eeef"},
+    {file = "phonenumbers-8.13.38.tar.gz", hash = "sha256:2822c74ee9334e9d8ad792fc352cc8d21004307349b6b1bb61da12937fa2eaba"},
 ]
 
 [[package]]
