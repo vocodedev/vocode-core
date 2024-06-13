@@ -30,8 +30,10 @@ name_prompt = "You are talking to ${name}"
 number = vocode_client.numbers.update_number(
     phone_number="YOUR_NUMBER",
     inbound_agent=AgentUpdateParams(
-        prompt=PromptUpdateParams(content=name_prompt),
-        context_endpoint="YOUR_CONTEXT_URL",
+        prompt=PromptUpdateParams(
+            content=name_prompt,
+            context_endpoint="YOUR_CONTEXT_URL",
+        )
     ),
 )
 ```
