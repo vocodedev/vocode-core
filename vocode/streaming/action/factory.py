@@ -33,6 +33,11 @@ from vocode.streaming.action.forward_call_to_moovs import (
     ForwardCallToMoovsActionConfig,
 )
 
+from vocode.streaming.action.create_sunshine_conversation import (
+    CreateSunshineConversation,
+    CreateSunshineConversationActionConfig
+)
+
 # use_instructions
 from vocode.streaming.action.retrieve_instructions import (
     RetrieveInstructions,
@@ -76,5 +81,7 @@ class ActionFactory:
             return SearchDocuments(action_config)
         elif isinstance(action_config, ForwardCallToMoovsActionConfig):
             return ForwardCallToMoovs(action_config)
+        elif isinstance(action_config, CreateSunshineConversationActionConfig):
+            return CreateSunshineConversation(action_config)
         else:
             raise Exception("Invalid action type")

@@ -27,6 +27,7 @@ class ActionType(str, Enum):
     CREATE_AGENT = "create_agent"
     SEARCH_DOCUMENTS = "search_documents"
     FORWARD_CALL_TO_MOOVS = "get_human_support"
+    CREATE_SUNSHINE_CONVERSATION = "create_sunshine_conversation"
 
 
 class ActionConfig(TypedModel, type=ActionType.BASE):

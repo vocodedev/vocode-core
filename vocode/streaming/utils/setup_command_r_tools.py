@@ -268,6 +268,17 @@ all_optional_tools = {
         "name": "get_human_support",
         "description": "Puts a human support agent into the call.",
         "parameter_definitions": {},
+    },
+    ActionType.CREATE_SUNSHINE_CONVERSATION: {
+        "name": "create_sunshine_conversation",
+        "description": "Create a sunshine conversation with a human support agent",
+        "parameter_definitions": {
+            "contents": {
+                "description": "The text to be used to create the sunshine conversation",
+                "type": "str",
+                "required": True,
+            }
+        },
     }
 }
 
