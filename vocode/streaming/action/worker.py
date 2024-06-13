@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import asyncio
-from vocode.streaming.action.factory import ActionFactory
+
+from vocode.streaming.action.abstract_factory import AbstractActionFactory
+from vocode.streaming.action.default_factory import DefaultActionFactory
 from vocode.streaming.agent.base_agent import ActionResultAgentInput, AgentInput
 from vocode.streaming.models.actions import (
     ActionInput,
-    TwilioPhoneCallActionInput,
-    VonagePhoneCallActionInput,
+    TwilioPhoneConversationActionInput,
+    VonagePhoneConversationActionInput,
 )
-from vocode.streaming.utils.state_manager import ConversationStateManager
+from vocode.streaming.utils.state_manager import AbstractConversationStateManager
 from vocode.streaming.utils.worker import (
     InterruptibleEvent,
     InterruptibleEventFactory,
@@ -19,10 +21,10 @@ from vocode.streaming.utils.worker import (
 class ActionsWorker(InterruptibleWorker):
     def __init__(
         self,
+        action_factory: AbstractActionFactory,
         input_queue: asyncio.Queue[InterruptibleEvent[ActionInput]],
         output_queue: asyncio.Queue[InterruptibleEvent[AgentInput]],
         interruptible_event_factory: InterruptibleEventFactory = InterruptibleEventFactory(),
-        action_factory: ActionFactory = ActionFactory(),
     ):
         super().__init__(
             input_queue=input_queue,
@@ -32,7 +34,7 @@ class ActionsWorker(InterruptibleWorker):
         self.action_factory = action_factory
 
     def attach_conversation_state_manager(
-        self, conversation_state_manager: ConversationStateManager
+        self, conversation_state_manager: AbstractConversationStateManager
     ):
         self.conversation_state_manager = conversation_state_manager
 
@@ -48,14 +50,15 @@ class ActionsWorker(InterruptibleWorker):
                 action_output=action_output,
                 vonage_uuid=(
                     action_input.vonage_uuid
-                    if isinstance(action_input, VonagePhoneCallActionInput)
+                    if isinstance(action_input, VonagePhoneConversationActionInput)
                     else None
                 ),
                 twilio_sid=(
                     action_input.twilio_sid
-                    if isinstance(action_input, TwilioPhoneCallActionInput)
+                    if isinstance(action_input, TwilioPhoneConversationActionInput)
                     else None
                 ),
                 is_quiet=action.quiet,
-            )
+            ),
+            is_interruptible=False,
         )

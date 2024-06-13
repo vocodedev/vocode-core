@@ -1,9 +1,11 @@
-from vocode.streaming.models.audio_encoding import AudioEncoding
-import janus
-from vocode.streaming.input_device.base_input_device import BaseInputDevice
-import wave
 import struct
+import wave
+
+import janus
 import numpy as np
+
+from vocode.streaming.input_device.base_input_device import BaseInputDevice
+from vocode.streaming.models.audio import AudioEncoding
 
 
 class FileInputDevice(BaseInputDevice):

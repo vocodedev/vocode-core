@@ -7,12 +7,11 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
-redis = "^4.5.4"
-twilio = "^8.1.0"
-vonage = "^3.5.1"
-pyngrok = "^6.0.0"
-python-dotenv = "^1.0.0"
-vocode = "0.1.111"
+pyngrok = "^7.1.6"
+python-dotenv = "^1.0.1"
+vocode = { path = "../..", extras = [
+    "all",
+], develop = true, python = ">=3.11,<3.12" }
 
 
 [build-system]

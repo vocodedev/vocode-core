@@ -1,44 +1,25 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 import io
-import logging
-import os
 import wave
-from typing import Any, Optional
-import aiohttp
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
-from vocode import getenv
+import google.auth
+from google.cloud import texttospeech as tts  # type: ignore
 
-from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.synthesizer.base_synthesizer import (
-    BaseSynthesizer,
-    SynthesisResult,
-    encode_as_wav,
-    tracer,
-)
-from vocode.streaming.models.synthesizer import GoogleSynthesizerConfig, SynthesizerType
-from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.utils import convert_wav
-
-from opentelemetry.context.context import Context
+from vocode.streaming.models.synthesizer import GoogleSynthesizerConfig
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
 
 
 class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: GoogleSynthesizerConfig,
-        logger: Optional[logging.Logger] = None,
-        aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
-        super().__init__(synthesizer_config, aiohttp_session)
-
-        from google.cloud import texttospeech as tts
-        import google.auth
+        super().__init__(synthesizer_config)
 
         google.auth.default()
-
-        self.tts = tts
 
         # Instantiates a client
         self.client = tts.TextToSpeechClient()
@@ -61,18 +42,16 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
 
     def synthesize(self, message: str) -> Any:
-        synthesis_input = self.tts.SynthesisInput(text=message)
+        synthesis_input = tts.SynthesisInput(text=message)
 
         # Perform the text-to-speech request on the text input with the selected
         # voice parameters and audio file type
         return self.client.synthesize_speech(
-            request=self.tts.SynthesizeSpeechRequest(
+            request=tts.SynthesizeSpeechRequest(
                 input=synthesis_input,
                 voice=self.voice,
                 audio_config=self.audio_config,
-                enable_time_pointing=[
-                    self.tts.SynthesizeSpeechRequest.TimepointType.SSML_MARK
-                ],
+                enable_time_pointing=[tts.SynthesizeSpeechRequest.TimepointType.SSML_MARK],
             )
         )
 
@@ -81,19 +60,13 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
         self,
         message: BaseMessage,
         chunk_size: int,
-        bot_sentiment: Optional[BotSentiment] = None,
+        is_first_text_chunk: bool = False,
+        is_sole_text_chunk: bool = False,
     ) -> SynthesisResult:
-        create_speech_span = tracer.start_span(
-            f"synthesizer.{SynthesizerType.GOOGLE.value.split('_', 1)[-1]}.create_total",
-        )
-        response: self.tts.SynthesizeSpeechResponse = (  # type: ignore
+        response: tts.SynthesizeSpeechResponse = (  # type: ignore
             await asyncio.get_event_loop().run_in_executor(
                 self.thread_pool_executor, self.synthesize, message.text
             )
-        )
-        create_speech_span.end()
-        convert_span = tracer.start_span(
-            f"synthesizer.{SynthesizerType.GOOGLE.value.split('_', 1)[-1]}.convert",
         )
         output_sample_rate = response.audio_config.sample_rate_hertz
 
@@ -111,5 +84,4 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
             message=message,
             chunk_size=chunk_size,
         )
-        convert_span.end()
         return result

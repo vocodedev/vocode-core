@@ -1,23 +1,85 @@
-import asyncio
 from typing import TYPE_CHECKING, Optional
-from vocode.streaming.models.message import BaseMessage
+
 from vocode.streaming.models.transcriber import EndpointingConfig
-from vocode.streaming.agent.base_agent import AgentResponseMessage
+from vocode.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
+from vocode.streaming.telephony.client.twilio_client import TwilioClient
+from vocode.streaming.telephony.client.vonage_client import VonageClient
+from vocode.streaming.utils.redis_conversation_message_queue import RedisConversationMessageQueue
 
 if TYPE_CHECKING:
     from vocode.streaming.streaming_conversation import StreamingConversation
-    from vocode.streaming.telephony.conversation.vonage_call import VonageCall
-    from vocode.streaming.telephony.conversation.twilio_call import TwilioCall
+    from vocode.streaming.telephony.conversation.abstract_phone_conversation import (
+        AbstractPhoneConversation,
+    )
+    from vocode.streaming.telephony.conversation.twilio_phone_conversation import (
+        TwilioPhoneConversation,
+    )
+    from vocode.streaming.telephony.conversation.vonage_phone_conversation import (
+        VonagePhoneConversation,
+    )
 
 
-class ConversationStateManager:
-    def __init__(self, conversation: "StreamingConversation"):
-        self._conversation = conversation
+# TODO: make this a proper ABC
+class AbstractConversationStateManager:
+    @property
+    def logger(self):
+        raise NotImplementedError
+
+    @property
+    def transcript(self):
+        raise NotImplementedError
 
     def get_transcriber_endpointing_config(self) -> Optional[EndpointingConfig]:
-        return (
-            self._conversation.transcriber.get_transcriber_config().endpointing_config
-        )
+        raise NotImplementedError
+
+    def set_transcriber_endpointing_config(self, endpointing_config: EndpointingConfig):
+        raise NotImplementedError
+
+    def disable_synthesis(self):
+        raise NotImplementedError
+
+    def enable_synthesis(self):
+        raise NotImplementedError
+
+    def mute_agent(self):
+        raise NotImplementedError
+
+    def unmute_agent(self):
+        raise NotImplementedError
+
+    def using_input_streaming_synthesizer(self):
+        raise NotImplementedError
+
+    async def terminate_conversation(self):
+        raise NotImplementedError
+
+    def get_conversation_id(self):
+        raise NotImplementedError
+
+
+class AbstractPhoneConversationStateManager(AbstractConversationStateManager):
+    def get_config_manager(self):
+        raise NotImplementedError
+
+    def get_to_phone(self):
+        raise NotImplementedError
+
+    def get_from_phone(self):
+        raise NotImplementedError
+
+
+class ConversationStateManager(AbstractConversationStateManager):
+    def __init__(self, conversation: "StreamingConversation"):
+        self._conversation = conversation
+        if not hasattr(self, "redis_message_queue"):
+            self.redis_message_queue = RedisConversationMessageQueue()
+
+    @property
+    def transcript(self):
+        return self._conversation.transcript
+
+    def get_transcriber_endpointing_config(self) -> Optional[EndpointingConfig]:
+        return self._conversation.transcriber.get_transcriber_config().endpointing_config
 
     def set_transcriber_endpointing_config(self, endpointing_config: EndpointingConfig):
         assert self.get_transcriber_endpointing_config() is not None
@@ -37,30 +99,66 @@ class ConversationStateManager:
     def unmute_agent(self):
         self._conversation.agent.is_muted = False
 
-    async def terminate_conversation(self):
-        await self._conversation.terminate()
-
-    def send_bot_message(self, message: BaseMessage) -> asyncio.Event:
-        # returns an asyncio.Event that will be set when the agent has finished uttering the message
-        agent_response_tracker = asyncio.Event()
-        self._conversation.agent.produce_interruptible_agent_response_event_nonblocking(
-            item=AgentResponseMessage(
-                message=message,
-                is_interruptible=False,
-            ),
-            is_interruptible=False,
-            agent_response_tracker=agent_response_tracker,
+    def using_input_streaming_synthesizer(self):
+        return isinstance(
+            self._conversation.synthesizer,
+            InputStreamingSynthesizer,
         )
-        return agent_response_tracker
+
+    async def terminate_conversation(self):
+        self._conversation.mark_terminated()
+
+    def set_call_check_for_idle_paused(self, value: bool):
+        if not self._conversation:
+            return
+        self._conversation.set_check_for_idle_paused(value)
+
+    def get_conversation_id(self):
+        return self._conversation.id
 
 
-class VonageCallStateManager(ConversationStateManager):
-    def __init__(self, call: "VonageCall"):
-        super().__init__(call)
-        self._call = call
+class PhoneConversationStateManager(
+    AbstractPhoneConversationStateManager, ConversationStateManager
+):
+    def __init__(self, conversation: "AbstractPhoneConversation"):
+        ConversationStateManager.__init__(self, conversation)
+        self._phone_conversation = conversation
+
+    def get_config_manager(self):
+        return self._phone_conversation.config_manager
+
+    def get_to_phone(self):
+        return self._phone_conversation.to_phone
+
+    def get_from_phone(self):
+        return self._phone_conversation.from_phone
+
+    def get_direction(self):
+        return self._phone_conversation.direction
 
 
-class TwilioCallStateManager(ConversationStateManager):
-    def __init__(self, call: "TwilioCall"):
-        super().__init__(call)
-        self._call = call
+class VonagePhoneConversationStateManager(PhoneConversationStateManager):
+    def __init__(self, conversation: "VonagePhoneConversation"):
+        super().__init__(conversation=conversation)
+        self._vonage_phone_conversation = conversation
+
+    def create_vonage_client(self):
+        return VonageClient(
+            base_url=self._vonage_phone_conversation.base_url,
+            maybe_vonage_config=self._vonage_phone_conversation.vonage_config,
+        )
+
+
+class TwilioPhoneConversationStateManager(PhoneConversationStateManager):
+    def __init__(self, conversation: "TwilioPhoneConversation"):
+        super().__init__(conversation=conversation)
+        self._twilio_phone_conversation = conversation
+
+    def get_twilio_config(self):
+        return self._twilio_phone_conversation.twilio_config
+
+    def create_twilio_client(self):
+        return TwilioClient(
+            base_url=self._twilio_phone_conversation.base_url,
+            maybe_twilio_config=self.get_twilio_config(),
+        )

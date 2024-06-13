@@ -1,21 +1,32 @@
-import logging
-from dotenv import load_dotenv
-from vocode import getenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from vocode.helpers import create_turn_based_microphone_input_and_speaker_output
 from vocode.turn_based.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode.turn_based.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 from vocode.turn_based.transcriber.whisper_transcriber import WhisperTranscriber
 from vocode.turn_based.turn_based_conversation import TurnBasedConversation
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
-load_dotenv()
+class Settings(BaseSettings):
+    """
+    Settings for the turn-based conversation quickstart.
+    These parameters can be configured with environment variables.
+    """
 
-# See https://api.elevenlabs.io/v1/voices
-ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
+    openai_api_key: str = "ENTER_YOUR_OPENAI_API_KEY_HERE"
+    azure_speech_key: str = "ENTER_YOUR_AZURE_KEY_HERE"
+
+    azure_speech_region: str = "eastus"
+
+    # This means a .env file can be used to overload these settings
+    # ex: "OPENAI_API_KEY=my_key" will set openai_api_key over the default above
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
+
+
+settings = Settings()
 
 if __name__ == "__main__":
     (
@@ -23,24 +34,22 @@ if __name__ == "__main__":
         speaker_output,
     ) = create_turn_based_microphone_input_and_speaker_output(
         use_default_devices=False,
-        logger=logger,
     )
 
     conversation = TurnBasedConversation(
         input_device=microphone_input,
         output_device=speaker_output,
-        transcriber=WhisperTranscriber(api_key=getenv("OPENAI_API_KEY")),
+        transcriber=WhisperTranscriber(api_key=settings.openai_api_key),
         agent=ChatGPTAgent(
             system_prompt="The AI is having a pleasant conversation about life",
             initial_message="Hello!",
-            api_key=getenv("OPENAI_API_KEY"),
+            api_key=settings.openai_api_key,
         ),
         synthesizer=AzureSynthesizer(
-            api_key=getenv("AZURE_SPEECH_KEY"),
-            region=getenv("AZURE_SPEECH_REGION"),
+            api_key=settings.azure_speech_key,
+            region=settings.azure_speech_region,
             voice_name="en-US-SteffanNeural",
         ),
-        logger=logger,
     )
     print("Starting conversation. Press Ctrl+C to exit.")
     while True:

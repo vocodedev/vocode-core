@@ -2,14 +2,13 @@ import base64
 from enum import Enum
 from typing import Optional
 
-from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
-from .model import TypedModel
-from .transcriber import TranscriberConfig
 from .agent import AgentConfig
-from .synthesizer import SynthesizerConfig
 from .events import Sender
+from .model import TypedModel
+from .synthesizer import SynthesizerConfig
+from .transcriber import TranscriberConfig
 from .transcript import TranscriptEvent
+from vocode.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
 
 
 class WebSocketMessageType(str, Enum):
@@ -22,11 +21,11 @@ class WebSocketMessageType(str, Enum):
     AUDIO_CONFIG_START = "websocket_audio_config_start"
 
 
-class WebSocketMessage(TypedModel, type=WebSocketMessageType.BASE):
+class WebSocketMessage(TypedModel, type=WebSocketMessageType.BASE):  # type: ignore
     pass
 
 
-class AudioMessage(WebSocketMessage, type=WebSocketMessageType.AUDIO):
+class AudioMessage(WebSocketMessage, type=WebSocketMessageType.AUDIO):  # type: ignore
     data: str
 
     @classmethod
@@ -37,7 +36,7 @@ class AudioMessage(WebSocketMessage, type=WebSocketMessageType.AUDIO):
         return base64.b64decode(self.data)
 
 
-class TranscriptMessage(WebSocketMessage, type=WebSocketMessageType.TRANSCRIPT):
+class TranscriptMessage(WebSocketMessage, type=WebSocketMessageType.TRANSCRIPT):  # type: ignore
     text: str
     sender: Sender
     timestamp: float
@@ -47,7 +46,7 @@ class TranscriptMessage(WebSocketMessage, type=WebSocketMessageType.TRANSCRIPT):
         return cls(text=event.text, sender=event.sender, timestamp=event.timestamp)
 
 
-class StartMessage(WebSocketMessage, type=WebSocketMessageType.START):
+class StartMessage(WebSocketMessage, type=WebSocketMessageType.START):  # type: ignore
     transcriber_config: TranscriberConfig
     agent_config: AgentConfig
     synthesizer_config: SynthesizerConfig
@@ -55,7 +54,7 @@ class StartMessage(WebSocketMessage, type=WebSocketMessageType.START):
 
 
 class AudioConfigStartMessage(
-    WebSocketMessage, type=WebSocketMessageType.AUDIO_CONFIG_START
+    WebSocketMessage, type=WebSocketMessageType.AUDIO_CONFIG_START  # type: ignore
 ):
     input_audio_config: InputAudioConfig
     output_audio_config: OutputAudioConfig
@@ -63,9 +62,9 @@ class AudioConfigStartMessage(
     subscribe_transcript: Optional[bool] = None
 
 
-class ReadyMessage(WebSocketMessage, type=WebSocketMessageType.READY):
+class ReadyMessage(WebSocketMessage, type=WebSocketMessageType.READY):  # type: ignore
     pass
 
 
-class StopMessage(WebSocketMessage, type=WebSocketMessageType.STOP):
+class StopMessage(WebSocketMessage, type=WebSocketMessageType.STOP):  # type: ignore
     pass

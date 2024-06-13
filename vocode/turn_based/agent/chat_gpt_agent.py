@@ -1,16 +1,8 @@
-from typing import Optional
-import openai
-from langchain.prompts import (
-    ChatPromptTemplate,
-    MessagesPlaceholder,
-    SystemMessagePromptTemplate,
-    HumanMessagePromptTemplate,
-)
-from langchain.chains import ConversationChain
-from langchain_community.chat_models import ChatOpenAI
-from langchain.memory import ConversationBufferMemory
-from vocode import getenv
+from typing import Any, List, Optional
 
+import openai
+
+from vocode import getenv
 from vocode.turn_based.agent.base_agent import BaseAgent
 
 
@@ -23,32 +15,41 @@ class ChatGPTAgent(BaseAgent):
         model_name: str = "gpt-3.5-turbo",
         temperature: float = 0.7,
         max_tokens: int = 100,
-        memory: Optional[ConversationBufferMemory] = None,
     ):
         super().__init__(initial_message=initial_message)
         openai.api_key = getenv("OPENAI_API_KEY", api_key)
         if not openai.api_key:
             raise ValueError("OpenAI API key not provided")
-        self.prompt = ChatPromptTemplate.from_messages(
-            [
-                SystemMessagePromptTemplate.from_template(system_prompt),
-                MessagesPlaceholder(variable_name="history"),
-                HumanMessagePromptTemplate.from_template("{input}"),
-            ]
-        )
-        self.memory = (
-            memory if memory else ConversationBufferMemory(return_messages=True)
-        )
-        if initial_message:
-            self.memory.chat_memory.add_ai_message(initial_message)
-        self.llm = ChatOpenAI(  # type: ignore
-            model_name=model_name,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        self.conversation = ConversationChain(
-            memory=self.memory, prompt=self.prompt, llm=self.llm
-        )
+        self.client = openai.OpenAI()
+        self.prompt = system_prompt
+        self.model_name = model_name
+        self.messages: List[Any] = [
+            {
+                "role": "system",
+                "content": system_prompt,
+            },
+            {
+                "role": "assistant",
+                "content": initial_message,
+            },
+        ]
 
     def respond(self, human_input: str):
-        return self.conversation.predict(input=human_input)
+        self.messages.append(
+            {
+                "role": "user",
+                "content": human_input,
+            }
+        )
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=self.messages,
+        )
+        content = response.choices[0].message.content
+        self.messages.append(
+            {
+                "role": "system",
+                "content": content,
+            }
+        )
+        return content

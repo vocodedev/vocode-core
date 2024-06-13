@@ -1,137 +1,122 @@
-from typing import AsyncGenerator, Optional, Tuple
-from langchain import ConversationChain
-import logging
+import os
+from typing import Any, AsyncGenerator, Dict
 
-from typing import Optional, Tuple
-from pydantic.v1 import SecretStr
-from vocode.streaming.agent.base_agent import RespondAgent
+import sentry_sdk
+from anthropic import AsyncAnthropic, AsyncStream
+from anthropic.types import MessageStreamEvent
+from loguru import logger
 
-from vocode.streaming.agent.utils import get_sentence_from_buffer
-
-from langchain import ConversationChain
-from langchain.schema import ChatMessage, AIMessage, HumanMessage
-from langchain_community.chat_models import ChatAnthropic
-import logging
-from vocode import getenv
-
-from vocode.streaming.models.agent import ChatAnthropicAgentConfig
-
-
-from langchain.prompts import (
-    ChatPromptTemplate,
-    MessagesPlaceholder,
-    HumanMessagePromptTemplate,
-)
-
-from vocode import getenv
-from vocode.streaming.models.agent import ChatAnthropicAgentConfig
-from langchain.memory import ConversationBufferMemory
-
-SENTENCE_ENDINGS = [".", "!", "?"]
+from vocode.streaming.action.abstract_factory import AbstractActionFactory
+from vocode.streaming.action.default_factory import DefaultActionFactory
+from vocode.streaming.agent.anthropic_utils import format_anthropic_chat_messages_from_transcript
+from vocode.streaming.agent.base_agent import GeneratedResponse, RespondAgent, StreamedResponse
+from vocode.streaming.agent.streaming_utils import collate_response_async, stream_response_async
+from vocode.streaming.models.actions import FunctionFragment
+from vocode.streaming.models.agent import AnthropicAgentConfig
+from vocode.streaming.models.message import BaseMessage, LLMToken
+from vocode.streaming.vector_db.factory import VectorDBFactory
+from vocode.utils.sentry_utils import CustomSentrySpans, sentry_create_span
 
 
-class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
+class AnthropicAgent(RespondAgent[AnthropicAgentConfig]):
+    anthropic_client: AsyncAnthropic
+
     def __init__(
         self,
-        agent_config: ChatAnthropicAgentConfig,
-        logger: Optional[logging.Logger] = None,
-        anthropic_api_key: Optional[SecretStr] = None,
+        agent_config: AnthropicAgentConfig,
+        action_factory: AbstractActionFactory = DefaultActionFactory(),
+        vector_db_factory=VectorDBFactory(),
+        **kwargs,
     ):
-        super().__init__(agent_config=agent_config, logger=logger)
-        import anthropic
-
-        # Convert anthropic_api_key to SecretStr if it's not None and not already a SecretStr
-        if anthropic_api_key is not None and not isinstance(
-            anthropic_api_key, SecretStr
-        ):
-            anthropic_api_key = SecretStr(anthropic_api_key)
-        else:
-            # Retrieve anthropic_api_key from environment variable and convert to SecretStr
-            env_key = getenv("ANTHROPIC_API_KEY")
-            if env_key:
-                anthropic_api_key = SecretStr(env_key)
-
-        if not anthropic_api_key:
-            raise ValueError(
-                "ANTHROPIC_API_KEY must be set in environment or passed in as a SecretStr"
-            )
-        self.prompt = ChatPromptTemplate.from_messages(
-            [
-                MessagesPlaceholder(variable_name="history"),
-                HumanMessagePromptTemplate.from_template("{input}"),
-            ]
+        super().__init__(
+            agent_config=agent_config,
+            action_factory=action_factory,
+            **kwargs,
         )
+        self.anthropic_client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-        self.llm = ChatAnthropic(
-            model_name=agent_config.model_name,
-            anthropic_api_key=anthropic_api_key,
-        )
+    def get_chat_parameters(self, messages: list = [], use_functions: bool = True):
+        assert self.transcript is not None
 
-        # streaming not well supported by langchain, so we will connect directly
-        self.anthropic_client = (
-            anthropic.AsyncAnthropic(api_key=str(anthropic_api_key))
-            if agent_config.generate_responses
-            else None
-        )
+        parameters: dict[str, Any] = {
+            "messages": messages,
+            "system": self.agent_config.prompt_preamble,
+            "max_tokens": self.agent_config.max_tokens,
+            "temperature": self.agent_config.temperature,
+            "stream": True,
+        }
 
-        self.memory = ConversationBufferMemory(return_messages=True)
-        self.memory.chat_memory.messages.append(
-            HumanMessage(content=self.agent_config.prompt_preamble)
-        )
-        if agent_config.initial_message:
-            self.memory.chat_memory.messages.append(
-                AIMessage(content=agent_config.initial_message.text)
-            )
+        parameters["model"] = self.agent_config.model_name
 
-        self.conversation = ConversationChain(
-            memory=self.memory, prompt=self.prompt, llm=self.llm
-        )
+        return parameters
 
-    async def respond(
+    async def token_generator(
         self,
-        human_input,
-        conversation_id: str,
-        is_interrupt: bool = False,
-    ) -> Tuple[str, bool]:
-        text = await self.conversation.apredict(input=human_input)
-        self.logger.debug(f"LLM response: {text}")
-        return text, False
+        gen: AsyncStream[MessageStreamEvent],
+    ) -> AsyncGenerator[str | FunctionFragment, None]:
+        async for chunk in gen:
+            if chunk.type == "content_block_delta" and chunk.delta.type == "text_delta":
+                yield chunk.delta.text
+
+    async def _get_anthropic_stream(self, chat_parameters: Dict[str, Any]):
+        return await self.anthropic_client.messages.create(**chat_parameters)
 
     async def generate_response(
         self,
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> AsyncGenerator[Tuple[str, bool], None]:
-        self.memory.chat_memory.messages.append(HumanMessage(content=human_input))
-
-        bot_memory_message = AIMessage(content="")
-        self.memory.chat_memory.messages.append(bot_memory_message)
-        prompt = self.llm._convert_messages_to_prompt(self.memory.chat_memory.messages)
-
-        if self.anthropic_client:
-            streamed_response = await self.anthropic_client.completions.create(
-                prompt=prompt,
-                max_tokens_to_sample=self.agent_config.max_tokens_to_sample,
-                model=self.agent_config.model_name,
-                stream=True,
+        bot_was_in_medias_res: bool = False,
+    ) -> AsyncGenerator[GeneratedResponse, None]:
+        if not self.transcript:
+            raise ValueError("A transcript is not attached to the agent")
+        messages = format_anthropic_chat_messages_from_transcript(transcript=self.transcript)
+        chat_parameters = self.get_chat_parameters(messages)
+        try:
+            first_sentence_total_span = sentry_create_span(
+                sentry_callable=sentry_sdk.start_span, op=CustomSentrySpans.LLM_FIRST_SENTENCE_TOTAL
             )
 
-            buffer = ""
-            async for completion in streamed_response:
-                buffer += completion.completion
-                sentence, remainder = get_sentence_from_buffer(buffer)
-                if sentence:
-                    bot_memory_message.content = bot_memory_message.content + sentence
-                    buffer = remainder
-                    yield sentence, True
-                continue
+            ttft_span = sentry_create_span(
+                sentry_callable=sentry_sdk.start_span, op=CustomSentrySpans.TIME_TO_FIRST_TOKEN
+            )
+            stream = await self._get_anthropic_stream(chat_parameters)
+        except Exception as e:
+            logger.error(
+                f"Error while hitting Anthropic with chat_parameters: {chat_parameters}",
+                exc_info=True,
+            )
+            raise e
 
-    def update_last_bot_message_on_cut_off(self, message: str):
-        for memory_message in self.memory.chat_memory.messages[::-1]:
-            if (
-                isinstance(memory_message, ChatMessage)
-                and memory_message.role == "assistant"
-            ) or isinstance(memory_message, AIMessage):
-                memory_message.content = message
-                return
+        response_generator = collate_response_async
+
+        using_input_streaming_synthesizer = (
+            self.conversation_state_manager.using_input_streaming_synthesizer()
+        )
+        if using_input_streaming_synthesizer:
+            response_generator = stream_response_async
+        async for message in response_generator(
+            conversation_id=conversation_id,
+            gen=self.token_generator(
+                stream,
+            ),
+            sentry_span=ttft_span,
+        ):
+            if first_sentence_total_span:
+                first_sentence_total_span.finish()
+
+            ResponseClass = (
+                StreamedResponse if using_input_streaming_synthesizer else GeneratedResponse
+            )
+            MessageType = LLMToken if using_input_streaming_synthesizer else BaseMessage
+
+            if isinstance(message, str):
+                yield ResponseClass(
+                    message=MessageType(text=message),
+                    is_interruptible=True,
+                )
+            else:
+                yield ResponseClass(
+                    message=message,
+                    is_interruptible=True,
+                )

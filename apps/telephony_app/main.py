@@ -1,42 +1,33 @@
 # Standard library imports
-import logging
 import os
 import sys
 
-# Third-party imports
-from fastapi import FastAPI
-from vocode.streaming.models.telephony import TwilioConfig
-from pyngrok import ngrok
-from vocode.streaming.telephony.config_manager.redis_config_manager import (
-    RedisConfigManager,
-)
-from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.telephony.server.base import (
-    TwilioInboundCallConfig,
-    TelephonyServer,
-)
 from dotenv import load_dotenv
 
+# Third-party imports
+from fastapi import FastAPI
+from loguru import logger
+from pyngrok import ngrok
+
 # Local application/library specific imports
-from speller_agent import (
-    SpellerAgentFactory,
-    SpellerAgentConfig,
-)
+from speller_agent import SpellerAgentFactory
+
+from vocode.logging import configure_pretty_logging
+from vocode.streaming.models.agent import ChatGPTAgentConfig
+from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.telephony import TwilioConfig
+from vocode.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
+from vocode.streaming.telephony.server.base import TelephonyServer, TwilioInboundCallConfig
 
 # if running from python, this will load the local .env
 # docker-compose will load the .env file by itself
 load_dotenv()
 
+configure_pretty_logging()
+
 app = FastAPI(docs_url=None)
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-config_manager = RedisConfigManager(
-    logger=logger,
-)
+config_manager = RedisConfigManager()
 
 BASE_URL = os.getenv("BASE_URL")
 
@@ -66,7 +57,9 @@ telephony_server = TelephonyServer(
             ),
             # uncomment this to use the speller agent instead
             # agent_config=SpellerAgentConfig(
-            #     initial_message=BaseMessage(text="im a speller agent, say something to me and ill spell it out for you"),
+            #     initial_message=BaseMessage(
+            #         text="im a speller agent, say something to me and ill spell it out for you"
+            #     ),
             #     generate_responses=False,
             # ),
             twilio_config=TwilioConfig(
@@ -76,7 +69,6 @@ telephony_server = TelephonyServer(
         )
     ],
     agent_factory=SpellerAgentFactory(),
-    logger=logger,
 )
 
 app.include_router(telephony_server.get_router())

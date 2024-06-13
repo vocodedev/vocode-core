@@ -1,6 +1,7 @@
 # type: ignore
 
 from typing import Generator, Optional, Tuple
+
 from vocode.streaming.models.agent import RESTfulAgentOutput, RESTfulAgentText
 from vocode.streaming.user_implemented_agent.restful_agent import RESTfulAgent
 

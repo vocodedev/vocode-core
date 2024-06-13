@@ -1,15 +1,16 @@
 from __future__ import annotations
-import typing
-import janus
 
-import sounddevice as sd
-import numpy as np
-from typing import Optional
 import queue
+import typing
 import wave
+from typing import Optional
+
+import janus
+import numpy as np
+import sounddevice as sd
 
 from vocode.streaming.input_device.base_input_device import BaseInputDevice
-from vocode.streaming.models.audio_encoding import AudioEncoding
+from vocode.streaming.models.audio import AudioEncoding
 
 
 class MicrophoneInput(BaseInputDevice):
@@ -29,9 +30,7 @@ class MicrophoneInput(BaseInputDevice):
             or (
                 typing.cast(
                     int,
-                    self.device_info.get(
-                        "default_samplerate", self.DEFAULT_SAMPLING_RATE
-                    ),
+                    self.device_info.get("default_samplerate", self.DEFAULT_SAMPLING_RATE),
                 )
             ),
             AudioEncoding.LINEAR16,

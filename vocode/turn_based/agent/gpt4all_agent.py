@@ -1,9 +1,13 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor, wait
-import logging
 import sys
+from concurrent.futures import ThreadPoolExecutor, wait
 from typing import Optional
+
+from loguru import logger
+
 from vocode.turn_based.agent.base_agent import BaseAgent
+
+raise DeprecationWarning("This Agent is deprecated and will be removed in the future.")
 
 
 class StopThreadException(Exception):
@@ -20,13 +24,11 @@ class GPT4AllAgent(BaseAgent):
         model_path: str,
         system_prompt: str,
         initial_message: Optional[str] = None,
-        logger: Optional[logging.Logger] = None,
     ):
         from pygpt4all.models.gpt4all_j import GPT4All_J
 
         super().__init__(initial_message)
         self.prompt_template = f"{system_prompt}\n\n{self.DEFAULT_PROMPT_TEMPLATE}"
-        self.logger = logger or logging.getLogger(__name__)
         self.memory = [f"AI: {initial_message}"] if initial_message else []
         self.llm = GPT4All_J(model_path)
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
@@ -42,16 +44,14 @@ class GPT4AllAgent(BaseAgent):
         self,
         human_input,
     ) -> str:
-        self.logger.debug("LLM responding to human input")
+        logger.debug("LLM responding to human input")
         prompt = self.create_prompt(human_input)
         response_buffer = ""
 
         def new_text_callback(text):
             nonlocal response_buffer
             response_buffer += text
-            if len(response_buffer) > len(prompt) and response_buffer.endswith(
-                "Human:"
-            ):
+            if len(response_buffer) > len(prompt) and response_buffer.endswith("Human:"):
                 response_buffer = response_buffer[: -len("Human:")]
                 sys.exit()
 
@@ -63,7 +63,7 @@ class GPT4AllAgent(BaseAgent):
         wait([future], timeout=10)
         response = response_buffer[(len(prompt) + 1) :]
         self.memory.append(self.get_memory_entry(human_input, response))
-        self.logger.debug(f"LLM response: {response}")
+        logger.debug(f"LLM response: {response}")
         return response
 
     async def respond_async(self, human_input) -> str:
@@ -73,9 +73,7 @@ class GPT4AllAgent(BaseAgent):
         def new_text_callback(text):
             nonlocal response_buffer
             response_buffer += text
-            if len(response_buffer) > len(prompt) and response_buffer.endswith(
-                "Human:"
-            ):
+            if len(response_buffer) > len(prompt) and response_buffer.endswith("Human:"):
                 response_buffer = response_buffer[: -len("Human:")]
                 raise StopThreadException("Stopping the thread")
 

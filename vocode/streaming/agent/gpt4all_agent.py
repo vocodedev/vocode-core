@@ -1,7 +1,10 @@
 from typing import Optional, Tuple
-from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
+
+from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.agent import GPT4AllAgentConfig
 from vocode.turn_based.agent.gpt4all_agent import GPT4AllAgent as TurnBasedGPT4AllAgent
+
+raise DeprecationWarning("This Agent is deprecated and will be removed in the future.")
 
 
 class GPT4AllAgent(RespondAgent[GPT4AllAgentConfig]):
@@ -11,9 +14,7 @@ class GPT4AllAgent(RespondAgent[GPT4AllAgentConfig]):
             model_path=agent_config.model_path,
             system_prompt=agent_config.prompt_preamble,
             initial_message=(
-                agent_config.initial_message.text
-                if agent_config.initial_message
-                else None
+                agent_config.initial_message.text if agent_config.initial_message else None
             ),
         )
 
