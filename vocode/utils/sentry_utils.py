@@ -5,7 +5,7 @@ import sentry_sdk
 from loguru import logger
 from sentry_sdk.tracing import Span, Transaction, _SpanRecorder
 
-from vocode import get_serialized_ctx_wrappers
+from vocode import get_serialized_ctx_wrappers, sentry_transaction
 
 if TYPE_CHECKING:
     from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
@@ -163,8 +163,8 @@ def set_tags(span: Span) -> Span:
 
 @sentry_configured
 def get_span_by_op(op_value):
-    transaction: Transaction = sentry_sdk.Hub.current.scope.transaction
-    if transaction is not None:
+    transaction: Transaction = sentry_sdk.Hub.current.scope.transaction or sentry_transaction.value
+    if transaction is not None and transaction._span_recorder is not None:
         # Probably not great accessing an internal variable but transaction spans aren't
         # exposed publicly so it is what it is.
         span_matches = [
@@ -180,18 +180,25 @@ def get_span_by_op(op_value):
                 return set_tags(most_recent_span)
         else:
             # If no span with the matching op was found
-            logger.error(f"No span found with op '{op_value}'.")
+            logger.warning(f"No span found with op '{op_value}'.")
             return None
     else:
-        logger.debug("No active transaction found.")
+        if transaction and transaction._span_recorder is None:
+            logger.warning(f"Transaction Span Recorder Missing -- {transaction}")
+        else:
+            logger.warning("No active transaction found.")
         return None
 
 
 @sentry_configured
 def complete_span_by_op(op_value):
-    span = get_span_by_op(op_value)
+    try:
+        span = get_span_by_op(op_value)
+    except Exception as e:
+        logger.error(f"Error getting span by op '{op_value}': {e}")
+        return None
     if span is None:
-        logger.error(f"No span found with op '{op_value}'.")
+        logger.warning(f"No span found with op '{op_value}'.")
         return None
     span.finish()
 

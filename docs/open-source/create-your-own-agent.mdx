@@ -3,15 +3,36 @@ title: "Create your own AI Agent"
 description: "How to create a custom Agent for your use case."
 ---
 
-You can subclass a [`RespondAgent`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/agent/base_agent.py#L140) to create a simple agent that can be passed into [`StreamingConversation`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/streaming_conversation.py) has the following interface:
+You can subclass a [`RespondAgent`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/agent/base_agent.py#L140) to create a simple agent that can be passed into [`StreamingConversation`](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/streaming_conversation.py).
+To do so, you must create an agent type, create an agent config, and then create your agent subclass. In the examples below, we will create an agent that responds with the same message no matter what is said to it, called `BrokenRecordAgent`.
 
-Here's one that responds with the same message no matter what is said to it:
+### Agent type
+Each agent has a unique agent type string that is checked in various parts of Vocode, most notably in the factories that create agents. So, you must create a new type for your custom agent. See the `AgentType` enum in `vocode/streaming/models/agent.py` for examples.
+For our `BrokenRecordAgent`, we will use "agent_broken_record" as our type.
 
+### Agent config
+Your agent must have a corresponding agent config that is a subclass of `AgentConfig` and is ([JSON-serializable](https://docs.pydantic.dev/latest/concepts/serialization/#modelmodel_dump_json)). Serialization is automatically handled by [Pydantic](https://docs.pydantic.dev/latest/).
+
+The agent config should only contain the information you need to deterministically create the same agent each time. This means with the same parameters in your config, the corresponding agent should have the same behavior each time you create it.
+
+For our `BrokenRecordAgent`, we create a config like:
 ```python
+from vocode.streaming.models.agent import AgentConfig
+
 class BrokenRecordAgentConfig(AgentConfig, type="agent_broken_record"):
-    message: str
+    message: str # The message we will always return
+```
 
+### Custom Agent
+Now, you can create your custom agent subclass of `RespondAgent`. In your class header, pass in `RespondAgent` with a your agent type as a type hint. This should look like `RespondAgent[Your_Agent_Type]`.
 
+Each agent should override the `generate_response()` async method to support streaming and `respond()` method to support turn-based conversations. 
+> If you want to only support turn-based conversations, you do not have to overwrite `generate_response()` but you MUST set `generate_response=False` in your agent config (see `ChatVertexAIAgentConfig` in `vocode/streaming/models/agent.py` for an example). Otherwise, you must ALWAYS implement the `generate_response()` async method.
+
+The `generate_response()` method returns an `AsyncGenerator` of tuples containing each message/sentence and a boolean for whether that message can be interrupted by the human speaking. You can automatically create this generator by yielding instead of returning (see example below).
+
+We will now define our `BrokenRecordAgent`. Since we simply return the same message each time, we can return and yield that message in `respond()` and `generate_response()`, respectively:
+```python
 class BrokenRecordAgent(RespondAgent[BrokenRecordAgentConfig]):
 
     # is_interrupt is True when the human has just interrupted the bot's last response
@@ -27,4 +48,4 @@ class BrokenRecordAgent(RespondAgent[BrokenRecordAgentConfig]):
         yield self.agent_config.message, False
 ```
 
-See [our other agent implementations](https://github.com/vocodedev/vocode-python/tree/main/vocode/streaming/agent) for more guidance!
+See [our other agent implementations](https://github.com/vocodedev/vocode-python/tree/main/vocode/streaming/agent) for more examples!

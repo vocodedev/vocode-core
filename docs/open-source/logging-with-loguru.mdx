@@ -1,0 +1,73 @@
+---
+title: "Logging with Loguru"
+description: "Make logging set up less painful for local and production usage!"
+---
+
+Loguru is a powerful and flexible logging library for Python that simplifies logging setup and usage. It provides a more intuitive and feature-rich alternative to Python's built-in logging module.
+
+## Why Use Loguru?
+
+Loguru offers several advantages over the standard logging module:
+
+- **Ease of Use**: Loguru simplifies the process of setting up and using loggers.
+- **Rich Features**: It provides advanced features like automatic exception catching, structured logging, and more.
+- **Flexibility**: Loguru allows for easy configuration of different logging formats and destinations.
+
+## Using the Vocode Implementation
+
+The Vocode implementation of Loguru provides a seamless way to integrate logging into your application. It includes custom handlers and configuration functions to streamline the setup process. When utilizing the JSON logging configuration, it'll also pull relevant environment variables such as `conversation_id` and include them in the JSON output for better production debugging!
+
+### Setting Up Logging
+
+To set up logging in your application, you can use the provided configuration functions. Here's how to configure pretty printing for local development and JSON logging for production:
+
+#### Pretty Printing Locally
+
+To enable pretty printing locally, use the `configure_pretty_logging` function. This will set up Loguru to output logs with colored formatting, making them easier to read during development.
+
+```python
+from vocode.logging import configure_pretty_logging
+
+configure_pretty_logging()
+```
+
+#### JSON Logging in Production
+
+For production environments, you may want to log in JSON format for better integration with logging systems and easier parsing. Use the `configure_json_logging` function to set this up.
+
+```python
+from vocode.logging import configure_json_logging
+
+configure_json_logging()
+```
+
+### Why Use Different Setups?
+
+Using different logging setups for local and production environments can be beneficial for several reasons:
+
+- **Readability**: Pretty printing makes logs easier to read during development, helping you quickly identify issues.
+- **Structured Logging**: JSON logging provides structured logs that are easier to parse and analyze in production, especially when using log aggregation and monitoring tools.
+
+## Example Snippet
+
+Here's an example of how you can set up logging in your application:
+
+```python
+import os
+from vocode.logging import configure_pretty_logging, configure_json_logging
+
+DEPLOYED_ENVIRONMENTS = ["production", "staging"]
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
+
+def configure_logging() -> None:  # pragma: no cover
+    """Configures logging."""
+    if ENVIRONMENT in DEPLOYED_ENVIRONMENTS:
+        configure_json_logging()
+    else:
+        configure_pretty_logging()
+
+# Configure logging based on the environment
+configure_logging()
+
+# Your application code here
+```

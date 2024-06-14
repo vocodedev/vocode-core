@@ -13,7 +13,7 @@ Or, start from our [Replit template](https://replit.com/@vocode/Simple-Conversat
 
 ## Setting up the conversation
 
-Our self-hosted backend allows you to expose a websocket route in the same format that our hosted backend does. This allows you to deploy any agent you'd like into the conversation.
+Our self-hosted backend allows you to expose a websocket route that operates like `StreamingConversation`.
 
 To get started, clone the Vocode repo or copy the [client backend app](https://github.com/vocodedev/vocode-python/tree/main/apps/client_backend) directory.
 
@@ -56,35 +56,25 @@ uvicorn main:app --port 3000
 
 You now have a server with a Vocode websocket route at localhost:3000! You can now use the `useConversation` hook with your self-hosted backend as follows:
 
-```javascript
-const { status, start, stop, analyserNode } = useConversation({
+```typescript
+import { useConversation } from "vocode";
+
+const { status, start, stop, error, analyserNode } = useConversation({
   backendUrl: "<YOUR_BACKEND_URL>", // looks like ws://localhost:3000/conversation or wss://asdf1234.ngrok.app/conversation if using ngrok
   audioDeviceConfig: {},
 });
 ```
 
-# Demo installation and setup
+Use the `status`, `start`, and `stop` objects within your React components to control conversations with your self-hosted backend, e.g.
 
-Clone the `vocode-react-demo` [repository](https://github.com/vocodedev/vocode-react-demo).
+```jsx
+<>
+  {status === "idle" && <p>Press me to talk!</p>}
+  {status == "error" && error && <p>{error.message}</p>}
 
-```
-$ git clone https://github.com/vocodedev/vocode-react-demo.git
-```
-
-Run npm install inside the directory to download all of the dependencies.
-
-```
-$ npm install
-```
-
-Set your Client SDK key inside of your `.env`
-
-```
-REACT_APP_VOCODE_API_KEY=YOUR KEY HERE
-```
-
-Start the application
-
-```
-$ npm start
+  <button
+    disabled={["connecting"].includes(status)}
+    onClick={status === "connected" ? stop : start}
+  ></button>
+</>
 ```

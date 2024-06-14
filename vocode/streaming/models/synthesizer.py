@@ -170,18 +170,17 @@ class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value
         return voice_id or COQUI_DEFAULT_SPEAKER_ID
 
 
-PLAYHT_DEFAULT_VOICE_ID = "larry"
 PlayHtVoiceVersionType = Literal["1", "2"]
 
 
 class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.value):  # type: ignore
+    voice_id: str
     api_key: Optional[str] = None
     user_id: Optional[str] = None
     speed: Optional[float] = None
     seed: Optional[int] = None
     temperature: Optional[float] = None
     quality: Optional[str] = None
-    voice_id: str = PLAYHT_DEFAULT_VOICE_ID
     experimental_streaming: bool = False
     version: Literal[PlayHtVoiceVersionType] = "2"
     top_p: Optional[float] = None
@@ -229,8 +228,8 @@ class PollySynthesizerConfig(SynthesizerConfig, type=SynthesizerType.POLLY.value
     sampling_rate: int = DEFAULT_POLLY_SAMPLING_RATE
 
 
-DEFAULT_CARTESIA_MODEL_ID = 'upbeat-moon'
-DEFAULT_CARTESIA_VOICE_ID = '5345cf08-6f37-424d-a5d9-8ae1101b9377'
+DEFAULT_CARTESIA_MODEL_ID = "upbeat-moon"
+DEFAULT_CARTESIA_VOICE_ID = "5345cf08-6f37-424d-a5d9-8ae1101b9377"
 
 
 class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA.value):  # type: ignore

@@ -83,4 +83,5 @@ conversation_id: ContextWrapper = ContextWrapper(
     ContextVar("conversation_id", default=None),
 )
 sentry_span_tags: ContextWrapper = ContextWrapper(ContextVar("sentry_span_tags", default=None))
+sentry_transaction = ContextWrapper(ContextVar("sentry_transaction", default=None))
 get_serialized_ctx_wrappers = ContextWrapper.serialize_instances
