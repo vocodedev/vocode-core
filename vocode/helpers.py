@@ -10,7 +10,6 @@ from vocode.streaming.input_device.microphone_input import (
 from vocode.streaming.output_device.blocking_speaker_output import (
     BlockingSpeakerOutput as BlockingStreamingSpeakerOutput,
 )
-from vocode.streaming.output_device.speaker_output import SpeakerOutput as StreamingSpeakerOutput
 from vocode.turn_based.input_device.microphone_input import (
     MicrophoneInput as TurnBasedMicrophoneInput,
 )
@@ -31,15 +30,10 @@ def create_streaming_microphone_input_and_speaker_output(
     output_device_name: Optional[str] = None,
     mic_sampling_rate=None,
     speaker_sampling_rate=None,
-    use_blocking_speaker_output=False,
 ):
     return _create_microphone_input_and_speaker_output(
         microphone_class=StreamingMicrophoneInput,
-        speaker_class=(
-            BlockingStreamingSpeakerOutput
-            if use_blocking_speaker_output
-            else StreamingSpeakerOutput
-        ),
+        speaker_class=(BlockingStreamingSpeakerOutput),
         use_default_devices=use_default_devices,
         input_device_name=input_device_name,
         output_device_name=output_device_name,
@@ -70,7 +64,6 @@ def _create_microphone_input_and_speaker_output(
     microphone_class: typing.Type[Union[StreamingMicrophoneInput, TurnBasedMicrophoneInput]],
     speaker_class: typing.Type[
         Union[
-            StreamingSpeakerOutput,
             BlockingStreamingSpeakerOutput,
             TurnBasedSpeakerOutput,
         ]
@@ -83,7 +76,7 @@ def _create_microphone_input_and_speaker_output(
 ) -> Union[
     Tuple[
         StreamingMicrophoneInput,
-        Union[StreamingSpeakerOutput, BlockingStreamingSpeakerOutput],
+        BlockingStreamingSpeakerOutput,
     ],
     Tuple[TurnBasedMicrophoneInput, TurnBasedSpeakerOutput],
 ]:

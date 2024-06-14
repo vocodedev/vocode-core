@@ -26,6 +26,7 @@ DEFAULT_DEEPGRAM_TRANSCRIBER_CONFIG = DeepgramTranscriberConfig(
 )
 
 DEFAULT_SYNTHESIZER_CONFIG = PlayHtSynthesizerConfig(
+    voice_id="test_voice_id",
     sampling_rate=DEFAULT_SAMPLING_RATE,
     audio_encoding=AudioEncoding.MULAW,
 )

@@ -49,7 +49,11 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": ["welcome", "hosted-quickstart", "open-source-quickstart"]
+      "pages": [
+        "welcome",
+        "hosted-quickstart",
+        "open-source-quickstarts"
+      ]
     },
     {
       "group": "Vocode 101",
@@ -65,26 +69,27 @@
         "open-source/python-quickstart",
         "open-source/telephony",
         "open-source/create-your-own-agent",
-        "open-source/langchain-agent",
-        "open-source/action-agents",
-        "open-source/local-conversation",
+        "open-source/agent-factory",
+        "open-source/agents-with-actions",
+        "open-source/action-phrase-triggers",
+        "open-source/external-action",
+        "open-source/conversation-mechanics",
         "open-source/events-manager",
         "open-source/using-synthesizers",
         "open-source/using-transcribers",
         "open-source/react-quickstart",
         "open-source/playground",
+        "open-source/sentry",
+        "open-source/logging-with-loguru",
         "open-source/turn-based-conversation",
-        "open-source/language-support",
-        "open-source/tracing",
-        "open-source/agent-factory"
+        "open-source/language-support"
       ]
     },
     {
-      "group": "Python",
+      "group": "Legacy (0.0.111) Guides",
       "pages": [
-        "open-source/transcriber-reference",
-        "open-source/agent-reference",
-        "open-source/synthesizer-reference"
+        "open-source/langchain-agent",
+        "open-source/local-conversation"
       ]
     },
     {
@@ -109,7 +114,9 @@
     },
     {
       "group": "Usage",
-      "pages": ["api-reference/usage/get-usage"]
+      "pages": [
+        "api-reference/usage/get-usage"
+      ]
     },
     {
       "group": "Actions",

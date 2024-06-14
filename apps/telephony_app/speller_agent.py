@@ -1,4 +1,3 @@
-import typing
 from typing import Optional, Tuple
 
 from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
@@ -65,16 +64,10 @@ class SpellerAgentFactory(AbstractAgentFactory):
             Exception: If the agent configuration type is not recognized.
         """
         # If the agent configuration type is CHAT_GPT, create a ChatGPTAgent.
-        if agent_config.type == AgentType.CHAT_GPT:
-            return ChatGPTAgent(
-                # Cast the agent configuration to ChatGPTAgentConfig as we are sure about the type here.
-                agent_config=typing.cast(ChatGPTAgentConfig, agent_config)
-            )
+        if isinstance(agent_config, ChatGPTAgentConfig):
+            return ChatGPTAgent(agent_config=agent_config)
         # If the agent configuration type is agent_speller, create a SpellerAgent.
-        elif agent_config.type == "agent_speller":
-            return SpellerAgent(
-                # Cast the agent configuration to SpellerAgentConfig as we are sure about the type here.
-                agent_config=typing.cast(SpellerAgentConfig, agent_config)
-            )
+        elif isinstance(agent_config, SpellerAgentConfig):
+            return SpellerAgent(agent_config=agent_config)
         # If the agent configuration type is not recognized, raise an exception.
         raise Exception("Invalid agent config")

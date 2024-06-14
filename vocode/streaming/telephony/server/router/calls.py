@@ -2,6 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, WebSocket
 from loguru import logger
+import sentry_sdk
 
 from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
 from vocode.streaming.agent.default_factory import DefaultAgentFactory
@@ -22,6 +23,7 @@ from vocode.streaming.transcriber.abstract_factory import AbstractTranscriberFac
 from vocode.streaming.transcriber.default_factory import DefaultTranscriberFactory
 from vocode.streaming.utils.base_router import BaseRouter
 from vocode.streaming.utils.events_manager import EventsManager
+from vocode import sentry_transaction
 
 
 class CallsRouter(BaseRouter):
@@ -96,25 +98,27 @@ class CallsRouter(BaseRouter):
             raise ValueError(f"Unknown call config type {call_config.type}")
 
     async def connect_call(self, websocket: WebSocket, id: str):
-        await websocket.accept()
-        logger.debug("Phone WS connection opened for chat {}".format(id))
-        call_config = await self.config_manager.get_config(id)
-        if not call_config:
-            raise HTTPException(status_code=400, detail="No active phone call")
+        with sentry_sdk.start_transaction(op="connect_call") as sentry_txn:
+            sentry_transaction.set(sentry_txn)
+            await websocket.accept()
+            logger.debug("Phone WS connection opened for chat {}".format(id))
+            call_config = await self.config_manager.get_config(id)
+            if not call_config:
+                raise HTTPException(status_code=400, detail="No active phone call")
 
-        phone_conversation = self._from_call_config(
-            base_url=self.base_url,
-            call_config=call_config,
-            config_manager=self.config_manager,
-            conversation_id=id,
-            transcriber_factory=self.transcriber_factory,
-            agent_factory=self.agent_factory,
-            synthesizer_factory=self.synthesizer_factory,
-            events_manager=self.events_manager,
-        )
+            phone_conversation = self._from_call_config(
+                base_url=self.base_url,
+                call_config=call_config,
+                config_manager=self.config_manager,
+                conversation_id=id,
+                transcriber_factory=self.transcriber_factory,
+                agent_factory=self.agent_factory,
+                synthesizer_factory=self.synthesizer_factory,
+                events_manager=self.events_manager,
+            )
 
-        await phone_conversation.attach_ws_and_start(websocket)
-        logger.debug("Phone WS connection closed for chat {}".format(id))
+            await phone_conversation.attach_ws_and_start(websocket)
+            logger.debug("Phone WS connection closed for chat {}".format(id))
 
     def get_router(self) -> APIRouter:
         return self.router

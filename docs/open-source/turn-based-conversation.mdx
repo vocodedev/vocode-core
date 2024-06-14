@@ -9,55 +9,64 @@ A turn-based conversation is a communication system designed for applications wh
 This model differs from streaming conversations that try to mimic natural human discourse. Instead, it fits applications triggered by some kind of user input.
 For example, consider a voice memo application where the user records a message, and the agent generates a complete response.
 
-A turn-based conversation system is perfect for applications that don't require real-time responses or constant back-and-forths.
-This design reduces complexity and allows for a more controlled conversation flow. Each user input is treated as a discrete event,
+A turn-based conversation system is perfect for applications that don't require interruptions and have a controlled conversation flow. Each user input is treated as a discrete event,
 giving the system time to generate and deliver a full and meaningful response.
 
 ## Turn-based quickstart
 
-The code can be found [here](https://github.com/vocodedev/vocode-python/blob/main/quickstarts/turn_based_conversation.py)
+The example below demonstrates a turn-based conversation, using a ChatGPT agent for text generation, WhisperTranscriber for speech-to-text,
+and AzureSynthesizer for text-to-speech. User interactions trigger the beginning and end of the recording, signaling the system when to listen and when to respond. You can run it with 
+```
+make turn_based_conversation
+```
+
+*Remember to replace OPENAI_API_KEY and AZURE_SPEECH_KEY with your actual API keys and set the appropriate Azure region. You can also set these variables in a `.env` file and source it in your terminal.
+You can also customize the voice, system prompt, and initial message as needed. The code can be found [here](https://github.com/vocodedev/vocode-python/blob/main/quickstarts/turn_based_conversation.py).*
 
 ```python
-import logging
-from dotenv import load_dotenv
-from vocode import getenv
-from vocode.helpers import create_turn_based_microphone_input_and_speaker_output
-from vocode.turn_based.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode.turn_based.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
-from vocode.turn_based.transcriber.whisper_transcriber import WhisperTranscriber
-from vocode.turn_based.turn_based_conversation import TurnBasedConversation
+class Settings(BaseSettings):
+    """
+    Settings for the turn-based conversation quickstart.
+    These parameters can be configured with environment variables.
+    """
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+    openai_api_key: str = "ENTER_YOUR_OPENAI_API_KEY_HERE"
+    azure_speech_key: str = "ENTER_YOUR_AZURE_KEY_HERE"
 
-load_dotenv()
+    azure_speech_region: str = "eastus"
 
-# See https://api.elevenlabs.io/v1/voices
-ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
+    # This means a .env file can be used to overload these settings
+    # ex: "OPENAI_API_KEY=my_key" will set openai_api_key over the default above
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
+
+
+settings = Settings()
 
 if __name__ == "__main__":
     (
         microphone_input,
         speaker_output,
-    ) = create_turn_based_microphone_input_and_speaker_output(use_default_devices=False)
+    ) = create_turn_based_microphone_input_and_speaker_output(
+        use_default_devices=False,
+    )
 
     conversation = TurnBasedConversation(
         input_device=microphone_input,
         output_device=speaker_output,
-        transcriber=WhisperTranscriber(api_key=getenv("OPENAI_API_KEY")),
+        transcriber=WhisperTranscriber(api_key=settings.openai_api_key),
         agent=ChatGPTAgent(
             system_prompt="The AI is having a pleasant conversation about life",
             initial_message="Hello!",
-            api_key=getenv("OPENAI_API_KEY"),
+            api_key=settings.openai_api_key,
         ),
         synthesizer=AzureSynthesizer(
-            api_key=getenv("AZURE_SPEECH_KEY"),
-            region=getenv("AZURE_SPEECH_REGION"),
+            api_key=settings.azure_speech_key,
+            region=settings.azure_speech_region,
             voice_name="en-US-SteffanNeural",
         ),
-        logger=logger,
     )
     print("Starting conversation. Press Ctrl+C to exit.")
     while True:
@@ -69,15 +78,3 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             break
 ```
-
-This example demonstrates a turn-based conversation, using a ChatGPT agent for text generation, WhisperTranscriber for speech-to-text,
-and AzureSynthesizer for text-to-speech. User interactions trigger the beginning and end of the recording, signaling the system when to listen and when to respond.
-
-Remember to replace OPENAI_API_KEY and AZURE_SPEECH_KEY with your actual API keys and set the appropriate Azure region.
-You can also customize the voice, system prompt, and initial message as needed.
-
-## React turn-based quickstart
-
-🚧 Under construction
-
-If you want to work on a sample react app for this, reach out to us!

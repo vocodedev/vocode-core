@@ -3,7 +3,7 @@ import time
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.output_device.speaker_output import SpeakerOutput
+from vocode.streaming.output_device.blocking_speaker_output import BlockingSpeakerOutput
 from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 from vocode.streaming.utils import get_chunk_size_per_second
@@ -58,7 +58,8 @@ if __name__ == "__main__":
         return message_sent, cut_off
 
     async def main():
-        speaker_output = SpeakerOutput.from_default_device()
+        speaker_output = BlockingSpeakerOutput.from_default_device()
+        speaker_output.start()
         synthesizer = AzureSynthesizer(AzureSynthesizerConfig.from_output_device(speaker_output))
         try:
             while True:
