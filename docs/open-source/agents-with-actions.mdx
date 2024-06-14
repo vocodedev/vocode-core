@@ -1,6 +1,6 @@
 ---
-title: 'Action Agents'
-description: 'Empowering agents to take actions during conversations.'
+title: 'Agents with Actions'
+description: 'Empower agents to take actions during conversations.'
 ---
 
 ## Note: Support for actions is currently limited to `ChatGPTAgent`.
@@ -13,16 +13,31 @@ scheduling an appointment, and so forth. They are implemented as classes derived
 The `BaseAction` class has the following key structure:
 
 ```python
-class BaseAction(Generic[ActionOutputType]):
+class BaseAction(Generic[ActionConfigType, ParametersType, ResponseType]):
+    def __init__(
+        self,
+        action_config: ActionConfigType,
+        should_respond: Literal["always", "sometimes", "never"] = "never",
+        quiet: bool = False,
+        is_interruptible: bool = True,
+        **kwargs,
+    ):
+        self.action_config = action_config
+        self.should_respond = should_respond
+        self.quiet = quiet
+        self.is_interruptible = is_interruptible
+    
     async def run(self, action_input: ActionInput[ParametersType]) -> ActionOutput[ResponseType]:
         raise NotImplementedError
 ```
 
 Every action class derived from BaseAction must implement the run method, which is called to execute the action.
-Importantly, each action class should include a docstring for this method that explains the expected parameters.
-This docstring is critical as it provides the information that the AI will consume in its prompt when instructing the execution of the action.
+Importantly, each action class should include a docstring for this method that explains the expected parameters, a config that can be used to create the action, and a response class.
+- This docstring is critical as it provides the information that the AI will consume in its prompt when instructing the execution of the action.
+- The config contains all the parameters needed to customize your action.
+- The response object is returned to the agent upon action completion and encodes its output, as well as if it was a success or failure.
 
-## Agent Actions
+## How Agents use Actions
 
 The agent is responsible for managing and executing actions within a conversation. The agent consumes a configuration object at instantiation,
 which specifies the actions that the agent can perform.
@@ -35,7 +50,7 @@ class AgentConfig(AgentConfig, type=AgentType.Base.value):
     # ...
 ```
 
-## `ActionsWorker`: how actions are executed and consumed
+### `ActionsWorker`: how actions are executed and consumed
 
 The `ActionsWorker` class plays a crucial role in the async processing of actions within the system. It's a specialized form of the `InterruptibleWorker` class,
 designed to handle the execution of actions and passing results back to the agent.
