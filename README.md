@@ -34,7 +34,6 @@ We're actively looking for community maintainers, so please reach out if interes
     - [RevAI](https://www.rev.ai/)
     - [Whisper](https://openai.com/blog/introducing-chatgpt-and-whisper-apis)
     - [Whisper.cpp](https://github.com/ggerganov/whisper.cpp)
-    
   - LLMs, including:
     - [ChatGPT](https://openai.com/blog/chatgpt)
     - [GPT-4](https://platform.openai.com/docs/models/gpt-4)
@@ -59,9 +58,9 @@ Check out our React SDK [here](https://github.com/vocodedev/vocode-react-sdk)!
 
 We're an open source project and are extremely open to contributors adding new features, integrations, and documentation! Please don't hesitate to reach out and get started building with us.
 
-For more information on contributing, see our [Contribution Guide](https://github.com/vocodedev/vocode-python/blob/main/contributing.md).
+For more information on contributing, see our [Contribution Guide](https://github.com/vocodedev/vocode-core/blob/main/contributing.md).
 
-And check out our [Roadmap](https://github.com/vocodedev/vocode-python/blob/main/roadmap.md).
+And check out our [Roadmap](https://github.com/vocodedev/vocode-core/blob/main/roadmap.md).
 
 We'd love to talk to you on [Discord](https://discord.gg/NaU4mMgcnC) about new ideas and contributing!
 
@@ -73,31 +72,48 @@ pip install 'vocode'
 
 ```python
 import asyncio
-import logging
 import signal
-from vocode.streaming.streaming_conversation import StreamingConversation
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from vocode.helpers import create_streaming_microphone_input_and_speaker_output
-from vocode.streaming.transcriber import *
-from vocode.streaming.agent import *
-from vocode.streaming.synthesizer import *
-from vocode.streaming.models.transcriber import *
-from vocode.streaming.models.agent import *
-from vocode.streaming.models.synthesizer import *
+from vocode.logging import configure_pretty_logging
+from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
-import vocode
-
-# these can also be set as environment variables
-vocode.setenv(
-    OPENAI_API_KEY="<your OpenAI key>",
-    DEEPGRAM_API_KEY="<your Deepgram key>",
-    AZURE_SPEECH_KEY="<your Azure key>",
-    AZURE_SPEECH_REGION="<your Azure region>",
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.models.transcriber import (
+    DeepgramTranscriberConfig,
+    PunctuationEndpointingConfig,
 )
+from vocode.streaming.streaming_conversation import StreamingConversation
+from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
+from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
+
+configure_pretty_logging()
 
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+class Settings(BaseSettings):
+    """
+    Settings for the streaming conversation quickstart.
+    These parameters can be configured with environment variables.
+    """
+
+    openai_api_key: str = "ENTER_YOUR_OPENAI_API_KEY_HERE"
+    azure_speech_key: str = "ENTER_YOUR_AZURE_KEY_HERE"
+    deepgram_api_key: str = "ENTER_YOUR_DEEPGRAM_API_KEY_HERE"
+
+    azure_speech_region: str = "eastus"
+
+    # This means a .env file can be used to overload these settings
+    # ex: "OPENAI_API_KEY=my_key" will set openai_api_key over the default above
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
+
+
+settings = Settings()
 
 
 async def main():
@@ -106,8 +122,6 @@ async def main():
         speaker_output,
     ) = create_streaming_microphone_input_and_speaker_output(
         use_default_devices=False,
-        logger=logger,
-        use_blocking_speaker_output=True
     )
 
     conversation = StreamingConversation(
@@ -116,24 +130,25 @@ async def main():
             DeepgramTranscriberConfig.from_input_device(
                 microphone_input,
                 endpointing_config=PunctuationEndpointingConfig(),
-            )
+                api_key=settings.deepgram_api_key,
+            ),
         ),
         agent=ChatGPTAgent(
             ChatGPTAgentConfig(
+                openai_api_key=settings.openai_api_key,
                 initial_message=BaseMessage(text="What up"),
                 prompt_preamble="""The AI is having a pleasant conversation about life""",
             )
         ),
         synthesizer=AzureSynthesizer(
-            AzureSynthesizerConfig.from_output_device(speaker_output)
+            AzureSynthesizerConfig.from_output_device(speaker_output),
+            azure_speech_key=settings.azure_speech_key,
+            azure_speech_region=settings.azure_speech_region,
         ),
-        logger=logger,
     )
     await conversation.start()
     print("Conversation started, press Ctrl+C to end")
-    signal.signal(
-        signal.SIGINT, lambda _0, _1: asyncio.create_task(conversation.terminate())
-    )
+    signal.signal(signal.SIGINT, lambda _0, _1: asyncio.create_task(conversation.terminate()))
     while conversation.is_active():
         chunk = await microphone_input.get_audio()
         conversation.receive_audio(chunk)
@@ -145,8 +160,8 @@ if __name__ == "__main__":
 
 # 📞 Phone call quickstarts
 
-- [Telephony Server - Self-hosted](https://docs.vocode.dev/telephony)
+- [Telephony Server - Self-hosted](https://docs.vocode.dev/open-source/telephony)
 
 # 🌱 Documentation
 
-[docs.vocode.dev](https://docs.vocode.dev/)
+[docs.vocode.dev](https://docs.vocode.dev/open-source)
