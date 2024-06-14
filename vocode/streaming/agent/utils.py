@@ -1,15 +1,13 @@
-from copy import deepcopy
 import re
+from copy import deepcopy
 from typing import (
-    Dict,
     Any,
     AsyncGenerator,
     AsyncIterable,
-    Callable,
+    Dict,
     List,
     Literal,
     Optional,
-    TypeVar,
     Union,
 )
 
@@ -47,8 +45,9 @@ async def collate_response_async(
 
             buffer += token
             possible_list_item = bool(re.match(r"^\d+[ .]", buffer))
-            ends_with_money = bool(re.findall(r"\$\d+.$", buffer))
-            if re.findall(
+            ends_with_money = bool(re.search(r"\$\d+.$", buffer))
+
+            if re.search(
                 list_item_ending_pattern
                 if possible_list_item
                 else sentence_endings_pattern,
@@ -93,6 +92,23 @@ async def openai_get_tokens(gen) -> AsyncGenerator[Union[str, FunctionFragment],
                 if (hasattr(delta.tool_calls[0].function, "arguments") and getattr(delta.tool_calls[0].function, "arguments"))
                 else "",
             )
+
+
+async def anthropic_get_tokens(
+    gen,
+) -> AsyncGenerator[Union[str, FunctionFragment], None]:
+    async for event in gen:
+        if event.type == "content_block_stop":
+            break
+        if event.type == "content_block_start":
+            token = event.content_block.text
+            yield token
+        if event.type == "content_block_delta":
+            delta = event.delta
+            if hasattr(delta, "text") and getattr(delta, "text"):
+                token = delta.text
+                token = token.lstrip("\n")
+                yield token
 
 
 def find_last_punctuation(buffer: str) -> Optional[int]:

@@ -1,30 +1,17 @@
+import logging
 from typing import AsyncGenerator, Optional, Tuple
-from langchain.chains import ConversationChain
-import logging
 
-from typing import Optional, Tuple
+import anthropic
+from langchain.schema import AIMessage, ChatMessage
+
+from vocode import getenv
 from vocode.streaming.agent.base_agent import RespondAgent
-
-from vocode.streaming.agent.utils import get_sentence_from_buffer
-
-from langchain.schema import ChatMessage, AIMessage, HumanMessage
-from langchain.chat_models import ChatAnthropic
-import logging
-from vocode import getenv
-
-from vocode.streaming.models.agent import ChatAnthropicAgentConfig
-
-
-from langchain.prompts import (
-    ChatPromptTemplate,
-    MessagesPlaceholder,
-    HumanMessagePromptTemplate,
+from vocode.streaming.agent.utils import (
+    anthropic_get_tokens,
+    collate_response_async,
+    format_openai_chat_messages_from_transcript,
 )
-
-from vocode import getenv
 from vocode.streaming.models.agent import ChatAnthropicAgentConfig
-from langchain.memory import ConversationBufferMemory
-
 from vocode.streaming.models.message import BaseMessage
 
 SENTENCE_ENDINGS = [".", "!", "?"]
@@ -35,46 +22,17 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
         self,
         agent_config: ChatAnthropicAgentConfig,
         logger: Optional[logging.Logger] = None,
-        anthropic_api_key: Optional[str] = None,
     ):
         super().__init__(agent_config=agent_config, logger=logger)
-        import anthropic
+        anthropic_api_key = getenv("ANTHROPIC_API_KEY")
 
-        anthropic_api_key = anthropic_api_key or getenv("ANTHROPIC_API_KEY")
         if not anthropic_api_key:
             raise ValueError(
                 "ANTHROPIC_API_KEY must be set in environment or passed in"
             )
-        self.prompt = ChatPromptTemplate.from_messages(
-            [
-                MessagesPlaceholder(variable_name="history"),
-                HumanMessagePromptTemplate.from_template("{input}"),
-            ]
-        )
 
-        self.llm = ChatAnthropic(
-            model=agent_config.model_name,
-            anthropic_api_key=anthropic_api_key,
-        )
-
-        # streaming not well supported by langchain, so we will connect directly
-        self.anthropic_client = (
-            anthropic.Client(api_key=anthropic_api_key)
-            if agent_config.generate_responses
-            else None
-        )
-
-        self.memory = ConversationBufferMemory(return_messages=True)
-        self.memory.chat_memory.messages.append(
-            HumanMessage(content=self.agent_config.prompt_preamble)
-        )
-        if agent_config.initial_message:
-            self.memory.chat_memory.messages.append(
-                AIMessage(content=agent_config.initial_message.text)
-            )
-
-        self.conversation = ConversationChain(
-            memory=self.memory, prompt=self.prompt, llm=self.llm
+        self.anthropic_async_client = anthropic.AsyncAnthropic(
+            api_key=anthropic_api_key, max_retries=2
         )
 
     async def respond(
@@ -89,35 +47,32 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
 
     async def generate_response(
         self,
-        human_input,
+        human_input: str,
         conversation_id: str,
         is_interrupt: bool = False,
     ) -> AsyncGenerator[BaseMessage, None]:
-        self.memory.chat_memory.messages.append(HumanMessage(content=human_input))
+        if is_interrupt and self.agent_config.cut_off_response:
+            cut_off_response = self.get_cut_off_response()
+            yield BaseMessage(text=cut_off_response)
+            return
+        assert self.transcript is not None
 
-        bot_memory_message = AIMessage(content="")
-        self.memory.chat_memory.messages.append(bot_memory_message)
-        prompt = self.llm._convert_messages_to_prompt(self.memory.chat_memory.messages)
-
-        streamed_response = await self.anthropic_client.acompletion_stream(
-            prompt=prompt,
-            max_tokens_to_sample=self.agent_config.max_tokens_to_sample,
-            model=self.agent_config.model_name,
+        messages_formatted = format_openai_chat_messages_from_transcript(
+            self.transcript
         )
 
-        buffer = ""
-        async for message in streamed_response:
-            completion = message["completion"]
-            delta = completion[len(bot_memory_message.content + buffer) :]
-            buffer += delta
+        stream = await self.anthropic_async_client.messages.create(
+            max_tokens=1024,
+            messages=messages_formatted,
+            system=self.agent_config.prompt_preamble,
+            model="claude-3-opus-20240229",
+            stream=True,
+        )
 
-            sentence, remainder = get_sentence_from_buffer(buffer)
-
-            if sentence:
-                bot_memory_message.content = bot_memory_message.content + sentence
-                buffer = remainder
-                yield BaseMessage(text=sentence)
-            continue
+        async for message in collate_response_async(
+            anthropic_get_tokens(stream), get_functions=True
+        ):
+            yield BaseMessage(text=message)
 
     def update_last_bot_message_on_cut_off(self, message: str):
         for memory_message in self.memory.chat_memory.messages[::-1]:
