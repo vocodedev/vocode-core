@@ -5,7 +5,7 @@
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/vocodehq.svg?style=social&label=Follow%20%40vocodehq)](https://twitter.com/vocodehq) [![GitHub Repo stars](https://img.shields.io/github/stars/vocodedev/vocode-python?style=social)](https://github.com/vocodedev/vocode-python)
 [![Downloads](https://static.pepy.tech/badge/vocode/month)](https://pepy.tech/project/vocode)
 
-[Community](https://discord.gg/NaU4mMgcnC) | [Docs](https://docs.vocode.dev) | [Dashboard](https://app.vocode.dev)
+[Community](https://discord.gg/NaU4mMgcnC) | [Docs](https://docs.vocode.dev/open-source) | [Dashboard](https://app.vocode.dev)
 
 </div>
 
@@ -19,11 +19,11 @@ We're actively looking for community maintainers, so please reach out if interes
 
 # ⭐️ Features
 
-- 🗣 [Spin up a conversation with your system audio](https://docs.vocode.dev/python-quickstart)
-- ➡️ 📞 [Set up a phone number that responds with a LLM-based agent](https://docs.vocode.dev/telephony#inbound-calls)
-- 📞 ➡️ [Send out phone calls from your phone number managed by an LLM-based agent](https://docs.vocode.dev/telephony#outbound-calls)
-- 🧑‍💻 [Dial into a Zoom call](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/telephony/hosted/zoom_dial_in.py)
-- 🤖 [Use an outbound call to a real phone number in a Langchain agent](https://docs.vocode.dev/langchain-agent)
+- 🗣 [Spin up a conversation with your system audio](https://docs.vocode.dev/open-source/python-quickstart)
+- ➡️ 📞 [Set up a phone number that responds with a LLM-based agent](https://docs.vocode.dev/open-source/telephony#inbound-calls)
+- 📞 ➡️ [Send out phone calls from your phone number managed by an LLM-based agent](https://docs.vocode.dev/telephony/open-source/#outbound-calls)
+- 🧑‍💻 [Dial into a Zoom call](https://github.com/vocodedev/vocode-core/blob/53b01dab0b59f71961ee83dbcaf3653a6935c2e3/vocode/streaming/telephony/conversation/zoom_dial_in.py)
+- 🤖 [Use an outbound call to a real phone number in a Langchain agent](https://docs.vocode.dev/open-source/langchain-agent)
 - Out of the box integrations with:
   - Transcription services, including:
     - [AssemblyAI](https://www.assemblyai.com/)
