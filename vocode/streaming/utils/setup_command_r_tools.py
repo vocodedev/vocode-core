@@ -265,7 +265,7 @@ all_optional_tools = {
     # We will preserve the name of the function since we know it will be consistently called
     # but the underlying implementation of the function call will change
     ActionType.FORWARD_CALL_TO_MOOVS: {
-        "name": "get_human_support",
+        "name": "forward_call_to_moovs",
         "description": "Puts a human support agent into the call.",
         "parameter_definitions": {},
     },

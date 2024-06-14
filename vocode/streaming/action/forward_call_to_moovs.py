@@ -56,26 +56,25 @@ class ForwardCallToMoovs(
         ForwardCallToMoovsResponse
     )
 
-    async def forward_call_to_moovs(self, action_config: ForwardCallToMoovsActionConfig):
+    async def forward_call_to_moovs(self):
         return await trigger_twilio_webhook(
-            to=action_config.to_phone,
-            from_=action_config.from_phone,
-            call_sid=action_config.telephony_id,
-            account_sid=action_config.twilio_config.account_sid,
+            to=self.action_config.to_phone,
+            from_=self.action_config.from_phone,
+            call_sid=self.action_config.telephony_id,
+            account_sid=self.action_config.twilio_config.account_sid,
             webhook_url=os.getenv("MOOVS_CALL_FORWARDING_ENDPOINT")
         )
 
 
     async def run(
-            self, action_input: ActionInput[ForwardCallToMoovsActionConfig]
+            self, action_input: ActionInput[ForwardCallToMoovsParameters]
     ) -> ActionOutput[ForwardCallToMoovsResponse]:
-        action_config = ForwardCallToMoovsActionConfig(**action_input.action_config.dict())
-        response = await self.forward_call_to_moovs(action_config)
+        response = await self.forward_call_to_moovs()
         if "error" in str(response).lower():
             return ActionOutput(
                 action_type=action_input.action_config.type,
                 response=ForwardCallToMoovsResponse(
-                    status=f"Failed to forward {action_input.params.from_phone} to registered representatives. "
+                    status=f"Failed to forward {self.action_config.from_phone} to registered representatives. "
                            f"Error: {response}"
                 ),
             )
