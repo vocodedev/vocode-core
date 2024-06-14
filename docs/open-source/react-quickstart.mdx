@@ -38,20 +38,22 @@ AZURE_SPEECH_KEY=
 AZURE_SPEECH_REGION=
 ```
 
+### Running with Python
+
+```
+pip3 install vocode
+uvicorn main:app --port 3000
+```
+
 ### Running with Docker
+
+Note: this is currently broken in 0.1.112 - we're planning an overhaul here, stay tuned!
 
 From the `client_backend` directory:
 
 ```
 docker build -t vocode-client-backend .
 docker run --env-file=.env -p 3000:3000 -t vocode-client-backend
-```
-
-### Running with Python
-
-```
-pip3 install vocode
-uvicorn main:app --port 3000
 ```
 
 You now have a server with a Vocode websocket route at localhost:3000! You can now use the `useConversation` hook with your self-hosted backend as follows:
