@@ -49,11 +49,7 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": [
-        "welcome",
-        "hosted-quickstart",
-        "open-source-quickstart"
-      ]
+      "pages": ["welcome", "hosted-quickstart", "open-source-quickstarts"]
     },
     {
       "group": "Vocode 101",
@@ -86,14 +82,6 @@
       ]
     },
     {
-      "group": "Python",
-      "pages": [
-        "open-source/transcriber-reference",
-        "open-source/agent-reference",
-        "open-source/synthesizer-reference"
-      ]
-    },
-    {
       "group": "Numbers",
       "pages": [
         "api-reference/numbers/list-numbers",
@@ -115,9 +103,7 @@
     },
     {
       "group": "Usage",
-      "pages": [
-        "api-reference/usage/get-usage"
-      ]
+      "pages": ["api-reference/usage/get-usage"]
     },
     {
       "group": "Actions",

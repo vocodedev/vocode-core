@@ -54,3 +54,10 @@ class BlockingSpeakerOutput(BaseOutputDevice, ThreadAsyncWorker):
         self._ended = True
         ThreadAsyncWorker.terminate(self)
         self.stream.close()
+
+    @classmethod
+    def from_default_device(
+        cls,
+        **kwargs,
+    ):
+        return cls(sd.query_devices(kind="output"), **kwargs)

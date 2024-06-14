@@ -117,8 +117,6 @@ Make sure the server we just set up is already running. Then, in `outbound_call.
 
 Replace the `to_phone` with the number you want to call and the `from_phone` with the number you want to call from. In order to make a call from the `from_phone`, you must have access to it via Twilio (either a number purchased via Twilio or verify the caller ID).
 
-> Note: To ensure legal compliance with robocall regulations in California, the following code snippet from the [Vocode library](https://github.com/vocodedev/vocode-python/blob/main/vocode/streaming/telephony/conversation/outbound_call.py#L83-L96) utilizes Twilio Line Intelligence to check if calls are made to mobile phones: For Canadian phone numbers, the Twilio Lookup API may not return carrier data due to the Canadian Local Number Portability Consortium (CLNPC) requirements. More information on this issue can be found in the [Twilio Support Article](https://support.twilio.com/hc/en-us/articles/360004563433-Twilio-Lookup-API-is-Not-Returning-Carrier-Data-for-Canadian-Phone-Numbers).
-
 Run the script with `poetry run python outbound_call.py`.
 
 ## Configuration
@@ -129,26 +127,39 @@ or `SynthesizerConfig` - the default transcriber is Deepgram and the default syn
 This example sets up an agent that spells every word that is sent to it - any text-in, text-out function can be turned into a voice conversation by subclassing `BaseAgent` and creating an `AgentFactory`.
 
 ```
+import typing
+from typing import Optional, Tuple
+
+from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
+from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
+from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode.streaming.models.agent import AgentConfig, AgentType, ChatGPTAgentConfig
+
+
 class SpellerAgentConfig(AgentConfig, type="agent_speller"):
     pass
 
 
-class SpellerAgent(BaseAgent):
-    def __init__(self, agent_config: SpellerAgentConfig):
-        super().__init__(agent_config=agent_config)
-
+class SpellerAgent(RespondAgent[SpellerAgentConfig]):
     async def respond(
         self,
-        human_input,
+        human_input: str,
         conversation_id: str,
         is_interrupt: bool = False,
     ) -> Tuple[Optional[str], bool]:
         return "".join(c + " " for c in human_input), False
 
 
-class SpellerAgentFactory(AgentFactory):
+class SpellerAgentFactory(AbstractAgentFactory):
     def create_agent(self, agent_config: AgentConfig) -> BaseAgent:
-        return SpellerAgent(agent_config=agent_config)
+        # If the agent configuration type is CHAT_GPT, create a ChatGPTAgent.
+        if isinstance(agent_config, ChatGPTAgentConfig):
+            return ChatGPTAgent(agent_config=agent_config)
+        # If the agent configuration type is agent_speller, create a SpellerAgent.
+        elif isinstance(agent_config, SpellerAgentConfig):
+            return SpellerAgent(agent_config=agent_config)
+        # If the agent configuration type is not recognized, raise an exception.
+        raise Exception("Invalid agent config")
 ```
 
 An `AgentFactory` instance is passed into the `TelephonyServer` in `telephony_app.py`.
@@ -157,7 +168,7 @@ We provide a small set of agents with already created `AgentConfig`s, including,
 
 ### Accessing call information in your agent
 
-We store the `to` and `from` numbers in the [`ConfigManager`](https://github.com/vocodedev/vocode-python-sdk/blob/b37bf7a1172a917b641d0e70ba14756415e09b0b/apps/telephony_app/main.py#L20) - so
+We store the `to` and `from` numbers in the [`ConfigManager`](https://github.com/vocodedev/vocode-core/blob/53b01dab0b59f71961ee83dbcaf3653a6935c2e3/apps/telephony_app/main.py#L30) - so
 if you'd like to access them in your agent, you can instantiate the manager to hook into the same Redis instance:
 
 ```
@@ -168,7 +179,7 @@ class SpellerAgent(BaseAgent):
 
     async def respond(
         self,
-        human_input,
+        human_input: str,
         conversation_id: str,
         is_interrupt: bool = False,
     ) -> Tuple[Optional[str], bool]:
