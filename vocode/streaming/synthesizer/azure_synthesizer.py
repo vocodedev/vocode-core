@@ -229,7 +229,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 return ssml_fragment.split(">")[-1]
         return message
 
-    async def create_speech(
+    async def create_speech_uncached(
         self,
         message: BaseMessage,
         chunk_size: int,

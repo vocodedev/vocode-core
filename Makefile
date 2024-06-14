@@ -9,6 +9,12 @@ transcribe:
 synthesize:
 	poetry run python playground/streaming/synthesizer/synthesize.py
 
+turn_based_conversation:
+	poetry run python quickstarts/turn_based_conversation.py
+
+streaming_conversation:
+	poetry run python quickstarts/streaming_conversation.py
+
 PYTHON_FILES=.
 lint: PYTHON_FILES=vocode/ quickstarts/ playground/
 lint_diff typecheck_diff: PYTHON_FILES=$(shell git diff --name-only --diff-filter=d main | grep -E '\.py$$')
