@@ -1,0 +1,263 @@
+---
+title: "External Actions"
+description: "Have your agent communicate with an External API"
+---
+
+External Actions allow Vocode agents to take actions outside the realm of a phone call. In particular, Vocode agents can decide to _push_ information to external systems via an API request, and _pull_ information from the API response in order to:
+
+1. give the agent context to inform the rest of the phone call
+2. change the agent’s behavior based on the pulled information
+3. run functions/tasks outside the call
+
+## How it Works
+
+### Configuring an External Action with `ExecuteExternalActionVocodeActionConfig`
+
+The Vocode Agent will determine after each turn of conversation if its the ideal time to interact with the External API based primarily on the configured External Action's `description` and `input_schema`!
+
+#### Overview
+
+- `processing_mode`: We currently only support `muted`, which makes the agent silent while processing the request.
+
+- `name`: the name of the external action -- this has no impact on the functionality of action itself.
+
+- `description`: Used by the Function Calling API to determine when to make the External Action call itself. See the [`description` field section below](/open-source/external-action#description-field) for more info!
+
+- `url`: The API request is sent to this URL in the format
+  defined below in [Responding to External Action API Requests](/open-source/external-action#input-schema-field)
+
+- `input_schema`: A [JSON Schema](https://json-schema.org/) for the payload to send to the External API. See the [`input_schema` field section below](/open-source/external-action#responding-to-external-action-api-requests) for more info!
+
+- `speak_on_send`: if `True`, then the underlying LLM will generate a message to be spoken as the
+  API request is being sent.
+
+- `speak_on_receive`: if `True`, then the agent will speak once it receives a result from the API Response. If the response does not contain an `agent_message` (see [Response Formatting](#response-formatting)), the agent will query the LLM for the message to speak.
+
+- `signature_secret`: a base64 encoded string to enable request validation, see the [Signature Validation section](/open-source/external-action#signature-validation) below for more info
+
+#### `input_schema` Field
+
+The `input_schema` field is a [JSON Schema](https://json-schema.org/) form the payload to send to the External API.
+
+For example, in the [Meeting Assistant Example](/open-source/external-action#meeting-assistant-example) below we formed the following JSON schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "length": {
+      "type": "string",
+      "enum": ["30m", "1hr"]
+    },
+    "time": {
+      "type": "string",
+      "pattern": "^d{2}:d0[ap]m$"
+    }
+  }
+}
+```
+
+This is stating the External API is expecting:
+
+- Two fields
+  - `length` (string): either "30m" or "1hr"
+  - `time` (string): a regex pattern defining a time ending in a zero with `am`/`pm` on the end ie: `10:30am`
+
+<Card title="💡 Note" color="#ca8b04">
+    If you’re noticing that this looks very familiar to OpenAI function calling, it is! Vocode treats OpenAI Function Calling as a first-class standard when the agent uses an OpenAI LLM.
+
+    The lone difference is that the top level `input_schema` JSON schema must be an `object` - this is so we can use JSON to send over parameters to the user’s API.
+
+</Card>
+
+#### `description` Field
+
+The `description` is best used to descibe your External Action's purpose. As its passed through directly to the LLM, its the best way to convey instructions to the underlying Vocode Agent.
+
+For example, in the [Meeting Assistant Example](/open-source/external-action#meeting-assistant-example) below we want to book a meeting for 30 minutes to an hour so we set the description as `Book a meeting for a 30 minute or 1 hour call.`
+
+<Card title="💡 Note" color="#ca8b04">
+  The `description` field is passed through and heavily affects how functions are triggered and queried,
+   so we recommend treating it similar to prompting for an LLM!
+</Card>
+
+### Responding to External Action API Requests
+
+Once an External Action has been created, the Vocode Agent will issue API requests to the defined `url` during the course of a phone call based on the [configuration noted above](/open-source/external-action#configuring-an-external-action-with-executeexternalactionvocodeactionconfig)
+The Vocode API will wait a maximum of _10 seconds_ before timing out the request.
+
+In particular, Vocode will issue a POST request to `url` with a JSON payload that specifically matches `input_schema`. Using the [Meeting Assistant Example](/open-source/external-action#meeting-assistant-example) below, the request will contain:
+
+```bash
+POST url HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+x-vocode-signature: <encoded_signature>
+
+{
+  "payload": {
+    "length": "30m",
+    "time": "10:30am"
+  }
+}
+```
+
+#### Signature Validation
+
+A cryptographically signed signature of the request body and a randomly generated byte hash is included as a header (under `x-vocode-signature`) in the outbound request, so the receiving API can validate the identity of the incoming request. The signature secret is used to sign the request and ensure the validity of the `x-vocode-signature` field, and therefore *must be securely managed*.
+
+This should be set as a base64-encoded string and we recommend a longer length as well, using the following snippet as an example:
+
+```python
+import os
+import base64
+
+signature_secret = base64.b64encode(os.urandom(32)).decode()
+```
+
+Use the following code snippet to check the signature in an inbound request:
+
+```python
+import base64
+import hashlib
+import hmac
+
+async def test_requester_encodes_signature(
+  request_signature_value: str, signature_secret: str, payload: dict
+):
+    """
+    Asynchronous function to check if the request signature is encoded correctly.
+
+    Args:
+        request_signature_value (str): The request signature to be decoded.
+        signature_secret (str): The secret for the action (make sure this is stored securely).
+        payload (dict): The payload to be used for digest calculation.
+
+    Returns:
+        None
+    """
+    signature_secret_as_bytes = base64.b64decode(signature_secret)
+    decoded_digest = base64.b64decode(request_signature_value)
+    calculated_digest = hmac.new(signature_secret_as_bytes, json.dumps(payload).encode(), hashlib.sha256).digest()
+    assert hmac.compare_digest(decoded_digest, calculated_digest) is True
+
+```
+
+#### Response Formatting
+
+Vocode expects responses from the user’s API in JSON in the following format:
+
+```python
+Response {
+  result: Any
+  agent_message: Optional[str] = None
+}
+```
+
+- `result` is a payload containing the result of the action on the user’s side, and can be in any format
+- `agent_message` optionally contains a message that will be synthesized into audio and sent back to the phone call. Note this means the LLM will not be queried to send a message (see [Configuring the External Action](/open-source/external-action#configuring-an-external-action-with-executeexternalactionvocodeactionconfig) above for more info)
+
+In the [Meeting Assistant Example](/open-source/external-action#meeting-assistant-example) below, the user’s API could return back a JSON response that looks like:
+
+```json
+{
+  "result": {
+    "success": true
+  },
+  "agent_message": "I've set up a calendar appointment at 10:30am tomorrow for 30 minutes"
+}
+```
+
+## EA Local Response Server Example:
+
+The following is an example of a quick start to enable testing external actions locally.
+
+Running `fastapi dev app.py` will run the server @ `http://127.0.0.1:8000` and can be used for external actions locally!
+
+<CodeGroup>
+```python app.py
+import asyncio
+import base64
+import hashlib
+import hmac
+import json
+import time
+
+from fastapi import FastAPI, HTTPException, Request, status
+from pydantic import BaseModel
+
+app = FastAPI()
+
+action_secret = ""
+
+
+def is_signature_valid(request: Request, json_payload: dict):
+    signature_secret_as_bytes = base64.b64decode(action_secret)
+    decoded_digest = base64.b64decode(request.headers.get("x-vocode-signature"))
+    calculated_digest = hmac.new(
+        signature_secret_as_bytes, json.dumps(json_payload).encode(), hashlib.sha256
+    ).digest()
+    return hmac.compare_digest(decoded_digest, calculated_digest)
+
+
+@app.post("/external_action")
+def update_item(request: Request):
+    json_payload = asyncio.run(request.json())
+    print(json_payload)
+    if not is_signature_valid(request, json_payload):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Signature verification failed for payload",
+        )
+    time.sleep(3)
+    return {
+        "result": {"success": True},
+    }
+````
+```txt requirements.txt
+pydantic==2.*
+fastapi==0.111.*
+````
+
+</CodeGroup>
+
+## Meeting Assistant Example
+
+This is an example of how to create an action config which will attempt to book a meeting for 30 minutes or an hour at any time ending in a zero (ie 10:30am is okay but 10:35am is not)
+
+```python Python
+import json
+import base64
+import os
+
+from vocode.streaming.action.execute_external_action import (
+    ExecuteExternalAction,
+    ExecuteExternalActionVocodeActionConfig,
+)
+
+ACTION_INPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "length": {
+            "type": "string",
+            "enum": ["30m", "1hr"],
+        },
+        "time": {
+            "type": "string",
+            "pattern": "^\d{2}:\d0[ap]m$",
+        },
+    },
+}
+
+action_config = ExecuteExternalActionVocodeActionConfig(
+    name = "Meeting_Booking_Assistant",
+    description = "Book a meeting for a 30 minute or 1 hour call.",
+    url = "http://example.com/booking",
+    speak_on_send = True,
+    speak_on_receive = True,
+    input_schema = json.dumps(ACTION_INPUT_SCHEMA),
+    signature_secret = base64.b64encode(os.urandom(32)).decode(),
+)
+```
+See [Action Agents](/open-source/action-agents#using-your-action-and-action-factory-in-an-agent) for an example of how to use this action config with an agent in a conversation.
+Note that you do not need to create a custom action factory, since `DefaultActionFactory` already supports external actions.

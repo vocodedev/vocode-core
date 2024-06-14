@@ -10,11 +10,11 @@ description: 'Empowering agents to take actions during conversations.'
 Actions refer to specific tools an agent can execute during the conversation. These actions can encompass various activities like writing an email,
 scheduling an appointment, and so forth. They are implemented as classes derived from the `BaseAction` class.
 
-The `BaseAction` class is defined as follows:
+The `BaseAction` class has the following key structure:
 
 ```python
 class BaseAction(Generic[ActionOutputType]):
-    def run(self, params: str) -> ActionOutputType:
+    async def run(self, action_input: ActionInput[ParametersType]) -> ActionOutput[ResponseType]:
         raise NotImplementedError
 ```
 
@@ -31,7 +31,7 @@ The agent configuration lists the actions available to the agent:
 
 ```python
 class AgentConfig(AgentConfig, type=AgentType.Base.value):
-    actions: List[ActionType]
+    actions: Optional[List[ActionConfig]]
     # ...
 ```
 
@@ -51,24 +51,76 @@ The flow of actions is as follows:
 5. The agent then consumes the `ActionResultAgentInput` from the queue in its process method. This
    result is added to the transcript of the conversation, and can influence the behavior of the agent in subsequent interactions.
 
-### Implementing your own action: Nylas email example
+## Implementing your own action: Nylas email example
 
 In this section, we provide an example of an action, `NylasSendEmail`, which extends the `BaseAction` class. It implements the run method to send an email using the Nylas API.
+We will also show how to add this action to an agent and use it in a conversation.
 
+### Creating the Action
 ```python
-class NylasSendEmail(BaseAction[NylasSendEmailActionOutput]):
-    def run(self, params: str) -> NylasSendEmailActionOutput:
-        """Sends an email using Nylas API.
-        The input to this action is a pipe separated list of the recipient email, email body, optional subject. But always include
-        the pipe character even if the subject or message IDs are not included and just leave it blank.
-        The subject should only be included if it is a new email thread.
-        If there is no message id, the email will be sent as a new email. Otherwise, it will be sent as a reply to the given message. Make sure to include the previous message_id
-        if you are replying to an email.
+import os
+from typing import Optional, Type
 
-        For example, `recipient@example.com|Hello, this is the email body.|this is the subject` would send an email to recipient@example.com with the provided body and subject.
-        """
-        recipient_email, email_body, email_subject = params.split("|")
+from pydantic import Field
+from pydantic.v1 import BaseModel
 
+from vocode.streaming.action.base_action import BaseAction
+from vocode.streaming.models.actions import ActionConfig as VocodeActionConfig
+from vocode.streaming.models.actions import ActionInput, ActionOutput
+
+    
+_NYLAS_ACTION_DESCRIPTION = """Sends an email using Nylas API.
+The input to this action is the recipient emails, email body, optional subject.
+The subject should only be included if it is a new email thread.
+If there is no message id, the email will be sent as a new email. Otherwise, it will be sent as a reply to the given message. Make sure to include the previous message_id
+if you are replying to an email.
+"""
+
+
+class NylasSendEmailParameters(BaseModel):
+    email: str = Field(..., description="The email address to send the email to.")
+    subject: Optional[str] = Field(None, description="The subject of the email.")
+    body: str = Field(..., description="The body of the email.")
+
+
+class NylasSendEmailResponse(BaseModel):
+    success: bool
+
+
+class NylasSendEmailVocodeActionConfig(
+    VocodeActionConfig, type="action_nylas_send_email"  # type: ignore
+):
+    pass
+
+class NylasSendEmail(
+        BaseAction[
+            NylasSendEmailVocodeActionConfig,
+            NylasSendEmailParameters,
+            NylasSendEmailResponse,
+        ]
+    ):
+    description: str = _NYLAS_ACTION_DESCRIPTION
+    parameters_type: Type[NylasSendEmailParameters] = NylasSendEmailParameters
+    response_type: Type[NylasSendEmailResponse] = NylasSendEmailResponse
+
+    def __init__(
+        self,
+        action_config: NylasSendEmailVocodeActionConfig,
+    ):
+        super().__init__(
+            action_config,
+            quiet=True,
+            is_interruptible=True,
+        )
+
+    async def _end_of_run_hook(self) -> None:
+        """This method is called at the end of the run method. It is optional but intended to be
+        overridden if needed."""
+        print("Successfully sent email!")
+    
+    async def run(
+        self, action_input: ActionInput[NylasSendEmailParameters]
+    ) -> ActionOutput[NylasSendEmailResponse]:
         from nylas import APIClient
 
         # Initialize the Nylas client
@@ -80,17 +132,63 @@ class NylasSendEmail(BaseAction[NylasSendEmailActionOutput]):
 
         # Create the email draft
         draft = nylas.drafts.create()
-        draft.body = email_body
+        draft.body = action_input.params.body
 
         draft.subject = (
-            email_subject.strip() if email_subject.strip() else "Email from Vocode"
+            action_input.params.subject.strip() if action_input.params.subject else "Email from Vocode"
         )
-        draft.to = [{"email": recipient_email.strip()}]
+        draft.to = [{"email": action_input.params.email.strip()}]
 
         # Send the email
         draft.send()
 
-        return NylasSendEmailActionOutput(response=json.dumps({"success": True}))
+        await self._end_of_run_hook()
+        return ActionOutput(
+            action_type=action_input.action_config.type,
+            response=NylasSendEmailResponse(success=True),
+        )
+
+```
+We define a structured set of parameters that the LLM will fill, a response structure that the agent can ingest and use as context for the rest of the conversation, and an action
+config that crucially contains the `action_type` (but doesn't have any other specific parameters). We also add an `_end_of_run_hook()`, which we customized to log that the action successfully completed.
+
+
+### Making a custom `ActionFactory`
+To use our new action with an agent in a conversation, we will need to create an `ActionFactory` that can produce instances of the action.
+
+
+We will store the code above in `nylas_send_email.py` and make a factory that can create this action for an agent:
+
+```python
+from typing import Dict, Sequence, Type
+
+from vocode.streaming.action.abstract_factory import AbstractActionFactory
+from vocode.streaming.action.base_action import BaseAction
+from vocode.streaming.action.nylas_send_email import NylasSendEmail
+from vocode.streaming.models.actions import ActionConfig
+
+class MyCustomActionFactory(AbstractActionFactory):
+    def create_action(self, action_config: ActionConfig):
+        if action_config.type == "action_nylas_send_email":
+            return NylasSendEmail(action_config)
+        else:
+            raise Exception("Action type not supported by Agent config.")
 ```
 
-See [Agent Factory](/open-source/agent-factory) for more information on how to register your action with the agent factory.
+### Using your action and action factory in an agent
+
+Now you can use your action in any conversation by adding the action config to an agent config. For example in a ChatGPTAgentConfig,
+
+```python
+action_config = ChatGPTAgentConfig(
+    ...
+    actions = [
+        NylasSendEmailVocodeActionConfig(
+            type = "action_nylas_send_email"
+        )
+    ]
+)
+```
+
+When you pass in your new action factory [created above](#making-a-custom-actionfactory), any agent factory can use this config to generate an agent for conversations.
+See [Agent Factory](/open-source/agent-factory) for more information on how to use your action factory in an agent factory, as well as how to plug it into a telephony server.

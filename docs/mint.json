@@ -69,6 +69,7 @@
         "open-source/langchain-agent",
         "open-source/action-agents",
         "open-source/action-phrase-triggers",
+        "open-source/external-action",
         "open-source/local-conversation",
         "open-source/events-manager",
         "open-source/using-synthesizers",
