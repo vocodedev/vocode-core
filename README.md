@@ -65,7 +65,7 @@ We'd love to talk to you on [Discord](https://discord.gg/NaU4mMgcnC) about new i
 # 🚀 Quickstart
 
 ```bash
-pip install 'vocode'
+pip install vocode
 ```
 
 ```python
