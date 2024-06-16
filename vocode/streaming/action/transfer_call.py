@@ -1,7 +1,7 @@
-from typing import Literal, Type
+from typing import Literal, Type, Optional, Union, get_args
 
 from loguru import logger
-from pydantic.v1 import BaseModel
+from pydantic.v1 import BaseModel, Field
 
 from vocode.streaming.action.phone_call_action import (
     TwilioPhoneConversationAction,
@@ -17,8 +17,15 @@ from vocode.streaming.utils.state_manager import (
 )
 
 
-class TransferCallParameters(BaseModel):
+class TransferCallEmptyParameters(BaseModel):
     pass
+
+
+class TransferCallRequiredParameters(BaseModel):
+    phone_number: str = Field(..., description="The phone number to transfer the call to")
+
+
+TransferCallParameters = Union[TransferCallEmptyParameters, TransferCallRequiredParameters]
 
 
 class TransferCallResponse(BaseModel):
@@ -26,10 +33,19 @@ class TransferCallResponse(BaseModel):
 
 
 class TransferCallVocodeActionConfig(VocodeActionConfig, type="action_transfer_call"):  # type: ignore
-    phone_number: str
+    phone_number: Optional[str] = Field(None, description="The phone number to transfer the call to")
+
+    def get_phone_number(self, input: ActionInput) -> str:
+        if isinstance(input.params, TransferCallRequiredParameters):
+            return input.params.phone_number
+        elif isinstance(input.params, TransferCallEmptyParameters):
+            assert self.phone_number, "phone number must be set"
+            return self.phone_number
+        else:
+            raise TypeError("Invalid input params type")
 
     def action_attempt_to_string(self, input: ActionInput) -> str:
-        assert isinstance(input.params, TransferCallParameters)
+        assert isinstance(input.params, get_args(TransferCallParameters))
         return f"Attempting to transfer call to {self.phone_number}"
 
     def action_result_to_string(self, input: ActionInput, output: ActionOutput) -> str:
@@ -53,9 +69,15 @@ class TwilioTransferCall(
     ]
 ):
     description: str = FUNCTION_DESCRIPTION
-    parameters_type: Type[TransferCallParameters] = TransferCallParameters
     response_type: Type[TransferCallResponse] = TransferCallResponse
     conversation_state_manager: TwilioPhoneConversationStateManager
+
+    @property
+    def parameters_type(self) -> Type[TransferCallParameters]:
+        if self.action_config.phone_number:
+            return TransferCallEmptyParameters
+        else:
+            return TransferCallRequiredParameters
 
     def __init__(
         self,
@@ -93,7 +115,8 @@ class TwilioTransferCall(
     ) -> ActionOutput[TransferCallResponse]:
         twilio_call_sid = self.get_twilio_sid(action_input)
 
-        sanitized_phone_number = sanitize_phone_number(self.action_config.phone_number)
+        phone_number = self.action_config.get_phone_number(action_input)
+        sanitized_phone_number = sanitize_phone_number(phone_number)
 
         if action_input.user_message_tracker is not None:
             await action_input.user_message_tracker.wait()
@@ -121,9 +144,15 @@ class VonageTransferCall(
     ]
 ):
     description: str = FUNCTION_DESCRIPTION
-    parameters_type: Type[TransferCallParameters] = TransferCallParameters
     response_type: Type[TransferCallResponse] = TransferCallResponse
     conversation_state_manager: VonagePhoneConversationStateManager
+
+    @property
+    def parameters_type(self) -> Type[TransferCallParameters]:
+        if self.action_config.phone_number:
+            return TransferCallEmptyParameters
+        else:
+            return TransferCallRequiredParameters
 
     def __init__(self, action_config: TransferCallVocodeActionConfig):
         super().__init__(
@@ -140,7 +169,8 @@ class VonageTransferCall(
             await action_input.user_message_tracker.wait()
         self.conversation_state_manager.mute_agent()
 
-        sanitized_phone_number = sanitize_phone_number(self.action_config.phone_number)
+        phone_number = self.action_config.get_phone_number(action_input)
+        sanitized_phone_number = sanitize_phone_number(phone_number)
 
         if self.conversation_state_manager.get_direction() == "outbound":
             agent_phone_number = self.conversation_state_manager.get_from_phone()
