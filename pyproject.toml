@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vocode"
-version = "0.1.112"
+version = "0.1.113"
 description = "The all-in-one voice SDK"
 authors = ["Ajay Raj <ajay@vocode.dev>"]
 license = "MIT License"
@@ -91,10 +91,7 @@ langchain = ["langchain", "langchain-community"]
 langchain-extras = ["langchain-openai", "langchain-anthropic", "langchain-google-vertexai"]
 all = [
     "google-cloud-texttospeech",
-    "miniaudio",
-    "nltk",
     "pvkoala",
-    "pydub",
     "google-cloud-speech",
     "twilio",
     "vonage",

@@ -4649,7 +4649,7 @@ doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linke
 test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more-itertools", "pytest (>=6,!=8.1.*)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy", "pytest-ruff (>=0.2.1)"]
 
 [extras]
-all = ["cartesia", "google-cloud-speech", "google-cloud-texttospeech", "langchain", "langchain-anthropic", "langchain-community", "langchain-google-vertexai", "langchain-openai", "miniaudio", "nltk", "pvkoala", "pydub", "twilio", "vonage"]
+all = ["cartesia", "google-cloud-speech", "google-cloud-texttospeech", "langchain", "langchain-anthropic", "langchain-community", "langchain-google-vertexai", "langchain-openai", "pvkoala", "twilio", "vonage"]
 langchain = ["langchain", "langchain-community"]
 langchain-extras = ["langchain-anthropic", "langchain-google-vertexai", "langchain-openai"]
 synthesizers = ["cartesia", "google-cloud-texttospeech", "pvkoala"]
@@ -4659,4 +4659,4 @@ transcribers = ["google-cloud-speech"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4.0"
-content-hash = "64b65096da77e6df63384af40bd3fc777f11bb503683719e904b3c3e5f80479d"
+content-hash = "4597df1fca08478e2300adee246255ea9852721e74d05871a8b3f854d5f9a85f"
