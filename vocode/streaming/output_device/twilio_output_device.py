@@ -81,7 +81,6 @@ class TwilioOutputDevice(AbstractOutputDevice):
                 audio_chunk.state = ChunkState.INTERRUPTED
                 continue
 
-            await self.play(audio_chunk.data)
             audio_chunk.on_play()
             audio_chunk.state = ChunkState.PLAYED
 

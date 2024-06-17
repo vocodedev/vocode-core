@@ -1,3 +1,4 @@
+from abc import abstractmethod
 import asyncio
 import time
 
@@ -51,6 +52,11 @@ class RateLimitInterruptionsOutputDevice(AbstractOutputDevice):
                 ),
             )
             self.interruptible_event.is_interruptible = False
+
+    @abstractmethod
+    async def play(self, chunk: bytes):
+        """Sends an audio chunk to immediate playback"""
+        pass
 
     def interrupt(self):
         """

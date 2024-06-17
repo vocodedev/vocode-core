@@ -12,9 +12,5 @@ class AbstractOutputDevice(AbstractAsyncWorker[InterruptibleEvent[AudioChunk]]):
         self.audio_encoding = audio_encoding
 
     @abstractmethod
-    async def play(self, chunk: bytes):
-        pass
-
-    @abstractmethod
     def interrupt(self):
         pass
