@@ -10,6 +10,10 @@ from vocode.streaming.utils import get_chunk_size_per_second
 
 
 class RateLimitInterruptionsOutputDevice(AbstractOutputDevice):
+    """Output device that works by rate limiting the chunks sent to the output. For interrupts to work properly,
+    the next chunk of audio can only be sent after the last chunk is played, so we send
+    a chunk of x seconds only after x seconds have passed since the last chunk was sent."""
+
     def __init__(
         self,
         sampling_rate: int,

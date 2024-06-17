@@ -884,10 +884,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         - If the stop_event is set, the output is stopped
         - Sets started_event when the first chunk is sent
 
-        Importantly, we rate limit the chunks sent to the output. For interrupts to work properly,
-        the next chunk of audio can only be sent after the last chunk is played, so we send
-        a chunk of x seconds only after x seconds have passed since the last chunk was sent.
-
         Returns the message that was sent up to, and a flag if the message was cut off
         """
         seconds_spoken = 0.0
