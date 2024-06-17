@@ -48,6 +48,7 @@ class AgentType(str, Enum):
     RESTFUL_USER_IMPLEMENTED = "agent_restful_user_implemented"
     WEBSOCKET_USER_IMPLEMENTED = "agent_websocket_user_implemented"
     ACTION = "agent_action"
+    LANGCHAIN = "agent_langchain"
 
 
 class FillerAudioConfig(BaseModel):
@@ -130,6 +131,13 @@ class AnthropicAgentConfig(AgentConfig, type=AgentType.ANTHROPIC.value):  # type
     model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
+    
+class LangchainAgentConfig(AgentConfig, type=AgentType.LANGCHAIN.value):  # type: ignore
+    prompt_preamble: str
+    model_name: str
+    provider: str
+    temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
+    max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
 
 
 class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):  # type: ignore

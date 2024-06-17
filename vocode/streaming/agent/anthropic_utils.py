@@ -27,3 +27,12 @@ def format_anthropic_chat_messages_from_transcript(
         {"role": "assistant", "content": "BOT:"},
     ]
     # TODO: reliably count tokens of Anthropic messages so that we don't exceed the context window
+
+def merge_bot_messages_for_langchain(messages: list[tuple]) -> list[tuple]:
+    merged_messages: list[tuple] = []
+    for role, message in messages:
+        if role == "ai" and merged_messages and merged_messages[-1][0] == "ai":
+            merged_messages[-1] = ("ai", merged_messages[-1][1] + message)
+        else:
+            merged_messages.append((role, message))
+    return merged_messages
