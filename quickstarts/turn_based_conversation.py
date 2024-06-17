@@ -20,10 +20,7 @@ class Settings(BaseSettings):
 
     # This means a .env file can be used to overload these settings
     # ex: "OPENAI_API_KEY=my_key" will set openai_api_key over the default above
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
 settings = Settings()

@@ -12,19 +12,21 @@ homepage = "https://github.com/vocodedev/vocode-python"
 python = ">=3.10,<4.0"
 aiohttp = "^3.9.5"
 anthropic = "^0.28.0"
-azure-cognitiveservices-speech = "^1.37.0"
+azure-cognitiveservices-speech = "^1.38.0"
 elevenlabs = "^1.2.2"
 fastapi = "^0.111.0"
 janus = "^1.0.0"
 jinja2 = "^3.1.4"
 jsonschema = "^4.22.0"
 loguru = "^0.7.2"
+miniaudio = "^1.59.0"
 numpy = "^1.26.4"
 openai = "^1.30.5"
 opentelemetry-sdk = "^1.24.0"
 phonenumbers = "^8.13.37"
 pydantic = "^2.7.2"
 pydantic-settings = "^2.3.0"
+pydub = "^0.25.1"
 pyht = "^0.0.28"
 redis = "^5.0.4"
 requests = "^2.32.3"
@@ -37,9 +39,7 @@ nltk = "^3.8.1"
 
 # Synthesizers
 google-cloud-texttospeech = { version = "^2.16.3", optional = true }
-miniaudio = { version = "^1.59", optional = true }
 pvkoala = { version = "^2.0.1", optional = true }
-pydub = { version = "^0.25.1", optional = true }
 cartesia = { version = "^0.1.1", optional = true }
 
 # Transcribers
@@ -82,9 +82,7 @@ pytest-mock = "^3.14.0"
 [tool.poetry.extras]
 synthesizers = [
     "google-cloud-texttospeech",
-    "miniaudio",
     "pvkoala",
-    "pydub",
     "cartesia",
 ]
 transcribers = ["google-cloud-speech"]
