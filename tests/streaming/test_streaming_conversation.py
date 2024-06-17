@@ -16,7 +16,7 @@ from vocode.streaming.models.agent import InterruptSensitivity
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcriber import Transcription
 from vocode.streaming.models.transcript import ActionStart, Message, Transcript
-from vocode.streaming.utils.worker import AbstractAsyncWorker
+from vocode.streaming.utils.worker import AsyncWorker
 
 
 class ShouldIgnoreUtteranceTestCase(BaseModel):
@@ -25,7 +25,7 @@ class ShouldIgnoreUtteranceTestCase(BaseModel):
     expected: bool
 
 
-async def _consume_worker_output(worker: AbstractAsyncWorker, timeout: float = 0.1):
+async def _consume_worker_output(worker: AsyncWorker, timeout: float = 0.1):
     try:
         return await asyncio.wait_for(worker.output_queue.get(), timeout=timeout)
     except asyncio.TimeoutError:

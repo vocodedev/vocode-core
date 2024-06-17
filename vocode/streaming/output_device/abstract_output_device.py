@@ -1,10 +1,10 @@
 from abc import abstractmethod
 import asyncio
 from vocode.streaming.output_device.audio_chunk import AudioChunk
-from vocode.streaming.utils.worker import AbstractAsyncWorker, InterruptibleEvent
+from vocode.streaming.utils.worker import AsyncWorker, InterruptibleEvent
 
 
-class AbstractOutputDevice(AbstractAsyncWorker[InterruptibleEvent[AudioChunk]]):
+class AbstractOutputDevice(AsyncWorker[InterruptibleEvent[AudioChunk]]):
 
     def __init__(self, sampling_rate: int, audio_encoding):
         super().__init__(input_queue=asyncio.Queue())

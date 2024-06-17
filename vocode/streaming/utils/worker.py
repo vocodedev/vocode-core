@@ -27,7 +27,8 @@ class AbstractWorker(Generic[WorkerInputType], ABC):
         pass
 
 
-class AbstractAsyncWorker(AbstractWorker[WorkerInputType]):
+# TODO (vocode 0.1.0): should be renamed to AbstractAsyncWorker
+class AsyncWorker(AbstractWorker[WorkerInputType]):
     def __init__(
         self,
         input_queue: asyncio.Queue[WorkerInputType],
@@ -58,7 +59,7 @@ class AbstractAsyncWorker(AbstractWorker[WorkerInputType]):
         return False
 
 
-class ThreadAsyncWorker(AbstractAsyncWorker[WorkerInputType]):
+class ThreadAsyncWorker(AsyncWorker[WorkerInputType]):
     def __init__(
         self,
         input_queue: asyncio.Queue[WorkerInputType],
@@ -105,7 +106,7 @@ class ThreadAsyncWorker(AbstractAsyncWorker[WorkerInputType]):
         return super().terminate()
 
 
-class AsyncQueueWorker(AbstractAsyncWorker):
+class AsyncQueueWorker(AsyncWorker):
     async def _run_loop(self):
         while True:
             try:
@@ -189,7 +190,7 @@ class InterruptibleEventFactory:
 InterruptibleEventType = TypeVar("InterruptibleEventType", bound=InterruptibleEvent)
 
 
-class InterruptibleWorker(AbstractAsyncWorker[InterruptibleEventType]):
+class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
     def __init__(
         self,
         input_queue: asyncio.Queue[InterruptibleEventType],
