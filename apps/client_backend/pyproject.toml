@@ -8,9 +8,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
 python-dotenv = "^1.0.1"
-vocode = { version = "0.1.112", extras = [
-    "all",
-] }
+vocode = "0.1.113"
 elevenlabs = "^1.2.2"
 
 

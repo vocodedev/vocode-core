@@ -2,7 +2,6 @@ import os
 from typing import Optional
 
 import numpy as np
-import pvkoala
 from fastapi import WebSocket, WebSocketDisconnect
 from loguru import logger
 
@@ -76,6 +75,8 @@ class VonagePhoneConversation(AbstractPhoneConversation[VonageOutputDevice]):
         self.vonage_uuid = vonage_uuid
         self.noise_suppression = noise_suppression
         if self.noise_suppression:
+            import pvkoala
+
             logger.info("Using PV koala noise suppression")
             self.buffer = bytearray()
             self.koala = pvkoala.create(
