@@ -37,7 +37,6 @@ class TwilioOutputDevice(AbstractOutputDevice):
         )
 
     def consume_nonblocking(self, item: InterruptibleEvent[AudioChunk]):
-        # TODO (output device refactor): think about when interrupted messages enter the queue + synchronicity with the clear message
         if not item.is_interrupted():
             self._send_audio_chunk_and_mark(item.payload.data)
             self.unprocessed_audio_chunks_queue.put_nowait(item)
