@@ -70,9 +70,11 @@ class TwilioOutputDevice(AbstractOutputDevice):
     async def _process_mark_messages(self):
         while True:
             try:
-                mark_message = await self.mark_message_queue.get()
+                # mark messages are tagged with the chunk ID that is attached to the audio chunk
+                # but they are guaranteed to come in the same order as the audio chunks, and we
+                # don't need to build resiliency there
+                await self.mark_message_queue.get()
                 item = await self.unprocessed_audio_chunks_queue.get()
-                # TODO (output device refactor): cross reference chunk IDs between mark message and audio chunks?
             except asyncio.CancelledError:
                 return
 
