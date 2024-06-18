@@ -41,6 +41,10 @@ class TwilioOutputDevice(AbstractOutputDevice):
         if not item.is_interrupted():
             self._send_audio_chunk_and_mark(item.payload.data)
             self.unprocessed_audio_chunks_queue.put_nowait(item)
+        else:
+            audio_chunk = item.payload
+            audio_chunk.on_interrupt()
+            audio_chunk.state = ChunkState.INTERRUPTED
 
     async def play(self, chunk: bytes):
         """

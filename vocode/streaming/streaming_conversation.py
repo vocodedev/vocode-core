@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from functools import partial
 import queue
 import random
 import re
@@ -10,7 +9,6 @@ import time
 import typing
 from typing import (
     Any,
-    AsyncGenerator,
     Awaitable,
     Callable,
     Generic,
@@ -272,7 +270,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
             if not self.conversation.is_human_speaking:
                 self.conversation.current_transcription_is_interrupt = (
-                    self.conversation.broadcast_interrupt()
+                    await self.conversation.broadcast_interrupt()
                 )
                 self.has_associated_unignored_utterance = not transcription.is_final
                 if self.conversation.current_transcription_is_interrupt:
@@ -681,6 +679,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.agent.get_agent_config().allowed_idle_time_seconds or ALLOWED_IDLE_TIME
         )
 
+        self.interrupt_lock = asyncio.Lock()
+
     def create_state_manager(self) -> ConversationStateManager:
         return ConversationStateManager(conversation=self)
 
@@ -809,29 +809,30 @@ class StreamingConversation(Generic[OutputDeviceType]):
     def mark_last_action_timestamp(self):
         self.last_action_timestamp = time.time()
 
-    def broadcast_interrupt(self):
+    async def broadcast_interrupt(self):
         """Stops all inflight events and cancels all workers that are sending output
 
         Returns true if any events were interrupted - which is used as a flag for the agent (is_interrupt)
         """
-        num_interrupts = 0
-        while True:
-            try:
-                interruptible_event = self.interruptible_events.get_nowait()
-                if not interruptible_event.is_interrupted():
-                    if interruptible_event.interrupt():
-                        logger.debug(
-                            f"Interrupting event {type(interruptible_event.payload)} {interruptible_event.payload}",
-                        )
-                        num_interrupts += 1
-            except queue.Empty:
-                break
-        self.output_device.interrupt()
-        self.agent.cancel_current_task()
-        self.agent_responses_worker.cancel_current_task()
-        if self.actions_worker:
-            self.actions_worker.cancel_current_task()
-        return num_interrupts > 0
+        async with self.interrupt_lock:
+            num_interrupts = 0
+            while True:
+                try:
+                    interruptible_event = self.interruptible_events.get_nowait()
+                    if not interruptible_event.is_interrupted():
+                        if interruptible_event.interrupt():
+                            logger.debug(
+                                f"Interrupting event {type(interruptible_event.payload)} {interruptible_event.payload}",
+                            )
+                            num_interrupts += 1
+                except queue.Empty:
+                    break
+            self.output_device.interrupt()
+            self.agent.cancel_current_task()
+            self.agent_responses_worker.cancel_current_task()
+            if self.actions_worker:
+                self.actions_worker.cancel_current_task()
+            return num_interrupts > 0
 
     def is_interrupt(self, transcription: Transcription):
         return transcription.confidence >= (
@@ -937,6 +938,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         audio_chunks: List[AudioChunk] = []
         processed_events: List[asyncio.Event] = []
         async for chunk_idx, chunk_result in enumerate_async_iter(synthesis_result.chunk_generator):
+            if stop_event.is_set():
+                logger.debug("Interrupted before all chunks were sent")
+                break
             processed_event = asyncio.Event()
             audio_chunk = AudioChunk(
                 data=chunk_result.chunk,
@@ -948,15 +952,18 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 "on_interrupt",
                 create_on_interrupt_callback(chunk_idx, processed_event),
             )
-            self.output_device.consume_nonblocking(
-                InterruptibleEvent(
-                    payload=audio_chunk,
-                    is_interruptible=True,
-                    interruption_event=stop_event,
-                ),
-            )
+            async with self.interrupt_lock:
+                self.output_device.consume_nonblocking(
+                    InterruptibleEvent(
+                        payload=audio_chunk,
+                        is_interruptible=True,
+                        interruption_event=stop_event,
+                    ),
+                )
             audio_chunks.append(audio_chunk)
             processed_events.append(processed_event)
+
+        logger.debug("Finished sending chunks to the output device")
 
         await asyncio.gather(*(processed_event.wait() for processed_event in processed_events))
 
@@ -985,7 +992,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     async def terminate(self):
         self.mark_terminated()
-        self.broadcast_interrupt()
+        await self.broadcast_interrupt()
         self.events_manager.publish_event(
             TranscriptCompleteEvent(
                 conversation_id=self.id,
