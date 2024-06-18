@@ -6,7 +6,7 @@
 [![pypi](https://img.shields.io/pypi/v/vocode.svg)](https://pypi.python.org/pypi/vocode)
 [![Downloads](https://static.pepy.tech/badge/vocode/month)](https://pepy.tech/project/vocode)
 
-[Community](https://discord.gg/NaU4mMgcnC) | [Docs](https://docs.vocode.dev/open-source) | [Dashboard](https://app.vocode.dev)
+[Community](https://discord.gg/NaU4mMgcnC) | [Docs](https://docs.vocode.dev/open-source) | [Dashboard](https://app.vocode.dev) | [Discord](https://discord.gg/NaU4mMgcnC)
 
 </div>
 
