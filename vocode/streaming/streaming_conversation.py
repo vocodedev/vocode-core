@@ -913,18 +913,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             return _on_play
 
         def create_on_interrupt_callback(
-            chunk_idx: int,
             processed_event: asyncio.Event,
         ):
-            logged = False
-
             def _on_interrupt():
-                nonlocal logged
-                if not logged:
-                    logger.debug(
-                        "Interrupted, stopping text to speech after {} chunks".format(chunk_idx),
-                    )
-                    logged = True
                 processed_event.set()
 
             return _on_interrupt
@@ -950,7 +941,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             setattr(
                 audio_chunk,
                 "on_interrupt",
-                create_on_interrupt_callback(chunk_idx, processed_event),
+                create_on_interrupt_callback(processed_event),
             )
             async with self.interrupt_lock:
                 self.output_device.consume_nonblocking(
