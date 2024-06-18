@@ -958,7 +958,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             audio_chunks.append(audio_chunk)
             processed_events.append(processed_event)
 
-        # TODO (output device refactor): consider ramifications of asyncio.gather
         await asyncio.gather(*(processed_event.wait() for processed_event in processed_events))
 
         maybe_first_interrupted_audio_chunk = next(
