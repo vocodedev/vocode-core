@@ -6,6 +6,7 @@ import json
 from typing import Optional
 
 from fastapi import WebSocket
+from fastapi.websockets import WebSocketState
 
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
@@ -24,6 +25,8 @@ class TwilioOutputDevice(BaseOutputDevice):
     async def process(self):
         while self.active:
             message = await self.queue.get()
+            if self.ws.application_state == WebSocketState.DISCONNECTED:
+                break
             await self.ws.send_text(message)
 
     def consume_nonblocking(self, chunk: bytes):
