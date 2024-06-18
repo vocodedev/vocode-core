@@ -82,13 +82,14 @@
         "open-source/sentry",
         "open-source/logging-with-loguru",
         "open-source/turn-based-conversation",
-        "open-source/language-support"
+        "open-source/language-support",
+        "open-source/langchain-agent"
       ]
     },
     {
       "group": "Legacy (0.0.111) Guides",
       "pages": [
-        "open-source/langchain-agent",
+        "open-source/langchain-agent-dep",
         "open-source/local-conversation"
       ]
     },
