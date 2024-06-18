@@ -941,8 +941,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
             audio_chunk = AudioChunk(
                 data=chunk_result.chunk,
             )
-            audio_chunk.on_play = create_on_play_callback(chunk_idx, processed_event)
-            audio_chunk.on_interrupt = create_on_interrupt_callback(chunk_idx, processed_event)
+            # register callbacks
+            setattr(audio_chunk, "on_play", create_on_play_callback(chunk_idx, processed_event))
+            setattr(
+                audio_chunk,
+                "on_interrupt",
+                create_on_interrupt_callback(chunk_idx, processed_event),
+            )
             self.output_device.consume_nonblocking(
                 InterruptibleEvent(
                     payload=audio_chunk,

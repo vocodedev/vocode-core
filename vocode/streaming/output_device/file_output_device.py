@@ -37,7 +37,7 @@ class FileOutputDevice(RateLimitInterruptionsOutputDevice):
             block = np.zeros(self.blocksize, dtype=np.int16)
             size = min(self.blocksize, chunk_arr.shape[0] - i)
             block[:size] = chunk_arr[i : i + size]
-            await asyncio.to_thread(lambda: self.wav.writeframes(block))
+            await asyncio.to_thread(lambda: self.wav.writeframes(block.tobytes()))
 
     def terminate(self):
         self.wav.close()
