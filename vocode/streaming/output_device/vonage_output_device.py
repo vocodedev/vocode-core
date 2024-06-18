@@ -2,6 +2,7 @@ import asyncio
 from typing import Optional
 
 from fastapi import WebSocket
+from fastapi.websockets import WebSocketState
 
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.output_device.blocking_speaker_output import BlockingSpeakerOutput
@@ -34,6 +35,8 @@ class VonageOutputDevice(BaseOutputDevice):
     async def process(self):
         while self.active:
             chunk = await self.queue.get()
+            if self.ws.application_state == WebSocketState.DISCONNECTED:
+                break
             if self.output_to_speaker:
                 self.output_speaker.consume_nonblocking(chunk)
             for i in range(0, len(chunk), VONAGE_CHUNK_SIZE):
