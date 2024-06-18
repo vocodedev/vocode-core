@@ -311,7 +311,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             trailing_silence_seconds = message.trailing_silence_seconds
         return CachedAudio(message, audio_data, self.synthesizer_config, trailing_silence_seconds)
 
-    async def create_speech_uncached(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,
@@ -320,7 +320,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
     ) -> SynthesisResult:
         raise NotImplementedError
 
-    async def create_speech(
+    async def create_speech_with_cache(
         self,
         message: BaseMessage,
         chunk_size: int,
@@ -336,7 +336,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         maybe_cached_audio = await self.get_cached_audio(message)
         if maybe_cached_audio is not None:
             return maybe_cached_audio.create_synthesis_result(chunk_size)
-        return await self.create_speech_uncached(
+        return await self.create_speech(
             message,
             chunk_size,
             is_first_text_chunk=is_first_text_chunk,

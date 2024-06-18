@@ -270,7 +270,7 @@ class ElevenLabsWSSynthesizer(
             lambda seconds: self.get_current_message_so_far(seconds),
         )
 
-    async def create_speech_uncached(
+    async def create_speech(
         self,
         message: BaseMessage,
         chunk_size: int,

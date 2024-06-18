@@ -477,11 +477,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                 else:
                     logger.debug("Synthesizing speech for message")
-                    maybe_synthesis_result = await self.conversation.synthesizer.create_speech(
-                        agent_response_message.message,
-                        self.chunk_size,
-                        is_first_text_chunk=self.is_first_text_chunk,
-                        is_sole_text_chunk=agent_response_message.is_sole_text_chunk,
+                    maybe_synthesis_result = (
+                        await self.conversation.synthesizer.create_speech_with_cache(
+                            agent_response_message.message,
+                            self.chunk_size,
+                            is_first_text_chunk=self.is_first_text_chunk,
+                            is_sole_text_chunk=agent_response_message.is_sole_text_chunk,
+                        )
                     )
                 if create_speech_span:
                     create_speech_span.finish()
