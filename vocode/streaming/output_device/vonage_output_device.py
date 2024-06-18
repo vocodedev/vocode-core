@@ -2,6 +2,7 @@ import asyncio
 from typing import Optional
 
 from fastapi import WebSocket
+from fastapi.websockets import WebSocketState
 
 from vocode.streaming.output_device.blocking_speaker_output import BlockingSpeakerOutput
 from vocode.streaming.output_device.rate_limit_interruptions_output_device import (
@@ -36,5 +37,5 @@ class VonageOutputDevice(RateLimitInterruptionsOutputDevice):
             subchunk = chunk[i : i + VONAGE_CHUNK_SIZE]
             if len(subchunk) % 2 == 1:
                 subchunk += PCM_SILENCE_BYTE  # pad with silence, Vonage goes crazy otherwise
-            if self.ws:
+            if self.ws and self.ws.application_state == WebSocketState.DISCONNECTED:
                 await self.ws.send_bytes(subchunk)

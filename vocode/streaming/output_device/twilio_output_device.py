@@ -8,6 +8,7 @@ import uuid
 
 from fastapi import WebSocket
 from pydantic import BaseModel
+from fastapi.websockets import WebSocketState
 
 from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
@@ -64,7 +65,8 @@ class TwilioOutputDevice(AbstractOutputDevice):
                 twilio_event = await self.twilio_events_queue.get()
             except asyncio.CancelledError:
                 return
-
+            if self.ws.application_state == WebSocketState.DISCONNECTED:
+                break
             await self.ws.send_text(twilio_event)
 
     async def _process_mark_messages(self):
