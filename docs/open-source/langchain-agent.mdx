@@ -12,9 +12,9 @@ The library also offers components for output parsing, complex document loading,
 **Note:** Vocode does not support actions with Langchain agents.*
 
 ### Installation
-Make sure to install the langchain extras by running
+Make sure to install the langchain optional dependencies by running
 ```
-poetry install -E langchain
+poetry install -E langchain -E langchain-extras
 ```
 or
 ```
@@ -78,7 +78,9 @@ In some scenarios, you may want to create a complex chain from a config, where y
 and overwriting the `self.create_chain()` method. This method is called when a `LangchainAgent` is initialized without a `chain` manually passed into the constructor.
 Within this method, you can directly access the agent config at `self.agent_config` and build your own chain using its fields.
 
-For example, we will design an agent that makes a custom chain querying Gemini Pro to make a poem based on the model name in the agent config:
+For example below, we will design agent that builds a custom chain to query a Gemini LLM to generate a poem on a topic. 
+The topic and LLM setup (provider and model name) will all be passed in via the config, allowing for strong customization.
+As a further example of this customizability, we will confirm the LLM provider is set to Google GenAI and raise an error otherwise.
 
 ```python
 from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
@@ -87,10 +89,20 @@ from vocode.streaming.agent.langchain_agent import LangchainAgent
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 
+class PoemLangchainAgentConfig(LangchainAgentConfig):
+    poem_topic: str
+
 class PoemLangchainAgent(LangchainAgent):
     def create_chain(self):
-        prompt_template = ChatPromptTemplate.from_template(f"Make a random poem about {self.agent_config.model_name}")
-        model = ChatGoogleGenerativeAI(model="gemini-pro")
+        if self.agent_config.provider != "google_genai":
+            raise Exception("PoemLangchainAgent only supports Google Generative AI models")
+        
+        prompt_template = ChatPromptTemplate.from_template(f"Make a random poem about {self.agent_config.poem_topic}")
+        model = ChatGoogleGenerativeAI(
+            model=self.agent_config.model_name, 
+            temperature=self.agent_config.temperature,
+            max_output_tokens=self.agent_config.max_tokens
+        )
         chain = prompt_template | model
         return chain
 
@@ -99,15 +111,14 @@ class MyAgentFactory(AbstractAgentFactory):
     def create_agent(
         self, agent_config: AgentConfig, logger: Optional[logging.Logger] = None
     ) -> BaseAgent:
-        if isinstance(agent_config, LangchainAgentConfig):
-            if agent_config.provider == "poem":
-                PoemLangchainAgent(
-                    agent_config = agent_config
-                )
-            else:
-                return LangchainAgent(
-                    agent_config = agent_config,
-                )
+        if isinstance(agent_config, PoemLangchainAgentConfig):
+            return PoemLangchainAgent(
+                agent_config=agent_config
+            )
+        elif isinstance(agent_config, LangchainAgentConfig):
+            return LangchainAgent(
+                agent_config=agent_config,
+            )
         else:
             raise Exception("Invalid agent config")
 ```
