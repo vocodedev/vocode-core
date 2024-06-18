@@ -7,8 +7,8 @@ from typing import Optional, Union
 import uuid
 
 from fastapi import WebSocket
-from pydantic import BaseModel
 from fastapi.websockets import WebSocketState
+from pydantic import BaseModel
 
 from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
