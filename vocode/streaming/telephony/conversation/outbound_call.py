@@ -40,6 +40,7 @@ class OutboundCall:
         conversation_id: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
         mobile_only: bool = True,
+        internal_phone_number_id: Optional[str] = None,
         digits: Optional[
             str
         ] = None,  # Keys to press when the call connects, see send_digits https://www.twilio.com/docs/voice/api/call-resource#create-a-call-resource
@@ -49,7 +50,8 @@ class OutboundCall:
         self.to_phone = to_phone
         self.digits = digits
         self.from_phone = from_phone
-        self.mobile_only = False # originally to conform with California law; we leave as False for testing purposes
+        self.mobile_only = False  # originally to conform with California law; we leave as False for testing purposes
+        self.internal_phone_number_id = internal_phone_number_id
         self.config_manager = config_manager
         self.agent_config = agent_config
         self.conversation_id = conversation_id or create_conversation_id()
