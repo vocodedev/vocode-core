@@ -29,7 +29,7 @@ poetry install -E all
 
 Vocode Core's LangChain agent defaults to using the `init_chat_model()` method described [here](https://python.langchain.com/v0.2/docs/how_to/chat_models_universal_init/).
 This implementation allows users to create a LangChain agent using a variety of [different model providers](https://api.python.langchain.com/en/latest/chat_models/langchain.chat_models.base.init_chat_model.html)
-by passing in the relevant `model` and `provider` params into the `LangChainAgentConfig`. For example, if I want to use an OpenAI agent, I would pass in an agent config like:
+by passing in the relevant `model` and `provider` params into the `LangchainAgentConfig`. For example, if I want to use an OpenAI agent, I would pass in an agent config like:
 
 ```python
 from vocode.streaming.models.agent import LangchainAgentConfig
