@@ -1,30 +1,35 @@
 ---
-title: "Langchain Agent"
-description: "Use Langchain to determine your agent's responses."
+title: "LangChain Agent"
+description: "Use LangChain to determine your agent's responses."
 ---
 
 ## Overview
 
-[Langchain](https://python.langchain.com/v0.2/docs/introduction/) offers tooling to create custom LLM pipelines for complex decision-making. 
-Through Langchain, you can manage your LLM and prompts, and combine them with advanced techniques like RAG and multi-stage prompting, and sub-chains.
+[LangChain](https://python.langchain.com/v0.2/docs/introduction/) offers tooling to create custom LLM pipelines for complex decision-making.
+Through LangChain, you can manage your LLM and prompts, and combine them with advanced techniques like RAG and multi-stage prompting, and sub-chains.
 The library also offers components for output parsing, complex document loading, and callbacks.
 
-**Note:** Vocode does not support actions with Langchain agents.*
+**Note:** Vocode does not support actions with LangChain agents.\*
 
 ### Installation
+
 Make sure to install the langchain optional dependencies by running
+
 ```
 poetry install -E langchain -E langchain-extras
 ```
+
 or
+
 ```
 poetry install -E all
 ```
 
 ## Default Chain
-Vocode Core's Langchain agent defaults to using the `init_chat_model()` method described [here](https://python.langchain.com/v0.2/docs/how_to/chat_models_universal_init/).
-This implementation allows users to create a Langchain agent using a variety of [different model providers](https://api.python.langchain.com/en/latest/chat_models/langchain.chat_models.base.init_chat_model.html)
-by passing in the relevant `model` and `provider` params into the `LangchainAgentConfig`. For example, if I want to use an OpenAI agent, I would pass in an agent config like:
+
+Vocode Core's LangChain agent defaults to using the `init_chat_model()` method described [here](https://python.langchain.com/v0.2/docs/how_to/chat_models_universal_init/).
+This implementation allows users to create a LangChain agent using a variety of [different model providers](https://api.python.langchain.com/en/latest/chat_models/langchain.chat_models.base.init_chat_model.html)
+by passing in the relevant `model` and `provider` params into the `LangChainAgentConfig`. For example, if I want to use an OpenAI agent, I would pass in an agent config like:
 
 ```python
 from vocode.streaming.models.agent import LangchainAgentConfig
@@ -37,19 +42,23 @@ agent_config = LangchainAgentConfig(
 )
 ```
 
-**Note:** Vocode Core includes the OpenAI, Anthropic, and Google VertexAI Langchain packages when you install the langchain extras in Poetry. If you want to use other LLM providers
-like AWS Bedrock, Cohere, Mistral, etc, you will need to manually install their Langchain integration packages.
+**Note:** Vocode Core includes the OpenAI, Anthropic, and Google VertexAI LangChain packages when you install the langchain extras in Poetry. If you want to use other LLM providers
+like AWS Bedrock, Cohere, Mistral, etc, you will need to manually install their LangChain integration packages.
 
 ## Using Custom Chains
-Our Langchain Agent is designed to make it easy to plug in your own custom Langchain chains. You can either:
-1. Manually pass in a chain to the Langchain Agent
-2. Subclass the Langchain Agent and build custom processing to create a chain based off a `LangchainAgentConfig`
+
+Our `LangchainAgent` is designed to make it easy to plug in your own custom LangChain chains. You can either:
+
+1. Manually pass in a chain to the `LangchainAgent`
+2. Subclass the `LangchainAgent` and build custom processing to create a chain based off a `LangchainAgentConfig`
 
 ### Manually pass in a chain
+
 The `LangchainAgent` constructor has a `chain` parameter where you can directly pass your chain. So, to use this in a conversation, you can create a custom `AgentFactory` that builds
 your chain when initializing the langchain agent.
 
 For example, we will design a factory which makes a custom chain querying Anthropic Claude Opus to make a poem at each agent turn:
+
 ```python
 from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
 from vocode.streaming.models.agent import LangchainAgentConfig
@@ -74,11 +83,12 @@ class PoemAgentFactory(AbstractAgentFactory):
 ```
 
 ### Creating custom chains from `LangchainAgentConfig`
+
 In some scenarios, you may want to create a complex chain from a config, where you can have different models and providers. For these cases, we recommend creating a subclass of the `LangchainAgent`
 and overwriting the `self.create_chain()` method. This method is called when a `LangchainAgent` is initialized without a `chain` manually passed into the constructor.
 Within this method, you can directly access the agent config at `self.agent_config` and build your own chain using its fields.
 
-For example below, we will design agent that builds a custom chain to query a Gemini LLM to generate a poem on a topic. 
+For example below, we will design agent that builds a custom chain to query a Gemini LLM to generate a poem on a topic.
 The topic and LLM setup (provider and model name) will all be passed in via the config, allowing for strong customization.
 As a further example of this customizability, we will confirm the LLM provider is set to Google GenAI and raise an error otherwise.
 
@@ -96,10 +106,10 @@ class PoemLangchainAgent(LangchainAgent):
     def create_chain(self):
         if self.agent_config.provider != "google_genai":
             raise Exception("PoemLangchainAgent only supports Google Generative AI models")
-        
+
         prompt_template = ChatPromptTemplate.from_template(f"Make a random poem about {self.agent_config.poem_topic}")
         model = ChatGoogleGenerativeAI(
-            model=self.agent_config.model_name, 
+            model=self.agent_config.model_name,
             temperature=self.agent_config.temperature,
             max_output_tokens=self.agent_config.max_tokens
         )
@@ -124,6 +134,7 @@ class MyAgentFactory(AbstractAgentFactory):
 ```
 
 Then, we can use the following agent config in conversations to use make poems about Vocode!
+
 ```python
 from vocode.streaming.models.agent import LangchainAgentConfig
 
