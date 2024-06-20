@@ -26,7 +26,7 @@ Here's how you can configure the Sentry SDK:
 import os
 import sentry_sdk
 from sentry_sdk.integrations.asyncio import AsyncioIntegration
-from sentry_sdk.integrations.logging import LoguruIntegration
+from sentry_sdk.integrations.loguru import LoguruIntegration
 
 sentry_sdk.init(
     dsn=os.getenv("SENTRY_DSN"),
