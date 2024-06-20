@@ -29,7 +29,6 @@ from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
     AgentInput,
     AgentResponse,
-    AgentResponseFillerAudio,
     AgentResponseMessage,
     BaseAgent,
     TranscriptionAgentInput,
@@ -405,9 +404,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             try:
                 agent_response = item.payload
-                if isinstance(agent_response, AgentResponseFillerAudio):
-                    self.send_filler_audio(item.agent_response_tracker)
-                    return
 
                 agent_response_message = typing.cast(AgentResponseMessage, agent_response)
 

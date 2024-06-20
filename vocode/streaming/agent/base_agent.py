@@ -107,13 +107,6 @@ class AgentResponseMessage(AgentResponse, type=AgentResponseType.MESSAGE.value):
     is_sole_text_chunk: bool = False
 
 
-class AgentResponseFillerAudio(
-    AgentResponse,
-    type=AgentResponseType.FILLER_AUDIO.value,  # type: ignore
-):
-    pass
-
-
 class GeneratedResponse(BaseModel):
     message: Union[BaseMessage, FunctionCall, EndOfTurn]
     is_interruptible: bool
@@ -426,13 +419,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             if self.is_muted:
                 logger.debug("Agent is muted, skipping processing")
                 return
-
-            if self.agent_config.send_filler_audio:
-                self.agent_responses_consumer.consume_nonblocking(
-                    self.interruptible_event_factory.create_interruptible_agent_response_event(
-                        AgentResponseFillerAudio(),
-                    )
-                )
 
             logger.debug("Responding to transcription")
             if self.agent_config.generate_responses:
