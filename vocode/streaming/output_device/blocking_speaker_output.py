@@ -23,9 +23,8 @@ class BlockingSpeakerOutput(BaseOutputDevice, ThreadAsyncWorker):
         sampling_rate = sampling_rate or int(
             self.device_info.get("default_samplerate", self.DEFAULT_SAMPLING_RATE)
         )
-        self.input_queue: asyncio.Queue[bytes] = asyncio.Queue()
         BaseOutputDevice.__init__(self, sampling_rate, audio_encoding)
-        ThreadAsyncWorker.__init__(self, self.input_queue)
+        ThreadAsyncWorker.__init__(self)
         self.stream = sd.OutputStream(
             channels=1,
             samplerate=self.sampling_rate,
@@ -33,7 +32,7 @@ class BlockingSpeakerOutput(BaseOutputDevice, ThreadAsyncWorker):
             device=int(self.device_info["index"]),
         )
         self._ended = False
-        self.input_queue.put_nowait(self.sampling_rate * b"\x00")
+        self.consume_nonblocking(self.sampling_rate * b"\x00")
         self.stream.start()
 
     def start(self):
