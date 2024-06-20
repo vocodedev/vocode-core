@@ -91,7 +91,6 @@ class ActionResultAgentInput(AgentInput, type=AgentInputType.ACTION_RESULT.value
 class AgentResponseType(str, Enum):
     BASE = "agent_response_base"
     MESSAGE = "agent_response_message"
-    STOP = "agent_response_stop"
     FILLER_AUDIO = "agent_response_filler_audio"
 
 
@@ -106,10 +105,6 @@ class AgentResponseMessage(AgentResponse, type=AgentResponseType.MESSAGE.value):
     is_first: bool = False
     # If the response is not being chunked up into multiple sentences, this is set to True
     is_sole_text_chunk: bool = False
-
-
-class AgentResponseStop(AgentResponse, type=AgentResponseType.STOP.value):  # type: ignore
-    pass
 
 
 class AgentResponseFillerAudio(
@@ -248,7 +243,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         self,
         transcription: Transcription,
         agent_input: AgentInput,
-    ) -> bool:
+    ):
         conversation_id = agent_input.conversation_id
         responses = self._maybe_prepend_interrupt_responses(
             transcription=transcription,
@@ -353,14 +348,12 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             )
             self.enqueue_action_input(action, action_input, agent_input.conversation_id)
 
-        # TODO: implement should_stop for generate_responses
         if function_call and self.agent_config.actions is not None:
             await self.call_function(function_call, agent_input)
-        return False
 
     async def handle_respond(self, transcription: Transcription, conversation_id: str) -> bool:
         try:
-            response, should_stop = await self.respond(
+            response = await self.respond(
                 transcription.message,
                 is_interrupt=transcription.is_interrupt,
                 conversation_id=conversation_id,
@@ -382,7 +375,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
                 )
             )
-            return should_stop
         else:
             logger.debug("No response generated")
         return False
@@ -443,7 +435,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 )
 
             logger.debug("Responding to transcription")
-            should_stop = False
             if self.agent_config.generate_responses:
                 # TODO (EA): this is quite ugly but necessary to have the agent act properly after an action completes
                 if not isinstance(agent_input, ActionResultAgentInput):
@@ -451,18 +442,9 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                         sentry_callable=sentry_sdk.start_span,
                         op=CustomSentrySpans.LANGUAGE_MODEL_TIME_TO_FIRST_TOKEN,
                     )
-                should_stop = await self.handle_generate_response(transcription, agent_input)
+                await self.handle_generate_response(transcription, agent_input)
             else:
-                should_stop = await self.handle_respond(transcription, agent_input.conversation_id)
-
-            if should_stop:
-                logger.debug("Agent requested to stop")
-                self.agent_responses_consumer.consume_nonblocking(
-                    self.interruptible_event_factory.create_interruptible_agent_response_event(
-                        AgentResponseStop(),
-                    )
-                )
-                return
+                await self.handle_respond(transcription, agent_input.conversation_id)
         except asyncio.CancelledError:
             pass
 
@@ -567,7 +549,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         human_input,
         conversation_id: str,
         is_interrupt: bool = False,
-    ) -> Tuple[Optional[str], bool]:
+    ) -> Optional[str]:
         raise NotImplementedError
 
     def generate_response(

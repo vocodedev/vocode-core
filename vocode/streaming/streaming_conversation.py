@@ -31,7 +31,6 @@ from vocode.streaming.agent.base_agent import (
     AgentResponse,
     AgentResponseFillerAudio,
     AgentResponseMessage,
-    AgentResponseStop,
     BaseAgent,
     TranscriptionAgentInput,
 )
@@ -408,13 +407,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 agent_response = item.payload
                 if isinstance(agent_response, AgentResponseFillerAudio):
                     self.send_filler_audio(item.agent_response_tracker)
-                    return
-                if isinstance(agent_response, AgentResponseStop):
-                    logger.debug("Agent requested to stop")
-                    if self.last_agent_response_tracker is not None:
-                        await self.last_agent_response_tracker.wait()
-                    item.agent_response_tracker.set()
-                    self.conversation.mark_terminated(bot_disconnect=True)
                     return
 
                 agent_response_message = typing.cast(AgentResponseMessage, agent_response)
