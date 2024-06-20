@@ -1,9 +1,11 @@
+import asyncio
 import io
 import os
 import wave
 import hashlib
 import struct
-from typing import Optional
+from concurrent.futures import ThreadPoolExecutor
+from typing import Optional, Any
 
 from vocode import getenv
 from vocode.streaming.models.audio import SamplingRate
@@ -52,7 +54,15 @@ class OrcaSynthesizer(BaseSynthesizer[OrcaSynthesizerConfig]):
         self.sample_rate = SamplingRate.RATE_22050.value # The only rate supported
         self.output_format = "pcm" # The only format supported
         self.model_file = synthesizer_config.model_file
+        self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
         
+    def synthesize(self, message: str) -> Any:
+        pcm, alignments = self.orca.synthesize(
+            text=message,
+            speech_rate=self.speech_rate
+        )
+        return pcm
+    
     async def create_speech_uncached(
         self,
         message: BaseMessage,
@@ -60,13 +70,14 @@ class OrcaSynthesizer(BaseSynthesizer[OrcaSynthesizerConfig]):
         is_first_text_chunk: bool = False,
         is_sole_text_chunk: bool = False,
     ) -> SynthesisResult:
-        pcm, alignments = self.orca.synthesize(
-            text=message.text,
-            speech_rate=self.speech_rate
+        raw_bytes: bytes = (
+            await asyncio.get_event_loop().run_in_executor(
+                self.thread_pool_executor, self.synthesize, message.text
+            )
         )
 
         # Convert PCM list of integers to bytes
-        pcm_bytes = struct.pack('<' + 'h' * len(pcm), *pcm)
+        pcm_bytes = struct.pack('<' + 'h' * len(raw_bytes), *raw_bytes)
 
         audio_file = io.BytesIO()
         with wave.open(audio_file, 'wb') as wav_file:
