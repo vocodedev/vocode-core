@@ -8,6 +8,8 @@ from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
 from vocode.streaming.models.events import Event, EventType
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.synthesizer.google_synthesizer import GoogleSynthesizer
+from vocode.streaming.models.synthesizer import GoogleSynthesizerConfig
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
@@ -45,10 +47,15 @@ class ConversationRouter(BaseRouter):
             )
         ),
         synthesizer_thunk: Callable[
-            [OutputAudioConfig], BaseSynthesizer
-        ] = lambda output_audio_config: AzureSynthesizer(
-            AzureSynthesizerConfig.from_output_audio_config(output_audio_config=output_audio_config)
+            [OutputAudioConfig],BaseSynthesizer
+            ]=lambda output_audio_config:GoogleSynthesizer(
+            GoogleSynthesizerConfig.from_output_audio_config(output_audio_config=output_audio_config)
         ),
+        # synthesizer_thunk: Callable[
+        #     [OutputAudioConfig], BaseSynthesizer
+        # ] = lambda output_audio_config: AzureSynthesizer(
+        #     AzureSynthesizerConfig.from_output_audio_config(output_audio_config=output_audio_config)
+        # ),
         conversation_endpoint: str = BASE_CONVERSATION_ENDPOINT,
     ):
         super().__init__()

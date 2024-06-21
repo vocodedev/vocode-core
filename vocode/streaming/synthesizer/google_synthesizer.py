@@ -4,8 +4,8 @@ import wave
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
-import google.auth
-from google.cloud import texttospeech as tts  # type: ignore
+from google.oauth2 import service_account
+from google.cloud import texttospeech as tts
 
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import GoogleSynthesizerConfig
@@ -16,13 +16,15 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: GoogleSynthesizerConfig,
+        service_account_file: str,
     ):
         super().__init__(synthesizer_config)
 
-        google.auth.default()
+        # Create credentials object directly from the service account key file
+        credentials = service_account.Credentials.from_service_account_file(service_account_file)
 
-        # Instantiates a client
-        self.client = tts.TextToSpeechClient()
+        # Instantiates a client with the credentials
+        self.client = tts.TextToSpeechClient(credentials=credentials)
 
         # Build the voice request, select the language code ("en-US") and the ssml
         # voice gender ("neutral")
