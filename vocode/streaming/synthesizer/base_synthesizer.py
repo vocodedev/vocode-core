@@ -37,7 +37,7 @@ from vocode.streaming.telephony.constants import MULAW_SILENCE_BYTE, PCM_SILENCE
 from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
 from vocode.streaming.utils.async_requester import AsyncRequestor
 from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
-from vocode.streaming.utils.worker import AbstractWorker, QueueConsumer
+from vocode.streaming.utils.worker import AbstractWorker, InterruptibleWorker, QueueConsumer
 from vocode.streaming.utils.worker import (
     InterruptibleAgentResponseEvent,
     InterruptibleAgentResponseWorker,
@@ -247,7 +247,8 @@ SynthesizerConfigType = TypeVar("SynthesizerConfigType", bound=SynthesizerConfig
 
 
 class BaseSynthesizer(
-    Generic[SynthesizerConfigType], InterruptibleAgentResponseWorker[AgentResponse]
+    Generic[SynthesizerConfigType],
+    InterruptibleWorker[InterruptibleAgentResponseEvent[AgentResponse]],
 ):
     conversation_state_manager: "ConversationStateManager"
     interruptible_event_factory: InterruptibleEventFactory
@@ -262,13 +263,7 @@ class BaseSynthesizer(
         self,
         synthesizer_config: SynthesizerConfigType,
     ):
-        input_queue: asyncio.Queue[InterruptibleAgentResponseEvent[AgentResponse]] = asyncio.Queue()
-        output_queue: asyncio.Queue[
-            InterruptibleAgentResponseEvent[
-                Tuple[Union[BaseMessage, EndOfTurn], Optional[SynthesisResult]]
-            ]
-        ] = asyncio.Queue()
-        InterruptibleAgentResponseWorker.__init__(self, input_queue, output_queue)
+        InterruptibleAgentResponseWorker.__init__(self)
         self.synthesizer_config = synthesizer_config
         if synthesizer_config.audio_encoding == AudioEncoding.MULAW:
             assert (
@@ -278,6 +273,9 @@ class BaseSynthesizer(
         self.async_requestor = AsyncRequestor()
         self.total_chars: int = 0
         self.cost_per_char: Optional[float] = None
+
+        self.last_agent_response_tracker: Optional[asyncio.Event] = None
+        self.is_first_text_chunk = True
 
     async def process(
         self, item: InterruptibleAgentResponseEvent[AgentResponseMessage]
