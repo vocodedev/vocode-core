@@ -16,7 +16,7 @@ from vocode.streaming.models.agent import InterruptSensitivity
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcriber import Transcription
 from vocode.streaming.models.transcript import ActionStart, Message, Transcript
-from vocode.streaming.utils.worker import AsyncWorker
+from vocode.streaming.utils.worker import AsyncWorker, QueueConsumer
 
 
 class ShouldIgnoreUtteranceTestCase(BaseModel):
@@ -25,9 +25,9 @@ class ShouldIgnoreUtteranceTestCase(BaseModel):
     expected: bool
 
 
-async def _consume_worker_output(worker: AsyncWorker, timeout: float = 0.1):
+async def _get_from_consumer_queue_if_exists(queue_consumer: QueueConsumer, timeout: float = 0.1):
     try:
-        return await asyncio.wait_for(worker.output_queue.get(), timeout=timeout)
+        return await asyncio.wait_for(queue_consumer.input_queue.get(), timeout=timeout)
     except asyncio.TimeoutError:
         return None
 
@@ -172,8 +172,6 @@ def test_should_ignore_utterance(
 
     conversation = mocker.MagicMock()
     transcriptions_worker = StreamingConversation.TranscriptionsWorker(
-        input_queue=mocker.MagicMock(),
-        output_queue=mocker.MagicMock(),
         conversation=conversation,
         interruptible_event_factory=mocker.MagicMock(),
     )
@@ -251,7 +249,9 @@ async def test_transcriptions_worker_ignores_utterances_before_initial_message(
             is_final=True,
         ),
     )
-    assert await _consume_worker_output(streaming_conversation.transcriptions_worker) is None
+    transcriptions_worker_consumer = QueueConsumer()
+    streaming_conversation.transcriptions_worker.consumer = transcriptions_worker_consumer
+    assert await _get_from_consumer_queue_if_exists(transcriptions_worker_consumer) is None
     assert not streaming_conversation.broadcast_interrupt.called
 
     streaming_conversation.transcript.add_bot_message(
@@ -267,8 +267,8 @@ async def test_transcriptions_worker_ignores_utterances_before_initial_message(
         ),
     )
 
-    transcription_agent_input = await _consume_worker_output(
-        streaming_conversation.transcriptions_worker
+    transcription_agent_input = await _get_from_consumer_queue_if_exists(
+        transcriptions_worker_consumer
     )
     assert transcription_agent_input.payload.transcription.message == "hi, who is this?"
     assert streaming_conversation.broadcast_interrupt.called
@@ -308,7 +308,10 @@ async def test_transcriptions_worker_ignores_associated_ignored_utterance(
             is_final=False,
         ),
     )
-    assert await _consume_worker_output(streaming_conversation.transcriptions_worker) is None
+    transcriptions_worker_consumer = QueueConsumer()
+    streaming_conversation.transcriptions_worker.consumer = transcriptions_worker_consumer
+
+    assert await _get_from_consumer_queue_if_exists(transcriptions_worker_consumer) is None
     assert not streaming_conversation.broadcast_interrupt.called  # ignored for length of response
 
     streaming_conversation.transcript.event_logs[-1].text = (
@@ -323,7 +326,7 @@ async def test_transcriptions_worker_ignores_associated_ignored_utterance(
         ),
     )
 
-    assert await _consume_worker_output(streaming_conversation.transcriptions_worker) is None
+    assert await _get_from_consumer_queue_if_exists(transcriptions_worker_consumer) is None
     assert not streaming_conversation.broadcast_interrupt.called  # ignored for length of response
 
     streaming_conversation.transcriptions_worker.consume_nonblocking(
@@ -334,8 +337,8 @@ async def test_transcriptions_worker_ignores_associated_ignored_utterance(
         ),
     )
 
-    transcription_agent_input = await _consume_worker_output(
-        streaming_conversation.transcriptions_worker
+    transcription_agent_input = await _get_from_consumer_queue_if_exists(
+        transcriptions_worker_consumer
     )
     assert (
         transcription_agent_input.payload.transcription.message == "I have not yet gotten a chance."
@@ -375,7 +378,10 @@ async def test_transcriptions_worker_interrupts_on_interim_transcripts(
         ),
     )
 
-    assert await _consume_worker_output(streaming_conversation.transcriptions_worker) is None
+    transcriptions_worker_consumer = QueueConsumer()
+    streaming_conversation.transcriptions_worker.consumer = transcriptions_worker_consumer
+
+    assert await _get_from_consumer_queue_if_exists(transcriptions_worker_consumer) is None
     assert streaming_conversation.broadcast_interrupt.called
 
     streaming_conversation.transcriptions_worker.consume_nonblocking(
@@ -386,8 +392,8 @@ async def test_transcriptions_worker_interrupts_on_interim_transcripts(
         ),
     )
 
-    transcription_agent_input = await _consume_worker_output(
-        streaming_conversation.transcriptions_worker
+    transcription_agent_input = await _get_from_consumer_queue_if_exists(
+        transcriptions_worker_consumer
     )
     assert (
         transcription_agent_input.payload.transcription.message
@@ -419,7 +425,10 @@ async def test_transcriptions_worker_interrupts_immediately_before_bot_has_begun
             is_final=False,
         ),
     )
-    assert await _consume_worker_output(streaming_conversation.transcriptions_worker) is None
+    transcriptions_worker_consumer = QueueConsumer()
+    streaming_conversation.transcriptions_worker.consumer = transcriptions_worker_consumer
+
+    assert await _get_from_consumer_queue_if_exists(transcriptions_worker_consumer) is None
     assert streaming_conversation.broadcast_interrupt.called
 
     streaming_conversation.transcriptions_worker.consume_nonblocking(
@@ -429,8 +438,8 @@ async def test_transcriptions_worker_interrupts_immediately_before_bot_has_begun
             is_final=True,
         ),
     )
-    transcription_agent_input = await _consume_worker_output(
-        streaming_conversation.transcriptions_worker
+    transcription_agent_input = await _get_from_consumer_queue_if_exists(
+        transcriptions_worker_consumer
     )
     assert transcription_agent_input.payload.transcription.message == "Sorry, what?"
     assert streaming_conversation.broadcast_interrupt.called
@@ -447,7 +456,7 @@ async def test_transcriptions_worker_interrupts_immediately_before_bot_has_begun
         ),
     )
 
-    assert await _consume_worker_output(streaming_conversation.transcriptions_worker) is None
+    assert await _get_from_consumer_queue_if_exists(transcriptions_worker_consumer) is None
     assert streaming_conversation.broadcast_interrupt.called
 
     streaming_conversation.transcriptions_worker.terminate()

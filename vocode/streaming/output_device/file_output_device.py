@@ -1,6 +1,5 @@
 import asyncio
 import wave
-from asyncio import Queue
 
 import numpy as np
 
@@ -9,7 +8,6 @@ from vocode.streaming.output_device.rate_limit_interruptions_output_device impor
 )
 
 from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.utils.worker import ThreadAsyncWorker
 
 
 class FileOutputDevice(RateLimitInterruptionsOutputDevice):
@@ -23,7 +21,6 @@ class FileOutputDevice(RateLimitInterruptionsOutputDevice):
     ):
         super().__init__(sampling_rate, audio_encoding)
         self.blocksize = self.sampling_rate
-        self.queue: Queue[np.ndarray] = Queue()
 
         wav = wave.open(file_path, "wb")
         wav.setnchannels(1)  # Mono channel

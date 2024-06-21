@@ -48,14 +48,6 @@
   },
   "navigation": [
     {
-      "group": "Getting Started",
-      "pages": [
-        "welcome",
-        "hosted-quickstart",
-        "open-source-quickstarts"
-      ]
-    },
-    {
       "group": "Vocode 101",
       "pages": [
         "open-source/what-is-vocode",
@@ -64,31 +56,72 @@
       ]
     },
     {
-      "group": "Guides",
+      "group": "Getting Started",
       "pages": [
         "open-source/python-quickstart",
+        "open-source/react-quickstart",
         "open-source/telephony",
+        "open-source/turn-based-conversation"
+      ]
+    },
+    {
+      "group": "Agents",
+      "pages": [
         "open-source/create-your-own-agent",
         "open-source/agent-factory",
+        "open-source/langchain-agent"
+      ]
+    },
+    {
+      "group": "Synthesizers (Voice)",
+      "pages": [
+        "open-source/using-synthesizers"
+      ]
+    },
+    {
+      "group": "Transcribers (Speech-to-Text)",
+      "pages": [
+        "open-source/using-transcribers"
+      ]
+    },
+    {
+      "group": "Actions",
+      "pages": [
         "open-source/agents-with-actions",
         "open-source/action-phrase-triggers",
-        "open-source/external-action",
+        "open-source/external-action"
+      ]
+    },
+    {
+      "group": "Conversation Tuning",
+      "pages": [
         "open-source/conversation-mechanics",
-        "open-source/events-manager",
-        "open-source/using-synthesizers",
-        "open-source/using-transcribers",
-        "open-source/react-quickstart",
-        "open-source/playground",
-        "open-source/sentry",
-        "open-source/logging-with-loguru",
-        "open-source/turn-based-conversation",
         "open-source/language-support"
+      ]
+    },
+    {
+      "group": "Monitoring",
+      "pages": [
+        "open-source/logging-with-loguru",
+        "open-source/sentry"
+      ]
+    },
+    {
+      "group": "Testing",
+      "pages": [
+        "open-source/playground"
+      ]
+    },
+    {
+      "group": "Advanced Functionality",
+      "pages": [
+        "open-source/events-manager"
       ]
     },
     {
       "group": "Legacy (0.0.111) Guides",
       "pages": [
-        "open-source/langchain-agent",
+        "open-source/langchain-agent-dep",
         "open-source/local-conversation"
       ]
     },

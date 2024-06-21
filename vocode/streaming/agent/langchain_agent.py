@@ -37,10 +37,13 @@ class LangchainAgent(RespondAgent[LangchainAgentConfig]):
         self.chain = chain if chain else self.create_chain()
 
     def create_chain(self):
-        model = init_chat_model(model = self.agent_config.model_name, model_provider=self.agent_config.provider, temperature=self.agent_config.temperature, max_tokens=self.agent_config.max_tokens)
-        messages_for_prompt_template = [
-            ("placeholder", "{chat_history}")
-        ]
+        model = init_chat_model(
+            model=self.agent_config.model_name,
+            model_provider=self.agent_config.provider,
+            temperature=self.agent_config.temperature,
+            max_tokens=self.agent_config.max_tokens,
+        )
+        messages_for_prompt_template = [("placeholder", "{chat_history}")]
         if self.agent_config.prompt_preamble:
             messages_for_prompt_template.insert(0, ("system", self.agent_config.prompt_preamble))
         prompt_template = ChatPromptTemplate.from_messages(messages_for_prompt_template)
@@ -55,7 +58,9 @@ class LangchainAgent(RespondAgent[LangchainAgentConfig]):
             if isinstance(chunk.content, str):
                 yield chunk.content
             else:
-                raise ValueError(f"Received unexpected message type {type(chunk)} from Langchain. Expected str.")
+                raise ValueError(
+                    f"Received unexpected message type {type(chunk)} from Langchain. Expected str."
+                )
 
     def format_langchain_messages_from_transcript(self) -> list[tuple]:
         if not self.transcript:
@@ -64,14 +69,19 @@ class LangchainAgent(RespondAgent[LangchainAgentConfig]):
         for event_log in self.transcript.event_logs:
             if isinstance(event_log, Message):
                 messages.append(
-                    ("ai" if event_log.sender == Sender.BOT else "human", event_log.to_string(include_sender=False))
+                    (
+                        "ai" if event_log.sender == Sender.BOT else "human",
+                        event_log.to_string(include_sender=False),
+                    )
                 )
             else:
-                raise ValueError(f"Invalid event log type {type(event_log)}. Langchain currently only supports human and bot messages")
-            
+                raise ValueError(
+                    f"Invalid event log type {type(event_log)}. Langchain currently only supports human and bot messages"
+                )
+
         if self.agent_config.provider == "anthropic":
             messages = merge_bot_messages_for_langchain(messages)
-        
+
         return messages
 
     async def generate_response(
@@ -91,7 +101,9 @@ class LangchainAgent(RespondAgent[LangchainAgentConfig]):
             ttft_span = sentry_create_span(
                 sentry_callable=sentry_sdk.start_span, op=CustomSentrySpans.TIME_TO_FIRST_TOKEN
             )
-            stream = self.chain.astream({"chat_history": self.format_langchain_messages_from_transcript()})
+            stream = self.chain.astream(
+                {"chat_history": self.format_langchain_messages_from_transcript()}
+            )
         except Exception as e:
             logger.error(
                 f"Error while hitting Langchain",
