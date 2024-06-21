@@ -11,9 +11,15 @@ from vocode.streaming.action.abstract_factory import AbstractActionFactory
 from vocode.streaming.action.default_factory import DefaultActionFactory
 from vocode.streaming.agent.base_agent import GeneratedResponse, RespondAgent, StreamedResponse
 from vocode.streaming.agent.openai_utils import (
-    format_openai_chat_messages_from_transcript,
     vector_db_result_to_openai_chat_message,
-    openai_get_tokens
+    openai_get_tokens,
+    get_openai_chat_messages_from_transcript,
+    merge_event_logs
+)
+from vocode.streaming.models.transcript import (
+    EventLog,
+    Message,
+    Transcript,
 )
 from vocode.streaming.agent.streaming_utils import collate_response_async, stream_response_async
 from vocode.streaming.models.actions import FunctionCallActionTrigger
@@ -57,14 +63,28 @@ class GroqAgent(RespondAgent[GroqAgentConfig]):
             for action_config in self.agent_config.actions
             if isinstance(action_config.action_trigger, FunctionCallActionTrigger)
         ]
+    
+    def format_groq_chat_messages_from_transcript(
+        self,
+        transcript: Transcript,
+        prompt_preamble: str,
+    ) -> List[dict]:
+        # merge consecutive bot messages
+        merged_event_logs: List[EventLog] = merge_event_logs(event_logs=transcript.event_logs)
+
+        chat_messages: List[Dict[str, Optional[Any]]]
+        chat_messages = get_openai_chat_messages_from_transcript(
+            merged_event_logs=merged_event_logs,
+            prompt_preamble=prompt_preamble,
+        )
+
+        return chat_messages
 
     def get_chat_parameters(self, messages: Optional[List] = None, use_functions: bool = True):
         assert self.transcript is not None
 
-        messages = messages or format_openai_chat_messages_from_transcript(
+        messages = messages or self.format_groq_chat_messages_from_transcript(
             self.transcript,
-            self.agent_config.model_name,
-            self.functions,
             self.agent_config.prompt_preamble,
         )
 
@@ -137,10 +157,8 @@ class GroqAgent(RespondAgent[GroqAgentConfig]):
                 vector_db_result = (
                     f"Found {len(docs_with_scores)} similar documents:\n{docs_with_scores_str}"
                 )
-                messages = format_openai_chat_messages_from_transcript(
+                messages = self.format_groq_chat_messages_from_transcript(
                     self.transcript,
-                    self.agent_config.model_name,
-                    self.functions,
                     self.agent_config.prompt_preamble,
                 )
                 messages.insert(-1, vector_db_result_to_openai_chat_message(vector_db_result))

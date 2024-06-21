@@ -87,8 +87,6 @@ def get_tokenizer_info(model: str) -> Optional[TokenizerInfo]:
         model = "gpt-4o"
     elif "gpt4" in model or "gpt-4" in model:
         model = "gpt-4"
-    elif any(m in model for m in ["llama3", "mixtral", "gemma"]):
-        model = "groq"
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
@@ -116,12 +114,6 @@ def get_tokenizer_info(model: str) -> Optional[TokenizerInfo]:
     elif "gpt-4" in model:
         logger.debug(
             "Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613."
-        )
-        tokens_per_message = 3
-        tokens_per_name = 1
-    elif "groq" == model: # TODO: Add appropriate tokenizer info for groq models
-        logger.debug(
-            "Warning: Token counting for groq models is not yet supported. Returning num tokens for gpt-4-0613 as a fallback."
         )
         tokens_per_message = 3
         tokens_per_name = 1
