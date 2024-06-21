@@ -23,6 +23,9 @@ from vocode.streaming.action.phone_call_action import (
     VonagePhoneCallAction,
 )
 
+from vocode.streaming.agent.utils import (
+    translate_message,
+)
 
 class StateMachine(BaseModel):
     states: Dict[str, Any]
@@ -84,6 +87,22 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
     ):
         if human_input:
             self.update_history("human", human_input)
+            if self.agent_config.language != "en-US":
+                translated_message = translate_message(
+                    self.logger,
+                    human_input,
+                    self.agent_config.language,
+                    "en-US",
+                )
+                self.logger.info(
+                    f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{human_input}"
+                )
+                human_input = translated_message
+            elif self.agent_config.language == "en-US":
+                self.logger.info(
+                    f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{human_input}"
+                )
+
             last_bot_message = next(
                 (
                     msg[1]
