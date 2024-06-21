@@ -26,6 +26,7 @@ from vocode.streaming.agent.bot_sentiment_analyser import (
     BotSentimentAnalyser,
 )
 from vocode.streaming.agent.command_agent import CommandAgent
+from vocode.streaming.agent.state_agent import StateAgent
 from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import (
@@ -590,10 +591,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     )
                     return
                 # get the prompt preamble
-                if isinstance(self.conversation.agent, CommandAgent):
-                    prompt_preamble = (
-                        self.conversation.agent.agent_config.prompt_preamble
-                    )
+                if isinstance(self.conversation.agent, CommandAgent) or isinstance(
+                    self.conversation.agent, StateAgent
+                ):
 
                     if not self.conversation.agent.agent_config.language.startswith(
                         "en"
@@ -726,10 +726,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 transcript_message.text = transcript_message.text.replace("Err...", "")
                 # split on < and truncate there
                 transcript_message.text = transcript_message.text.split("<")[0].strip()
-                self.conversation.transcript.maybe_publish_transcript_event_from_message(
-                    message=transcript_message,
-                    conversation_id=self.conversation.id,
-                )
+                # Don't publish the transcript message if it's an action starting phrase (always ends in ellipsis)
+                if not transcript_message.text.strip().endswith("..."):
+                    self.conversation.transcript.maybe_publish_transcript_event_from_message(
+                        message=transcript_message,
+                        conversation_id=self.conversation.id,
+                    )
                 # Signal that the agent response has been processed.
                 item.agent_response_tracker.set()
                 # Log the message that was successfully sent.
@@ -775,6 +777,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             logger or logging.getLogger(__name__),
             conversation_id=self.id,
         )
+        self.logger.debug(f"Conversation ID: {self.id}")
         # threadingevent
         self.stop_event = threading.Event()
         self.started_event = threading.Event()
@@ -857,11 +860,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # tracing
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
+        self.logger.debug("Conversation created")
 
     def create_state_manager(self) -> ConversationStateManager:
         return ConversationStateManager(conversation=self)
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
+        self.logger.debug("Convo starting")
+
         self.transcriber.start()
         if self.agent.get_agent_config().call_type == CallType.INBOUND:
             self.transcriber.mute()
@@ -887,9 +893,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
 
             await asyncio.gather(filler_audio_task, affirmative_audio_task)
-
+        self.logger.debug("Agent starting")
         self.agent.start()
-        if isinstance(self.agent, CommandAgent):
+        self.logger.debug("Agent started")
+        if isinstance(self.agent, CommandAgent) or isinstance(self.agent, StateAgent):
             self.agent.conversation_id = self.id
             self.agent.twilio_sid = getattr(self, "twilio_sid", None)
         initial_message = self.agent.get_agent_config().initial_message
@@ -897,6 +904,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent.attach_transcript(self.transcript)
 
         if initial_message and call_type == CallType.INBOUND:
+            self.logger.debug(f"Sending initial message: {initial_message}")
             asyncio.create_task(
                 self.send_initial_message(initial_message)
             )  # TODO: this seems like its hanging, why not await?
@@ -989,7 +997,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         """
         self.logger.debug("Broadcasting interrupt")
         self.stop_event.set()
-        if isinstance(self.agent, CommandAgent):
+        if isinstance(self.agent, CommandAgent) or isinstance(self.agent, StateAgent):
             self.agent.stop = not self.agent.stop
 
         num_interrupts = 0
@@ -1231,9 +1239,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         await self.synthesizer.tear_down()
         self.logger.debug("Terminating agent")
         if (
-            isinstance(self.agent, CommandAgent)
-            and self.agent.agent_config.vector_db_config
-        ):
+            isinstance(self.agent, CommandAgent) or isinstance(self.agent, StateAgent)
+        ) and self.agent.agent_config.vector_db_config:
             # Shutting down the vector db should be done in the agent's terminate method,
             # but it is done here because `vector_db.tear_down()` is async and
             # `agent.terminate()` is not async.

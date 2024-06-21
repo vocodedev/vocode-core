@@ -115,6 +115,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
 
 class CommandAgentConfig(AgentConfig, type=AgentType.COMMAND.value):
     prompt_preamble: str
+    user_json_prompt: Optional[dict] = {}
     expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE

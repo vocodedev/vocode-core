@@ -279,7 +279,7 @@ all_optional_tools = {
                 "required": True,
             }
         },
-    }
+    },
 }
 
 

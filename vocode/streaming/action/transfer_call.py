@@ -74,7 +74,7 @@ class TransferCall(
         twilio_call_sid = self.get_twilio_sid(action_input)
 
         await asyncio.sleep(
-            6.5
+            3.5
         )  # to provide small gap between speaking and transfer ring
         await self.transfer_call(
             twilio_call_sid=twilio_call_sid,
