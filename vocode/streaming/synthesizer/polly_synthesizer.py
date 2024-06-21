@@ -74,7 +74,7 @@ class PollySynthesizer(BaseSynthesizer[PollySynthesizerConfig]):
                 return message[: event["start"]]
         return message
 
-    async def create_speech(
+    async def create_speech_with_cache(
         self,
         message: BaseMessage,
         chunk_size: int,

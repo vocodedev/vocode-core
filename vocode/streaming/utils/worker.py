@@ -244,7 +244,3 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
             return self.current_task.cancel()
 
         return False
-
-
-class InterruptibleAgentResponseWorker(InterruptibleWorker[InterruptibleAgentResponseEvent]):
-    pass
