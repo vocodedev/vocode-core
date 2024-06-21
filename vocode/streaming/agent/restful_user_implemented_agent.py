@@ -53,4 +53,4 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
                     return output_response
         except Exception as e:
             logger.error(f"Error in response from RESTful agent: {e}")
-            return None, True
+            return None

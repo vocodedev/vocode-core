@@ -88,17 +88,7 @@ class ActionResultAgentInput(AgentInput, type=AgentInputType.ACTION_RESULT.value
     is_quiet: bool = False
 
 
-class AgentResponseType(str, Enum):
-    BASE = "agent_response_base"
-    MESSAGE = "agent_response_message"
-    FILLER_AUDIO = "agent_response_filler_audio"
-
-
-class AgentResponse(TypedModel, type=AgentResponseType.BASE.value):  # type: ignore
-    pass
-
-
-class AgentResponseMessage(AgentResponse, type=AgentResponseType.MESSAGE.value):  # type: ignore
+class AgentResponse(BaseModel):
     message: Union[BaseMessage, EndOfTurn]
     is_interruptible: bool = True
     # Whether the message is the first message in the response; has metrics implications
@@ -282,7 +272,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             agent_response_tracker = agent_input.agent_response_tracker or asyncio.Event()
             self.agent_responses_consumer.consume_nonblocking(
                 self.interruptible_event_factory.create_interruptible_agent_response_event(
-                    AgentResponseMessage(
+                    AgentResponse(
                         message=generated_response.message,
                         is_first=is_first_response_of_turn,
                     ),
@@ -315,7 +305,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             )
             self.agent_responses_consumer.consume_nonblocking(
                 self.interruptible_event_factory.create_interruptible_agent_response_event(
-                    AgentResponseMessage(
+                    AgentResponse(
                         message=EndOfTurn(),
                         is_first=is_first_response_of_turn,
                     ),
@@ -358,13 +348,13 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         if response:
             self.agent_responses_consumer.consume_nonblocking(
                 self.interruptible_event_factory.create_interruptible_agent_response_event(
-                    AgentResponseMessage(message=BaseMessage(text=response)),
+                    AgentResponse(message=BaseMessage(text=response)),
                     is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
                 )
             )
             self.agent_responses_consumer.consume_nonblocking(
                 self.interruptible_event_factory.create_interruptible_agent_response_event(
-                    AgentResponseMessage(message=EndOfTurn()),
+                    AgentResponse(message=EndOfTurn()),
                     is_interruptible=self.agent_config.allow_agent_to_be_cut_off,
                 )
             )
@@ -395,7 +385,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 if agent_input.action_output.canned_response is not None:
                     self.agent_responses_consumer.consume_nonblocking(
                         self.interruptible_event_factory.create_interruptible_agent_response_event(
-                            AgentResponseMessage(
+                            AgentResponse(
                                 message=agent_input.action_output.canned_response,
                                 is_sole_text_chunk=True,
                             ),
@@ -404,7 +394,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                     )
                     self.agent_responses_consumer.consume_nonblocking(
                         self.interruptible_event_factory.create_interruptible_agent_response_event(
-                            AgentResponseMessage(message=EndOfTurn()),
+                            AgentResponse(message=EndOfTurn()),
                         )
                     )
                     return
@@ -458,7 +448,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             user_message_tracker = asyncio.Event()
             self.agent_responses_consumer.consume_nonblocking(
                 self.interruptible_event_factory.create_interruptible_agent_response_event(
-                    AgentResponseMessage(
+                    AgentResponse(
                         message=BaseMessage(text=user_message),
                         is_sole_text_chunk=True,
                     ),
@@ -467,7 +457,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             )
             self.agent_responses_consumer.consume_nonblocking(
                 self.interruptible_event_factory.create_interruptible_agent_response_event(
-                    AgentResponseMessage(message=EndOfTurn()),
+                    AgentResponse(message=EndOfTurn()),
                     agent_response_tracker=user_message_tracker,
                 )
             )

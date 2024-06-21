@@ -29,7 +29,7 @@ from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
     AgentInput,
     AgentResponse,
-    AgentResponseMessage,
+    AgentResponse,
     BaseAgent,
     TranscriptionAgentInput,
 )
@@ -64,7 +64,6 @@ from vocode.streaming.utils.worker import (
     AbstractWorker,
     AsyncQueueWorker,
     InterruptibleAgentResponseEvent,
-    InterruptibleAgentResponseWorker,
     InterruptibleEvent,
     InterruptibleEventFactory,
     InterruptibleWorker,
@@ -624,7 +623,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
     ):
         agent_response_event = (
             self.interruptible_event_factory.create_interruptible_agent_response_event(
-                AgentResponseMessage(message=message, is_sole_text_chunk=True),
+                AgentResponse(message=message, is_sole_text_chunk=True),
                 is_interruptible=False,
                 agent_response_tracker=message_tracker,
             )
@@ -632,7 +631,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.synthesizer.consume_nonblocking(agent_response_event)
         self.synthesizer.consume_nonblocking(
             self.interruptible_event_factory.create_interruptible_agent_response_event(
-                AgentResponseMessage(message=EndOfTurn()),
+                AgentResponse(message=EndOfTurn()),
                 is_interruptible=True,
             ),
         )

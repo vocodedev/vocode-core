@@ -8,7 +8,7 @@ from websockets.client import WebSocketClientProtocol, connect
 from vocode.streaming.agent.base_agent import (
     AgentInput,
     AgentResponse,
-    AgentResponseMessage,
+    AgentResponse,
     BaseAgent,
     TranscriptionAgentInput,
 )
@@ -53,7 +53,7 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
         agent_response: AgentResponse
 
         if isinstance(message, WebSocketAgentTextMessage):
-            agent_response = AgentResponseMessage(message=BaseMessage(text=message.data.text))
+            agent_response = AgentResponse(message=BaseMessage(text=message.data.text))
         elif isinstance(message, WebSocketAgentStopMessage):
             await self.conversation_state_manager.terminate_conversation()
             self.has_ended = True

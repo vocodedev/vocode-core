@@ -24,7 +24,7 @@ from nltk.tokenize.treebank import TreebankWordDetokenizer
 import sentry_sdk
 from sentry_sdk.tracing import Span as SentrySpan
 
-from vocode.streaming.agent.base_agent import AgentResponse, AgentResponseMessage
+from vocode.streaming.agent.base_agent import AgentResponse, AgentResponse
 from vocode.streaming.models.actions import EndOfTurn
 from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
@@ -40,7 +40,6 @@ from vocode.streaming.utils.create_task import asyncio_create_task_with_done_err
 from vocode.streaming.utils.worker import AbstractWorker, InterruptibleWorker, QueueConsumer
 from vocode.streaming.utils.worker import (
     InterruptibleAgentResponseEvent,
-    InterruptibleAgentResponseWorker,
     InterruptibleEventFactory,
 )
 from vocode.utils.sentry_utils import (
@@ -263,7 +262,7 @@ class BaseSynthesizer(
         self,
         synthesizer_config: SynthesizerConfigType,
     ):
-        InterruptibleAgentResponseWorker.__init__(self)
+        InterruptibleWorker.__init__(self)
         self.synthesizer_config = synthesizer_config
         if synthesizer_config.audio_encoding == AudioEncoding.MULAW:
             assert (
@@ -278,7 +277,7 @@ class BaseSynthesizer(
         self.is_first_text_chunk = True
 
     async def process(
-        self, item: InterruptibleAgentResponseEvent[AgentResponseMessage]
+        self, item: InterruptibleAgentResponseEvent[AgentResponse]
     ):  # todo (dow-107): fix typing
         if not self.conversation_state_manager._conversation.synthesis_enabled:
             logger.debug("Synthesis disabled, not synthesizing speech")

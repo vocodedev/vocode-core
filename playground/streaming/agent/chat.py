@@ -28,7 +28,7 @@ load_dotenv()
 from vocode.streaming.agent import ChatGPTAgent
 from vocode.streaming.agent.base_agent import (
     AgentResponse,
-    AgentResponseMessage,
+    AgentResponse,
     AgentResponseType,
     BaseAgent,
     TranscriptionAgentInput,
@@ -121,7 +121,7 @@ async def run_agent(
                     ended = True
                     break
                 elif response.type == AgentResponseType.MESSAGE:
-                    agent_response = typing.cast(AgentResponseMessage, response)
+                    agent_response = typing.cast(AgentResponse, response)
 
                     if isinstance(agent_response.message, EndOfTurn):
                         ignore_until_end_of_turn = False
@@ -161,7 +161,7 @@ async def run_agent(
         if agent.agent_config.initial_message is not None:
             agent.agent_responses_consumer.consume_nonblocking(
                 InterruptibleAgentResponseEvent(
-                    payload=AgentResponseMessage(message=agent.agent_config.initial_message),
+                    payload=AgentResponse(message=agent.agent_config.initial_message),
                     agent_response_tracker=asyncio.Event(),
                 )
             )
