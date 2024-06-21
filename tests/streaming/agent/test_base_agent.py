@@ -7,7 +7,7 @@ from pytest_mock import MockerFixture
 from vocode.streaming.action.abstract_factory import AbstractActionFactory
 from vocode.streaming.agent.base_agent import (
     AgentResponse,
-    AgentResponseMessage,
+    AgentResponse,
     BaseAgent,
     GeneratedResponse,
     TranscriptionAgentInput,
@@ -66,7 +66,7 @@ async def _consume_until_end_of_turn(
                 agent_consumer.input_queue.get(), timeout=timeout
             )
             agent_responses.append(agent_response.payload)
-            if isinstance(agent_response.payload, AgentResponseMessage) and isinstance(
+            if isinstance(agent_response.payload, AgentResponse) and isinstance(
                 agent_response.payload.message, EndOfTurn
             ):
                 break
