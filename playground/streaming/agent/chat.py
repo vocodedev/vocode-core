@@ -29,7 +29,6 @@ from vocode.streaming.agent import ChatGPTAgent
 from vocode.streaming.agent.base_agent import (
     AgentResponse,
     AgentResponse,
-    AgentResponseType,
     BaseAgent,
     TranscriptionAgentInput,
 )
@@ -113,47 +112,39 @@ async def run_agent(
         while not ended:
             try:
                 event = await agent_response_queue.get()
-                response = event.payload
-                if response.type == AgentResponseType.FILLER_AUDIO:
-                    print("Would have sent filler audio")
-                elif response.type == AgentResponseType.STOP:
-                    print("Agent returned stop")
-                    ended = True
-                    break
-                elif response.type == AgentResponseType.MESSAGE:
-                    agent_response = typing.cast(AgentResponse, response)
+                agent_response = event.payload
 
-                    if isinstance(agent_response.message, EndOfTurn):
-                        ignore_until_end_of_turn = False
-                        if random.random() < backchannel_probability:
-                            backchannel = random.choice(BACKCHANNELS)
-                            print("Human: " + f"[{backchannel}]")
-                            agent.transcript.add_human_message(
-                                backchannel,
-                                conversation_id,
-                                is_backchannel=True,
-                            )
-                    elif isinstance(agent_response.message, BaseMessage):
-                        if ignore_until_end_of_turn:
-                            continue
-
-                        message_sent: str
-                        is_final: bool
-                        # TODO: consider allowing the user to interrupt the agent manually by responding fast
-                        if random.random() < interruption_probability:
-                            stop_idx = random.randint(0, len(agent_response.message.text))
-                            message_sent = agent_response.message.text[:stop_idx]
-                            ignore_until_end_of_turn = True
-                            is_final = False
-                        else:
-                            message_sent = agent_response.message.text
-                            is_final = True
-
-                        agent.transcript.add_bot_message(
-                            message_sent, conversation_id, is_final=is_final
+                if isinstance(agent_response.message, EndOfTurn):
+                    ignore_until_end_of_turn = False
+                    if random.random() < backchannel_probability:
+                        backchannel = random.choice(BACKCHANNELS)
+                        print("Human: " + f"[{backchannel}]")
+                        agent.transcript.add_human_message(
+                            backchannel,
+                            conversation_id,
+                            is_backchannel=True,
                         )
+                elif isinstance(agent_response.message, BaseMessage):
+                    if ignore_until_end_of_turn:
+                        continue
 
-                        print("AI: " + message_sent + ("-" if not is_final else ""))
+                    message_sent: str
+                    is_final: bool
+                    # TODO: consider allowing the user to interrupt the agent manually by responding fast
+                    if random.random() < interruption_probability:
+                        stop_idx = random.randint(0, len(agent_response.message.text))
+                        message_sent = agent_response.message.text[:stop_idx]
+                        ignore_until_end_of_turn = True
+                        is_final = False
+                    else:
+                        message_sent = agent_response.message.text
+                        is_final = True
+
+                    agent.transcript.add_bot_message(
+                        message_sent, conversation_id, is_final=is_final
+                    )
+
+                    print("AI: " + message_sent + ("-" if not is_final else ""))
             except asyncio.CancelledError:
                 break
 
