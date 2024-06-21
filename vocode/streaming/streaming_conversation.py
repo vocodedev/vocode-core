@@ -828,6 +828,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.events_task.cancel()
             await self.events_manager.flush()
         logger.debug("Tearing down synthesizer")
+        # TODO (DOW-114): we won't need this once terminate() is async
         await self.synthesizer.tear_down()
         logger.debug("Terminating agent")
         if isinstance(self.agent, ChatGPTAgent) and self.agent.agent_config.vector_db_config:
@@ -843,7 +844,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriber.terminate()
         logger.debug("Terminating transcriptions worker")
         self.transcriptions_worker.terminate()
-        logger.debug("Terminating final transcriptions worker")
+        logger.debug("Terminating synthesizer")
         self.synthesizer.terminate()
         logger.debug("Terminating synthesis results worker")
         self.synthesis_results_worker.terminate()
