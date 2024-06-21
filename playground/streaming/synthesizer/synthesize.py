@@ -29,7 +29,7 @@ if __name__ == "__main__":
             synthesizer.get_synthesizer_config().sampling_rate,
         )
         # ClientSession needs to be created within the async task
-        synthesis_result = await synthesizer.create_speech_uncached(
+        synthesis_result = await synthesizer.create_speech(
             message=message,
             chunk_size=int(chunk_size),
         )
