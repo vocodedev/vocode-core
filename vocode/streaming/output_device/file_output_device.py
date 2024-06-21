@@ -9,9 +9,9 @@ from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.utils.worker import ThreadAsyncWorker
 
 
-class FileWriterWorker(ThreadAsyncWorker):
-    def __init__(self, input_queue: Queue, wave) -> None:
-        super().__init__(input_queue)
+class FileWriterWorker(ThreadAsyncWorker[np.ndarray]):
+    def __init__(self, wave: wave.Wave_write) -> None:
+        super().__init__()
         self.wav = wave
 
     def _run_loop(self):
@@ -38,7 +38,6 @@ class FileOutputDevice(BaseOutputDevice):
     ):
         super().__init__(sampling_rate, audio_encoding)
         self.blocksize = self.sampling_rate
-        self.queue: Queue[np.ndarray] = Queue()
 
         wav = wave.open(file_path, "wb")
         wav.setnchannels(1)  # Mono channel
@@ -46,7 +45,7 @@ class FileOutputDevice(BaseOutputDevice):
         wav.setframerate(self.sampling_rate)
         self.wav = wav
 
-        self.thread_worker = FileWriterWorker(self.queue, wav)
+        self.thread_worker = FileWriterWorker(wav)
         self.thread_worker.start()
 
     def consume_nonblocking(self, chunk):
@@ -55,7 +54,7 @@ class FileOutputDevice(BaseOutputDevice):
             block = np.zeros(self.blocksize, dtype=np.int16)
             size = min(self.blocksize, chunk_arr.shape[0] - i)
             block[:size] = chunk_arr[i : i + size]
-            self.queue.put_nowait(block)
+            self.thread_worker.consume_nonblocking(block)
 
     def terminate(self):
         self.thread_worker.terminate()
