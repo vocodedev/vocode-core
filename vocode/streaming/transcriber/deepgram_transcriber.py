@@ -18,6 +18,7 @@ from deepgram import (
     LiveResultResponse,
     UtteranceEndResponse,
 )
+from deepgram.clients.live.v1.response import Word
 
 from vocode import getenv
 from vocode.streaming.models.audio import AudioEncoding
@@ -104,14 +105,14 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self._start_sending_ts: Optional[datetime] = None
         self._start_receiving_ts: Optional[datetime] = None
 
-        self._is_first_transcription = True
+        self.is_first_transcription = True
 
         # shared between transcribe and utterance_end
         self._buffer = ""
         self._buffer_avg_confidence = 0.0
         self._num_buffer_utterances = 1
         self._time_silent = 0.0
-        self._words_buffer = []
+        self._words_buffer: List[Word] = []
         self._is_final_ts: Optional[datetime] = None
 
     def create_deepgram_streaming_config(self):
@@ -410,7 +411,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         ):
             if (
                 isinstance(deepgram_response, LiveResultResponse)
-                and self._is_first_transcription
+                and self.is_first_transcription
                 and endpointing_config.use_single_utterance_endpointing_for_first_utterance
             ):
                 if (
@@ -470,7 +471,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 InternalPunctuationEndpointingConfig,
             ):
                 if (
-                    self._is_first_transcription
+                    self.is_first_transcription
                     and endpointing_config.use_single_utterance_endpointing_for_first_utterance
                 ):
                     if (
