@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, vocode-core-0.1.0]
 
 jobs:
   build:
