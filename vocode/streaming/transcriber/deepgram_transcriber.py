@@ -341,7 +341,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
     ):
         return (
             isinstance(deepgram_response, LiveResultResponse)
-            and not deepgram_response.top_choice.transcript
+            and not deepgram_response.channel.alternatives[0].transcript
             and len(current_buffer) > 0
             and (time_silent + deepgram_response.duration) > seconds
         )
