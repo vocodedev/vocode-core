@@ -43,7 +43,7 @@ class SpellerAgent(RespondAgent[SpellerAgentConfig]):
             is_interrupt (bool): A flag indicating whether the agent was interrupted.
 
         Returns:
-            Tuple[Optional[str], bool]: The generated response and a flag indicating whether to stop.
+            Optional[str]: The generated response
         """
         return "".join(c + " " for c in human_input)
 
