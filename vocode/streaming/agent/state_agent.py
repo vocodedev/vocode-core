@@ -27,6 +27,7 @@ from vocode.streaming.agent.utils import (
     translate_message,
 )
 
+
 class StateMachine(BaseModel):
     states: Dict[str, Any]
     initial_state_id: str
@@ -54,11 +55,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         else:
             self.base_url = getenv("AI_API_BASE")
             self.model = getenv("AI_MODEL_NAME_LARGE")
-        # self.client = AsyncOpenAI(
-        #     base_url=self.base_url,
-        #     api_key="<HF_API_TOKEN>",  # replace with your token
-        # )
-        self.logger.info(f"Hellpo")  # I left off with it not parsing the state machien
+        self.client = AsyncOpenAI(
+            base_url=self.base_url,
+            api_key="<HF_API_TOKEN>",  # replace with your token
+        )
 
         self.logger.info(f"State machine: {self.state_machine}")
         self.overall_instructions = (
@@ -102,7 +102,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 self.logger.info(
                     f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{human_input}"
                 )
-
             last_bot_message = next(
                 (
                     msg[1]
@@ -111,13 +110,18 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 ),
                 "",
             )
-            move_on = await self.maybe_respond_to_user(last_bot_message, human_input)
-            if not move_on:
-                # self.update_history("message.bot", last_bot_message)
-                return (
-                    "",
-                    True,
-                )  # TODO: it repeats itself here, if maybe ends up saying something, no need to say it here with update
+            # only run this if it isn't a conditional
+            if self.current_state:
+                if self.current_state["type"] != "condition":
+                    move_on = await self.maybe_respond_to_user(
+                        last_bot_message, human_input
+                    )
+                    if not move_on:
+                        # self.update_history("message.bot", last_bot_message)
+                        return (
+                            "",
+                            True,
+                        )  # TODO: it repeats itself here, if maybe ends up saying something, no need to say it here with update
         if self.resume and human_input:
             await self.resume(human_input)
         elif not self.resume and not human_input:
@@ -171,6 +175,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 self.update_history(
                     "debug", f"continuing at {state_id} with user response {answer}"
                 )
+                self.resume = None
+                self.logger.info(
+                    f"continuing at {state_id} with user response {answer}"
+                )
                 return await self.handle_state(state["edge"])
 
             return resume
@@ -211,11 +219,17 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     "edges"
                 ]
             )
+        states = list(set([s.split("::")[0] for s in states]))
+        # remove the start state from the list if it exists
+        if "start" in states:
+            states.remove("start")
         if len(states) == 1:
             next_state_id = states[0]
+            next_state_id = self.label_to_state_id[next_state_id]
             return await self.handle_state(next_state_id)
-        # split each on the :: and get the first element, then remove duplicates
-        states = list(set([s.split("::")[0] for s in states]))
+        # if len is 0 then go to start
+        if len(states) == 0:
+            return await self.handle_state("start")
         numbered_states = "\n".join([f"{i + 1}. {s}" for i, s in enumerate(states)])
         self.logger.info(f"Numbered states: {numbered_states}")
         streamed_choice = await self.call_ai(
@@ -367,7 +381,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             f"You're in the process of helping the user with: {current_workflow}\n"
             "To best assist the user, decide whether you should:\n"
             "- 'CONTINUE' the process to the next step\n"
-            "- 'PAUSE' the current process to obtain a clear answer from the user\n"
+            "- 'PAUSE' the current process if the user didn't answer the question\n"
             "- 'SWITCH' to a different process if the user wants to do something else."
         )
         self.logger.info(f"Prompt: {prompt}")
@@ -406,10 +420,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         return True
 
     async def call_ai(self, prompt, tool=None, stop=None):
-        self.client = AsyncOpenAI(
-            base_url=self.base_url,
-            api_key="<HF_API_TOKEN>",  # replace with your token
-        )
+        # self.client = AsyncOpenAI(
+        #     base_url=self.base_url,
+        #     api_key="<HF_API_TOKEN>",  # replace with your token
+        # )
         if not tool:
             self.update_history("message.instruction", prompt)
             # return input(f"[message.bot] $: ")
