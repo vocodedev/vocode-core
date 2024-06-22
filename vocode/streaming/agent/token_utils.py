@@ -258,4 +258,3 @@ def _format_func_into_prompt_str(func) -> str:
         result += "_: " + formatted
     result += ") => any;\n\n"
     return result
-
