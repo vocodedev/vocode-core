@@ -39,6 +39,8 @@ def instantiate_openai_client(agent_config: ChatGPTAgentConfig, model_fallback: 
     else:
         if agent_config.openai_api_key is not None:
             logger.info("Using OpenAI API key override")
+        if agent_config.base_url is not None:
+            logger.info(f"Using OpenAI base URL override: {agent_config.base_url}")
         return AsyncOpenAI(
             api_key=agent_config.openai_api_key or os.environ["OPENAI_API_KEY"],
             base_url=agent_config.base_url or "https://api.openai.com/v1",
