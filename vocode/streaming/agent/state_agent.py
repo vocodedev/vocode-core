@@ -268,20 +268,24 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 f"{state['condition']['prompt']} Given the current state of the conversation, is the condition '{single_condition}' applicable? If so, return the condition name. If not applicable, return 'none'.",
                 tool,
             )
-        response = response[response.find("{") : response.rfind("}") + 1]
         self.logger.info(f"Chose condition: {response}")
-        response = eval(response)
-        for condition, next_state_label in state["condition"][
-            "conditionToStateLabel"
-        ].items():
-            if condition == response["condition"]:
-                next_state_id = self.label_to_state_id[next_state_label]
-                return await self.handle_state(next_state_id)
-            else:
-                self.update_history(
-                    "debug", f"condition {condition} != response {response}"
-                )
-        return await self.handle_state(state["edge"])
+        response = response[response.find("{") : response.rfind("}") + 1]
+        try:
+            response = eval(response)
+            for condition, next_state_label in state["condition"][
+                "conditionToStateLabel"
+            ].items():
+                if condition == response["condition"]:
+                    next_state_id = self.label_to_state_id[next_state_label]
+                    return await self.handle_state(next_state_id)
+                else:
+                    self.update_history(
+                        "debug", f"condition {condition} != response {response}"
+                    )
+            return await self.handle_state(state["edge"])
+        except Exception as e:
+            self.logger.error(f"Agent chose no condition: {e}")
+            return await self.handle_state(state["edge"])
 
     async def compose_action(self, state):
         action = state["action"]
