@@ -102,32 +102,32 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 self.logger.info(
                     f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{human_input}"
                 )
-            last_bot_message = next(
-                (
-                    msg[1]
-                    for msg in reversed(self.chat_history)
-                    if msg[0] == "message.bot" and msg[1] and len(msg[1].strip()) > 0
-                ),
-                "",
-            )
-            # only run this if it isn't a conditional
-            if self.current_state:
-                if self.current_state["type"] != "condition":
-                    move_on = await self.maybe_respond_to_user(
-                        last_bot_message, human_input
-                    )
-                    if not move_on:
-                        # self.update_history("message.bot", last_bot_message)
-                        return (
-                            "",
-                            True,
-                        )  # TODO: it repeats itself here, if maybe ends up saying something, no need to say it here with update
-        if self.resume and human_input:
-            await self.resume(human_input)
-        elif not self.resume and not human_input:
-            self.resume = await self.handle_state("start", True)
+
+            if self.current_state and self.current_state["type"] != "condition":
+                last_bot_message = next(
+                    (
+                        msg
+                        for role, msg in reversed(self.chat_history)
+                        if (role == "message.bot" and msg)
+                    ),
+                    None,
+                )
+                move_on = await self.maybe_respond_to_user(
+                    last_bot_message, human_input
+                )
+                if not move_on:
+                    return "", True
+
+        if self.resume:
+            if human_input:
+                self.resume = await self.resume(human_input)
+            else:
+                self.resume = await self.resume(None)
         elif not self.resume:
-            self.resume = await self.choose_block(state=self.current_state)
+            if not human_input:
+                self.resume = await self.handle_state("start", True)
+            else:
+                self.resume = await self.choose_block(state=self.current_state)
         return "", True
 
     async def print_start_message(self, state):
@@ -142,6 +142,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
     async def handle_state(self, state_id, start=False):
         self.update_history("debug", f"STATE IS {state_id}")
+        self.resume = None
         if not state_id:
             return
         state = self.state_machine["states"][state_id]
@@ -150,7 +151,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         if state["type"] == "crossroads":
 
             async def resume(human_input):
-                self.resume = None
                 return await self.choose_block(state=state)
 
             if start:
@@ -175,7 +175,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 self.update_history(
                     "debug", f"continuing at {state_id} with user response {answer}"
                 )
-                self.resume = None
                 self.logger.info(
                     f"continuing at {state_id} with user response {answer}"
                 )
@@ -190,10 +189,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             return await self.compose_action(state)
 
     async def guided_response(self, guide):
-        self.update_history("debug", f"Running guided response with guide: {guide}")
         tool = {"response": "[insert your response]"}
         message = await self.call_ai(
-            "Draft your next response to the user based on the latest chat history, taking into account the following guidance:\n'{guide}'",
+            f"Draft your next response to the user based on the latest chat history, taking into account the following guidance:\n'{guide}'",
             tool,
         )
         message = message[message.find("{") : message.rfind("}") + 1]
@@ -239,25 +237,24 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         chosen_int = int(match.group()) if match else 1
         next_state_id = states[chosen_int - 1]
         next_state_id = self.label_to_state_id[next_state_id]
-        self.update_history("debug", f"The bot chose {chosen_int}, aka {next_state_id}")
         self.logger.info(f"Chose {next_state_id}")
         return await self.handle_state(next_state_id)
 
     async def condition_check(self, state):
-        self.update_history("debug", "Running condition check")
         choices = "\n".join(
             [f"'{c}'" for c in state["condition"]["conditionToStateLabel"].keys()]
         )
-        self.update_history("debug", f"Choices: {choices}")
         tool = {"condition": "[insert the condition that applies]"}
         choices = "\n".join(
             [f"- '{c}'" for c in state["condition"]["conditionToStateLabel"].keys()]
         )
-        self.logger.info(f"Choosing condition from:\n{choices}")
+        # self.logger.info(f"Choosing condition from:\n{choices}")
         # check if there is more than one condition
+        prompt = f"Return a condition from the list. Conditions:\n{choices}\nGiven the provided context and the current state of the conversation, return a condition from the above list that best represents the current intent. If none of the conditions apply, return 'none'."
+        self.logger.info(f"Prompt: {prompt}")
         if len(state["condition"]["conditionToStateLabel"]) > 1:
             response = await self.call_ai(
-                f"{state['condition']['prompt']}. Conditions:\n{choices}\nGiven the provided context and the current state of the conversation, return the condition that applies. If none of the conditions apply, return 'none'.",
+                prompt,
                 tool,
             )
         else:  # with just a single condition, change the prompt
@@ -278,10 +275,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 if condition == response["condition"]:
                     next_state_id = self.label_to_state_id[next_state_label]
                     return await self.handle_state(next_state_id)
-                else:
-                    self.update_history(
-                        "debug", f"condition {condition} != response {response}"
-                    )
             return await self.handle_state(state["edge"])
         except Exception as e:
             self.logger.error(f"Agent chose no condition: {e}")
@@ -291,6 +284,17 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         action = state["action"]
         self.logger.info(f"Attempting to call: {action}")
         action_name = action["name"]
+        action_config = self._get_action_config(action_name)
+        if not action_config.starting_phrase or action_config.starting_phrase == "":
+            action_config.starting_phrase = "Starting action..."
+        # the value of starting_phrase is the message it says during the action
+        to_say_start = action_config.starting_phrase
+        # if not self.streamed and not self.agent_config.use_streaming:
+        self.produce_interruptible_agent_response_event_nonblocking(
+            AgentResponseMessage(message=BaseMessage(text=to_say_start))
+        )
+        # if we're using streaming, we need to block inputs until the tool calls are done
+        self.block_inputs = True
         action_description = action["description"]
         params = action["params"]
         dict_to_fill = {param_name: "[insert value]" for param_name in params.keys()}
@@ -307,7 +311,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         response = response[response.find("{") : response.rfind("}") + 1]
         self.logger.info(f"Filled params: {response}")
         params = eval(response)
-        action_config = self._get_action_config(action_name)
 
         action = self.action_factory.create_action(action_config)
         action_input: ActionInput
@@ -330,20 +333,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
         # check if starting_phrase exists and has content
         # TODO handle if it doesnt have one
-        if not action_config.starting_phrase or action_config.starting_phrase == "":
-            action_config.starting_phrase = "Starting action..."
-        # the value of starting_phrase is the message it says during the action
-        self.update_history(
-            "action-start",
-            f"Running action {action_name} with params response {response}",
-        )
-        to_say_start = action_config.starting_phrase
-        # if not self.streamed and not self.agent_config.use_streaming:
-        self.produce_interruptible_agent_response_event_nonblocking(
-            AgentResponseMessage(message=BaseMessage(text=to_say_start))
-        )
-        # if we're using streaming, we need to block inputs until the tool calls are done
-        self.block_inputs = True
 
         async def run_action_and_return_input(action, action_input):
             action_output = await action.run(action_input)
@@ -367,7 +356,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         # it seems to continue on an on
         if state["edge"] == "start":
             self.current_state = None
-            self.resume = None  # its continuing on so im trying to reset resume
             return {}
         else:
             return await self.handle_state(state["edge"])
@@ -382,36 +370,25 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             current_workflow = "start of conversation"
         prompt = (
             f"You last stated: '{question}', to which the user replied: '{user_response}'.\n\n"
-            f"You're in the process of helping the user with: {current_workflow}\n"
+            f"You're already in the process of helping the user with: {current_workflow}\n"
             "To best assist the user, decide whether you should:\n"
             "- 'CONTINUE' the process to the next step\n"
-            "- 'PAUSE' the current process if the user didn't answer the question\n"
-            "- 'SWITCH' to a different process if the user wants to do something else."
+            "   Response: Proceed with the next step of the current workflow without additional commentary\n"
+            "- 'PAUSE' the current process if the user didn't answer the question or asked a question of their own\n"
+            "   Response: If the user didn't answer, politely restate the question and ask for a clear answer.\n"
+            "             If the user asked a question, answer it concisely and ask if they're ready to continue.\n"
+            "             Do not mention performing any actions when pausing.\n"
+            "- 'SWITCH' to a different process if current process is not relevant\n"
+            "   Response: Acknowledge the user's request and ask for clarification on what they'd like to do instead"
         )
-        self.logger.info(f"Prompt: {prompt}")
         # we do not care what it has to say when switching or continuing
         output = await self.call_ai(prompt, continue_tool, stop=["CONTINUE", "SWITCH"])
         self.logger.info(f"Output: {output}")
         if "CONTINUE" in output:
             return True
         if "SWITCH" in output:
-
-            def get_states_from_block():
-                if self.current_state and self.current_state["id"]:
-                    latest_state_id = self.current_state["id"].split("::")[0]
-                    # iterates through all available states
-                    block_states = []
-                    for state_id, state in self.state_machine["states"].items():
-                        current_state_id = state["id"].split("::")[0]
-                        if current_state_id == latest_state_id:
-                            block_states.append(state_id)
-                    return block_states
-                else:
-                    return []
-
-            self.resume = await self.choose_block(
-                state=self.current_state, choose_from=get_states_from_block()
-            )
+            # When switching, go directly to crossroads
+            self.resume = await self.choose_block(state=None)
 
             # self.update_history("message.bot", question)
             return False
@@ -429,7 +406,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         #     api_key="<HF_API_TOKEN>",  # replace with your token
         # )
         if not tool:
-            self.update_history("message.instruction", prompt)
+            # self.update_history("message.instruction", prompt)
             # return input(f"[message.bot] $: ")
             chat_completion = await self.client.chat.completions.create(
                 model=self.model,
@@ -437,28 +414,32 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     {"role": "system", "content": self.overall_instructions},
                     {
                         "role": "user",
-                        "content": f"Given the chat history, follow the instructions.\nChat history:\n{self.chat_history}\nInstructions:\n{prompt}",
+                        "content": f"Given the chat history, follow the instructions.\nChat history:\n{self.chat_history}\n\n\nInstructions:\n{prompt}",
                     },
                 ],
                 stream=False,
                 stop=stop if stop is not None else [],
-                max_tokens=500,
+                temperature=0.1,
             )
             return chat_completion.choices[0].message.content
         else:
-            self.update_history("message.instruction", prompt)
+            # log it
+            self.logger.info(f"Prompt: {prompt}")
+            self.logger.info(f"Tool: {tool}")
+
+            # self.update_history("message.instruction", prompt)
             chat_completion = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self.overall_instructions},
                     {
                         "role": "user",
-                        "content": f"Given the chat history, follow the instructions.\nChat history:\n{self.chat_history}\nInstructions:\n{prompt}\nRespond with a dictionary in the following format: {tool}",
+                        "content": f"Given the chat history, follow the instructions.\nChat history:\n{self.chat_history}\n\n\nInstructions:\n{prompt}\nYour response must always be dictionary in the following format: {tool}",
                     },
                 ],
                 stream=False,
                 stop=stop if stop is not None else [],
-                max_tokens=500,
+                temperature=0.1,
             )
             return chat_completion.choices[0].message.content
 
