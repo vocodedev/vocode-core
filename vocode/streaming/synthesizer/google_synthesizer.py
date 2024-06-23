@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from google.oauth2 import service_account
-from google.cloud import texttospeech as tts
+from google.cloud import texttospeech_v1 as tts
 
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import GoogleSynthesizerConfig
@@ -53,7 +53,7 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
                 input=synthesis_input,
                 voice=self.voice,
                 audio_config=self.audio_config,
-                enable_time_pointing=[tts.SynthesizeSpeechRequest.TimepointType.SSML_MARK],
+                #enable_time_pointing=[tts.SynthesizeSpeechRequest.TimepointType.SSML_MARK],
             )
         )
 
@@ -70,6 +70,7 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
                 self.thread_pool_executor, self.synthesize, message.text
             )
         )
+        print("[ LOG ] Response ------ ",dir(response.audio_content))
         output_sample_rate = response.audio_config.sample_rate_hertz
 
         output_bytes_io = io.BytesIO()
