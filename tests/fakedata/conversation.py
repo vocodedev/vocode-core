@@ -8,7 +8,7 @@ from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import PlayHtSynthesizerConfig, SynthesizerConfig
 from vocode.streaming.models.transcriber import DeepgramTranscriberConfig, TranscriberConfig
-from vocode.streaming.output_device.base_output_device import BaseOutputDevice
+from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 from vocode.streaming.telephony.constants import DEFAULT_CHUNK_SIZE, DEFAULT_SAMPLING_RATE
@@ -36,8 +36,11 @@ DEFAULT_CHAT_GPT_AGENT_CONFIG = ChatGPTAgentConfig(
 )
 
 
-class DummyOutputDevice(BaseOutputDevice):
+class DummyOutputDevice(AbstractOutputDevice):
     def consume_nonblocking(self, chunk: bytes):
+        pass
+
+    def interrupt(self):
         pass
 
 

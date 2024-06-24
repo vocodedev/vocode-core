@@ -93,7 +93,7 @@ class ThreadAsyncWorker(AsyncWorker[WorkerInputType]):
         return super().terminate()
 
 
-class AsyncQueueWorker(AsyncWorker):
+class AsyncQueueWorker(AsyncWorker[WorkerInputType]):
     async def _run_loop(self):
         while True:
             try:

@@ -4,14 +4,13 @@ from typing import Optional
 import numpy as np
 import sounddevice as sd
 
+from .abstract_output_device import AbstractOutputDevice
 from vocode.streaming.models.audio import AudioEncoding
-
-from .base_output_device import BaseOutputDevice
 
 raise DeprecationWarning("Use BlockingSpeakerOutput instead")
 
 
-class SpeakerOutput(BaseOutputDevice):
+class SpeakerOutput(AbstractOutputDevice):
     DEFAULT_SAMPLING_RATE = 44100
 
     def __init__(
