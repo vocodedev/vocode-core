@@ -44,7 +44,11 @@ class AbstractTranscriber(Generic[TranscriberConfigType], AbstractWorker[bytes])
         elif self.get_transcriber_config().audio_encoding == AudioEncoding.MULAW:
             return audioop.lin2ulaw(linear_audio, sample_width)
 
-    def send_audio(self, chunk):
+    @abstractmethod
+    async def _run_loop(self):
+        pass
+
+    def send_audio(self, chunk: bytes):
         if not self.is_muted:
             self.consume_nonblocking(chunk)
         else:

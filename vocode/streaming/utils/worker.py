@@ -26,16 +26,6 @@ class AbstractWorker(Generic[WorkerInputType], ABC):
         pass
 
 
-class AbstractMapperWorker(AbstractWorker[WorkerInputType]):
-    """Designed to not perform any async operations and thus does not need an input queue.
-
-    Should perform all operations in the consume_nonblocking method.
-    """
-
-    def start(self):
-        pass
-
-
 class QueueConsumer(AbstractWorker[WorkerInputType]):
     def __init__(
         self,

@@ -165,7 +165,7 @@ Asynchronous function to check if the request signature is encoded correctly.
     """
     signature_secret_as_bytes = base64.b64decode(signature_secret)
     decoded_digest = base64.b64decode(request_signature_value)
-    calculated_digest = hmac.new(signature_secret_as_bytes, payload, hashlib.sha256).digest()
+    calculated_digest = hmac.new(signature_secret_as_bytes, json.dumps(payload).encode("utf-8"), hashlib.sha256).digest()
     assert hmac.compare_digest(decoded_digest, calculated_digest) is True
 
 ````

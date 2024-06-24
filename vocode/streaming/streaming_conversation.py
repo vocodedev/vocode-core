@@ -64,7 +64,6 @@ from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.speed_manager import SpeedManager
 from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
-    AbstractMapperWorker,
     AbstractWorker,
     AsyncQueueWorker,
     InterruptibleAgentResponseEvent,
@@ -139,7 +138,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.interruptible_events.put_nowait(interruptible_event)
             return interruptible_event
 
-    class TranscriptionsWorker(AbstractMapperWorker[Transcription]):
+    class TranscriptionsWorker(AsyncQueueWorker[Transcription]):
         """Processes all transcriptions: sends an interrupt if needed
         and sends final transcriptions to the output queue"""
 
@@ -225,7 +224,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 and not (is_first_bot_message and last_message.text.strip() == "")
             )
 
-        def consume_nonblocking(self, transcription: Transcription):
+        async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
             if transcription.message.strip() == "":
                 logger.info("Ignoring empty transcription")

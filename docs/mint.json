@@ -48,6 +48,10 @@
   },
   "navigation": [
     {
+      "group": "Getting Started",
+      "pages": ["welcome", "hosted-quickstart", "open-source-quickstarts"]
+    },
+    {
       "group": "Vocode 101",
       "pages": [
         "open-source/what-is-vocode",
@@ -74,15 +78,11 @@
     },
     {
       "group": "Synthesizers (Voice)",
-      "pages": [
-        "open-source/using-synthesizers"
-      ]
+      "pages": ["open-source/using-synthesizers"]
     },
     {
       "group": "Transcribers (Speech-to-Text)",
-      "pages": [
-        "open-source/using-transcribers"
-      ]
+      "pages": ["open-source/using-transcribers"]
     },
     {
       "group": "Actions",
@@ -101,22 +101,15 @@
     },
     {
       "group": "Monitoring",
-      "pages": [
-        "open-source/logging-with-loguru",
-        "open-source/sentry"
-      ]
+      "pages": ["open-source/logging-with-loguru", "open-source/sentry"]
     },
     {
       "group": "Testing",
-      "pages": [
-        "open-source/playground"
-      ]
+      "pages": ["open-source/playground"]
     },
     {
       "group": "Advanced Functionality",
-      "pages": [
-        "open-source/events-manager"
-      ]
+      "pages": ["open-source/events-manager"]
     },
     {
       "group": "Legacy (0.0.111) Guides",
@@ -147,9 +140,7 @@
     },
     {
       "group": "Usage",
-      "pages": [
-        "api-reference/usage/get-usage"
-      ]
+      "pages": ["api-reference/usage/get-usage"]
     },
     {
       "group": "Actions",
