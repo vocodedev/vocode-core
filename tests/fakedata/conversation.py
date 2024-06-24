@@ -40,6 +40,9 @@ class DummyOutputDevice(AbstractOutputDevice):
     def consume_nonblocking(self, chunk: bytes):
         pass
 
+    def interrupt(self):
+        pass
+
 
 def create_fake_transcriber(mocker: MockerFixture, transcriber_config: TranscriberConfig):
     transcriber = mocker.MagicMock()

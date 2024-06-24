@@ -102,7 +102,7 @@ class ThreadAsyncWorker(AsyncWorker[WorkerInputType]):
         raise NotImplementedError
 
 
-class AsyncQueueWorker(AsyncWorker):
+class AsyncQueueWorker(AsyncWorker[WorkerInputType]):
     async def _run_loop(self):
         while True:
             try:
