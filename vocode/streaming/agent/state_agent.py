@@ -105,8 +105,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             # make sure its not in the edge either
             if (
                 self.current_state
-                and self.current_state["type"] != "condition"
-                and "condition" not in self.current_state["edge"]
+                # and self.current_state["type"] != "condition"
+                # and "condition" not in self.current_state["edge"]
             ):
                 last_bot_message = next(
                     (
