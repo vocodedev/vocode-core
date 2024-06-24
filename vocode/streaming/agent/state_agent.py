@@ -245,16 +245,35 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         return await self.handle_state(next_state_id)
 
     async def condition_check(self, state):
+        last_bot_message = next(
+            (
+                msg
+                for role, msg in reversed(self.chat_history)
+                if (role == "message.bot" and msg)
+            ),
+            None,
+        )
+        last_user_message = next(
+            (
+                msg
+                for role, msg in reversed(self.chat_history)
+                if (role == "human" and msg)
+            ),
+            None,
+        )
         choices = "\n".join(
             [f"'{c}'" for c in state["condition"]["conditionToStateLabel"].keys()]
         )
         tool = {"condition": "[insert the condition that applies]"}
         choices = "\n".join(
-            [f"- '{c}'" for c in state["condition"]["conditionToStateLabel"].keys()]
+            [
+                f"- '{c.lower()}'"
+                for c in state["condition"]["conditionToStateLabel"].keys()
+            ]
         )
         # self.logger.info(f"Choosing condition from:\n{choices}")
         # check if there is more than one condition
-        prompt = f"Return a condition from the list. Conditions:\n{choices}\nGiven the provided context and the current state of the conversation, return a condition from the above list that best represents the current intent. If none of the conditions apply, return 'none'."
+        prompt = f"You last stated: '{last_bot_message}' to which the user replied: '{last_user_message}'.\n\nGiven the current state of the conversation and the reply, return an applicable condition from the list.\nConditions:\n{choices}\n\nThe condition returned must best represent the current intent. If none of the conditions apply, return 'none'."
         self.logger.info(f"Prompt: {prompt}")
         if len(state["condition"]["conditionToStateLabel"]) > 1:
             response = await self.call_ai(
@@ -266,7 +285,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 0
             ]
             response = await self.call_ai(
-                f"{state['condition']['prompt']} Given the current state of the conversation, is the condition '{single_condition}' applicable? If so, return the condition name. If not applicable, return 'none'.",
+                f"You last stated: '{last_bot_message}' to which the user replied: '{last_user_message}'.\n\nGiven the current state of the conversation and the reply, is the condition '{single_condition}' applicable? If so, return the condition name. If not applicable, return 'none'.",
                 tool,
             )
         self.logger.info(f"Chose condition: {response}")
@@ -276,7 +295,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             for condition, next_state_label in state["condition"][
                 "conditionToStateLabel"
             ].items():
-                if condition == response["condition"]:
+                if condition.lower() == response["condition"].lower():
                     next_state_id = self.label_to_state_id[next_state_label]
                     return await self.handle_state(next_state_id)
             return await self.handle_state(state["edge"])
