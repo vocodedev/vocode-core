@@ -96,16 +96,16 @@ class SendHelloSugarBookingInstructions(
         to_phone = action_input.params.to_phone
         response = await self.send_hello_sugar_booking_instructions(to_phone, location)
         # response = await self.wait_for_response(self.action_config.to_phone)
-        if 200 <= response.status < 300:
+        if response and response.get('error_code'):
             return ActionOutput(
                 action_type=action_input.action_config.type,
                 response=SendHelloSugarBookingInstructionsResponse(
-                    status=f"Message to {to_phone} has been sent successfully with the content: '{location}'."
+                    status=f"Failed to send message to {to_phone}. Error: {response}"
                 ),
             )
         return ActionOutput(
             action_type=action_input.action_config.type,
             response=SendHelloSugarBookingInstructionsResponse(
-                status=f"Failed to send message to {to_phone}. Error: {response}"
+                status=f"Message to {to_phone} has been sent successfully with the content: '{location}'."
             ),
         )

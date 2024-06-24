@@ -97,17 +97,17 @@ class SendHelloSugarDirections(
     ) -> ActionOutput[SendHelloSugarDirectionsResponse]:
         to_phone = action_input.params.to_phone
         response = await self.send_hello_sugar_directions(to_phone)
-        if 200 <= response.status < 300:
+        if response and response.get('error_code'):
             return ActionOutput(
                 action_type=action_input.action_config.type,
                 response=SendHelloSugarDirectionsResponse(
-                    status=f"Directions to their next appointment location have been sent via text to: {to_phone}. "
-                    f"The message sent is: {response}"
+                    status=f"Failed to send message to {to_phone}. Error: {response}"
                 ),
             )
         return ActionOutput(
             action_type=action_input.action_config.type,
             response=SendHelloSugarDirectionsResponse(
-                status=f"Failed to send message to {to_phone}. Error: {response}"
+                status=f"Directions to their next appointment location have been sent via text to: {to_phone}. "
+                f"The message sent is: {response}"
             ),
         )
