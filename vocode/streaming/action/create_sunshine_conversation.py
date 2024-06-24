@@ -84,19 +84,19 @@ class CreateSunshineConversation(
                   action_input: ActionInput[CreateSunshineConversationParameters]
                   ) -> ActionOutput[CreateSunshineConversationResponse]:
         response = await self.create_sunshine_conversation(parameters=action_input.params)
-        if "error" in str(response).lower():
+        if 200 <= response.status < 300:
             return ActionOutput(
                 action_type=action_input.action_config.type,
                 response=CreateSunshineConversationResponse(
-                    status=f"Failed to send message to {self.action_config.from_phone}. Error: {response}"
+                    status=f"Sunshine conversation has been started for phone number: {self.action_config.from_phone}. "
+                           f"Response is: {response}",
+                    ending_phrase="A team member will be reaching out via SMS within the next 7 minutes to help. "
+                                  "Is there anything else I can help you with?"
                 ),
             )
         return ActionOutput(
             action_type=action_input.action_config.type,
             response=CreateSunshineConversationResponse(
-                status=f"Sunshine conversation has been started for phone number: {self.action_config.from_phone}. "
-                       f"Response is: {response}",
-                ending_phrase="A team member will be reaching out via SMS within the next 7 minutes to help. "
-                              "Is there anything else I can help you with?"
+                status=f"Failed to send message to {self.action_config.from_phone}. Error: {response}"
             ),
         )
