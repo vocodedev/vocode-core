@@ -17,7 +17,7 @@ DEFAULT_SAMPLING_RATE = 44100
 class _PlaybackWorker(ThreadAsyncWorker[bytes]):
 
     def __init__(self, *, device_info: dict, sampling_rate: int):
-        super().__init__(input_queue=asyncio.Queue())
+        super().__init__()
         self.sampling_rate = sampling_rate
         self.device_info = device_info
         self.stream = sd.OutputStream(
