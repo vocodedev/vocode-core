@@ -6,7 +6,8 @@ import aiohttp
 from vocode import getenv
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import CoquiSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 from vocode.streaming.utils.async_requester import AsyncRequestor
 
 raise DeprecationWarning("This Synthesizer is deprecated and will be removed in the future.")

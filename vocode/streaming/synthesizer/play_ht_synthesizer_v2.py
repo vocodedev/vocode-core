@@ -12,7 +12,7 @@ from pyht.protos import api_pb2
 from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import PlayHtSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import SynthesisResult
+from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 from vocode.streaming.synthesizer.play_ht_synthesizer import (
     PlayHtSynthesizer as VocodePlayHtSynthesizer,
 )

@@ -5,7 +5,8 @@ from pydub import AudioSegment
 
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import StreamElementsSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 
 
 class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]):

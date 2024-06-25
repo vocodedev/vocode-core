@@ -4,6 +4,7 @@ import base64
 from typing import AsyncGenerator, List, Optional, Tuple
 
 import numpy as np
+from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 import websockets
 from loguru import logger
 from pydantic import BaseModel, conint
@@ -11,7 +12,7 @@ from pydantic import BaseModel, conint
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
 from vocode.streaming.models.message import BaseMessage, BotBackchannel, LLMToken
 from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 from vocode.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
 

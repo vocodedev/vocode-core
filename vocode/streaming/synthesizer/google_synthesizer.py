@@ -9,7 +9,8 @@ from google.cloud import texttospeech as tts  # type: ignore
 
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import GoogleSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 
 
 class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):

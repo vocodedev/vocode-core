@@ -2,12 +2,14 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 
+from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
+
 from gtts import gTTS
 from pydub import AudioSegment
 
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import GTTSSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 
 
 class GTTSSynthesizer(BaseSynthesizer):

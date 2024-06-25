@@ -9,7 +9,8 @@ from loguru import logger
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
 
 ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"

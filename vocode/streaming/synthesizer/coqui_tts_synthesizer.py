@@ -4,11 +4,12 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 from pydub import AudioSegment
+from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 from TTS.api import TTS
 
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import CoquiTTSSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 
 
 class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):

@@ -7,7 +7,8 @@ from aiohttp import ClientTimeout
 from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import PlayHtSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 
 TTS_ENDPOINT = "https://play.ht/api/v2/tts/stream"
 

@@ -16,7 +16,8 @@ from vocode.streaming.models.synthesizer import (
     RIME_DEFAULT_SPEED_ALPHA,
     RimeSynthesizerConfig,
 )
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 
 # TODO: [OSS] Remove call to internal library with Synthesizers refactor
 

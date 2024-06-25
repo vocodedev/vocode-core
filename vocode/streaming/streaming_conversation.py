@@ -48,10 +48,10 @@ from vocode.streaming.output_device.abstract_output_device import AbstractOutput
 from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
-    FillerAudio,
-    SynthesisResult,
 )
+from vocode.streaming.synthesizer.filler_audio import FillerAudio
 from vocode.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
+from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode.streaming.utils import (

@@ -1,4 +1,9 @@
+import io
 from typing import List
+import wave
+
+from vocode.streaming.models.audio import AudioEncoding
+from vocode.streaming.models.synthesizer import SynthesizerConfig
 
 
 def split_text(string_to_split: str, max_text_length: int) -> List[str]:
@@ -48,3 +53,15 @@ def split_text(string_to_split: str, max_text_length: int) -> List[str]:
 
     # Return the result array
     return result
+
+
+def encode_as_wav(chunk: bytes, synthesizer_config: SynthesizerConfig) -> bytes:
+    output_bytes_io = io.BytesIO()
+    in_memory_wav = wave.open(output_bytes_io, "wb")
+    in_memory_wav.setnchannels(1)
+    assert synthesizer_config.audio_encoding == AudioEncoding.LINEAR16
+    in_memory_wav.setsampwidth(2)
+    in_memory_wav.setframerate(synthesizer_config.sampling_rate)
+    in_memory_wav.writeframes(chunk)
+    output_bytes_io.seek(0)
+    return output_bytes_io.read()

@@ -13,13 +13,12 @@ from vocode.streaming.models.audio import AudioEncoding, SamplingRate
 from vocode.streaming.models.message import BaseMessage, SSMLMessage
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 from vocode.streaming.synthesizer.base_synthesizer import (
-    FILLER_AUDIO_PATH,
-    FILLER_PHRASES,
     BaseSynthesizer,
-    FillerAudio,
-    SynthesisResult,
-    encode_as_wav,
 )
+from vocode.streaming.synthesizer.constants import FILLER_AUDIO_PATH, FILLER_PHRASES
+from vocode.streaming.synthesizer.filler_audio import FillerAudio
+from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
+from vocode.streaming.synthesizer.synthesizer_utils import encode_as_wav
 
 NAMESPACES = {
     "mstts": "https://www.w3.org/2001/mstts",
