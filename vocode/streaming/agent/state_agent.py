@@ -105,8 +105,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             # make sure its not in the edge either
             if (
                 self.current_state
-                # and self.current_state["type"] != "condition"
-                # and "condition" not in self.current_state["edge"]
+                and self.current_state["type"] != "condition"
+                and "condition" not in self.current_state["edge"]
             ):
                 last_bot_message = next(
                     (
@@ -301,6 +301,11 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             return await self.handle_state(state["edge"])
         except Exception as e:
             self.logger.error(f"Agent chose no condition: {e}")
+            move_on = await self.maybe_respond_to_user(
+                last_bot_message, last_user_message
+            )
+            if not move_on:
+                return
             return await self.handle_state(state["edge"])
 
     async def compose_action(self, state):
