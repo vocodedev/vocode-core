@@ -14,6 +14,10 @@ class TwilioBadRequestException(ValueError):
     pass
 
 
+class TwilioException(ValueError):
+    pass
+
+
 class TwilioClient(AbstractTelephonyClient):
     def __init__(
         self,
@@ -64,10 +68,11 @@ class TwilioClient(AbstractTelephonyClient):
                     )
                     raise TwilioBadRequestException(
                         "Telephony provider rejected call; this is usually due to a bad/malformed number. "
-                        "If this persists, and you're sure that the number is well-formed, "
-                        "please contact us."
                     )
-                raise RuntimeError(f"Failed to create call: {response.status} {response.reason}")
+                else:
+                    raise TwilioException(
+                        f"Twilio failed to create call: {response.status} {response.reason}"
+                    )
             response = await response.json()
             return response["sid"]
 
