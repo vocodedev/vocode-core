@@ -11,6 +11,7 @@ from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import GoogleSynthesizerConfig
 from vocode.streaming.synthesizer.abstract_synthesizer import AbstractSynthesizer
 from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
+from vocode.streaming.synthesizer.synthesizer_utils import create_synthesis_result_from_wav
 
 
 class GoogleSynthesizer(AbstractSynthesizer[GoogleSynthesizerConfig]):
@@ -79,7 +80,7 @@ class GoogleSynthesizer(AbstractSynthesizer[GoogleSynthesizerConfig]):
         in_memory_wav.writeframes(response.audio_content)
         output_bytes_io.seek(0)
 
-        result = self.create_synthesis_result_from_wav(
+        result = create_synthesis_result_from_wav(
             synthesizer_config=self.synthesizer_config,
             file=output_bytes_io,
             message=message,

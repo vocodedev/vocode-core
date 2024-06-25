@@ -1,4 +1,4 @@
-from vocode.streaming.agent.base_agent import AgentResponse
+from vocode.streaming.agent.agent_response import AgentResponse
 from vocode.streaming.utils.worker import AbstractWorker, InterruptibleAgentResponseEvent
 
 

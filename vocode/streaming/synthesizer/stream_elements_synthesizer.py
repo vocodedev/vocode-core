@@ -7,6 +7,7 @@ from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import StreamElementsSynthesizerConfig
 from vocode.streaming.synthesizer.abstract_synthesizer import AbstractSynthesizer
 from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
+from vocode.streaming.synthesizer.synthesizer_utils import create_synthesis_result_from_wav
 
 
 class StreamElementsSynthesizer(AbstractSynthesizer[StreamElementsSynthesizerConfig]):
@@ -44,7 +45,7 @@ class StreamElementsSynthesizer(AbstractSynthesizer[StreamElementsSynthesizerCon
             output_bytes_io = io.BytesIO()
             audio_segment.export(output_bytes_io, format="wav")  # type: ignore
 
-            result = self.create_synthesis_result_from_wav(
+            result = create_synthesis_result_from_wav(
                 synthesizer_config=self.synthesizer_config,
                 file=output_bytes_io,
                 message=message,

@@ -18,7 +18,7 @@ from vocode.streaming.synthesizer.abstract_synthesizer import (
 from vocode.streaming.synthesizer.constants import FILLER_AUDIO_PATH, FILLER_PHRASES
 from vocode.streaming.synthesizer.filler_audio import FillerAudio
 from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
-from vocode.streaming.synthesizer.synthesizer_utils import encode_as_wav
+from vocode.streaming.synthesizer.synthesizer_utils import empty_generator, encode_as_wav
 
 NAMESPACES = {
     "mstts": "https://www.w3.org/2001/mstts",
@@ -246,7 +246,7 @@ class AzureSynthesizer(AbstractSynthesizer[AzureSynthesizerConfig]):
         # generator for these cases.
         if not re.search(r"\w", message.text):
             return SynthesisResult(
-                self.empty_generator(),
+                empty_generator(),
                 lambda _: message.text,
             )
 

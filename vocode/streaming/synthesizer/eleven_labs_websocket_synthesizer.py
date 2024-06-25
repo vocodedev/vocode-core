@@ -5,6 +5,10 @@ from typing import AsyncGenerator, List, Optional, Tuple
 
 import numpy as np
 from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
+from vocode.streaming.synthesizer.synthesizer_utils import (
+    chunk_result_generator_from_queue,
+    resample_chunk,
+)
 import websockets
 from loguru import logger
 from pydantic import BaseModel, conint
@@ -80,7 +84,7 @@ class ElevenLabsWebsocketResponse(BaseModel):
 
 
 class ElevenLabsWSSynthesizer(
-    AbstractSynthesizer[ElevenLabsSynthesizerConfig], AbstractInputStreamingSynthesizer
+    AbstractInputStreamingSynthesizer[ElevenLabsSynthesizerConfig],
 ):
     def __init__(
         self,
@@ -230,7 +234,7 @@ class ElevenLabsWSSynthesizer(
                         )
 
                         if self.upsample:
-                            decoded = self._resample_chunk(
+                            decoded = resample_chunk(
                                 decoded,
                                 self.sample_rate,
                                 self.upsample,
@@ -269,7 +273,7 @@ class ElevenLabsWSSynthesizer(
 
     def get_current_utterance_synthesis_result(self):
         return SynthesisResult(
-            self.chunk_result_generator_from_queue(self.voice_packet_queue),
+            chunk_result_generator_from_queue(self.voice_packet_queue),
             lambda seconds: self.get_current_message_so_far(seconds),
         )
 

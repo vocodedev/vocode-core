@@ -16,7 +16,11 @@ from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 from vocode.streaming.synthesizer.play_ht_synthesizer import (
     PlayHtSynthesizer as VocodePlayHtSynthesizer,
 )
-from vocode.streaming.synthesizer.synthesizer_utils import split_text
+from vocode.streaming.synthesizer.synthesizer_utils import (
+    chunk_result_generator_from_queue,
+    get_message_cutoff_from_voice_speed,
+    split_text,
+)
 from vocode.streaming.utils import generate_from_async_iter_with_lookahead, generate_with_is_last
 from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
 
@@ -99,8 +103,8 @@ class PlayHtSynthesizerV2(VocodePlayHtSynthesizer):
         )
 
         return SynthesisResult(
-            self.chunk_result_generator_from_queue(chunk_queue),
-            lambda seconds: self.get_message_cutoff_from_voice_speed(
+            chunk_result_generator_from_queue(chunk_queue),
+            lambda seconds: get_message_cutoff_from_voice_speed(
                 message,
                 seconds,
                 self.words_per_minute,

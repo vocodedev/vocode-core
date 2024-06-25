@@ -18,6 +18,9 @@ from vocode.streaming.models.synthesizer import (
 )
 from vocode.streaming.synthesizer.abstract_synthesizer import AbstractSynthesizer
 from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
+from vocode.streaming.synthesizer.synthesizer_utils import (
+    get_message_cutoff_from_total_response_length,
+)
 
 # TODO: [OSS] Remove call to internal library with Synthesizers refactor
 
@@ -85,7 +88,7 @@ class RimeSynthesizer(AbstractSynthesizer[RimeSynthesizerConfig]):
 
             return SynthesisResult(
                 self._chunk_generator(output_bytes, chunk_size),
-                lambda seconds: self.get_message_cutoff_from_total_response_length(
+                lambda seconds: get_message_cutoff_from_total_response_length(
                     self.synthesizer_config, message, seconds, len(output_bytes)
                 ),
             )

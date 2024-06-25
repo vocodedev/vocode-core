@@ -25,12 +25,8 @@ from loguru import logger
 from sentry_sdk.tracing import Span
 
 from vocode.streaming.action.worker import ActionsWorker
-from vocode.streaming.agent.base_agent import (
-    AgentInput,
-    AgentResponse,
-    BaseAgent,
-    TranscriptionAgentInput,
-)
+from vocode.streaming.agent.agent_response import AgentResponse
+from vocode.streaming.agent.base_agent import AgentResponse, BaseAgent, TranscriptionAgentInput
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.constants import (
     ALLOWED_IDLE_TIME,
