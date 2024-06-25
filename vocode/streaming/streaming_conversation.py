@@ -421,7 +421,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     if self.last_agent_response_tracker is not None:
                         await self.last_agent_response_tracker.wait()
                     item.agent_response_tracker.set()
-                    await self.conversation.mark_terminated(bot_disconnect=True)
+                    self.conversation.mark_terminated(bot_disconnect=True)
                     return
 
                 agent_response_message = typing.cast(AgentResponseMessage, agent_response)
@@ -747,7 +747,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     async def action_on_idle(self):
         logger.debug("Conversation idle for too long, terminating")
-        await self.mark_terminated(bot_disconnect=True)
+        self.mark_terminated(bot_disconnect=True)
         return
 
     async def check_for_idle(self):
@@ -961,11 +961,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
             synthesis_result.synthesis_total_span.finish()
         return message_sent, cut_off
 
-    async def mark_terminated(self, bot_disconnect: bool = False):
+    def mark_terminated(self, bot_disconnect: bool = False):
         self.active = False
 
     async def terminate(self):
-        await self.mark_terminated()
+        self.mark_terminated()
         self.broadcast_interrupt()
         self.events_manager.publish_event(
             TranscriptCompleteEvent(

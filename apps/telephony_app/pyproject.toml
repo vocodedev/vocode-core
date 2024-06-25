@@ -6,12 +6,11 @@ authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.12"
+python = ">=3.10,<3.12"
 pyngrok = "^7.1.6"
 python-dotenv = "^1.0.1"
-vocode = { path = "../..", extras = [
-    "all",
-], develop = true, python = ">=3.11,<3.12" }
+azure-cognitiveservices-speech = "^1.38.0"
+vocode = "0.1.113"
 
 
 [build-system]

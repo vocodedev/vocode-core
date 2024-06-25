@@ -22,11 +22,9 @@ synthesizer_config = AzureSynthesizerConfig(
 )
 ```
 
-See the [full list of supported voices](https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support?tabs=tts).
-
 ## Transcription
 
-The transcriber used in vocode is also configurable. By default, `DeepgramTranscriber` is used which supports [over 25 languages](https://developers.deepgram.com/docs/languages-overview).
+The transcriber used in vocode is also configurable. By default, `DeepgramTranscriber` is used which supports [over 35 languages](https://developers.deepgram.com/docs/languages-overview).
 
 To configure a different language model, modify the language code passed to `TranscriberConfig` when initializing the config object (`en-US` is the default):
 
@@ -35,10 +33,11 @@ from vocode.streaming.models.transcriber import DeepgramTranscriberConfig
 
 transcriber_config = DeepgramTranscriberConfig(
     language="es" # Spanish
+    model="nova-2" # Most languages are supported on the Nova 2 model
 )
 ```
 
-See the [Deepgram docs](https://developers.deepgram.com/docs/languages-overview) for the list of supported lamguages.
+***Note: the default model for Deepgram is Nova, so you must pass `model="nova-2"` to use that model.***
 
 Other transcription services like Google Cloud Speech or Assembly AI could also be used by configuring the appropriate `TranscriberConfig`.
 

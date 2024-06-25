@@ -2,9 +2,10 @@ import asyncio
 from typing import Optional
 
 from fastapi import WebSocket
+from fastapi.websockets import WebSocketState
 
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.output_device.speaker_output import SpeakerOutput
+from vocode.streaming.output_device.blocking_speaker_output import BlockingSpeakerOutput
 from vocode.streaming.telephony.constants import (
     PCM_SILENCE_BYTE,
     VONAGE_AUDIO_ENCODING,
@@ -27,13 +28,15 @@ class VonageOutputDevice(BaseOutputDevice):
         self.process_task = asyncio_create_task_with_done_error_log(self.process())
         self.output_to_speaker = output_to_speaker
         if output_to_speaker:
-            self.output_speaker = SpeakerOutput.from_default_device(
+            self.output_speaker = BlockingSpeakerOutput.from_default_device(
                 sampling_rate=VONAGE_SAMPLING_RATE, blocksize=VONAGE_CHUNK_SIZE // 2
             )
 
     async def process(self):
         while self.active:
             chunk = await self.queue.get()
+            if self.ws.application_state == WebSocketState.DISCONNECTED:
+                break
             if self.output_to_speaker:
                 self.output_speaker.consume_nonblocking(chunk)
             for i in range(0, len(chunk), VONAGE_CHUNK_SIZE):

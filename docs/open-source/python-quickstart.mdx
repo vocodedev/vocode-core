@@ -8,13 +8,10 @@ description: "Get up and running using Python"
 Install the [vocode package](https://pypi.org/project/vocode/):
 
 ```bash
-pip install 'vocode[io]'
+pip install vocode
 ```
 
 # Getting started
-
-The `io` extra installs the packages necessary to run our voice conversations locally, but is not needed for other surfaces, e.g. [phone calls](/open-source/telephony).
-You may need to install [portaudio](https://formulae.brew.sh/formula/portaudio) and [ffmpeg](https://formulae.brew.sh/formula/ffmpeg) on your system.
 
 ## Working with system audio
 
@@ -33,74 +30,95 @@ If the default I/O devices are not being set properly, set `use_default_devices`
 Vocode provides a unified interface across various speech transcription, speech synthesis, and AI/NLU providers.
 To use these providers with Vocode, you'll need to grab credentials from these providers and set them in the Vocode environment.
 
-```python
-# these can also be set as environment variables
-vocode.setenv(
-    OPENAI_API_KEY="<your OpenAI key>",
-    DEEPGRAM_API_KEY="<your Deepgram key>",
-    AZURE_SPEECH_KEY="<your Azure key>",
-    AZURE_SPEECH_REGION="<your Azure region>",
-)
-```
+You can either set the following parameters as environment variables (e.g. by specifying them in a `.env` file and using a package like `python-dotenv` to load), or set them manually in the pydantic settings (see below).
 
 For AZURE_SPEECH_REGION you should use the URL format. For example, if you're using the "East US" region, the value should be "eastus". See [Azure Region list](https://learn.microsoft.com/en-us/azure/cognitive-services/speech-service/rest-text-to-speech?tabs=streaming#prebuilt-neural-voices).
 
 ## `StreamingConversation` example
 
+This can also be found in the [`quickstarts` directory](https://github.com/vocodedev/vocode-core/blob/main/quickstarts/streaming_conversation.py) of the repo.
+
 ```python
 import asyncio
 import signal
 
-import vocode
-from vocode.streaming.streaming_conversation import StreamingConversation
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from vocode.helpers import create_streaming_microphone_input_and_speaker_output
-from vocode.streaming.models.transcriber import (
-    DeepgramTranscriberConfig,
-    PunctuationEndpointingConfig,
-)
+from vocode.logging import configure_pretty_logging
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.models.transcriber import (
+    DeepgramTranscriberConfig,
+    PunctuationEndpointingConfig,
+)
+from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 
-# these can also be set as environment variables
-vocode.setenv(
-    OPENAI_API_KEY="<your OpenAI key>",
-    DEEPGRAM_API_KEY="<your Deepgram key>",
-    AZURE_SPEECH_KEY="<your Azure key>",
-    AZURE_SPEECH_REGION="<your Azure region>",
-)
+configure_pretty_logging()
+
+
+class Settings(BaseSettings):
+    """
+    Settings for the streaming conversation quickstart.
+    These parameters can be configured with environment variables.
+    """
+
+    openai_api_key: str = "ENTER_YOUR_OPENAI_API_KEY_HERE"
+    azure_speech_key: str = "ENTER_YOUR_AZURE_KEY_HERE"
+    deepgram_api_key: str = "ENTER_YOUR_DEEPGRAM_API_KEY_HERE"
+
+    azure_speech_region: str = "eastus"
+
+    # This means a .env file can be used to overload these settings
+    # ex: "OPENAI_API_KEY=my_key" will set openai_api_key over the default above
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
+
+
+settings = Settings()
 
 
 async def main():
-    microphone_input, speaker_output = create_streaming_microphone_input_and_speaker_output(
-        use_default_devices=True,
+    (
+        microphone_input,
+        speaker_output,
+    ) = create_streaming_microphone_input_and_speaker_output(
+        use_default_devices=False,
+        use_blocking_speaker_output=True,  # this moves the playback to a separate thread, set to False to use the main thread
     )
 
     conversation = StreamingConversation(
         output_device=speaker_output,
         transcriber=DeepgramTranscriber(
             DeepgramTranscriberConfig.from_input_device(
-                microphone_input, endpointing_config=PunctuationEndpointingConfig()
-            )
+                microphone_input,
+                endpointing_config=PunctuationEndpointingConfig(),
+                api_key=settings.deepgram_api_key,
+            ),
         ),
         agent=ChatGPTAgent(
             ChatGPTAgentConfig(
-                initial_message=BaseMessage(text="Hello!"),
-                prompt_preamble="Have a pleasant conversation about life",
-            ),
+                openai_api_key=settings.openai_api_key,
+                initial_message=BaseMessage(text="What up"),
+                prompt_preamble="""The AI is having a pleasant conversation about life""",
+            )
         ),
         synthesizer=AzureSynthesizer(
-            AzureSynthesizerConfig.from_output_device(speaker_output)
+            AzureSynthesizerConfig.from_output_device(speaker_output),
+            azure_speech_key=settings.azure_speech_key,
+            azure_speech_region=settings.azure_speech_region,
         ),
     )
     await conversation.start()
     print("Conversation started, press Ctrl+C to end")
-    signal.signal(
-        signal.SIGINT, lambda _0, _1: asyncio.create_task(conversation.terminate())
-    )
+    signal.signal(signal.SIGINT, lambda _0, _1: asyncio.create_task(conversation.terminate()))
     while conversation.is_active():
         chunk = await microphone_input.get_audio()
         conversation.receive_audio(chunk)

@@ -1,0 +1,209 @@
+---
+title: 'Adding Actions to Agents'
+description: 'Empower agents to take actions during conversations.'
+---
+
+## Note: Support for actions is currently limited to `ChatGPTAgent`.
+
+## What are actions?
+
+Actions refer to specific tools an agent can execute during the conversation. These actions can encompass various activities like writing an email,
+scheduling an appointment, and so forth. They are implemented as classes derived from the `BaseAction` class.
+
+The `BaseAction` class has the following key structure:
+
+```python
+class BaseAction(Generic[ActionConfigType, ParametersType, ResponseType]):
+    def __init__(
+        self,
+        action_config: ActionConfigType,
+        should_respond: Literal["always", "sometimes", "never"] = "never",
+        quiet: bool = False,
+        is_interruptible: bool = True,
+        **kwargs,
+    ):
+        self.action_config = action_config
+        self.should_respond = should_respond
+        self.quiet = quiet
+        self.is_interruptible = is_interruptible
+    
+    async def run(self, action_input: ActionInput[ParametersType]) -> ActionOutput[ResponseType]:
+        raise NotImplementedError
+```
+
+Every action class derived from BaseAction must implement the run method, which is called to execute the action.
+Importantly, each action class should include a docstring for this method that explains the expected parameters, a config that can be used to create the action, and a response class.
+- This docstring is critical as it provides the information that the AI will consume in its prompt when instructing the execution of the action.
+- The config contains all the parameters needed to customize your action.
+- The response object is returned to the agent upon action completion and encodes its output, as well as if it was a success or failure.
+
+## How Agents use Actions
+
+The agent is responsible for managing and executing actions within a conversation. The agent consumes a configuration object at instantiation,
+which specifies the actions that the agent can perform.
+
+The agent configuration lists the actions available to the agent:
+
+```python
+class AgentConfig(AgentConfig, type=AgentType.Base.value):
+    actions: Optional[List[ActionConfig]]
+    # ...
+```
+
+### `ActionsWorker`: how actions are executed and consumed
+
+The `ActionsWorker` class plays a crucial role in the async processing of actions within the system. It's a specialized form of the `InterruptibleWorker` class,
+designed to handle the execution of actions and passing results back to the agent.
+
+The `ActionsWorker` is initialized with an input queue and an output queue. It uses an `ActionFactory` instance to create and execute actions based on the inputs it receives.
+
+The flow of actions is as follows:
+
+1. Agent sends action requests to the `ActionsWorker` through the worker's input queue.
+2. `ActionsWorker` reads the action request from the input queue. It then creates an instance of the appropriate action using the `ActionFactory`, and executes it using the provided parameters.
+3. The executed action returns an `ActionOutput` object which encapsulates the result of the action.
+4. `ActionsWorker` creates an `ActionResultAgentInput` from the `ActionOutput`, and puts it in its output queue.
+5. The agent then consumes the `ActionResultAgentInput` from the queue in its process method. This
+   result is added to the transcript of the conversation, and can influence the behavior of the agent in subsequent interactions.
+
+## Implementing your own action: Nylas email example
+
+In this section, we provide an example of an action, `NylasSendEmail`, which extends the `BaseAction` class. It implements the run method to send an email using the Nylas API.
+We will also show how to add this action to an agent and use it in a conversation.
+
+### Creating the Action
+```python
+import os
+from typing import Optional, Type
+
+from pydantic import Field
+from pydantic.v1 import BaseModel
+
+from vocode.streaming.action.base_action import BaseAction
+from vocode.streaming.models.actions import ActionConfig as VocodeActionConfig
+from vocode.streaming.models.actions import ActionInput, ActionOutput
+
+    
+_NYLAS_ACTION_DESCRIPTION = """Sends an email using Nylas API.
+The input to this action is the recipient emails, email body, optional subject.
+The subject should only be included if it is a new email thread.
+If there is no message id, the email will be sent as a new email. Otherwise, it will be sent as a reply to the given message. Make sure to include the previous message_id
+if you are replying to an email.
+"""
+
+
+class NylasSendEmailParameters(BaseModel):
+    email: str = Field(..., description="The email address to send the email to.")
+    subject: Optional[str] = Field(None, description="The subject of the email.")
+    body: str = Field(..., description="The body of the email.")
+
+
+class NylasSendEmailResponse(BaseModel):
+    success: bool
+
+
+class NylasSendEmailVocodeActionConfig(
+    VocodeActionConfig, type="action_nylas_send_email"  # type: ignore
+):
+    pass
+
+class NylasSendEmail(
+        BaseAction[
+            NylasSendEmailVocodeActionConfig,
+            NylasSendEmailParameters,
+            NylasSendEmailResponse,
+        ]
+    ):
+    description: str = _NYLAS_ACTION_DESCRIPTION
+    parameters_type: Type[NylasSendEmailParameters] = NylasSendEmailParameters
+    response_type: Type[NylasSendEmailResponse] = NylasSendEmailResponse
+
+    def __init__(
+        self,
+        action_config: NylasSendEmailVocodeActionConfig,
+    ):
+        super().__init__(
+            action_config,
+            quiet=True,
+            is_interruptible=True,
+        )
+
+    async def _end_of_run_hook(self) -> None:
+        """This method is called at the end of the run method. It is optional but intended to be
+        overridden if needed."""
+        print("Successfully sent email!")
+    
+    async def run(
+        self, action_input: ActionInput[NylasSendEmailParameters]
+    ) -> ActionOutput[NylasSendEmailResponse]:
+        from nylas import APIClient
+
+        # Initialize the Nylas client
+        nylas = APIClient(
+            client_id=os.getenv("NYLAS_CLIENT_ID"),
+            client_secret=os.getenv("NYLAS_CLIENT_SECRET"),
+            access_token=os.getenv("NYLAS_ACCESS_TOKEN"),
+        )
+
+        # Create the email draft
+        draft = nylas.drafts.create()
+        draft.body = action_input.params.body
+
+        draft.subject = (
+            action_input.params.subject.strip() if action_input.params.subject else "Email from Vocode"
+        )
+        draft.to = [{"email": action_input.params.email.strip()}]
+
+        # Send the email
+        draft.send()
+
+        await self._end_of_run_hook()
+        return ActionOutput(
+            action_type=action_input.action_config.type,
+            response=NylasSendEmailResponse(success=True),
+        )
+
+```
+We define a structured set of parameters that the LLM will fill, a response structure that the agent can ingest and use as context for the rest of the conversation, and an action
+config that crucially contains the `action_type` (but doesn't have any other specific parameters). We also add an `_end_of_run_hook()`, which we customized to log that the action successfully completed.
+
+
+### Making a custom `ActionFactory`
+To use our new action with an agent in a conversation, we will need to create an `ActionFactory` that can produce instances of the action.
+
+
+We will store the code above in `nylas_send_email.py` and make a factory that can create this action for an agent:
+
+```python
+from typing import Dict, Sequence, Type
+
+from vocode.streaming.action.abstract_factory import AbstractActionFactory
+from vocode.streaming.action.base_action import BaseAction
+from vocode.streaming.action.nylas_send_email import NylasSendEmail
+from vocode.streaming.models.actions import ActionConfig
+
+class MyCustomActionFactory(AbstractActionFactory):
+    def create_action(self, action_config: ActionConfig):
+        if action_config.type == "action_nylas_send_email":
+            return NylasSendEmail(action_config)
+        else:
+            raise Exception("Action type not supported by Agent config.")
+```
+
+### Using your action and action factory in an agent
+
+Now you can use your action in any conversation by adding the action config to an agent config. For example in a ChatGPTAgentConfig,
+
+```python
+action_config = ChatGPTAgentConfig(
+    ...
+    actions = [
+        NylasSendEmailVocodeActionConfig(
+            type = "action_nylas_send_email"
+        )
+    ]
+)
+```
+
+When you pass in your new action factory [created above](#making-a-custom-actionfactory), any agent factory can use this config to generate an agent for conversations.
+See [Agent Factory](/open-source/agent-factory) for more information on how to use your action factory in an agent factory, as well as how to plug it into a telephony server.

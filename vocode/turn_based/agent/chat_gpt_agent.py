@@ -17,10 +17,10 @@ class ChatGPTAgent(BaseAgent):
         max_tokens: int = 100,
     ):
         super().__init__(initial_message=initial_message)
-        openai.api_key = getenv("OPENAI_API_KEY", api_key)
-        if not openai.api_key:
+        api_key = getenv("OPENAI_API_KEY", api_key)
+        if not api_key:
             raise ValueError("OpenAI API key not provided")
-        self.client = openai.OpenAI()
+        self.client = openai.OpenAI(api_key=api_key)
         self.prompt = system_prompt
         self.model_name = model_name
         self.messages: List[Any] = [

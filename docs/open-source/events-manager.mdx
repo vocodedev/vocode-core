@@ -5,45 +5,7 @@ description: "How events are emitted and consumed."
 
 ## What is the Events Manager
 
-The Events Manager is a class designed to facilitate asynchronous handling of events in the application. It allows for non-blocking actions on events, such as processing transcripts, managing phone calls, and other tasks. The main components of the Events Manager are the `EventsManager` class and several `Event` subclasses representing various event types.
-
-## EventsManager Class
-
-The `EventsManager` class is responsible for managing the event queue and handling events asynchronously. The class provides methods for publishing events, starting the event loop, handling events, and ending the event loop.
-
-### Initialization
-
-```python
-def __init__(self, subscriptions: List[EventType] = []):
-    self.queue = asyncio.Queue()
-    self.subscriptions = set(subscriptions)
-    self.active = False
-```
-
-The `EventsManager` constructor accepts an optional list of `EventType` subscriptions. By default, it initializes an empty set of subscriptions, an asynchronous queue, and sets the `active` attribute to `False`.
-
-### Publishing Events
-
-```python
-def publish_event(self, event: Event):
-    if event.type in self.subscriptions:
-        self.queue.put_nowait(event)
-```
-
-The `publish_event` method takes an `Event` object as input and adds it to the queue if its type is in the set of subscribed event types.
-
-### Starting the Event Loop
-
-```python
-async def start(self):
-    self.active = True
-    while self.active:
-        try:
-            event: Event = await self.queue.get()
-        except asyncio.QueueEmpty:
-            await asyncio.sleep(1)
-        self.handle_event(event)
-```
+The Events Manager consumes realtime events during conversations - it provides a framework to consume and take action on these events asychronously.
 
 ## Current Event Types
 
@@ -51,41 +13,52 @@ The current event types include:
 
 1. `TRANSCRIPT`: Indicates a partial transcript for the conversation has been received.
 2. `TRANSCRIPT_COMPLETE`: Indicates the transcript is complete (ie conversation has ended).
-3. `PHONE_CALL_CONNECTED`: Indicates a phone call has been connected.
-4. `PHONE_CALL_ENDED`: Indicates a phone call has ended.
-5. `RECORDING`: (Vonage Only) Indicates a secure URL containing a recording of the call is available. Requires `recording=true` in `VonageConfig`.
+3. `ACTION`: Indicates that a Vocode action has begun or completed.
+4. `PHONE_CALL_CONNECTED`: Indicates a phone call has been connected (only gets sent during `PhoneConversation`s)
+5. `PHONE_CALL_ENDED`: Indicates a phone call has ended.
 
-## Example Usage
+## Usage
 
-The following example demonstrates how the `EventsManager` class can be used to consume the `TRANSCRIPT_COMPLETE` event and save the transcript to a file using the `add_transcript` method:
+Using the events manager to take particular action when events fire requires that you subclass `vocode.streaming.utils.EventsManager` and override the `handle_event` method.
+
+You can also configure which events your `EventsManager` is subscribed to by using the `subscriptions` property (see example).
+
+### Example
 
 ```python
-import logging
-from fastapi import FastAPI
-from vocode.streaming.models.events import Event, EventType, TranscriptCompleteEvent
-from vocode.streaming.utils import events_manager
-from call_transcript_utils import add_transcript
+from vocode.streaming.models.events import Event, EventType
 
-app = FastAPI(docs_url=None)
+from vocode.streaming.models.events import Event, EventType
+from vocode.streaming.models.transcript import TranscriptCompleteEvent
+from vocode.streaming.utils.events_manager import EventsManager
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
-class CustomEventsManager(events_manager.EventsManager):
+class CustomEventsManager(EventsManager):
     def __init__(self):
-        super().__init__(subscriptions=[EventType.TRANSCRIPT_COMPLETE])
+        super().__init__([EventType.TRANSCRIPT_COMPLETE])
 
-    def handle_event(self, event: Event):
-        if event.type == EventType.TRANSCRIPT_COMPLETE:
-            transcript_complete_event = typing.cast(TranscriptCompleteEvent, event)
-            add_transcript(
-                transcript_complete_event.conversation_id,
-                transcript_complete_event.transcript,
-            )
-
-events_manager_instance = CustomEventsManager()
-await events_manager_instance.start()
+    async def handle_event(self, event: Event):
+        if isinstance(event, TranscriptCompleteEvent):
+            print("The call has finished, the transcript was", event.transcript.to_string())
 ```
 
-In this example, a custom `EventsManager` subclass is created with a subscription to the `TRANSCRIPT_COMPLETE` event. The `handle_event` method is overridden to save the transcript to a file using the `add_transcript` method when the `TRANSCRIPT_COMPLETE` event is received.
+In this example, we create a custom `EventsManager` subclass is created with a subscription to the `TRANSCRIPT_COMPLETE` event and then print the transcript when we receive the event.
+
+To use `CustomEventsManager`, you can pass it into any Conversation, e.g.
+
+```
+...
+conversation = StreamingConversation(
+    ...,
+    events_manager=CustomEventsManager()
+)
+```
+
+You can also pass it into a `TelephonyServer`, like:
+
+```
+server = TelephonyServer(
+    ...,
+    events_manager=CustomEventsManager()
+)
+```
