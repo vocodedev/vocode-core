@@ -278,16 +278,6 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             elif isinstance(generated_response.message, EndOfTurn):
                 end_of_turn_agent_response_tracker = agent_response_tracker
 
-            if self.agent_config.end_conversation_on_goodbye and isinstance(
-                generated_response.message,
-                BaseMessage,
-            ):
-                if is_goodbye_simple(
-                    message=generated_response.message.text,
-                    phrases=self.agent_config.goodbye_phrases,
-                ):
-                    logger.debug("Simple goodbye detected, ending conversation")
-                    return True
             is_first_response_of_turn = False
 
         # if the client (the implemented agent) doesn't create an EndOfTurn, then we need to create one
