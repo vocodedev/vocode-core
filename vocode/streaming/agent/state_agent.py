@@ -391,19 +391,30 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             current_workflow = self.current_state["id"].split("::")[0]
         else:
             current_workflow = "start of conversation"
+        # if its a conditional, get the conditions
+        if self.current_state and self.current_state["type"] == "condition":
+            conditions = self.current_state["condition"]["conditionToStateLabel"].keys()
+            conditions = "\n".join([f"'{c}'" for c in conditions])
+        additional_info = (
+            f"Decide what to do next. If the user's response aligns with any of the following, 'CONTINUE' the current process:\n{conditions}"
+            if self.current_state and self.current_state["type"] == "condition"
+            else ""
+        )
         prompt = (
             f"You last stated: '{question}', to which the user replied: '{user_response}'.\n\n"
-            f"You're already in the process of helping the user with: {current_workflow}\n"
-            "To best assist the user, decide whether you should:\n"
+            f"You are already engaged in the following process: {current_workflow}\n"
+            f"{additional_info}\n\n"
+            "Now, to best assist the user, decide whether you should:\n"
             "- 'CONTINUE' the process to the next step\n"
             "   Response: Proceed with the next step of the current workflow without additional commentary\n"
-            "- 'PAUSE' the current process if the user didn't answer the question or asked a question of their own\n"
+            "- 'PAUSE' the current process if the user asked a question of their own\n"
             "   Response: If the user didn't answer, politely restate the question and ask for a clear answer.\n"
             "             If the user asked a question, answer it concisely and ask if they're ready to continue.\n"
-            "             Do not mention performing any actions when pausing.\n"
+            "             Pause without suggesting any actions or offering alternatives.\n"
             "- 'SWITCH' to a different process if current process is not relevant\n"
             "   Response: Acknowledge the user's request and ask for clarification on what they'd like to do instead"
         )
+        self.logger.info(f"Prompt: {prompt}")
         # we do not care what it has to say when switching or continuing
         output = await self.call_ai(prompt, continue_tool, stop=["CONTINUE", "SWITCH"])
         self.logger.info(f"Output: {output}")
