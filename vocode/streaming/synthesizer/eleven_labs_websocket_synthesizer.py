@@ -348,6 +348,7 @@ class ElevenLabsWSSynthesizer(
         self.end_of_turn = True
         await self.text_chunk_queue.put(None)
         self.current_turn_utterances_by_chunk = []
+        await super().handle_end_of_turn()
 
     async def cancel_websocket_tasks(self):
         self._cleanup_websocket_tasks()

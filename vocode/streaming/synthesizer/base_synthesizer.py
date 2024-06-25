@@ -1,5 +1,6 @@
 import asyncio
 import audioop
+from dataclasses import dataclass
 import math
 from typing import (
     TYPE_CHECKING,
@@ -58,6 +59,13 @@ if TYPE_CHECKING:
 SynthesizerConfigType = TypeVar("SynthesizerConfigType", bound=SynthesizerConfig)
 
 
+@dataclass
+class _SynthesizerSpans:
+    synthesis_span: Optional[Span]
+    ttft_span: Optional[Span]
+    create_speech_span: Optional[Span]
+
+
 class BaseSynthesizer(
     Generic[SynthesizerConfigType],
     InterruptibleWorker[InterruptibleAgentResponseEvent[AgentResponse]],
@@ -86,8 +94,65 @@ class BaseSynthesizer(
         self.total_chars: int = 0
         self.cost_per_char: Optional[float] = None
 
-        self.last_agent_response_tracker: Optional[asyncio.Event] = None
         self.is_first_text_chunk = True
+
+        self.current_synthesis_spans: _SynthesizerSpans = _SynthesizerSpans()
+
+    def _track_first_agent_response(self):
+        synthesizer_base_name: Optional[str] = synthesizer_base_name_if_should_report_to_sentry(
+            self
+        )
+        if synthesizer_base_name:
+            complete_span_by_op(CustomSentrySpans.LANGUAGE_MODEL_TIME_TO_FIRST_TOKEN)
+
+            sentry_create_span(
+                sentry_callable=sentry_sdk.start_span,
+                op=CustomSentrySpans.SYNTHESIS_TIME_TO_FIRST_TOKEN,
+            )
+
+            self.current_synthesis_spans.synthesis_span = sentry_create_span(
+                sentry_callable=sentry_sdk.start_span,
+                op=f"{synthesizer_base_name}{CustomSentrySpans.SYNTHESIZER_SYNTHESIS_TOTAL}",
+            )
+            if self.current_synthesis_spans.synthesis_span:
+                self.current_synthesis_spans.ttft_span = sentry_create_span(
+                    sentry_callable=self.current_synthesis_spans.synthesis_span.start_child,
+                    op=f"{synthesizer_base_name}{CustomSentrySpans.SYNTHESIZER_TIME_TO_FIRST_TOKEN}",
+                )
+            if self.current_synthesis_spans.ttft_span:
+                self.current_synthesis_spans.create_speech_span = sentry_create_span(
+                    sentry_callable=self.current_synthesis_spans.ttft_span.start_child,
+                    op=f"{synthesizer_base_name}{CustomSentrySpans.SYNTHESIZER_CREATE_SPEECH}",
+                )
+
+    def _attach_current_synthesizer_spans_to_synthesis_result(
+        self, synthesis_result: SynthesisResult
+    ):
+        if not synthesis_result.cached and self.current_synthesis_spans.synthesis_span:
+            synthesis_result.synthesis_total_span = self.current_synthesis_spans.synthesis_span
+            synthesis_result.ttft_span = self.current_synthesis_spans.ttft_span
+
+    async def handle_end_of_turn(self, item: InterruptibleAgentResponseEvent[AgentResponse]):
+        logger.debug("Sending end of turn")
+        self.consumer.consume_nonblocking(
+            self.interruptible_event_factory.create_interruptible_agent_response_event(
+                (item.payload.message, None),
+                is_interruptible=item.is_interruptible,
+                agent_response_tracker=item.agent_response_tracker,
+            ),
+        )
+        self.is_first_text_chunk = True
+
+    async def _synthesize_agent_response(
+        self, agent_response: AgentResponse
+    ) -> Optional[SynthesisResult]:
+        logger.debug("Synthesizing speech for message")
+        return await self.create_speech_with_cache(
+            agent_response.message,
+            self.chunk_size,
+            is_first_text_chunk=self.is_first_text_chunk,
+            is_sole_text_chunk=agent_response.is_sole_text_chunk,
+        )
 
     async def process(
         self, item: InterruptibleAgentResponseEvent[AgentResponse]
@@ -104,80 +169,20 @@ class BaseSynthesizer(
                 if filler_audio_worker.interrupt_current_filler_audio():
                     await filler_audio_worker.wait_for_filler_audio_to_finish()
 
+            if agent_response.is_first:
+                self._track_first_agent_response()
+
             if isinstance(agent_response.message, EndOfTurn):
-                logger.debug("Sending end of turn")
-                if isinstance(self, InputStreamingSynthesizer):
-                    await self.handle_end_of_turn()
-                self.consumer.consume_nonblocking(
-                    self.interruptible_event_factory.create_interruptible_agent_response_event(
-                        (agent_response.message, None),
-                        is_interruptible=item.is_interruptible,
-                        agent_response_tracker=item.agent_response_tracker,
-                    ),
-                )
-                self.is_first_text_chunk = True
+                await self.handle_end_of_turn(item)
                 return
 
-            synthesizer_base_name: Optional[str] = synthesizer_base_name_if_should_report_to_sentry(
-                self
-            )
-            create_speech_span: Optional[Span] = None
-            ttft_span: Optional[Span] = None
-            synthesis_span: Optional[Span] = None
-            if synthesizer_base_name and agent_response.is_first:
-                complete_span_by_op(CustomSentrySpans.LANGUAGE_MODEL_TIME_TO_FIRST_TOKEN)
-
-                sentry_create_span(
-                    sentry_callable=sentry_sdk.start_span,
-                    op=CustomSentrySpans.SYNTHESIS_TIME_TO_FIRST_TOKEN,
-                )
-
-                synthesis_span = sentry_create_span(
-                    sentry_callable=sentry_sdk.start_span,
-                    op=f"{synthesizer_base_name}{CustomSentrySpans.SYNTHESIZER_SYNTHESIS_TOTAL}",
-                )
-                if synthesis_span:
-                    ttft_span = sentry_create_span(
-                        sentry_callable=synthesis_span.start_child,
-                        op=f"{synthesizer_base_name}{CustomSentrySpans.SYNTHESIZER_TIME_TO_FIRST_TOKEN}",
-                    )
-                if ttft_span:
-                    create_speech_span = sentry_create_span(
-                        sentry_callable=ttft_span.start_child,
-                        op=f"{synthesizer_base_name}{CustomSentrySpans.SYNTHESIZER_CREATE_SPEECH}",
-                    )
-            maybe_synthesis_result: Optional[SynthesisResult] = None
-            if isinstance(
-                self,
-                InputStreamingSynthesizer,
-            ) and isinstance(agent_response.message, LLMToken):
-                logger.debug("Sending chunk to synthesizer")
-                await self.send_token_to_synthesizer(
-                    message=agent_response.message,
-                    chunk_size=self.chunk_size,
-                )
-            else:
-                logger.debug("Synthesizing speech for message")
-                maybe_synthesis_result = await self.create_speech_with_cache(
-                    agent_response.message,
-                    self.chunk_size,
-                    is_first_text_chunk=self.is_first_text_chunk,
-                    is_sole_text_chunk=agent_response.is_sole_text_chunk,
-                )
-            if create_speech_span:
-                create_speech_span.finish()
-            # For input streaming synthesizers, subsequent chunks are contained in the same SynthesisResult
-            if isinstance(self, InputStreamingSynthesizer):
-                if not self.is_first_text_chunk:
-                    maybe_synthesis_result = None
-                elif isinstance(agent_response.message, LLMToken):
-                    maybe_synthesis_result = self.get_current_utterance_synthesis_result()
+            maybe_synthesis_result = await self._synthesize_agent_response(agent_response)
+            if self.current_synthesis_spans.create_speech_span:
+                self.current_synthesis_spans.create_speech_span.finish()
             if maybe_synthesis_result is not None:
                 synthesis_result = maybe_synthesis_result
                 synthesis_result.is_first = agent_response.is_first
-                if not synthesis_result.cached and synthesis_span:
-                    synthesis_result.synthesis_total_span = synthesis_span
-                    synthesis_result.ttft_span = ttft_span
+                self._attach_current_synthesizer_spans_to_synthesis_result(synthesis_result)
                 self.consumer.consume_nonblocking(
                     self.interruptible_event_factory.create_interruptible_agent_response_event(
                         (agent_response.message, synthesis_result),
@@ -185,7 +190,6 @@ class BaseSynthesizer(
                         agent_response_tracker=item.agent_response_tracker,
                     ),
                 )
-            self.last_agent_response_tracker = item.agent_response_tracker
             if not isinstance(agent_response.message, SilenceMessage):
                 self.is_first_text_chunk = False
         except asyncio.CancelledError:
