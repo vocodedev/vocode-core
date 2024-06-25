@@ -12,9 +12,11 @@ from pydantic import BaseModel, conint
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
 from vocode.streaming.models.message import BaseMessage, BotBackchannel, LLMToken
 from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.abstract_synthesizer import AbstractSynthesizer
 from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
-from vocode.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
+from vocode.streaming.synthesizer.abstract_input_streaming_synthesizer import (
+    AbstractInputStreamingSynthesizer,
+)
 
 NONCE = "071b5f21-3b24-4427-817e-62508007ae60"
 ELEVEN_LABS_BASE_URL = "wss://api.elevenlabs.io/v1/"
@@ -78,7 +80,7 @@ class ElevenLabsWebsocketResponse(BaseModel):
 
 
 class ElevenLabsWSSynthesizer(
-    BaseSynthesizer[ElevenLabsSynthesizerConfig], InputStreamingSynthesizer
+    AbstractSynthesizer[ElevenLabsSynthesizerConfig], AbstractInputStreamingSynthesizer
 ):
     def __init__(
         self,

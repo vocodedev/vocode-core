@@ -10,10 +10,10 @@ from scipy.io.wavfile import write as write_wav
 
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import BarkSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.abstract_synthesizer import AbstractSynthesizer
 
 
-class BarkSynthesizer(BaseSynthesizer[BarkSynthesizerConfig]):
+class BarkSynthesizer(AbstractSynthesizer[BarkSynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: BarkSynthesizerConfig,

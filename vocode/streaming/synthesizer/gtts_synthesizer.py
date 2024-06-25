@@ -9,10 +9,10 @@ from pydub import AudioSegment
 
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import GTTSSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.abstract_synthesizer import AbstractSynthesizer
 
 
-class GTTSSynthesizer(BaseSynthesizer):
+class GTTSSynthesizer(AbstractSynthesizer):
     def __init__(
         self,
         synthesizer_config: GTTSSynthesizerConfig,

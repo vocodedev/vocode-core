@@ -3,7 +3,7 @@ from typing import Optional
 from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.message import BaseMessage, BotBackchannel, SilenceMessage
 from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.abstract_synthesizer import AbstractSynthesizer
 from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 from vocode.streaming.telephony.constants import MULAW_SILENCE_BYTE, PCM_SILENCE_BYTE
 
@@ -50,7 +50,7 @@ class CachedAudio:
         else:
 
             def get_message_up_to(seconds: Optional[float]):
-                return BaseSynthesizer.get_message_cutoff_from_total_response_length(
+                return AbstractSynthesizer.get_message_cutoff_from_total_response_length(
                     self.synthesizer_config, self.message, seconds, len(self.audio_data)
                 )
 

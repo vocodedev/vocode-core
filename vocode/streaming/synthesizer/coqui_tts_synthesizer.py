@@ -9,10 +9,10 @@ from TTS.api import TTS
 
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import CoquiTTSSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.abstract_synthesizer import AbstractSynthesizer
 
 
-class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):
+class CoquiTTSSynthesizer(AbstractSynthesizer[CoquiTTSSynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: CoquiTTSSynthesizerConfig,

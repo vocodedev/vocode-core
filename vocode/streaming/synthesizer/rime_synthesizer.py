@@ -16,7 +16,7 @@ from vocode.streaming.models.synthesizer import (
     RIME_DEFAULT_SPEED_ALPHA,
     RimeSynthesizerConfig,
 )
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.abstract_synthesizer import AbstractSynthesizer
 from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 
 # TODO: [OSS] Remove call to internal library with Synthesizers refactor
@@ -26,7 +26,7 @@ from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 WAV_HEADER_LENGTH = 44
 
 
-class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
+class RimeSynthesizer(AbstractSynthesizer[RimeSynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: RimeSynthesizerConfig,

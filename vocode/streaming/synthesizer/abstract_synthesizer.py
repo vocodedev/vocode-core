@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import asyncio
 import audioop
 from dataclasses import dataclass
@@ -31,7 +32,9 @@ from vocode.streaming.synthesizer.audio_cache import AudioCache
 from vocode.streaming.synthesizer.cached_audio import CachedAudio, SilenceAudio
 from vocode.streaming.synthesizer.constants import TYPING_NOISE_PATH
 from vocode.streaming.synthesizer.filler_audio import FillerAudio
-from vocode.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
+from vocode.streaming.synthesizer.abstract_input_streaming_synthesizer import (
+    AbstractInputStreamingSynthesizer,
+)
 from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 from vocode.streaming.synthesizer.synthesizer_utils import encode_as_wav
@@ -66,9 +69,10 @@ class _SynthesizerSpans:
     create_speech_span: Optional[Span]
 
 
-class BaseSynthesizer(
+class AbstractSynthesizer(
     Generic[SynthesizerConfigType],
     InterruptibleWorker[InterruptibleAgentResponseEvent[AgentResponse]],
+    ABC,
 ):
     conversation_state_manager: "ConversationStateManager"
     interruptible_event_factory: InterruptibleEventFactory
@@ -210,6 +214,7 @@ class BaseSynthesizer(
         self.interruptible_event_factory = interruptible_event_factory
 
     @classmethod
+    @abstractmethod
     def get_voice_identifier(cls, synthesizer_config: SynthesizerConfigType) -> str:
         raise NotImplementedError
 
@@ -296,6 +301,7 @@ class BaseSynthesizer(
             trailing_silence_seconds = message.trailing_silence_seconds
         return CachedAudio(message, audio_data, self.synthesizer_config, trailing_silence_seconds)
 
+    @abstractmethod
     async def create_speech(
         self,
         message: BaseMessage,
@@ -372,7 +378,7 @@ class BaseSynthesizer(
 
         return SynthesisResult(
             chunk_generator(output_bytes),
-            lambda seconds: BaseSynthesizer.get_message_cutoff_from_total_response_length(
+            lambda seconds: AbstractSynthesizer.get_message_cutoff_from_total_response_length(
                 synthesizer_config, message, seconds, len(output_bytes)
             ),
         )

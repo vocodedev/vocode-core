@@ -1,30 +1,25 @@
+from abc import abstractmethod
 from typing import Optional
 from loguru import logger
 from vocode.streaming.agent.base_agent import AgentResponse
 from vocode.streaming.models.message import BaseMessage, LLMToken
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.abstract_synthesizer import AbstractSynthesizer
 from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 from vocode.streaming.utils.worker import InterruptibleAgentResponseEvent
 
 
-class InputStreamingSynthesizer(BaseSynthesizer):
+class AbstractInputStreamingSynthesizer(AbstractSynthesizer):
+
+    @abstractmethod
     def get_current_utterance_synthesis_result(self):
         raise NotImplementedError
 
+    @abstractmethod
     async def send_token_to_synthesizer(
         self,
         message: LLMToken,
         chunk_size: int,
     ):
-        raise NotImplementedError
-
-    async def create_speech(
-        self,
-        message: BaseMessage,
-        chunk_size: int,
-        is_first_text_chunk: bool = False,
-        is_sole_text_chunk: bool = False,
-    ) -> SynthesisResult:
         raise NotImplementedError
 
     async def _synthesize_agent_response(

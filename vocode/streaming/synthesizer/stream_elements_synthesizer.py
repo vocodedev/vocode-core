@@ -5,11 +5,11 @@ from pydub import AudioSegment
 
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import StreamElementsSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode.streaming.synthesizer.abstract_synthesizer import AbstractSynthesizer
 from vocode.streaming.synthesizer.synthesis_result import SynthesisResult
 
 
-class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]):
+class StreamElementsSynthesizer(AbstractSynthesizer[StreamElementsSynthesizerConfig]):
     TTS_ENDPOINT = "https://api.streamelements.com/kappa/v2/speech"
 
     def __init__(

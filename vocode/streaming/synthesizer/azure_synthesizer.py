@@ -12,8 +12,8 @@ from vocode import getenv
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
 from vocode.streaming.models.message import BaseMessage, SSMLMessage
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import (
-    BaseSynthesizer,
+from vocode.streaming.synthesizer.abstract_synthesizer import (
+    AbstractSynthesizer,
 )
 from vocode.streaming.synthesizer.constants import FILLER_AUDIO_PATH, FILLER_PHRASES
 from vocode.streaming.synthesizer.filler_audio import FillerAudio
@@ -49,7 +49,7 @@ class WordBoundaryEventPool:
         return sorted(self.events, key=lambda event: event["audio_offset"])
 
 
-class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
+class AzureSynthesizer(AbstractSynthesizer[AzureSynthesizerConfig]):
     OFFSET_MS = 100
 
     def __init__(
