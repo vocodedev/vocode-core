@@ -51,6 +51,18 @@ class CustomSentrySpans:
         return False
 
 
+class TransactionNotSampled(Exception):
+    pass
+
+
+class NoMatchingSpan(Exception):
+    pass
+
+
+class MissingTransaction(Exception):
+    pass
+
+
 class SentryConfiguredContextManager:
     """
     A context manager that only executes a function if Sentry is configured.
@@ -162,43 +174,43 @@ def set_tags(span: Span) -> Span:
 
 
 @sentry_configured
-def get_span_by_op(op_value):
+def get_span_by_op(op_value) -> Span:
     transaction: Transaction = sentry_sdk.Hub.current.scope.transaction or sentry_transaction.value
-    if transaction is not None and transaction._span_recorder is not None:
-        # Probably not great accessing an internal variable but transaction spans aren't
-        # exposed publicly so it is what it is.
-        span_matches = [
-            span
-            for span in transaction._span_recorder.spans
-            if span.op == op_value and span.timestamp is None
-        ]
-        if span_matches:
-            most_recent_span = max(
-                span_matches, key=lambda span: span.start_timestamp, default=None
-            )
-            if most_recent_span is not None:
-                return set_tags(most_recent_span)
-        else:
-            # If no span with the matching op was found
-            logger.warning(f"No span found with op '{op_value}'.")
-            return None
-    else:
-        if transaction and transaction._span_recorder is None:
-            logger.warning(f"Transaction Span Recorder Missing -- {transaction}")
-        else:
-            logger.warning("No active transaction found.")
-        return None
+    if transaction is None:
+        raise MissingTransaction("No transaction found.")
+    elif not transaction.sampled:
+        raise TransactionNotSampled("Transaction is not sampled.")
+    elif not transaction._span_recorder:
+        raise MissingTransaction("No span recorder found.")
+    # Probably not great accessing an internal variable but transaction spans aren't
+    # exposed publicly so it is what it is.
+    span_matches = [
+        span
+        for span in transaction._span_recorder.spans
+        if span.op == op_value and span.timestamp is None
+    ]
+    if span_matches:
+        most_recent_span = max(span_matches, key=lambda span: span.start_timestamp, default=None)
+        if most_recent_span is not None:
+            return set_tags(most_recent_span)
+    raise NoMatchingSpan(f"No span found with op '{op_value}'.")
 
 
 @sentry_configured
 def complete_span_by_op(op_value):
     try:
         span = get_span_by_op(op_value)
+    except TransactionNotSampled as e:
+        logger.debug(f"Transaction not sampled")
+        return None
+    except NoMatchingSpan:
+        logger.error(f"No matching span found for op '{op_value}'")
+        return None
+    except MissingTransaction as e:
+        logger.error(f"Missing top level transaction: {e}")
+        return
     except Exception as e:
         logger.error(f"Error getting span by op '{op_value}': {e}")
-        return None
-    if span is None:
-        logger.warning(f"No span found with op '{op_value}'.")
         return None
     span.finish()
 
