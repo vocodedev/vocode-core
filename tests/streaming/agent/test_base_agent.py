@@ -183,7 +183,7 @@ def agent_config():
     return ChatGPTAgentConfig(
         openai_api_key="test_key",
         model_name="llama3-8b-8192",
-        base_url="https://api.groq.com/openai/v1",
+        base_url_override="https://api.groq.com/openai/v1",
         prompt_preamble="Test prompt",
     )
 
