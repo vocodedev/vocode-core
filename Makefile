@@ -25,7 +25,6 @@ lint lint_diff:
 typecheck:
 	poetry run mypy -p vocode
 	poetry run mypy -p quickstarts
-	poetry run mypy -p apps
 	poetry run mypy -p playground
 
 typecheck_diff:
