@@ -106,6 +106,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             if (
                 self.current_state
                 and self.current_state["type"] != "condition"
+                and "edge" in self.current_state
                 and "condition" not in self.current_state["edge"]
             ):
                 last_bot_message = next(
@@ -192,15 +193,47 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         if state["type"] == "action":
             return await self.compose_action(state)
 
+    def parse_llm_dict(self, s):
+        # Remove leading/trailing whitespace and braces
+        s = s.strip().strip("{}")
+
+        # Split into key-value pairs
+        pairs = re.findall(r"'([^']+)'\s*:\s*(.+?)(?=,\s*'|$)", s)
+
+        result = {}
+        for key, value in pairs:
+            # Remove surrounding quotes if present
+            value = value.strip()
+            if (value.startswith("'") and value.endswith("'")) or (
+                value.startswith('"') and value.endswith('"')
+            ):
+                value = value[1:-1]
+
+            # Try to parse as JSON if it looks like a nested structure
+            if value.startswith("{") or value.startswith("["):
+                try:
+                    value = json.loads(value)
+                except json.JSONDecodeError:
+                    pass  # Keep as string if parsing fails
+
+            result[key] = value
+
+        return result
+
     async def guided_response(self, guide):
         tool = {"response": "[insert your response]"}
         message = await self.call_ai(
             f"Draft your next response to the user based on the latest chat history, taking into account the following guidance:\n'{guide}'",
             tool,
         )
+        self.logger.info(f"Guided response: {message}")
         message = message[message.find("{") : message.rfind("}") + 1]
-        message = eval(message)
-        self.update_history("message.bot", message["response"])
+        self.logger.info(f"Guided response2: {message}")
+        try:
+            message = self.parse_llm_dict(message)
+            self.update_history("message.bot", message["response"])
+        except Exception as e:
+            self.logger.error(f"Agent could not respond: {e}")
 
     async def choose_block(self, state=None, choose_from=None):
         if state is None:
@@ -264,7 +297,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         choices = "\n".join(
             [f"'{c}'" for c in state["condition"]["conditionToStateLabel"].keys()]
         )
-        tool = {"condition": "[insert the condition that applies]"}
+        tool = {
+            "condition": "[insert either: the condition that applies, 'none', or 'question']"
+        }
         choices = "\n".join(
             [
                 f"- '{c.lower()}'"
@@ -273,8 +308,18 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         )
         # self.logger.info(f"Choosing condition from:\n{choices}")
         # check if there is more than one condition
-        prompt = f"You last stated: '{last_bot_message}' to which the user replied: '{last_user_message}'.\n\nGiven the current state of the conversation and the reply, return an applicable condition from the list.\nConditions:\n{choices}\n\nThe condition returned must best represent the current intent. If none of the conditions apply, return 'none'."
-        self.logger.info(f"Prompt: {prompt}")
+        prompt = (
+            f"Bot's last statement: '{last_bot_message}'\n"
+            f"User's response: '{last_user_message}'\n"
+            "Identify the most fitting condition from the list below:\n"
+            f"{choices}\n"
+            "Instructions:\n"
+            "- Select the condition that applies.\n"
+            "- Provide the exact name of the condition.\n"
+            "- If no conditions apply, type 'none'.\n"
+            "- If the user asked a question, type 'question'."
+        )
+        self.logger.info(f"AI prompt constructed: {prompt}")
         if len(state["condition"]["conditionToStateLabel"]) > 1:
             response = await self.call_ai(
                 prompt,
@@ -285,13 +330,24 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 0
             ]
             response = await self.call_ai(
-                f"You last stated: '{last_bot_message}' to which the user replied: '{last_user_message}'.\n\nGiven the current state of the conversation and the reply, is the condition '{single_condition}' applicable? If so, return the condition name. If not applicable, return 'none'.",
+                f"Your previous statement was: '{last_bot_message}', to which the user replied: '{last_user_message}'.\n\nBased on your instructions and the context, assess whether the condition named '{single_condition}' currently applies.\n\n- If it is valid, provide the exact name of the condition.\n- If it does not apply, provide 'none'.\n- In the event that the user's reply is a question, provide 'question'.",
                 tool,
             )
         self.logger.info(f"Chose condition: {response}")
         response = response[response.find("{") : response.rfind("}") + 1]
         try:
             response = eval(response)
+            condition = response["condition"]
+            if condition.lower() == "question":
+                move_on = await self.maybe_respond_to_user(
+                    last_bot_message, last_user_message
+                )
+                if not move_on:
+                    return
+                return await self.handle_state(state["edge"])
+            if condition.lower() == "none":
+                return await self.handle_state(state["edge"])
+
             for condition, next_state_label in state["condition"][
                 "conditionToStateLabel"
             ].items():
@@ -301,11 +357,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             return await self.handle_state(state["edge"])
         except Exception as e:
             self.logger.error(f"Agent chose no condition: {e}")
-            move_on = await self.maybe_respond_to_user(
-                last_bot_message, last_user_message
-            )
-            if not move_on:
-                return
             return await self.handle_state(state["edge"])
 
     async def compose_action(self, state):
@@ -333,12 +384,22 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             ]
         )
         response = await self.call_ai(
-            f"Based on the instructions and current conversational context, please provide values for the following parameters: {param_descriptions}",
-            dict_to_fill,
+            prompt=f"Provide the values for these parameters based on the current conversation and the instructions provided: {param_descriptions}",
+            tool=dict_to_fill,
         )
+        self.logger.info(f"Filled params: {response}")
         response = response[response.find("{") : response.rfind("}") + 1]
         self.logger.info(f"Filled params: {response}")
-        params = eval(response)
+        try:
+            params = eval(response)
+        except Exception as e:
+            response = await self.call_ai(
+                prompt=f"You must return a dictionary as described. Provide the values for these parameters based on the current conversation and the instructions provided: {param_descriptions}",
+                tool=dict_to_fill,
+            )
+            self.logger.info(f"Filled params2: {response}")
+            response = response[response.find("{") : response.rfind("}") + 1]
+            params = eval(response)
 
         action = self.action_factory.create_action(action_config)
         action_input: ActionInput
@@ -459,6 +520,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 stream=False,
                 stop=stop if stop is not None else [],
                 temperature=0.1,
+                max_tokens=500,
             )
             return chat_completion.choices[0].message.content
         else:
@@ -479,6 +541,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 stream=False,
                 stop=stop if stop is not None else [],
                 temperature=0.1,
+                max_tokens=500,
             )
             return chat_completion.choices[0].message.content
 
