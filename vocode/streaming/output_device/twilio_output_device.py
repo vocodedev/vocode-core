@@ -31,16 +31,18 @@ class TwilioOutputDevice(AbstractOutputDevice):
         self.stream_sid = stream_sid
         self.active = True
 
-        self.twilio_events_queue: asyncio.Queue[str] = asyncio.Queue()
-        self.mark_message_queue: asyncio.Queue[MarkMessage] = asyncio.Queue()
-        self.unprocessed_audio_chunks_queue: asyncio.Queue[InterruptibleEvent[AudioChunk]] = (
+        self._twilio_events_queue: asyncio.Queue[str] = asyncio.Queue()
+        self._mark_message_queue: asyncio.Queue[MarkMessage] = asyncio.Queue()
+        self._unprocessed_audio_chunks_queue: asyncio.Queue[InterruptibleEvent[AudioChunk]] = (
             asyncio.Queue()
         )
 
     def consume_nonblocking(self, item: InterruptibleEvent[AudioChunk]):
         if not item.is_interrupted():
-            self._send_audio_chunk_and_mark(item.payload.data)
-            self.unprocessed_audio_chunks_queue.put_nowait(item)
+            self._send_audio_chunk_and_mark(
+                chunk=item.payload.data, chunk_id=str(item.payload.chunk_id)
+            )
+            self._unprocessed_audio_chunks_queue.put_nowait(item)
         else:
             audio_chunk = item.payload
             audio_chunk.on_interrupt()
@@ -50,12 +52,12 @@ class TwilioOutputDevice(AbstractOutputDevice):
         self._send_clear_message()
 
     def enqueue_mark_message(self, mark_message: MarkMessage):
-        self.mark_message_queue.put_nowait(mark_message)
+        self._mark_message_queue.put_nowait(mark_message)
 
     async def _send_twilio_messages(self):
         while True:
             try:
-                twilio_event = await self.twilio_events_queue.get()
+                twilio_event = await self._twilio_events_queue.get()
             except asyncio.CancelledError:
                 return
             if self.ws.application_state == WebSocketState.DISCONNECTED:
@@ -68,8 +70,8 @@ class TwilioOutputDevice(AbstractOutputDevice):
                 # mark messages are tagged with the chunk ID that is attached to the audio chunk
                 # but they are guaranteed to come in the same order as the audio chunks, and we
                 # don't need to build resiliency there
-                await self.mark_message_queue.get()
-                item = await self.unprocessed_audio_chunks_queue.get()
+                await self._mark_message_queue.get()
+                item = await self._unprocessed_audio_chunks_queue.get()
             except asyncio.CancelledError:
                 return
 
@@ -95,25 +97,25 @@ class TwilioOutputDevice(AbstractOutputDevice):
         )
         await asyncio.gather(send_twilio_messages_task, process_mark_messages_task)
 
-    def _send_audio_chunk_and_mark(self, chunk: bytes):
+    def _send_audio_chunk_and_mark(self, chunk: bytes, chunk_id: str):
         media_message = {
             "event": "media",
             "streamSid": self.stream_sid,
             "media": {"payload": base64.b64encode(chunk).decode("utf-8")},
         }
-        self.twilio_events_queue.put_nowait(json.dumps(media_message))
+        self._twilio_events_queue.put_nowait(json.dumps(media_message))
         mark_message = {
             "event": "mark",
             "streamSid": self.stream_sid,
             "mark": {
-                "name": str(uuid.uuid4()),
+                "name": chunk_id,
             },
         }
-        self.twilio_events_queue.put_nowait(json.dumps(mark_message))
+        self._twilio_events_queue.put_nowait(json.dumps(mark_message))
 
     def _send_clear_message(self):
         clear_message = {
             "event": "clear",
             "streamSid": self.stream_sid,
         }
-        self.twilio_events_queue.put_nowait(json.dumps(clear_message))
+        self._twilio_events_queue.put_nowait(json.dumps(clear_message))
