@@ -71,9 +71,7 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
             )
 
         if not isinstance(self.output_format["sample_rate"], int):
-            raise ValueError(
-                f"Invalid type for sample_rate: {type(self.output_format["sample_rate"])}"
-            )
+            raise ValueError(f"Invalid type for sample_rate")
         self.sampling_rate = self.output_format["sample_rate"]
         self.num_channels = 1
         self.model_id = synthesizer_config.model_id
