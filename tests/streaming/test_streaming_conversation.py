@@ -1,5 +1,6 @@
 import asyncio
-from typing import List
+import threading
+from typing import List, Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,6 +17,7 @@ from vocode.streaming.models.agent import InterruptSensitivity
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcriber import Transcription
 from vocode.streaming.models.transcript import ActionStart, Message, Transcript
+from vocode.streaming.synthesizer.base_synthesizer import SynthesisResult
 from vocode.streaming.utils.worker import AsyncWorker
 
 
@@ -451,3 +453,58 @@ async def test_transcriptions_worker_interrupts_immediately_before_bot_has_begun
     assert streaming_conversation.broadcast_interrupt.called
 
     streaming_conversation.transcriptions_worker.terminate()
+
+
+def _create_dummy_synthesis_result(message: str = "Hi there", num_audio_chunks: int = 3):
+    async def chunk_generator():
+        for i in range(num_audio_chunks):
+            yield SynthesisResult.ChunkResult(chunk=b"", is_last_chunk=i == num_audio_chunks - 1)
+
+    def get_message_up_to(seconds: Optional[float]):
+        if seconds is None:
+            return message
+        return message[: len(message) // 2]
+
+    return SynthesisResult(chunk_generator=chunk_generator(), get_message_up_to=get_message_up_to)
+
+
+@pytest.mark.asyncio
+async def test_send_speech_to_output_uninterrupted(
+    mocker: MockerFixture,
+):
+    streaming_conversation = await _mock_streaming_conversation_constructor(mocker)
+    synthesis_result = _create_dummy_synthesis_result()
+    stop_event = threading.Event()
+    transcript_message = Message(
+        text="",
+        sender=Sender.BOT,
+    )
+
+    streaming_conversation.output_device.start()
+    message_sent, cut_off = await streaming_conversation.send_speech_to_output(
+        message="Hi there",
+        synthesis_result=synthesis_result,
+        stop_event=stop_event,
+        seconds_per_chunk=0.1,
+        transcript_message=transcript_message,
+    )
+    streaming_conversation.output_device.flush()
+
+    assert message_sent == "Hi there"
+    assert not cut_off
+    assert transcript_message.text == "Hi there"
+    assert transcript_message.is_final
+
+
+@pytest.mark.asyncio
+async def test_send_speech_to_output_interrupted_before_all_chunks_sent(
+    mocker: MockerFixture,
+):
+    pass
+
+
+@pytest.mark.asyncio
+async def test_send_speech_to_output_interrupted_during_playback(
+    mocker: MockerFixture,
+):
+    pass

@@ -46,13 +46,6 @@ class TwilioOutputDevice(AbstractOutputDevice):
             audio_chunk.on_interrupt()
             audio_chunk.state = ChunkState.INTERRUPTED
 
-    async def play(self, chunk: bytes):
-        """
-        For Twilio, we send all of the audio chunks to be played at once,
-        and then consume the mark messages to know when to send the on_play / on_interrupt callbacks
-        """
-        pass
-
     def interrupt(self):
         self._send_clear_message()
 

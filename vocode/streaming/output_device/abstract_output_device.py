@@ -6,6 +6,13 @@ from vocode.streaming.utils.worker import AsyncWorker, InterruptibleEvent
 
 
 class AbstractOutputDevice(AsyncWorker[InterruptibleEvent[AudioChunk]]):
+    """Output devices are workers that are responsible for playing back audio.
+
+    As part of processing:
+    - it must call AudioChunk.on_play() when the chunk is played back and set AudioChunk.state = ChunkState.PLAYED
+    - it must call AudioChunk.on_interrupt() when the chunk is interrupted and set AudioChunk.state = ChunkState.INTERRUPTED
+    - if the interruptible event marker is set, then it must also mark the chunk as interrupted
+    """
 
     def __init__(self, sampling_rate: int, audio_encoding):
         super().__init__(input_queue=asyncio.Queue())
@@ -14,4 +21,5 @@ class AbstractOutputDevice(AsyncWorker[InterruptibleEvent[AudioChunk]]):
 
     @abstractmethod
     def interrupt(self):
+        """Must interrupt the currently playing audio"""
         pass
