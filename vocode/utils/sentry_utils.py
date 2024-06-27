@@ -204,11 +204,12 @@ def complete_span_by_op(op_value):
         logger.debug(f"Transaction not sampled")
         return None
     except NoMatchingSpan:
-        logger.error(f"No matching span found for op '{op_value}'")
+        # TODO: Fix sentry running out of span depth
+        logger.warning(f"No matching span found for op '{op_value}'")
         return None
     except MissingTransaction as e:
         logger.error(f"Missing top level transaction: {e}")
-        return
+        return None
     except Exception as e:
         logger.error(f"Error getting span by op '{op_value}': {e}")
         return None
