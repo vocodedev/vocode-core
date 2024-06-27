@@ -58,7 +58,7 @@ class AbstractTranscriber(Generic[TranscriberConfigType], ABC):
         pass
 
 
-class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWorker[bytes]):
+class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWorker[bytes]):  # type: ignore
     def __init__(self, transcriber_config: TranscriberConfigType):
         AbstractTranscriber.__init__(self, transcriber_config)
         AsyncWorker.__init__(self, self.input_queue, self.output_queue)
@@ -67,7 +67,7 @@ class BaseAsyncTranscriber(AbstractTranscriber[TranscriberConfigType], AsyncWork
         AsyncWorker.terminate(self)
 
 
-class BaseThreadAsyncTranscriber(
+class BaseThreadAsyncTranscriber(  # type: ignore
     AbstractTranscriber[TranscriberConfigType], ThreadAsyncWorker[bytes]
 ):
     def __init__(self, transcriber_config: TranscriberConfigType):
