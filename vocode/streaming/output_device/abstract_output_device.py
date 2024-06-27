@@ -1,5 +1,6 @@
-from abc import abstractmethod
 import asyncio
+from abc import abstractmethod
+
 from vocode.streaming.output_device.audio_chunk import AudioChunk
 from vocode.streaming.utils.worker import AsyncWorker, InterruptibleEvent
 

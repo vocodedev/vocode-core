@@ -46,8 +46,8 @@ from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage, BotBackchannel, LLMToken, SilenceMessage
 from vocode.streaming.models.transcriber import TranscriberConfig, Transcription
 from vocode.streaming.models.transcript import Message, Transcript, TranscriptCompleteEvent
-from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
+from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     FillerAudio,

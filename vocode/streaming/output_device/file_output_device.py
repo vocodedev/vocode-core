@@ -3,11 +3,10 @@ import wave
 
 import numpy as np
 
+from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.output_device.rate_limit_interruptions_output_device import (
     RateLimitInterruptionsOutputDevice,
 )
-
-from vocode.streaming.models.audio import AudioEncoding
 
 
 class FileOutputDevice(RateLimitInterruptionsOutputDevice):

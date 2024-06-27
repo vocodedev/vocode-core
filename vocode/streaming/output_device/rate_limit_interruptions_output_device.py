@@ -1,6 +1,6 @@
-from abc import abstractmethod
 import asyncio
 import time
+from abc import abstractmethod
 
 from vocode.streaming.constants import PER_CHUNK_ALLOWANCE_SECONDS
 from vocode.streaming.models.audio import AudioEncoding

@@ -1,7 +1,7 @@
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from uuid import UUID
-import uuid
 
 
 class ChunkState(int, Enum):
