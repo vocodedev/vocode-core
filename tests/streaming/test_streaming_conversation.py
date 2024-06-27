@@ -1,6 +1,6 @@
 import asyncio
 import threading
-from typing import List, Optional
+from typing import AsyncGenerator, List, Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -455,7 +455,11 @@ async def test_transcriptions_worker_interrupts_immediately_before_bot_has_begun
     streaming_conversation.transcriptions_worker.terminate()
 
 
-def _create_dummy_synthesis_result(message: str = "Hi there", num_audio_chunks: int = 3):
+def _create_dummy_synthesis_result(
+    message: str = "Hi there",
+    num_audio_chunks: int = 3,
+    chunk_generator_override: Optional[AsyncGenerator[SynthesisResult.ChunkResult, None]] = None,
+):
     async def chunk_generator():
         for i in range(num_audio_chunks):
             yield SynthesisResult.ChunkResult(chunk=b"", is_last_chunk=i == num_audio_chunks - 1)
@@ -465,7 +469,10 @@ def _create_dummy_synthesis_result(message: str = "Hi there", num_audio_chunks: 
             return message
         return message[: len(message) // 2]
 
-    return SynthesisResult(chunk_generator=chunk_generator(), get_message_up_to=get_message_up_to)
+    return SynthesisResult(
+        chunk_generator=chunk_generator_override or chunk_generator(),
+        get_message_up_to=get_message_up_to,
+    )
 
 
 @pytest.mark.asyncio
@@ -500,11 +507,70 @@ async def test_send_speech_to_output_uninterrupted(
 async def test_send_speech_to_output_interrupted_before_all_chunks_sent(
     mocker: MockerFixture,
 ):
-    pass
+    streaming_conversation = await _mock_streaming_conversation_constructor(mocker)
+    synthesis_result = _create_dummy_synthesis_result()
+    stop_event = threading.Event()
+    transcript_message = Message(
+        text="",
+        sender=Sender.BOT,
+    )
+    stop_event.set()
+
+    streaming_conversation.output_device.start()
+    message_sent, cut_off = await streaming_conversation.send_speech_to_output(
+        message="Hi there",
+        synthesis_result=synthesis_result,
+        stop_event=stop_event,
+        seconds_per_chunk=0.1,
+        transcript_message=transcript_message,
+    )
+    streaming_conversation.output_device.flush()
+
+    assert message_sent != "Hi there"
+    assert cut_off
+    assert transcript_message.text != "Hi there"
+    assert not transcript_message.is_final
 
 
 @pytest.mark.asyncio
 async def test_send_speech_to_output_interrupted_during_playback(
     mocker: MockerFixture,
 ):
-    pass
+    finished_sending_chunks = asyncio.Event()
+
+    async def chunk_generator():
+        yield SynthesisResult.ChunkResult(chunk=b"", is_last_chunk=False)
+        yield SynthesisResult.ChunkResult(chunk=b"", is_last_chunk=False)
+        yield SynthesisResult.ChunkResult(chunk=b"", is_last_chunk=True)
+        finished_sending_chunks.set()
+
+    streaming_conversation = await _mock_streaming_conversation_constructor(mocker)
+    synthesis_result = _create_dummy_synthesis_result(chunk_generator_override=chunk_generator())
+    stop_event = threading.Event()
+    transcript_message = Message(
+        text="",
+        sender=Sender.BOT,
+    )
+
+    streaming_conversation.output_device.wait_for_interrupt = True
+
+    streaming_conversation.output_device.start()
+    send_speech_to_output_task = asyncio.create_task(
+        streaming_conversation.send_speech_to_output(
+            message="Hi there",
+            synthesis_result=synthesis_result,
+            stop_event=stop_event,
+            seconds_per_chunk=0.1,
+            transcript_message=transcript_message,
+        )
+    )
+    await finished_sending_chunks.wait()
+    stop_event.set()
+    streaming_conversation.output_device.interrupt_event.set()
+    message_sent, cut_off = await send_speech_to_output_task
+    streaming_conversation.output_device.terminate()
+
+    assert message_sent != "Hi there"
+    assert cut_off
+    assert transcript_message.text != "Hi there"
+    assert not transcript_message.is_final

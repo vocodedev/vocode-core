@@ -928,9 +928,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
         first_chunk_span = self._maybe_create_first_chunk_span(synthesis_result, message)
         audio_chunks: List[AudioChunk] = []
         processed_events: List[asyncio.Event] = []
+        interrupted_before_all_chunks_sent = False
         async for chunk_idx, chunk_result in enumerate_async_iter(synthesis_result.chunk_generator):
             if stop_event.is_set():
                 logger.debug("Interrupted before all chunks were sent")
+                interrupted_before_all_chunks_sent = True
                 break
             processed_event = asyncio.Event()
             audio_chunk = AudioChunk(
@@ -966,7 +968,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             ),
             None,
         )
-        cut_off = maybe_first_interrupted_audio_chunk is not None
+        cut_off = (
+            interrupted_before_all_chunks_sent or maybe_first_interrupted_audio_chunk is not None
+        )
         if (
             transcript_message and not cut_off
         ):  # if the audio was not cut off, we can set the transcript message to the full message
