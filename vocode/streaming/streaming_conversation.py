@@ -958,7 +958,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         logger.debug("Finished sending chunks to the output device")
 
-        await asyncio.gather(*(processed_event.wait() for processed_event in processed_events))
+        if processed_events:
+            await processed_events[-1].wait()
 
         maybe_first_interrupted_audio_chunk = next(
             (
