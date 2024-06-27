@@ -15,7 +15,7 @@ WorkerInputType = TypeVar("WorkerInputType")
 class AsyncWorker(Generic[WorkerInputType]):
     def __init__(
         self,
-        input_queue: asyncio.Queue,
+        input_queue: asyncio.Queue[WorkerInputType],
         output_queue: asyncio.Queue = asyncio.Queue(),
     ) -> None:
         self.worker_task: Optional[asyncio.Task] = None
