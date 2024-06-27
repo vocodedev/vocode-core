@@ -1,34 +1,29 @@
+import inspect
 import io
+import logging
 import os
 import pickle
-import logging
-import inspect
 from collections import defaultdict
-from pydantic.v1 import BaseModel
-from typing import Tuple, Union, Optional, Dict, Type, List
-from pydub import AudioSegment
-from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    ContextTypes,
-    CommandHandler,
-    MessageHandler,
-    filters,
-)
-from vocode.turn_based.transcriber import WhisperTranscriber, BaseTranscriber
-from vocode.turn_based.agent import ChatGPTAgent, BaseAgent
-from vocode.turn_based.synthesizer import (
-    CoquiSynthesizer,
-    StreamElementsSynthesizer,
-    ElevenLabsSynthesizer,
-    PlayHtSynthesizer,
-    AzureSynthesizer,
-    CoquiTTSSynthesizer,
-    RimeSynthesizer,
-    BaseSynthesizer,
-)
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 from dotenv import load_dotenv
+from pydantic.v1 import BaseModel
+from pydub import AudioSegment
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+
+from vocode.turn_based.agent import BaseAgent, ChatGPTAgent
+from vocode.turn_based.synthesizer import (
+    AzureSynthesizer,
+    BaseSynthesizer,
+    CoquiSynthesizer,
+    CoquiTTSSynthesizer,
+    ElevenLabsSynthesizer,
+    PlayHtSynthesizer,
+    RimeSynthesizer,
+    StreamElementsSynthesizer,
+)
+from vocode.turn_based.transcriber import BaseTranscriber, WhisperTranscriber
 
 load_dotenv()
 

@@ -3,30 +3,25 @@ import random
 from typing import Any, AsyncGenerator, Dict, List, Optional, TypeVar, Union
 
 import sentry_sdk
-from loguru import logger
 from groq import AsyncGroq
+from loguru import logger
 
 from vocode import sentry_span_tags
 from vocode.streaming.action.abstract_factory import AbstractActionFactory
 from vocode.streaming.action.default_factory import DefaultActionFactory
 from vocode.streaming.agent.base_agent import GeneratedResponse, RespondAgent, StreamedResponse
 from vocode.streaming.agent.openai_utils import (
-    vector_db_result_to_openai_chat_message,
-    openai_get_tokens,
     get_openai_chat_messages_from_transcript,
     merge_event_logs,
-)
-from vocode.streaming.models.transcript import (
-    EventLog,
-    Message,
-    Transcript,
+    openai_get_tokens,
+    vector_db_result_to_openai_chat_message,
 )
 from vocode.streaming.agent.streaming_utils import collate_response_async, stream_response_async
 from vocode.streaming.models.actions import FunctionCallActionTrigger
 from vocode.streaming.models.agent import GroqAgentConfig
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage, BotBackchannel, LLMToken
-from vocode.streaming.models.transcript import Message
+from vocode.streaming.models.transcript import EventLog, Message, Transcript
 from vocode.streaming.vector_db.factory import VectorDBFactory
 from vocode.utils.sentry_utils import CustomSentrySpans, sentry_create_span
 

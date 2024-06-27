@@ -3,11 +3,12 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic.v1 import validator
 
-from .audio import AudioEncoding, SamplingRate
-from .model import BaseModel, TypedModel
 from vocode.streaming.models.client_backend import OutputAudioConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
+
+from .audio import AudioEncoding, SamplingRate
+from .model import BaseModel, TypedModel
 
 
 class SynthesizerType(str, Enum):

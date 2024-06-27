@@ -1,4 +1,4 @@
-from typing import Literal, Type, Optional, Union, get_args
+from typing import Literal, Optional, Type, Union, get_args
 
 from loguru import logger
 from pydantic.v1 import BaseModel, Field

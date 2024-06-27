@@ -1,6 +1,6 @@
+import hashlib
 import io
 import wave
-import hashlib
 
 from vocode import getenv
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate

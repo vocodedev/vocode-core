@@ -5,12 +5,12 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic.v1 import BaseModel
 from pytest_mock import MockerFixture
+
 from tests.fakedata.conversation import (
     DEFAULT_CHAT_GPT_AGENT_CONFIG,
     create_fake_agent,
     create_fake_streaming_conversation,
 )
-
 from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.agent import InterruptSensitivity
 from vocode.streaming.models.events import Sender

@@ -3,8 +3,6 @@ from typing import List, Optional
 
 from pydantic.v1 import validator
 
-from .audio import AudioEncoding
-from .model import TypedModel
 from vocode.streaming.input_device.base_input_device import BaseInputDevice
 from vocode.streaming.models.client_backend import InputAudioConfig
 from vocode.streaming.models.model import BaseModel
@@ -13,6 +11,9 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_CHUNK_SIZE,
     DEFAULT_SAMPLING_RATE,
 )
+
+from .audio import AudioEncoding
+from .model import TypedModel
 
 AZURE_DEFAULT_LANGUAGE = "en-US"
 DEEPGRAM_API_WS_URL = "wss://api.deepgram.com"
