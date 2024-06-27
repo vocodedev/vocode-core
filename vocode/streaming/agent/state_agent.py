@@ -348,11 +348,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             if condition.lower() == "none":
                 return await self.handle_state(state["edge"])
 
-            for condition, next_state_label in state["condition"][
-                "conditionToStateLabel"
+            for condition, next_state_id in state["condition"][
+                "caseToStateId"
             ].items():
                 if condition.lower() == response["condition"].lower():
-                    next_state_id = self.label_to_state_id[next_state_label]
                     return await self.handle_state(next_state_id)
             return await self.handle_state(state["edge"])
         except Exception as e:
