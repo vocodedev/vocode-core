@@ -23,10 +23,7 @@ if __name__ == "__main__":
     # Redirect stdout to our custom class
     sys.stdout = typing.cast(typing.TextIO, RedactPhoneNumbers(sys.stdout))
 
-    OBJECTIVE = (
-        input("Objective: ")
-        or "Find a random person in my contacts and tell them a joke"
-    )
+    OBJECTIVE = input("Objective: ") or "Find a random person in my contacts and tell them a joke"
     llm = ChatOpenAI(temperature=0, model_name="gpt-4")  # type: ignore
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     # Logging of LLMChains

@@ -14,7 +14,7 @@ from vocode.streaming.agent.openai_utils import (
     vector_db_result_to_openai_chat_message,
     openai_get_tokens,
     get_openai_chat_messages_from_transcript,
-    merge_event_logs
+    merge_event_logs,
 )
 from vocode.streaming.models.transcript import (
     EventLog,
@@ -63,7 +63,7 @@ class GroqAgent(RespondAgent[GroqAgentConfig]):
             for action_config in self.agent_config.actions
             if isinstance(action_config.action_trigger, FunctionCallActionTrigger)
         ]
-    
+
     def format_groq_chat_messages_from_transcript(
         self,
         transcript: Transcript,
@@ -99,7 +99,7 @@ class GroqAgent(RespondAgent[GroqAgentConfig]):
             parameters["functions"] = self.functions
 
         return parameters
-    
+
     async def _create_groq_stream(self, chat_parameters: Dict[str, Any]) -> AsyncGenerator:
         try:
             stream = await self.groq_client.chat.completions.create(**chat_parameters)

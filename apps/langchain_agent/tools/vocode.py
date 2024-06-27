@@ -19,6 +19,7 @@ import time
 LOOP = asyncio.new_event_loop()
 asyncio.set_event_loop(LOOP)
 
+
 @tool("call phone number")
 def call_phone_number(input: str) -> str:
     """calls a phone number as a bot and returns a transcript of the conversation.

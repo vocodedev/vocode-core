@@ -137,7 +137,8 @@ class AnthropicAgentConfig(AgentConfig, type=AgentType.ANTHROPIC.value):  # type
     model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
-    
+
+
 class LangchainAgentConfig(AgentConfig, type=AgentType.LANGCHAIN.value):  # type: ignore
     prompt_preamble: str
     model_name: str
@@ -150,6 +151,7 @@ class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):
     prompt_preamble: str
     model_name: str = CHAT_VERTEX_AI_DEFAULT_MODEL_NAME
     generate_responses: bool = False  # Google Vertex AI doesn't support streaming
+
 
 class GroqAgentConfig(AgentConfig, type=AgentType.GROQ.value):  # type: ignore
     groq_api_key: Optional[str] = None

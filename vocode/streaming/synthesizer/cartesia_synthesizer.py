@@ -21,16 +21,13 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
         try:
             from cartesia.tts import AsyncCartesiaTTS
         except ImportError as e:
-            raise ImportError(
-                f"Missing required dependancies for CartesiaSynthesizer"
-            ) from e
-        
+            raise ImportError(f"Missing required dependancies for CartesiaSynthesizer") from e
+
         self.cartesia_tts = AsyncCartesiaTTS
-        
+
         self.api_key = synthesizer_config.api_key or getenv("CARTESIA_API_KEY")
         if not self.api_key:
             raise ValueError("Missing Cartesia API key")
-        
 
         if synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
             self.channel_width = 2
@@ -55,16 +52,13 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
             self.output_format = "pcm_16000"
             self.sampling_rate = 16000
         else:
-            raise ValueError(
-                f"Unsupported audio encoding {synthesizer_config.audio_encoding}"
-            )
+            raise ValueError(f"Unsupported audio encoding {synthesizer_config.audio_encoding}")
 
         self.num_channels = 1
         self.model_id = synthesizer_config.model_id
         self.voice_id = synthesizer_config.voice_id
         self.client = self.cartesia_tts(api_key=self.api_key)
         self.voice_embedding = self.client.get_voice_embedding(voice_id=self.voice_id)
-        
 
     async def create_speech_uncached(
         self,
@@ -78,17 +72,17 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
             voice=self.voice_embedding,
             stream=True,
             model_id=self.model_id,
-            data_rtype='bytes',
-            output_format=self.output_format
+            data_rtype="bytes",
+            output_format=self.output_format,
         )
 
         audio_file = io.BytesIO()
-        with wave.open(audio_file, 'wb') as wav_file:
+        with wave.open(audio_file, "wb") as wav_file:
             wav_file.setnchannels(self.num_channels)
             wav_file.setsampwidth(self.channel_width)
             wav_file.setframerate(self.sampling_rate)
             async for chunk in generator:
-                wav_file.writeframes(chunk['audio'])
+                wav_file.writeframes(chunk["audio"])
         audio_file.seek(0)
 
         result = self.create_synthesis_result_from_wav(
@@ -99,7 +93,7 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
         )
 
         return result
-    
+
     @classmethod
     def get_voice_identifier(cls, synthesizer_config: CartesiaSynthesizerConfig):
         hashed_api_key = hashlib.sha256(f"{synthesizer_config.api_key}".encode("utf-8")).hexdigest()
@@ -109,6 +103,6 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
                 hashed_api_key,
                 str(synthesizer_config.voice_id),
                 str(synthesizer_config.model_id),
-                synthesizer_config.audio_encoding
+                synthesizer_config.audio_encoding,
             )
         )
