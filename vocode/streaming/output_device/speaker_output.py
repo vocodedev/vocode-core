@@ -4,8 +4,9 @@ from typing import Optional
 import numpy as np
 import sounddevice as sd
 
-from .base_output_device import BaseOutputDevice
 from vocode.streaming.models.audio import AudioEncoding
+
+from .base_output_device import BaseOutputDevice
 
 raise DeprecationWarning("Use BlockingSpeakerOutput instead")
 

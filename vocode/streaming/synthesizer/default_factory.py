@@ -1,4 +1,5 @@
 from typing import Type
+
 from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
     CartesiaSynthesizerConfig,

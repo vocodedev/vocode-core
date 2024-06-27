@@ -1,6 +1,6 @@
 import pytest
-from tests.fakedata.id import generate_uuid
 
+from tests.fakedata.id import generate_uuid
 from vocode.streaming.action.record_email import (
     RecordEmail,
     RecordEmailParameters,

@@ -1,9 +1,10 @@
 from typing import Optional
 
+import sentry_sdk
 from fastapi import APIRouter, HTTPException, WebSocket
 from loguru import logger
-import sentry_sdk
 
+from vocode import sentry_transaction
 from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
 from vocode.streaming.agent.default_factory import DefaultAgentFactory
 from vocode.streaming.models.telephony import BaseCallConfig, TwilioCallConfig, VonageCallConfig
@@ -23,7 +24,6 @@ from vocode.streaming.transcriber.abstract_factory import AbstractTranscriberFac
 from vocode.streaming.transcriber.default_factory import DefaultTranscriberFactory
 from vocode.streaming.utils.base_router import BaseRouter
 from vocode.streaming.utils.events_manager import EventsManager
-from vocode import sentry_transaction
 
 
 class CallsRouter(BaseRouter):

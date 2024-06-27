@@ -6,8 +6,8 @@ from uuid import UUID
 import pytest
 from pydantic.v1 import BaseModel
 from pytest_mock import MockerFixture
-from tests.fakedata.id import generate_uuid
 
+from tests.fakedata.id import generate_uuid
 from vocode.streaming.action.end_conversation import (
     EndConversation,
     EndConversationParameters,
