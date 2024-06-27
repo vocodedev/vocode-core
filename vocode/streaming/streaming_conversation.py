@@ -967,7 +967,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             None,
         )
         cut_off = maybe_first_interrupted_audio_chunk is not None
-        if not cut_off: # if the audio was not cut off, we can set the transcript message to the full message
+        if (
+            transcript_message and not cut_off
+        ):  # if the audio was not cut off, we can set the transcript message to the full message
             transcript_message.text = synthesis_result.get_message_up_to(None)
 
         if self.transcriber.get_transcriber_config().mute_during_speech:
