@@ -157,7 +157,7 @@ class CachedAudio:
 
         if isinstance(self.message, BotBackchannel):
 
-            def get_message_up_to(seconds):
+            def get_message_up_to(seconds: Optional[float]):
                 return self.message.text
 
         else:
