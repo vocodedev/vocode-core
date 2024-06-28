@@ -46,7 +46,6 @@ class _PlaybackWorker(ThreadAsyncWorker[bytes]):
 
 
 class BlockingSpeakerOutput(RateLimitInterruptionsOutputDevice):
-    DEFAULT_SAMPLING_RATE = 44100
 
     def __init__(
         self,
