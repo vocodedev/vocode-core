@@ -13,10 +13,10 @@ from pydantic import BaseModel
 
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
 from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
+from vocode.streaming.pipeline.worker import InterruptibleEvent
 from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
 from vocode.streaming.utils.create_task import asyncio_create_task
 from vocode.streaming.utils.dtmf_utils import DTMFToneGenerator, KeypadEntry
-from vocode.streaming.utils.worker import InterruptibleEvent
 
 
 class ChunkFinishedMarkMessage(BaseModel):

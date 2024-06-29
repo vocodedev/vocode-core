@@ -23,9 +23,9 @@ from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import Transcription
 from vocode.streaming.models.transcript import ActionStart, Message, Transcript
+from vocode.streaming.pipeline.worker import AsyncWorker, QueueConsumer
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.synthesizer.base_synthesizer import SynthesisResult
-from vocode.streaming.utils.worker import QueueConsumer
 
 
 class ShouldIgnoreUtteranceTestCase(BaseModel):
