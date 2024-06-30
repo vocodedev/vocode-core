@@ -187,8 +187,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
             return resume
 
-        if state["type"] == "condition":
-            return await self.condition_check(state=state)
+        if state["type"] == "options":
+            return await self.handle_options(state=state)
 
         if state["type"] == "action":
             return await self.compose_action(state)
@@ -277,7 +277,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.logger.info(f"Chose {next_state_id}")
         return await self.handle_state(next_state_id)
 
-    async def condition_check(self, state):
+    async def handle_options(self, state):
         last_bot_message = next(
             (
                 msg
@@ -294,47 +294,59 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             ),
             None,
         )
-        choices = "\n".join(
-            [f"'{c}'" for c in state["condition"]["conditionToStateLabel"].keys()]
-        )
         tool = {
             "condition": "[insert either: the condition that applies, 'none', or 'question']"
         }
-        choices = "\n".join(
-            [
-                f"- '{c.lower()}'"
-                for c in state["condition"]["conditionToStateLabel"].keys()
-            ]
-        )
-        # self.logger.info(f"Choosing condition from:\n{choices}")
-        # check if there is more than one condition
-        prompt = (
-            f"Bot's last statement: '{last_bot_message}'\n"
-            f"User's response: '{last_user_message}'\n"
-            "Identify the most fitting condition from the list below:\n"
-            f"{choices}\n"
-            "Instructions:\n"
-            "- Select the condition that applies.\n"
-            "- Provide the exact name of the condition.\n"
-            "- If no conditions apply, type 'none'.\n"
-            "- If the user asked a question, type 'question'."
-        )
-        self.logger.info(f"AI prompt constructed: {prompt}")
-        if len(state["condition"]["conditionToStateLabel"]) > 1:
-            response = await self.call_ai(
-                prompt,
-                tool,
-            )
-        else:  # with just a single condition, change the prompt
-            single_condition = list(state["condition"]["conditionToStateLabel"].keys())[
-                0
-            ]
+
+        response_to_edge = {}
+        ai_options = []
+        default_options = []
+        index = 0
+        for (dest_state_id, edge) in state["edges"].items():
+            if edge["isDefault"]:
+                default_options.append( dest_state_id)
+            else:
+                ai_option = {
+                    "dest_state_id": dest_state_id,
+                    "ai_label": edge["aiLabel"],
+                    "ai_description": edge["aiDescription"],
+                }
+                response_to_edge[index] = ai_option
+                response_to_edge[edge["aiLabel"]] = ai_option # in case the AI says the label not the number
+                ai_options.append(f"{index}: {edge["aiLabel"]}")
+                index += 1
+
+        if len(ai_options) == 0:
+            raise Exception("invalid options state with no options")
+
+        if len(ai_options) == 1:
+            single_condition = ai_options[0]
             response = await self.call_ai(
                 f"Your previous statement was: '{last_bot_message}', to which the user replied: '{last_user_message}'.\n\nBased on your instructions and the context, assess whether the condition named '{single_condition}' currently applies.\n\n- If it is valid, provide the exact name of the condition.\n- If it does not apply, provide 'none'.\n- In the event that the user's reply is a question, provide 'question'.",
                 tool,
             )
+        else:
+            ai_options_str = "\n".join(ai_options)
+            prompt = (
+                f"Bot's last statement: '{last_bot_message}'\n"
+                f"User's response: '{last_user_message}'\n"
+                "Identify the most fitting condition from the list below:\n"
+                f"{ai_options_str}\n"
+                "Instructions:\n"
+                "- Select the condition that applies.\n"
+                "- Provide the exact name of the condition.\n"
+                "- If no conditions apply, type 'none'.\n"
+                "- If the user asked a question, type 'question'."
+            )
+            self.logger.info(f"AI prompt constructed: {prompt}")
+            response = await self.call_ai(
+                prompt,
+                tool,
+            )
+
         self.logger.info(f"Chose condition: {response}")
         response = response[response.find("{") : response.rfind("}") + 1]
+
         try:
             response = eval(response)
             condition = response["condition"]
@@ -344,19 +356,21 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 )
                 if not move_on:
                     return
-                return await self.handle_state(state["edge"])
+                return await self.handle_state(default_options[0])
             if condition.lower() == "none":
-                return await self.handle_state(state["edge"])
+                return await self.handle_state(default_options[0])
 
             for condition, next_state_id in state["condition"][
                 "caseToStateId"
             ].items():
                 if condition.lower() == response["condition"].lower():
                     return await self.handle_state(next_state_id)
-            return await self.handle_state(state["edge"])
+            if condition in response_to_edge:
+                return await self.handle_state(response_to_edge[condition]["dest_state_id"])
+            return await self.handle_state(default_options[0])
         except Exception as e:
             self.logger.error(f"Agent chose no condition: {e}")
-            return await self.handle_state(state["edge"])
+            return await self.handle_state(default_options[0])
 
     async def compose_action(self, state):
         action = state["action"]
