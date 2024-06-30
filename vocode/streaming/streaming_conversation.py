@@ -25,6 +25,9 @@ from loguru import logger
 from sentry_sdk.tracing import Span
 
 from vocode import conversation_id as ctx_conversation_id
+from vocode.streaming.action.abstract_factory import AbstractActionFactory
+from vocode.streaming.action.base_action import BaseAction
+from vocode.streaming.action.streaming_conversation_action import StreamingConversationAction
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
 from vocode.streaming.agent.base_agent import (
@@ -81,7 +84,6 @@ from vocode.streaming.utils import (
 from vocode.streaming.utils.create_task import asyncio_create_task
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.speed_manager import SpeedManager
-from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.utils.sentry_utils import (
     CustomSentrySpans,
     complete_span_by_op,
@@ -113,35 +115,6 @@ BACKCHANNEL_PATTERNS = [
     "makes sense",
 ]
 LOW_INTERRUPT_SENSITIVITY_BACKCHANNEL_UTTERANCE_LENGTH_THRESHOLD = 3
-
-
-class StreamingConversationFactory(AbstractPipelineFactory[StreamingConversationConfig]):
-
-    def __init__(
-        self,
-        transcriber_factory: AbstractTranscriberFactory = DefaultTranscriberFactory(),
-        agent_factory: AbstractAgentFactory = DefaultAgentFactory(),
-        synthesizer_factory: AbstractSynthesizerFactory = DefaultSynthesizerFactory(),
-    ):
-        self.transcriber_factory = transcriber_factory
-        self.agent_factory = agent_factory
-        self.synthesizer_factory = synthesizer_factory
-
-    def create_pipeline(
-        self,
-        config: StreamingConversationConfig,
-        output_device: OutputDeviceType,
-        id: Optional[str] = None,
-        events_manager: Optional[EventsManager] = None,
-    ):
-        return StreamingConversation(
-            output_device=output_device,
-            transcriber=self.transcriber_factory.create_transcriber(config.transcriber_config),
-            agent=self.agent_factory.create_agent(config.agent_config),
-            synthesizer=self.synthesizer_factory.create_synthesizer(config.synthesizer_config),
-            conversation_id=id,
-            events_manager=events_manager,
-        )
 
 
 class StreamingConversation(AudioPipeline[OutputDeviceType]):
@@ -179,7 +152,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         """Processes all transcriptions: sends an interrupt if needed
         and sends final transcriptions to the output queue"""
 
-        consumer: AbstractWorker[InterruptibleEvent[Transcription]]
+        consumer: AbstractWorker[InterruptibleEvent[TranscriptionAgentInput]]
 
         def __init__(
             self,
@@ -622,6 +595,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         synthesizer: BaseSynthesizer,
         speed_coefficient: float = 1.0,
         conversation_id: Optional[str] = None,
+        actions_worker: Optional[ActionsWorker] = None,
         events_manager: Optional[EventsManager] = None,
     ):
         self.id = conversation_id or create_conversation_id()
@@ -640,7 +614,6 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 Tuple[Union[BaseMessage, EndOfTurn], Optional[SynthesisResult]]
             ]
         ] = asyncio.Queue()
-        self.state_manager = self.create_state_manager()
 
         # Transcriptions Worker
         self.transcriptions_worker = self.TranscriptionsWorker(
@@ -652,7 +625,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         # Agent
         self.transcriptions_worker.consumer = self.agent
         self.agent.set_interruptible_event_factory(self.interruptible_event_factory)
-        self.agent.attach_conversation_state_manager(self.state_manager)
+        self.agent.streaming_conversation = self
 
         # Agent Responses Worker
         self.agent_responses_worker = self.AgentResponsesWorker(
@@ -664,11 +637,11 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         # Actions Worker
         self.actions_worker = None
         if self.agent.get_agent_config().actions:
-            self.actions_worker = ActionsWorker(
+            self.actions_worker = actions_worker or ActionsWorker(
                 action_factory=self.agent.action_factory,
                 interruptible_event_factory=self.interruptible_event_factory,
             )
-            self.actions_worker.attach_conversation_state_manager(self.state_manager)
+            self.actions_worker.pipeline = self
             self.actions_worker.consumer = self.agent
             self.agent.actions_consumer = self.actions_worker
 
@@ -714,9 +687,6 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         )
 
         self.interrupt_lock = asyncio.Lock()
-
-    def create_state_manager(self) -> ConversationStateManager:
-        return ConversationStateManager(conversation=self)
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
@@ -1022,6 +992,12 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             synthesis_result.synthesis_total_span.finish()
         return message_sent, cut_off
 
+    def using_input_streaming_synthesizer(self):
+        return isinstance(
+            self.synthesizer,
+            InputStreamingSynthesizer,
+        )
+
     def mark_terminated(self, bot_disconnect: bool = False):
         self.is_terminated.set()
 
@@ -1068,3 +1044,38 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
 
     async def wait_for_termination(self):
         await self.is_terminated.wait()
+
+
+class StreamingConversationFactory(
+    AbstractPipelineFactory[StreamingConversationConfig, OutputDeviceType]
+):
+
+    def __init__(
+        self,
+        transcriber_factory: AbstractTranscriberFactory = DefaultTranscriberFactory(),
+        agent_factory: AbstractAgentFactory = DefaultAgentFactory(),
+        synthesizer_factory: AbstractSynthesizerFactory = DefaultSynthesizerFactory(),
+        speed_coefficient: float = 1.0,
+    ):
+        self.transcriber_factory = transcriber_factory
+        self.agent_factory = agent_factory
+        self.synthesizer_factory = synthesizer_factory
+
+    def create_pipeline(
+        self,
+        config: StreamingConversationConfig,
+        output_device: OutputDeviceType,
+        id: Optional[str] = None,
+        events_manager: Optional[EventsManager] = None,
+        actions_worker: Optional[ActionsWorker] = None,
+    ):
+        return StreamingConversation(
+            output_device=output_device,
+            transcriber=self.transcriber_factory.create_transcriber(config.transcriber_config),
+            agent=self.agent_factory.create_agent(config.agent_config),
+            synthesizer=self.synthesizer_factory.create_synthesizer(config.synthesizer_config),
+            conversation_id=id,
+            events_manager=events_manager,
+            actions_worker=actions_worker,
+            speed_coefficient=config.speed_coefficient,
+        )
