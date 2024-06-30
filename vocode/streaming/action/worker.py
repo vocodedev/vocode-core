@@ -12,14 +12,10 @@ from vocode.streaming.pipeline.worker import (
     InterruptibleEventFactory,
     InterruptibleWorker,
 )
-from vocode.streaming.utils.state_manager import (
-    AbstractConversationStateManager,
-    TwilioPhoneConversationStateManager,
-    VonagePhoneConversationStateManager,
-)
+from vocode.streaming.utils.state_manager import AbstractConversationStateManager
 
 
-class ActionsWorker(InterruptibleWorker):
+class ActionsWorker(InterruptibleWorker[InterruptibleEvent[ActionInput]]):
     consumer: AbstractWorker[InterruptibleEvent[ActionResultAgentInput]]
 
     def __init__(
@@ -48,20 +44,6 @@ class ActionsWorker(InterruptibleWorker):
                     conversation_id=action_input.conversation_id,
                     action_input=action_input,
                     action_output=action_output,
-                    vonage_uuid=(
-                        self.conversation_state_manager.get_vonage_uuid()
-                        if isinstance(
-                            self.conversation_state_manager, VonagePhoneConversationStateManager
-                        )
-                        else None
-                    ),
-                    twilio_sid=(
-                        self.conversation_state_manager.get_twilio_sid()
-                        if isinstance(
-                            self.conversation_state_manager, TwilioPhoneConversationStateManager
-                        )
-                        else None
-                    ),
                     is_quiet=action.quiet,
                 ),
                 is_interruptible=False,
