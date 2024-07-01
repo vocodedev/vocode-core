@@ -8,13 +8,8 @@ def find_sparse_subarray(target, predicates):
         if predicate(item):
             subarray_indices.append(target_index)
     
-    if len(subarray_indices) == len(predicates):
-        return subarray_indices
-    else:
-        return None
+    return subarray_indices
 
 def find_last_sparse_subarray(target, predicates):
     reversed_results = find_sparse_subarray(reversed(target), reversed(predicates))
-    if reversed_results == None:
-        return None
     return reversed([len(target) -result - 1 for result in reversed_results])
