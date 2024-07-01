@@ -331,6 +331,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             if "question" in self.current_state["id"].split("::")[-2]:
                 edges.append(
                     (default_next_state, {
+                        "speak": True,
                         "aiLabel": "question",
                         "aiDescription": "user seems confused or unsure",
                     })
@@ -373,7 +374,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
         try:
             condition = eval(response)["condition"]
-            next_state_id = response_to_edge[condition]
+            next_state_id = response_to_edge[condition]["dest_state_id"]
+            speak = response_to_edge[condition]["speak"]
+            if speak:
+                return await self.maybe_respond_to_user(last_bot_message, last_human_message)
             return await self.handle_state(next_state_id)
         except Exception as e:
             self.logger.error(f"Agent chose no condition: {e}. Response was {response}")
