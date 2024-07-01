@@ -154,7 +154,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
     # recursively traverses the state machine
     # if it returns a function, call that function on the next human input to resume traversal
-    async def handle_state(self, state_id, start=False):
+    async def handle_state(self, state_id_or_label, start=False):
+        state_id = self.label_to_state_id[state_id_or_label] if self.label_to_state_id[state_id_or_label] else state_id_or_label
         self.update_history("debug", f"STATE IS {state_id}")
         self.resume = None
         if not state_id:
@@ -269,7 +270,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             states.remove("start")
         if len(states) == 1:
             next_state_id = states[0]
-            next_state_id = self.label_to_state_id[next_state_id]
             return await self.handle_state(next_state_id)
         # if len is 0 then go to start
         if len(states) == 0:
@@ -282,7 +282,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         match = re.search(r"\d+", streamed_choice)
         chosen_int = int(match.group()) if match else 1
         next_state_id = states[chosen_int - 1]
-        next_state_id = self.label_to_state_id[next_state_id]
         self.logger.info(f"Chose {next_state_id}")
         return await self.handle_state(next_state_id)
 
