@@ -33,6 +33,12 @@ class StateMachine(BaseModel):
     states: Dict[str, Any]
     initial_state_id: str
 
+def get_default_next_state(state):
+    if state["type"] != "options":
+        return state["edge"]
+    for (dest_state_id, edge) in state["edges"].items():
+        if edge["isDefault"]:
+            return dest_state_id
 
 class StateAgent(RespondAgent[CommandAgentConfig]):
     def __init__(
@@ -301,11 +307,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             "condition": "[insert the name of the condition that applies]"
         }
 
-        default_options = []
-        for (dest_state_id, edge) in state["edges"].items():
-            if edge["isDefault"]:
-                default_options.append( dest_state_id)
 
+        default_next_state = get_default_next_state(state)
         response_to_edge = {}
         ai_options = []
         edges = [(dest_state_id, data) for dest_state_id, data in state["edges"].items()]
@@ -319,7 +322,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 })
             )
             edges.append(
-                (default_options[0], {
+                (default_next_state, {
                     "aiLabel": "continue",
                     "aiDescription": f"user still needs help with '{self.current_state['id'].split('::')[0]}' but no condition applies",
                 })
@@ -327,7 +330,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             # extra edge if this state was part of a question section
             if "question" in self.current_state["id"].split("::")[-2]:
                 edges.append(
-                    (default_options[0], {
+                    (default_next_state, {
                         "aiLabel": "question",
                         "aiDescription": "user seems confused or unsure",
                     })
@@ -335,9 +338,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
         index = 0
         for (dest_state_id, edge) in state["edges"].items():
-            if edge["isDefault"]:
-                default_options.append( dest_state_id)
-            else:
+            if not edge["isDefault"]:
                 ai_option = {
                     "dest_state_id": dest_state_id,
                     "ai_label": edge["aiLabel"],
@@ -376,7 +377,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             return await self.handle_state(next_state_id)
         except Exception as e:
             self.logger.error(f"Agent chose no condition: {e}. Response was {response}")
-            return await self.handle_state(default_options[0])
+            return await self.handle_state(default_next_state)
 
     async def compose_action(self, state):
         action = state["action"]
@@ -494,30 +495,31 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             "   Response: Proceed with the next step of the current workflow without additional commentary\n"
             "- 'PAUSE' the current process if the user asked a question of their own\n"
             "   Response: If the user didn't answer, politely restate the question and ask for a clear answer.\n"
-            "             If the user asked a question, answer it concisely and ask if they're ready to continue.\n"
-            "             Pause without suggesting any actions or offering alternatives.\n"
-            "- 'SWITCH' to a different process if current process is not relevant\n"
-            "   Response: Acknowledge the user's request and ask for clarification on what they'd like to do instead"
+            "             If the user asked a question, provide a concise answer and then pause.\n"
+            "             Ensure not to suggest any actions or offer alternatives.\n"
+            "- 'SWITCH' to a different process if current process is not relevant or if the user changes the subject\n"
+            "   Response: Switch to a different proces without addition commentary\n"
         )
         self.logger.info(f"Prompt: {prompt}")
         # we do not care what it has to say when switching or continuing
         output = await self.call_ai(prompt, continue_tool, stop=["CONTINUE", "SWITCH"])
         self.logger.info(f"Output: {output}")
         if "CONTINUE" in output:
-            return True
+            return await self.handle_state(get_default_next_state(self.current_state))
         if "SWITCH" in output:
-            # When switching, go directly to crossroads
-            self.resume = await self.choose_block(state=None)
+            return await self.handle_state(state=self.state_machine["startingStateId"])
 
-            # self.update_history("message.bot", question)
-            return False
         output = output[output.find("{") : output.rfind("}") + 1]
         output = eval(output.replace("'None'", "'none'").replace("None", "'none'"))
         if "PAUSE" in output:
             self.update_history("message.bot", output["PAUSE"])
-            return False
+            async def resume(human_input):
+                self.update_history("human", human_input)
+                return await self.handle_state(self.current_state)
+            return resume
+
         self.logger.info(f"falling back with {output}")
-        return True
+        return await self.handle_state(self.current_state)
 
     async def call_ai(self, prompt, tool=None, stop=None):
         # self.client = AsyncOpenAI(
