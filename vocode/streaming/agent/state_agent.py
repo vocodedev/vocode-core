@@ -1,9 +1,9 @@
+import asyncio
 import json
 import logging
 import re
-import asyncio
-import time
-from typing import Any, Dict, List, Optional
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 from vocode.streaming.agent.base_agent import (
     RespondAgent,
@@ -34,6 +34,303 @@ class StateMachine(BaseModel):
     initial_state_id: str
 
 
+# thing to say, switch/continue/pause
+class BranchDecision(Enum):
+    PAUSE = 1
+    SWITCH = 2
+    CONTINUE = 3
+
+
+async def on_user_input_within_state(
+    state,
+    last_user_response: str,
+    original_ai_message: str,
+    call_ai: Callable[[str, str, str], Awaitable[str]],
+    logger: logging.Logger,
+) -> tuple[BranchDecision, Optional[str]]:
+    continue_tool = {
+        "[either 'PAUSE' or 'CONTINUE' or 'SWITCH']": "[insert your response to the user]",
+    }
+    if state and state["id"]:
+        current_workflow = state["id"].split("::")[0]
+    else:
+        current_workflow = "start of conversation"
+    # if its a conditional, get the conditions
+    if state and state["type"] == "condition":
+        conditions = state["condition"]["conditionToStateLabel"].keys()
+        conditions = "\n".join([f"'{c}'" for c in conditions])
+    additional_info = (
+        f"Decide what to do next. If the user's response aligns with any of the following, 'CONTINUE' the current process:\n{conditions}"
+        if state and state["type"] == "condition"
+        else ""
+    )
+    prompt = (
+        f"You last stated: '{original_ai_message}', to which the user replied: '{last_user_response}'.\n\n"
+        f"You are already engaged in the following process: {current_workflow}\n"
+        f"{additional_info}\n\n"
+        "Now, to best assist the user, decide whether you should:\n"
+        "- 'CONTINUE' the process to the next step\n"
+        "   Response: Proceed with the next step of the current workflow without additional commentary\n"
+        "- 'PAUSE' the current process if the user asked a question of their own\n"
+        "   Response: If the user didn't answer, politely restate the question and ask for a clear answer.\n"
+        "             If the user asked a question, provide a concise answer and then pause.\n"
+        "             Ensure not to suggest any actions or offer alternatives.\n"
+        "- 'SWITCH' to a different process if current process is not relevant or if the user changes the subject\n"
+        "   Response: Switch to a different process without additional commentary\n"
+    )
+    logger.info(f"Prompt: {prompt}")
+    # we do not care what it has to say when switching or continuing
+    output = await call_ai(prompt, continue_tool, stop=["CONTINUE", "SWITCH"])
+    logger.info(f"Output: {output}")
+    if "CONTINUE" in output:
+        return (BranchDecision["CONTINUE"], None)
+    if "SWITCH" in output:
+        return (BranchDecision["SWITCH"], None)
+
+    output = output[output.find("{") : output.rfind("}") + 1]
+    output = eval(output.replace("'None'", "'none'").replace("None", "'none'"))
+    if "PAUSE" in output:
+        return (BranchDecision["PAUSE"], output["PAUSE"])
+
+    logger.info(f"falling back with {output}")
+    return (BranchDecision["PAUSE"], "Sorry, I'm not sure what you mean.")
+
+
+def get_state(state_id_or_label: str, state_machine):
+    state_id = (
+        state_machine["labelToStateId"][state_id_or_label]
+        if state_id_or_label in state_machine["labelToStateId"]
+        and state_machine["labelToStateId"][state_id_or_label]
+        else state_id_or_label
+    )
+    if not state_id:
+        return None
+    state = state_machine["states"][state_id]
+    if not state:
+        return None
+    if state["type"] == "crossroads":
+        raise Exception("crossroads state is deprecated")
+    return state
+
+
+def translate_to_english(
+    ai_profile_language: str, text: str, logger: logging.Logger
+) -> str:
+    if ai_profile_language == "en-US":
+        return text
+
+    translated_message = translate_message(
+        logger,
+        text,
+        ai_profile_language,
+        "en-US",
+    )
+    return translated_message
+
+
+async def handle_question(
+    state,
+    go_to_state: Callable[[str], Awaitable[Any]],
+    speak: Callable[[str], None],
+    get_question_text: Callable[[None], Awaitable[str]],
+    call_ai: Callable[[str, str, str], Awaitable[str]],
+    logger: logging.Logger,
+):
+    question_text = await get_question_text()
+
+    async def resume(human_input):
+        logger.info(f"continuing at {state['id']} with user response {human_input}")
+        branch_decision, ai_response = await on_user_input_within_state(
+            state, human_input, question_text, call_ai, logger
+        )
+
+        if branch_decision == BranchDecision.PAUSE:
+            if ai_response:
+                speak(ai_response)
+
+            async def get_stored_question_text():
+                return question_text
+
+            return await handle_question(
+                state=state,
+                go_to_state=go_to_state,
+                speak=speak,
+                call_ai=call_ai,
+                logger=logger,
+                get_question_text=get_stored_question_text,
+            )
+        if branch_decision == BranchDecision.CONTINUE:
+            return await go_to_state(get_default_next_state(state))
+        if branch_decision == BranchDecision.SWITCH:
+            return await go_to_state("start")
+
+    return resume
+
+
+async def handle_options(
+    state: Any,
+    go_to_state: Callable[[str], Awaitable[Any]],
+    speak: Callable[[str], None],
+    call_ai: Callable[[str, str, Optional[str]], Awaitable[str]],
+    state_machine: Any,
+    get_chat_history: Callable[[], List[Tuple[str, str]]],
+    logger: logging.Logger,
+):
+    last_user_message_index = None
+    last_user_message = None
+    last_bot_message = state_machine["states"]["start"]["start_message"]["message"]
+    action_result_after_user_spoke = None
+    # Iterate through the chat history to find the last user message
+    for i, (role, msg) in enumerate(reversed(get_chat_history())):
+        if last_user_message_index is None and role == "human" and msg:
+            last_user_message_index = len(get_chat_history()) - i - 1
+            last_user_message = msg
+            break
+
+    # If a user message was found, iterate again to find the last bot message before the user message
+    if last_user_message_index is not None:
+        for i, (role, msg) in enumerate(
+            reversed(get_chat_history()[:last_user_message_index])
+        ):
+            if role == "message.bot" and msg:
+                last_bot_message = msg
+                break
+
+    action_result_after_user_spoke = None
+    if last_user_message_index:
+        for i, (role, msg) in enumerate(
+            get_chat_history()[last_user_message_index + 1 :]
+        ):
+            if role == "action-finish" and msg:
+                action_result_after_user_spoke = msg
+                break
+    tool = {"condition": "[insert the number of the condition that applies]"}
+
+    default_next_state = get_default_next_state(state)
+    response_to_edge = {}
+    ai_options = []
+    edges = [(dest_state_id, data) for dest_state_id, data in state["edges"].items()]
+
+    # add disambiguation edges unless we're at in the start state or an action just finished
+    logger.info(
+        f"araus = {action_result_after_user_spoke} state id is {state['id']} and startingStateId is {state_machine['startingStateId']}"
+    )
+    if (
+        state["id"] != state_machine["startingStateId"]  # state["id"] is
+        and not action_result_after_user_spoke
+    ):
+        edges.append(
+            (
+                state_machine["startingStateId"],
+                {
+                    "aiLabel": "switch",
+                    "aiDescription": f"user no longer needs help with '{state['id'].split('::')[0]}'",
+                },
+            )
+        )
+        edges.append(
+            (
+                default_next_state,
+                {
+                    "aiLabel": "continue",
+                    "aiDescription": f"user still needs help with '{state['id'].split('::')[0]}' but no condition applies",
+                },
+            )
+        )
+        # extra edge if this state was part of a question section
+        if "question" in state["id"].split("::")[-2]:
+            edges.append(
+                (
+                    default_next_state,
+                    {
+                        "speak": True,
+                        "aiLabel": "question",
+                        "aiDescription": "user seems confused or unsure",
+                    },
+                )
+            )
+
+    index = 0
+    for dest_state_id, edge in edges:
+        if "isDefault" not in edge or not edge["isDefault"]:
+            ai_option = {
+                "dest_state_id": dest_state_id,
+            }
+            if "aiLabel" in edge:
+                ai_option["ai_label"] = edge["aiLabel"]
+            if "aiDescription" in edge:
+                ai_option["ai_description"] = edge["aiDescription"]
+            response_to_edge[index] = ai_option
+            response_to_edge[edge["aiLabel"]] = (
+                ai_option  # in case the AI says the label not the number
+            )
+
+            ai_options.append(
+                f"{index}: {edge.get('aiDescription', None) or edge.get('aiLabel', None)}"
+            )
+            index += 1
+
+    if len(ai_options) == 0:
+        raise Exception("invalid options state with no options")
+
+    ai_options_str = "\n".join(ai_options)
+    prompt = (
+        f"Bot's last statement: '{last_bot_message}'\n"
+        f"User's response: '{last_user_message}'\n"
+        f"{'Last tool output: ' + action_result_after_user_spoke if action_result_after_user_spoke else ''}\n\n"  # TODO: also render the action output if it was before the user spoke
+        "Identify the number associated with the most fitting condition from the list below:\n"
+        f"{ai_options_str}\n\n"
+        "Always return a number from the above list. Return the number of the condition that best applies."
+    )
+    logger.info(f"AI prompt constructed: {prompt}")
+    response = await call_ai(
+        prompt,
+        tool,
+    )
+
+    logger.info(f"Chose condition: {response}")
+    response = response[response.find("{") : response.rfind("}") + 1]
+
+    try:
+        condition = eval(response)["condition"]
+        # xtract th number
+        match = re.search(r"\d+", condition)
+        condition = int(match.group()) if match else 1
+        next_state_id = response_to_edge[condition]["dest_state_id"]
+        if response_to_edge[condition].get("speak"):
+
+            async def resume(human_input):
+                logger.info(
+                    f"continuing at {state['id']} with user response {human_input}"
+                )
+                branch_decision, ai_response = await on_user_input_within_state(
+                    state, human_input, last_bot_message, call_ai, logger
+                )
+
+                if branch_decision == BranchDecision.PAUSE:
+                    if ai_response:
+                        speak(ai_response)
+                    return await handle_options(
+                        state=state,
+                        go_to_state=go_to_state,
+                        speak=speak,
+                        call_ai=call_ai,
+                        state_machine=state_machine,
+                        get_chat_history=get_chat_history,
+                        logger=logger,
+                    )
+                if branch_decision == BranchDecision.CONTINUE:
+                    return await go_to_state(get_default_next_state(state))
+                if branch_decision == BranchDecision.SWITCH:
+                    return await go_to_state("start")
+
+            return resume
+        return await go_to_state(next_state_id)
+    except Exception as e:
+        logger.error(f"Agent chose no condition: {e}. Response was {response}")
+        return await go_to_state(default_next_state)
+
+
 def get_default_next_state(state):
     if state["type"] != "options":
         return state["edge"]
@@ -51,13 +348,13 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         super().__init__(agent_config=agent_config, logger=logger)
         self.state_machine = self.agent_config.user_json_prompt["converted"]
         self.current_state = None
-        self.resume = None
+        self.resume = lambda _: self.handle_state(self.state_machine["startingStateId"])
         self.can_send = False
         self.conversation_id = None
         self.twilio_sid = None
         self.block_inputs = False  # independent of interruptions, actions cannot be interrupted when a starting phrase is present
         self.stop = False
-        self.chat_history = []
+        self.chat_history = [("message.bot", self.agent_config.initial_message)]
         if "medusa" in self.agent_config.model_name.lower():
             self.base_url = getenv("AI_API_HUGE_BASE")
             self.model = getenv("AI_MODEL_NAME_HUGE")
@@ -90,63 +387,21 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self,
         affirmative_phrase: Optional[str],
         conversation_id: str,
-        human_input: Optional[str] = None,
+        human_input: str,
         is_interrupt: bool = False,
         stream_output: bool = True,
     ):
-        if human_input:
-            self.update_history("human", human_input)
-            if self.agent_config.language != "en-US":
-                translated_message = translate_message(
-                    self.logger,
-                    human_input,
-                    self.agent_config.language,
-                    "en-US",
-                )
-                self.logger.info(
-                    f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{human_input}"
-                )
-                human_input = translated_message
-            elif self.agent_config.language == "en-US":
-                self.logger.info(
-                    f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{human_input}"
-                )
-            # make sure its not in the edge either
-            if (
-                self.current_state
-                and self.current_state.get("type") != "condition"
-                and isinstance(self.current_state.get("edge"), dict)
-                and "condition" not in self.current_state.get("edge")
-            ):
-                last_bot_message = next(
-                    (
-                        msg
-                        for role, msg in reversed(self.chat_history)
-                        if (role == "message.bot" and msg)
-                    ),
-                    None,
-                )
-                move_on = await self.maybe_respond_to_user(
-                    last_bot_message, human_input
-                )
-                if not move_on:
-                    return "", True
-
+        self.update_history("human", human_input)
+        self.logger.info(
+            f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{human_input}"
+        )
         if self.resume:
-            if human_input:
-                self.resume = await self.resume(human_input)
-            else:
-                self.resume = await self.resume(None)
-        elif not self.resume:
-            if not human_input:
-                self.resume = await self.handle_state("start", True)
-            else:
-                self.resume = await self.choose_block(state=self.current_state)
+            self.resume = await self.resume(human_input)
+
         return "", True
 
-    async def print_start_message(self, state):
-        self.logger.info(f"Current State: {state}")
-        if "start_message" in state:
+    async def print_start_message(self, state, start: bool):
+        if start and "start_message" in state:
             start_message = state["start_message"]
             if start_message["type"] == "verbatim":
                 self.update_history("message.bot", start_message["message"])
@@ -156,59 +411,55 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
     # recursively traverses the state machine
     # if it returns a function, call that function on the next human input to resume traversal
-    async def handle_state(self, state_id_or_label, start=False):
-        if not state_id_or_label:
-            state_id = self.state_machine["startingStateId"]
-        state_id = (
-            self.label_to_state_id[state_id_or_label]
-            if state_id_or_label in self.label_to_state_id
-            and self.label_to_state_id[state_id_or_label]
-            else state_id_or_label
-        )
-        self.update_history("debug", f"STATE IS {state_id}")
-        self.resume = None
-        if not state_id:
-            return
-        state = self.state_machine["states"][state_id]
+    async def handle_state(self, state_id_or_label: str, start=False):
+        state = get_state(state_id_or_label, self.state_machine)
         self.current_state = state
+        if not state:
+            return
 
-        if state["type"] == "crossroads":
+        self.logger.info(f"Current State: {state}")
 
-            async def resume(human_input):
-                return await self.choose_block(state=state)
-
-            if start:
-                await self.print_start_message(state)
-                return resume
-            else:
-                return await resume("")
-
-        await self.print_start_message(state)
+        await self.print_start_message(state, start=start)
 
         if state["type"] == "basic":
             return await self.handle_state(state["edge"])
 
+        go_to_state = lambda s: self.handle_state(s)
+        speak = lambda text: self.update_history("message.bot", text)
+        call_ai = lambda prompt, tool, stop=None: self.call_ai(prompt, tool, stop)
+
         if state["type"] == "question":
-            question = state["question"]
-            if question["type"] == "verbatim":
-                self.update_history("message.bot", question["message"])
-                bot_response = question["message"]
-            else:
-                bot_response = await self.guided_response(question["description"])
 
-            async def resume(answer):
-                self.update_history(
-                    "debug", f"continuing at {state_id} with user response {answer}"
-                )
-                self.logger.info(
-                    f"continuing at {state_id} with user response {answer}"
-                )
-                return await self.maybe_respond_to_user(bot_response, answer)
+            async def ask_question() -> str:
+                question = state["question"]
+                if question["type"] == "verbatim":
+                    self.update_history("message.bot", question["message"])
 
-            return resume
+                    async def return_message():
+                        return question["message"]
+
+                    return await return_message()
+                return await self.guided_response(question["description"])
+
+            return await handle_question(
+                state=state,
+                go_to_state=go_to_state,
+                get_question_text=ask_question,
+                call_ai=call_ai,
+                speak=speak,
+                logger=self.logger,
+            )
 
         if state["type"] == "options":
-            return await self.handle_options(state=state)
+            return await handle_options(
+                state=state,
+                go_to_state=go_to_state,
+                speak=speak,
+                call_ai=call_ai,
+                state_machine=self.state_machine,
+                get_chat_history=lambda: self.chat_history,
+                logger=self.logger,
+            )
 
         if state["type"] == "action":
             return await self.compose_action(state)
@@ -255,177 +506,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             return message["response"]
         except Exception as e:
             self.logger.error(f"Agent could not respond: {e}")
-
-    async def choose_block(self, state=None, choose_from=None):
-        if state is None:
-            states = self.state_machine["states"][
-                self.state_machine["startingStateId"]
-            ]["edges"]
-        else:
-            if "edges" in state:
-                states = state["edges"]
-            else:
-                states = [state["edge"]]
-        # if choose_from is set, we will let it choose from all available
-        # aadd choose_from to the states list
-        if choose_from:
-            states += (
-                choose_from
-                + self.state_machine["states"][self.state_machine["startingStateId"]][
-                    "edges"
-                ]
-            )
-        states = list(set([s.split("::")[0] for s in states]))
-        # remove the start state from the list if it exists
-        if "start" in states:
-            states.remove("start")
-        if len(states) == 1:
-            next_state_id = states[0]
-            return await self.handle_state(next_state_id)
-        # if len is 0 then go to start
-        if len(states) == 0:
-            return await self.handle_state("start")
-        numbered_states = "\n".join([f"{i + 1}. {s}" for i, s in enumerate(states)])
-        prompt = f"Choose from the available states:\n{numbered_states}\nReturn just a single number corresponding to your choice."
-        streamed_choice = await self.call_ai(
-            prompt,
-        )
-        match = re.search(r"\d+", streamed_choice)
-        chosen_int = int(match.group()) if match else 1
-        next_state_id = states[chosen_int - 1]
-        self.logger.info(f"Chose {next_state_id}")
-        return await self.handle_state(next_state_id)
-
-    async def handle_options(self, state):
-        last_user_message_index = None
-        last_user_message = None
-        last_bot_message = self.state_machine["states"]["start"]["start_message"][
-            "message"
-        ]
-        action_result_after_user_spoke = None
-        # Iterate through the chat history to find the last user message
-        for i, (role, msg) in enumerate(reversed(self.chat_history)):
-            if last_user_message_index is None and role == "human" and msg:
-                last_user_message_index = len(self.chat_history) - i - 1
-                last_user_message = msg
-                break
-
-        # If a user message was found, iterate again to find the last bot message before the user message
-        if last_user_message_index is not None:
-            for i, (role, msg) in enumerate(
-                reversed(self.chat_history[:last_user_message_index])
-            ):
-                if role == "message.bot" and msg:
-                    last_bot_message = msg
-                    break
-
-        action_result_after_user_spoke = None
-        if last_user_message_index:
-            for i, (role, msg) in enumerate(
-                self.chat_history[last_user_message_index + 1 :]
-            ):
-                if role == "action-finish" and msg:
-                    action_result_after_user_spoke = msg
-                    break
-        tool = {"condition": "[insert the name of the condition that applies]"}
-
-        default_next_state = get_default_next_state(state)
-        response_to_edge = {}
-        ai_options = []
-        edges = [
-            (dest_state_id, data) for dest_state_id, data in state["edges"].items()
-        ]
-
-        # add disambiguation edges unless we're at in the start state or an action just finished
-        if (
-            state["id"] != self.state_machine["startingStateId"]
-            and not action_result_after_user_spoke
-        ):
-            edges.append(
-                (
-                    self.state_machine["startingStateId"],
-                    {
-                        "aiLabel": "switch",
-                        "aiDescription": f"user no longer needs help with '{self.current_state['id'].split('::')[0]}'",
-                    },
-                )
-            )
-            edges.append(
-                (
-                    default_next_state,
-                    {
-                        "aiLabel": "continue",
-                        "aiDescription": f"user still needs help with '{self.current_state['id'].split('::')[0]}' but no condition applies",
-                    },
-                )
-            )
-            # extra edge if this state was part of a question section
-            if "question" in self.current_state["id"].split("::")[-2]:
-                edges.append(
-                    (
-                        default_next_state,
-                        {
-                            "speak": True,
-                            "aiLabel": "question",
-                            "aiDescription": "user seems confused or unsure",
-                        },
-                    )
-                )
-
-        index = 0
-        for dest_state_id, edge in state["edges"].items():
-            if "isDefault" not in edge or not edge["isDefault"]:
-                ai_option = {
-                    "dest_state_id": dest_state_id,
-                }
-                if "aiLabel" in edge:
-                    ai_option["ai_label"] = edge["aiLabel"]
-                if "aiDescription" in edge:
-                    ai_option["ai_description"] = edge["aiDescription"]
-                response_to_edge[index] = ai_option
-                response_to_edge[edge["aiLabel"]] = (
-                    ai_option  # in case the AI says the label not the number
-                )
-                ai_options.append(
-                    f"{index}: {edge.get('aiDescription', edge['aiLabel'])}"
-                )
-                index += 1
-
-        if len(ai_options) == 0:
-            raise Exception("invalid options state with no options")
-
-        ai_options_str = "\n".join(ai_options)
-        prompt = (
-            f"Bot's last statement: '{last_bot_message}'\n"
-            f"User's response: '{last_user_message}'\n"
-            f"{'Last tool output: ' + action_result_after_user_spoke if action_result_after_user_spoke else ''}\n\n"  # TODO: also render the action output if it was before the user spoke
-            "Identify the number associated with the most fitting condition from the list below:\n"
-            f"{ai_options_str}\n\n"
-            "Always return a number from the above list. Return the number of the condition that best applies."
-        )
-        self.logger.info(f"AI prompt constructed: {prompt}")
-        response = await self.call_ai(
-            prompt,
-            tool,
-        )
-
-        self.logger.info(f"Chose condition: {response}")
-        response = response[response.find("{") : response.rfind("}") + 1]
-
-        try:
-            condition = eval(response)["condition"]
-            # xtract th number
-            match = re.search(r"\d+", condition)
-            condition = int(match.group()) if match else 1
-            next_state_id = response_to_edge[condition]["dest_state_id"]
-            if response_to_edge[condition].get("speak"):
-                return await self.maybe_respond_to_user(
-                    last_bot_message, last_user_message
-                )
-            return await self.handle_state(next_state_id)
-        except Exception as e:
-            self.logger.error(f"Agent chose no condition: {e}. Response was {response}")
-            return await self.handle_state(default_next_state)
 
     async def compose_action(self, state):
         action = state["action"]
@@ -517,65 +597,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         else:
             return await self.handle_state(state["edge"])
 
-    async def maybe_respond_to_user(self, question, user_response):
-        continue_tool = {
-            "[either 'PAUSE' or 'CONTINUE' or 'SWITCH']": "[insert your response to the user]",
-        }
-        if self.current_state and self.current_state["id"]:
-            current_workflow = self.current_state["id"].split("::")[0]
-        else:
-            current_workflow = "start of conversation"
-        # if its a conditional, get the conditions
-        if self.current_state and self.current_state["type"] == "condition":
-            conditions = self.current_state["condition"]["conditionToStateLabel"].keys()
-            conditions = "\n".join([f"'{c}'" for c in conditions])
-        additional_info = (
-            f"Decide what to do next. If the user's response aligns with any of the following, 'CONTINUE' the current process:\n{conditions}"
-            if self.current_state and self.current_state["type"] == "condition"
-            else ""
-        )
-        prompt = (
-            f"You last stated: '{question}', to which the user replied: '{user_response}'.\n\n"
-            f"You are already engaged in the following process: {current_workflow}\n"
-            f"{additional_info}\n\n"
-            "Now, to best assist the user, decide whether you should:\n"
-            "- 'CONTINUE' the process to the next step\n"
-            "   Response: Proceed with the next step of the current workflow without additional commentary\n"
-            "- 'PAUSE' the current process if the user asked a question of their own\n"
-            "   Response: If the user didn't answer, politely restate the question and ask for a clear answer.\n"
-            "             If the user asked a question, provide a concise answer and then pause.\n"
-            "             Ensure not to suggest any actions or offer alternatives.\n"
-            "- 'SWITCH' to a different process if current process is not relevant or if the user changes the subject\n"
-            "   Response: Switch to a different proces without addition commentary\n"
-        )
-        self.logger.info(f"Prompt: {prompt}")
-        # we do not care what it has to say when switching or continuing
-        output = await self.call_ai(prompt, continue_tool, stop=["CONTINUE", "SWITCH"])
-        self.logger.info(f"Output: {output}")
-        if "CONTINUE" in output:
-            return await self.handle_state(
-                state_id_or_label=get_default_next_state(self.current_state)
-            )
-        if "SWITCH" in output:
-            return await self.handle_state(
-                state_id_or_label=self.state_machine["startingStateId"]
-            )
-
-        output = output[output.find("{") : output.rfind("}") + 1]
-        output = eval(output.replace("'None'", "'none'").replace("None", "'none'"))
-        if "PAUSE" in output:
-            self.update_history("message.bot", output["PAUSE"])
-
-            async def resume(human_input):
-                self.update_history("human", human_input)
-                return await self.handle_state(self.current_state["id"])
-
-            return resume
-
-        self.logger.info(f"falling back with {output}")
-        return await self.handle_state(self.current_state["id"])
-
+    #
     async def call_ai(self, prompt, tool=None, stop=None):
+        self.logger.info("HI__FS_)FUE)(FWE)(FEW)(GFHWE)(GHE)G(EWH)G(eh)")
         # self.client = AsyncOpenAI(
         #     base_url=self.base_url,
         #     api_key="<HF_API_TOKEN>",  # replace with your token
