@@ -118,6 +118,9 @@ class LLMFallback(BaseModel):
     model_name: str
 
 
+ObservabilityBackend = Literal["sentry"]  # eventually, Langsmith
+
+
 class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):  # type: ignore
     openai_api_key: Optional[str] = None
     prompt_preamble: str
@@ -131,6 +134,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):  # type: i
     backchannel_probability: float = 0.7
     first_response_filler_message: Optional[str] = None
     llm_fallback: Optional[LLMFallback] = None
+    observability_backend: Optional[ObservabilityBackend]
 
 
 class AnthropicAgentConfig(AgentConfig, type=AgentType.ANTHROPIC.value):  # type: ignore
