@@ -945,6 +945,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 "on_interrupt",
                 create_on_interrupt_callback(processed_event),
             )
+            # Prevents the case where we send a chunk after the output device has been interrupted
             async with self.interrupt_lock:
                 self.output_device.consume_nonblocking(
                     InterruptibleEvent(

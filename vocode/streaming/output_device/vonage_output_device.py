@@ -36,5 +36,5 @@ class VonageOutputDevice(RateLimitInterruptionsOutputDevice):
             subchunk = chunk[i : i + VONAGE_CHUNK_SIZE]
             if len(subchunk) % 2 == 1:
                 subchunk += PCM_SILENCE_BYTE  # pad with silence, Vonage goes crazy otherwise
-            if self.ws and self.ws.application_state == WebSocketState.DISCONNECTED:
+            if self.ws and self.ws.application_state != WebSocketState.DISCONNECTED:
                 await self.ws.send_bytes(subchunk)

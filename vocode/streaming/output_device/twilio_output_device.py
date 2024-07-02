@@ -8,6 +8,7 @@ from typing import Optional, Union
 
 from fastapi import WebSocket
 from fastapi.websockets import WebSocketState
+from loguru import logger
 from pydantic import BaseModel
 
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
@@ -70,13 +71,18 @@ class TwilioOutputDevice(AbstractOutputDevice):
                 # mark messages are tagged with the chunk ID that is attached to the audio chunk
                 # but they are guaranteed to come in the same order as the audio chunks, and we
                 # don't need to build resiliency there
-                await self._mark_message_queue.get()
+                mark_message = await self._mark_message_queue.get()
                 item = await self._unprocessed_audio_chunks_queue.get()
             except asyncio.CancelledError:
                 return
 
             self.interruptible_event = item
             audio_chunk = item.payload
+
+            if mark_message.chunk_id != str(audio_chunk.chunk_id):
+                logger.error(
+                    f"Received a mark message out of order with chunk ID {mark_message.chunk_id}"
+                )
 
             if item.is_interrupted():
                 audio_chunk.on_interrupt()
