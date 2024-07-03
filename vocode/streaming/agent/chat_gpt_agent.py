@@ -149,26 +149,13 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfigType]):
             )
             self.apply_model_fallback(chat_parameters)
             stream = await self.openai_client.chat.completions.create(**chat_parameters)
-        except Exception as e:
-            logger.error(
-                f"Error while hitting OpenAI with chat_parameters: {chat_parameters}",
-                exc_info=True,
-            )
-            raise e
         return stream
 
     async def _create_openai_stream(self, chat_parameters: Dict[str, Any]) -> AsyncGenerator:
         if self.agent_config.llm_fallback is not None and self.openai_client.max_retries == 0:
             stream = await self._create_openai_stream_with_fallback(chat_parameters)
         else:
-            try:
-                stream = await self.openai_client.chat.completions.create(**chat_parameters)
-            except Exception as e:
-                logger.error(
-                    f"Error while hitting OpenAI with chat_parameters: {chat_parameters}",
-                    exc_info=True,
-                )
-                raise e
+            stream = await self.openai_client.chat.completions.create(**chat_parameters)
         return stream
 
     def should_backchannel(self, human_input: str) -> bool:
