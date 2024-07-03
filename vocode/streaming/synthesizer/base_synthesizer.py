@@ -295,7 +295,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
 
     @staticmethod
     def get_message_cutoff_from_voice_speed(
-        message: BaseMessage, seconds: Optional[float], words_per_minute: int
+        message: BaseMessage, seconds: Optional[float], words_per_minute: int = 150
     ) -> str:
 
         if seconds is None:
