@@ -209,7 +209,12 @@ async def handle_options(
     default_next_state = get_default_next_state(state)
     response_to_edge = {}
     ai_options = []
-    edges = [(dest_state_id, data) for dest_state_id, data in state["edges"].items()]
+    logger.info(f"state edges {state}")
+    edges = [
+        edge
+        for edge in state["edges"]
+        if (edge.get("aiLabel") or edge.get("aiDescription"))
+    ]
 
     # add disambiguation edges unless we're at in the start state or an action just finished
     logger.info(
@@ -220,50 +225,38 @@ async def handle_options(
         and not action_result_after_user_spoke
     ):
         edges.append(
-            (
-                state_machine["startingStateId"],
-                {
-                    "aiLabel": "switch",
-                    "aiDescription": f"user no longer needs help with '{state['id'].split('::')[0]}'",
-                },
-            )
+            {
+                "destStateId": state_machine["startingStateId"],
+                "aiLabel": "switch",
+                "aiDescription": f"user no longer needs help with '{state['id'].split('::')[0]}'",
+            }
         )
         edges.append(
-            (
-                default_next_state,
-                {
-                    "aiLabel": "continue",
-                    "aiDescription": f"user still needs help with '{state['id'].split('::')[0]}' but no condition applies",
-                },
-            )
+            {
+                "destStateId": default_next_state,
+                "aiLabel": "continue",
+                "aiDescription": f"user still needs help with '{state['id'].split('::')[0]}' but no condition applies",
+            }
         )
         # extra edge if this state was part of a question section
         if "question" in state["id"].split("::")[-2]:
             edges.append(
-                (
-                    default_next_state,
-                    {
-                        "speak": True,
-                        "aiLabel": "question",
-                        "aiDescription": "user seems confused or unsure",
-                    },
-                )
+                {
+                    "destStateId": default_next_state,
+                    "speak": True,
+                    "aiLabel": "question",
+                    "aiDescription": "user seems confused or unsure",
+                }
             )
 
+    logger.info(f"edges {edges}")
+    logger.info(f"original edges {state['edges']}")
     index = 0
-    for dest_state_id, edge in edges:
+    for edge in edges:
         if "isDefault" not in edge or not edge["isDefault"]:
-            ai_option = {
-                "dest_state_id": dest_state_id,
-            }
-            if "aiLabel" in edge:
-                ai_option["ai_label"] = edge["aiLabel"]
-            if "aiDescription" in edge:
-                ai_option["ai_description"] = edge["aiDescription"]
-            response_to_edge[index] = ai_option
-            response_to_edge[edge["aiLabel"]] = (
-                ai_option  # in case the AI says the label not the number
-            )
+            response_to_edge[index] = edge
+            if edge.get("aiLabel"):
+                response_to_edge[edge["aiLabel"]] = edge
 
             ai_options.append(
                 f"{index}: {edge.get('aiDescription', None) or edge.get('aiLabel', None)}"
@@ -296,7 +289,7 @@ async def handle_options(
         # xtract th number
         match = re.search(r"\d+", condition)
         condition = int(match.group()) if match else 1
-        next_state_id = response_to_edge[condition]["dest_state_id"]
+        next_state_id = response_to_edge[condition]["destStateId"]
         if response_to_edge[condition].get("speak"):
 
             async def resume(human_input):
@@ -334,9 +327,9 @@ async def handle_options(
 def get_default_next_state(state):
     if state["type"] != "options":
         return state["edge"]
-    for dest_state_id, edge in state["edges"].items():
+    for edge in state["edges"]:
         if "isDefault" in edge and edge["isDefault"]:
-            return dest_state_id
+            return edge["destStateId"]
 
 
 class StateAgent(RespondAgent[CommandAgentConfig]):
