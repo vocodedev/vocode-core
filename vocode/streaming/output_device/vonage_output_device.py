@@ -12,7 +12,7 @@ from vocode.streaming.telephony.constants import (
     VONAGE_CHUNK_SIZE,
     VONAGE_SAMPLING_RATE,
 )
-from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
+from vocode.streaming.utils.create_task import asyncio_create_task
 
 
 class VonageOutputDevice(BaseOutputDevice):
@@ -25,7 +25,7 @@ class VonageOutputDevice(BaseOutputDevice):
         self.ws = ws
         self.active = True
         self.queue: asyncio.Queue[bytes] = asyncio.Queue()
-        self.process_task = asyncio_create_task_with_done_error_log(self.process())
+        self.process_task = asyncio_create_task(self.process())
         self.output_to_speaker = output_to_speaker
         if output_to_speaker:
             self.output_speaker = BlockingSpeakerOutput.from_default_device(

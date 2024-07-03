@@ -10,7 +10,7 @@ from fastapi.websockets import WebSocketState
 
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
-from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
+from vocode.streaming.utils.create_task import asyncio_create_task
 
 
 class TwilioOutputDevice(BaseOutputDevice):
@@ -20,7 +20,7 @@ class TwilioOutputDevice(BaseOutputDevice):
         self.stream_sid = stream_sid
         self.active = True
         self.queue: asyncio.Queue[str] = asyncio.Queue()
-        self.process_task = asyncio_create_task_with_done_error_log(self.process())
+        self.process_task = asyncio_create_task(self.process())
 
     async def process(self):
         while self.active:

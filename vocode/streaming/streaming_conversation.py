@@ -58,7 +58,7 @@ from vocode.streaming.synthesizer.input_streaming_synthesizer import InputStream
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode.streaming.utils import create_conversation_id, get_chunk_size_per_second
-from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
+from vocode.streaming.utils.create_task import asyncio_create_task
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.speed_manager import SpeedManager
 from vocode.streaming.utils.state_manager import ConversationStateManager
@@ -707,7 +707,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent.start()
         initial_message = self.agent.get_agent_config().initial_message
         if initial_message:
-            asyncio_create_task_with_done_error_log(
+            asyncio_create_task(
                 self.send_initial_message(initial_message),
             )
         else:
@@ -716,11 +716,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if mark_ready:
             await mark_ready()
         self.active = True
-        self.check_for_idle_task = asyncio_create_task_with_done_error_log(
+        self.check_for_idle_task = asyncio_create_task(
             self.check_for_idle(),
         )
         if len(self.events_manager.subscriptions) > 0:
-            self.events_task = asyncio_create_task_with_done_error_log(
+            self.events_task = asyncio_create_task(
                 self.events_manager.start(),
             )
 
@@ -911,7 +911,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         first_chunk_span = self._maybe_create_first_chunk_span(synthesis_result, message)
         chunk_queue: asyncio.Queue[Optional[SynthesisResult.ChunkResult]] = asyncio.Queue()
-        get_chunks_task = asyncio_create_task_with_done_error_log(
+        get_chunks_task = asyncio_create_task(
             get_chunks(chunk_queue, synthesis_result.chunk_generator),
         )
         first = True

@@ -33,7 +33,7 @@ from vocode.streaming.telephony.conversation.mark_message_queue import (
 )
 from vocode.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
 from vocode.streaming.utils import create_utterance_id
-from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
+from vocode.streaming.utils.create_task import asyncio_create_task
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.state_manager import TwilioPhoneConversationStateManager
 
@@ -218,7 +218,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
 
         clear_message_lock = asyncio.Lock()
 
-        asyncio_create_task_with_done_error_log(
+        asyncio_create_task(
             self._send_chunks(
                 utterance_id,
                 synthesis_result.chunk_generator,

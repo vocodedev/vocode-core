@@ -8,7 +8,7 @@ from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.transcript import TranscriptEvent
 from vocode.streaming.models.websocket import AudioMessage, TranscriptMessage
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
+from vocode.streaming.utils.create_task import asyncio_create_task
 
 
 class WebsocketOutputDevice(BaseOutputDevice):
@@ -20,7 +20,7 @@ class WebsocketOutputDevice(BaseOutputDevice):
 
     def start(self):
         self.active = True
-        self.process_task = asyncio_create_task_with_done_error_log(self.process())
+        self.process_task = asyncio_create_task(self.process())
 
     def mark_closed(self):
         self.active = False
