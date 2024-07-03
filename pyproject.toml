@@ -122,8 +122,6 @@ ENVIRONMENT = "test"
 AZURE_OPENAI_API_BASE_EAST_US = "https://api.openai.com"
 AZURE_OPENAI_API_KEY_EAST_US = "test"
 
-[tool.coverage.run]
-omit = ["tests/*"]
 
 [tool.black]
 line-length = 100

@@ -1,4 +1,6 @@
 import hashlib
+import io
+import wave
 
 from vocode import getenv
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
@@ -120,3 +122,7 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
                 synthesizer_config.audio_encoding,
             )
         )
+
+    async def tear_down(self):
+        await super().tear_down()
+        await self.client.close()
