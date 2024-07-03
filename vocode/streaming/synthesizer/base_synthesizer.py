@@ -285,7 +285,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
 
     @staticmethod
     def get_message_cutoff_from_voice_speed(
-        message: BaseMessage, seconds: float, words_per_minute: int
+        message: BaseMessage, seconds: float, words_per_minute: int = 150
     ) -> str:
         words_per_second = words_per_minute / 60
         estimated_words_spoken = math.floor(words_per_second * seconds)
