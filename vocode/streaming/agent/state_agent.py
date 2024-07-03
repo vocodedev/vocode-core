@@ -41,6 +41,41 @@ class BranchDecision(Enum):
     CONTINUE = 3
 
 
+def parse_llm_dict(s):
+    # Remove leading/trailing whitespace and braces
+    s = s.strip().strip("{}")
+
+    # Make regex to match key-value pairs, allowing for missing quotes around keys
+    # and handling improperly enclosed keys
+    pairs = re.findall(
+        r"(?:'([^']+)'|\"([^\"]+)\"|([^:]+?))\s*:\s*(.+?)(?=,\s*(?:'[^']+'|\"[^\"]+\"|[^:]+?:)|$)",
+        s,
+    )
+
+    result = {}
+    for match in pairs:
+        key, double_quoted_key, alt_key, value = match
+        key = key or double_quoted_key or alt_key.strip()
+
+        # Remove surrounding quotes if present
+        value = value.strip()
+        if (value.startswith("'") and value.endswith("'")) or (
+            value.startswith('"') and value.endswith('"')
+        ):
+            value = value[1:-1]
+
+        # Try to parse as JSON if it looks like a nested structure
+        if value.startswith("{") or value.startswith("["):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                pass  # Keep as string if parsing fails
+
+        result[key] = value
+
+    return result
+
+
 async def on_user_input_within_state(
     state,
     last_user_response: str,
@@ -71,11 +106,11 @@ async def on_user_input_within_state(
         "Now, to best assist the user, decide whether you should:\n"
         "- 'CONTINUE' the process to the next step\n"
         "   Response: Proceed with the next step of the current workflow without additional commentary\n"
-        "- 'PAUSE' the current process if the user asked a question of their own\n"
+        "- 'PAUSE' the current process if the user seems confused or has asked a question of their own\n"
         "   Response: If the user didn't answer, politely restate the question and ask for a clear answer.\n"
         "             If the user asked a question, provide a concise answer and then pause.\n"
         "             Ensure not to suggest any actions or offer alternatives.\n"
-        "- 'SWITCH' to a different process if current process is not relevant or if the user changes the subject\n"
+        f"- 'SWITCH' to a different process if '{current_workflow}' is not relevant or if the user entirely changes the subject\n"
         "   Response: Switch to a different process without additional commentary\n"
     )
     logger.info(f"Prompt: {prompt}")
@@ -88,7 +123,9 @@ async def on_user_input_within_state(
         return (BranchDecision["SWITCH"], None)
 
     output = output[output.find("{") : output.rfind("}") + 1]
-    output = eval(output.replace("'None'", "'none'").replace("None", "'none'"))
+    output = parse_llm_dict(
+        output.replace("'None'", "'none'").replace("None", "'none'")
+    )
     if "PAUSE" in output:
         return (BranchDecision["PAUSE"], output["PAUSE"])
 
@@ -285,7 +322,7 @@ async def handle_options(
     response = response[response.find("{") : response.rfind("}") + 1]
 
     try:
-        condition = eval(response)["condition"]
+        condition = parse_llm_dict(response)["condition"]
         # xtract th number
         match = re.search(r"\d+", condition)
         condition = int(match.group()) if match else 1
@@ -347,6 +384,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.twilio_sid = None
         self.block_inputs = False  # independent of interruptions, actions cannot be interrupted when a starting phrase is present
         self.stop = False
+        self.visited_states = {self.state_machine["startingStateId"]}
         self.chat_history = [("message.bot", self.agent_config.initial_message)]
         if "medusa" in self.agent_config.model_name.lower():
             self.base_url = getenv("AI_API_HUGE_BASE")
@@ -404,7 +442,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
     # recursively traverses the state machine
     # if it returns a function, call that function on the next human input to resume traversal
-    async def handle_state(self, state_id_or_label: str, start=False):
+    async def handle_state(self, state_id_or_label: str):
+        start = state_id_or_label not in self.visited_states
+        self.visited_states.add(state_id_or_label)
         state = get_state(state_id_or_label, self.state_machine)
         self.current_state = state
         if not state:
@@ -457,33 +497,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         if state["type"] == "action":
             return await self.compose_action(state)
 
-    def parse_llm_dict(self, s):
-        # Remove leading/trailing whitespace and braces
-        s = s.strip().strip("{}")
-
-        # Split into key-value pairs
-        pairs = re.findall(r"'([^']+)'\s*:\s*(.+?)(?=,\s*'|$)", s)
-
-        result = {}
-        for key, value in pairs:
-            # Remove surrounding quotes if present
-            value = value.strip()
-            if (value.startswith("'") and value.endswith("'")) or (
-                value.startswith('"') and value.endswith('"')
-            ):
-                value = value[1:-1]
-
-            # Try to parse as JSON if it looks like a nested structure
-            if value.startswith("{") or value.startswith("["):
-                try:
-                    value = json.loads(value)
-                except json.JSONDecodeError:
-                    pass  # Keep as string if parsing fails
-
-            result[key] = value
-
-        return result
-
     async def guided_response(self, guide):
         tool = {"response": "[insert your response]"}
         message = await self.call_ai(
@@ -494,7 +507,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         message = message[message.find("{") : message.rfind("}") + 1]
         self.logger.info(f"Guided response2: {message}")
         try:
-            message = self.parse_llm_dict(message)
+            message = parse_llm_dict(message)
             self.update_history("message.bot", message["response"])
             return message["response"]
         except Exception as e:
@@ -506,7 +519,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         action_name = action["name"]
         action_config = self._get_action_config(action_name)
         if not action_config.starting_phrase or action_config.starting_phrase == "":
-            action_config.starting_phrase = "Starting action..."
+            action_config.starting_phrase = "One moment please..."
         # the value of starting_phrase is the message it says during the action
         to_say_start = action_config.starting_phrase
         # if not self.streamed and not self.agent_config.use_streaming:
