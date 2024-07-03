@@ -6,6 +6,7 @@ import sentry_sdk
 from loguru import logger
 from openai import DEFAULT_MAX_RETRIES as OPENAI_DEFAULT_MAX_RETRIES
 from openai import AsyncAzureOpenAI, AsyncOpenAI, NotFoundError, RateLimitError
+from sentry_sdk.ai.monitoring import ai_track
 
 from vocode import sentry_span_tags
 from vocode.streaming.action.abstract_factory import AbstractActionFactory
@@ -161,14 +162,15 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfigType]):
         if self.agent_config.llm_fallback is not None and self.openai_client.max_retries == 0:
             stream = await self._create_openai_stream_with_fallback(chat_parameters)
         else:
-            try:
-                stream = await self.openai_client.chat.completions.create(**chat_parameters)
-            except Exception as e:
-                logger.error(
-                    f"Error while hitting OpenAI with chat_parameters: {chat_parameters}",
-                    exc_info=True,
-                )
-                raise e
+            with sentry_sdk.start_span(op="openai-stream"):
+                try:
+                    stream = await self.openai_client.chat.completions.create(**chat_parameters)
+                except Exception as e:
+                    logger.error(
+                        f"Error while hitting OpenAI with chat_parameters: {chat_parameters}",
+                        exc_info=True,
+                    )
+                    raise e
         return stream
 
     def should_backchannel(self, human_input: str) -> bool:
