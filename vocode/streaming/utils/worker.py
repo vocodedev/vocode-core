@@ -14,6 +14,11 @@ WorkerInputType = TypeVar("WorkerInputType")
 
 
 class AbstractWorker(Generic[WorkerInputType], ABC):
+    """
+    A generic processor - knows only how to consume typed items.
+    In order for a worker to process items, clients must invoke start() and tear down with terminate()
+    """
+
     @abstractmethod
     def start(self):
         raise NotImplementedError
