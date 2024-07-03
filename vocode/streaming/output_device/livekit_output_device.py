@@ -2,6 +2,7 @@ import asyncio
 
 from livekit import rtc
 
+from vocode.streaming.livekit.constants import AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
 from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
 from vocode.streaming.output_device.audio_chunk import ChunkState
@@ -14,7 +15,11 @@ class LiveKitOutputDevice(AbstractOutputDevice):
     track: rtc.LocalAudioTrack
     room: rtc.Room
 
-    def __init__(self, sampling_rate: int, audio_encoding: AudioEncoding):
+    def __init__(
+        self,
+        sampling_rate: int = DEFAULT_SAMPLING_RATE,
+        audio_encoding: AudioEncoding = AUDIO_ENCODING,
+    ):
         super().__init__(sampling_rate, audio_encoding)
 
     async def _run_loop(self):

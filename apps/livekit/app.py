@@ -15,15 +15,14 @@ from vocode.streaming.models.actions import (
     PhraseTrigger,
 )
 from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
 )
 from vocode.streaming.output_device.livekit_output_device import LiveKitOutputDevice
-from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
+from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 
 
@@ -50,16 +49,11 @@ async def wait_for_termination(conversation: LiveKitConversation, ctx: JobContex
 
 async def entrypoint(ctx: JobContext):
     configure_pretty_logging()
+    output_device = LiveKitOutputDevice()
     conversation = LiveKitConversation(
-        output_device=LiveKitOutputDevice(
-            sampling_rate=48000,
-            audio_encoding=AudioEncoding.LINEAR16,
-        ),
+        output_device=output_device,
         transcriber=DeepgramTranscriber(
-            DeepgramTranscriberConfig(
-                audio_encoding=AudioEncoding.LINEAR16,
-                sampling_rate=48000,
-                chunk_size=480,
+            DeepgramTranscriberConfig.from_livekit_input_device(
                 endpointing_config=PunctuationEndpointingConfig(),
                 api_key=os.getenv("DEEPGRAM_API_KEY"),
             ),
@@ -85,12 +79,10 @@ async def entrypoint(ctx: JobContext):
                 ],
             )
         ),
-        synthesizer=ElevenLabsSynthesizer(
-            synthesizer_config=ElevenLabsSynthesizerConfig(
-                audio_encoding=AudioEncoding.LINEAR16,
-                sampling_rate=48000,
-                voice_id="ODq5zmih8GrVes37Dizd",
-                api_key=os.getenv("ELEVEN_LABS_API_KEY"),
+        synthesizer=AzureSynthesizer(
+            synthesizer_config=AzureSynthesizerConfig.from_output_device(
+                output_device=output_device,
+                voice_name="en-US-AriaNeural",
             )
         ),
     )
