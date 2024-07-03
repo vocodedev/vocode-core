@@ -9,15 +9,23 @@ from pytest_mock import MockerFixture
 
 from tests.fakedata.conversation import (
     DEFAULT_CHAT_GPT_AGENT_CONFIG,
+    DummyOutputDevice,
     create_fake_agent,
     create_fake_streaming_conversation,
 )
+from tests.fixtures.synthesizer import TestSynthesizer, TestSynthesizerConfig
+from tests.fixtures.transcriber import TestAsyncTranscriber, TestTranscriberConfig
+from vocode.streaming.agent.echo_agent import EchoAgent
 from vocode.streaming.models.actions import ActionInput
-from vocode.streaming.models.agent import InterruptSensitivity
+from vocode.streaming.models.agent import EchoAgentConfig, InterruptSensitivity
+from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.events import Sender
+from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import Transcription
 from vocode.streaming.models.transcript import ActionStart, Message, Transcript
+from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.synthesizer.base_synthesizer import SynthesisResult
+from vocode.streaming.telephony.constants import DEFAULT_SAMPLING_RATE
 from vocode.streaming.utils.worker import AsyncWorker, QueueConsumer
 
 
@@ -583,3 +591,31 @@ async def test_send_speech_to_output_interrupted_during_playback(
     assert cut_off
     assert transcript_message.text != "Hi there"
     assert not transcript_message.is_final
+
+
+@pytest.mark.asyncio
+async def test_streaming_conversation_pipeline(
+    mocker: MockerFixture,
+):
+    output_device = DummyOutputDevice(sampling_rate=48000, audio_encoding=AudioEncoding.LINEAR16)
+    streaming_conversation = StreamingConversation(
+        output_device=output_device,
+        transcriber=TestAsyncTranscriber(
+            TestTranscriberConfig(
+                sampling_rate=48000,
+                audio_encoding=AudioEncoding.LINEAR16,
+                chunk_size=480,
+            )
+        ),
+        agent=EchoAgent(
+            EchoAgentConfig(initial_message=BaseMessage(text="Hi there")),
+        ),
+        synthesizer=TestSynthesizer(TestSynthesizerConfig.from_output_device(output_device)),
+    )
+    await streaming_conversation.start()
+    await streaming_conversation.initial_message_tracker.wait()
+    streaming_conversation.receive_audio(b"test")
+    initial_message_audio_chunk = await output_device.dummy_playback_queue.get()
+    assert initial_message_audio_chunk.data == b"Hi there"
+    first_response_audio_chunk = await output_device.dummy_playback_queue.get()
+    assert first_response_audio_chunk.data == b"test"

@@ -1,5 +1,4 @@
 import asyncio
-import time
 from typing import Optional
 
 from pytest_mock import MockerFixture
@@ -52,6 +51,7 @@ class DummyOutputDevice(AbstractOutputDevice):
         self.wait_for_interrupt = wait_for_interrupt
         self.chunks_before_interrupt = chunks_before_interrupt
         self.interrupt_event = asyncio.Event()
+        self.dummy_playback_queue = asyncio.Queue()
 
     async def process(self, item):
         self.interruptible_event = item
@@ -61,6 +61,7 @@ class DummyOutputDevice(AbstractOutputDevice):
             audio_chunk.on_interrupt()
             audio_chunk.state = ChunkState.INTERRUPTED
         else:
+            self.dummy_playback_queue.put_nowait(audio_chunk)
             audio_chunk.on_play()
             audio_chunk.state = ChunkState.PLAYED
             self.interruptible_event.is_interruptible = False
