@@ -1,11 +1,4 @@
-FROM python:3.10-bullseye
-
-# get portaudio and ffmpeg
-RUN apt-get update \
-        && apt-get install libportaudio2 libportaudiocpp0 portaudio19-dev libasound-dev libsndfile1-dev -y
-RUN apt-get -y update
-RUN apt-get -y upgrade
-RUN apt-get install -y ffmpeg
+FROM vocodedev/vocode:latest
 
 WORKDIR /code
 COPY ./pyproject.toml /code/pyproject.toml
