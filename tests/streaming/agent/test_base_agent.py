@@ -189,4 +189,4 @@ def agent_config():
 
 def test_chat_gpt_agent_base_url(agent_config):
     agent = ChatGPTAgent(agent_config)
-    assert agent.openai_client.base_url == "https://api.groq.com/openai/v1"
+    assert str(agent.openai_client.base_url) == "https://api.groq.com/openai/v1"
