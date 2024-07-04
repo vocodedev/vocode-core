@@ -267,7 +267,13 @@ all_optional_tools = {
     ActionType.FORWARD_CALL_TO_MOOVS: {
         "name": "forward_call_to_moovs",
         "description": "Puts a human support agent into the call.",
-        "parameter_definitions": {},
+        "parameter_definitions": {
+            "handoff_information": {
+                "description": "The information passed to a human agent when the call is forwarded",
+                "type": "str",
+                "required": True,
+            },
+        },
     },
     ActionType.CREATE_SUNSHINE_CONVERSATION: {
         "name": "create_sunshine_conversation",

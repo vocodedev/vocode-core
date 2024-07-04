@@ -530,30 +530,33 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.block_inputs = True
         action_description = action["description"]
         params = action["params"]
-        dict_to_fill = {param_name: "[insert value]" for param_name in params.keys()}
-        param_descriptions = "\n".join(
-            [
-                f"'{param_name}': description: {params[param_name]['description']}, type: '{params[param_name]['type']})'"
-                for param_name in params.keys()
-            ]
-        )
-        response = await self.call_ai(
-            prompt=f"Provide the values for these parameters based on the current conversation and the instructions provided: {param_descriptions}",
-            tool=dict_to_fill,
-        )
-        self.logger.info(f"Filled params: {response}")
-        response = response[response.find("{") : response.rfind("}") + 1]
-        self.logger.info(f"Filled params: {response}")
-        try:
-            params = eval(response)
-        except Exception as e:
+
+        # We can skip instances where integrations do not need any parameters at all
+        if params:
+            dict_to_fill = {param_name: "[insert value]" for param_name in params.keys()}
+            param_descriptions = "\n".join(
+                [
+                    f"'{param_name}': description: {params[param_name]['description']}, type: '{params[param_name]['type']})'"
+                    for param_name in params.keys()
+                ]
+            )
             response = await self.call_ai(
-                prompt=f"You must return a dictionary as described. Provide the values for these parameters based on the current conversation and the instructions provided: {param_descriptions}",
+                prompt=f"Provide the values for these parameters based on the current conversation and the instructions provided: {param_descriptions}",
                 tool=dict_to_fill,
             )
-            self.logger.info(f"Filled params2: {response}")
+            self.logger.info(f"Filled params: {response}")
             response = response[response.find("{") : response.rfind("}") + 1]
-            params = eval(response)
+            self.logger.info(f"Filled params: {response}")
+            try:
+                params = eval(response)
+            except Exception as e:
+                response = await self.call_ai(
+                    prompt=f"You must return a dictionary as described. Provide the values for these parameters based on the current conversation and the instructions provided: {param_descriptions}",
+                    tool=dict_to_fill,
+                )
+                self.logger.info(f"Filled params2: {response}")
+                response = response[response.find("{") : response.rfind("}") + 1]
+                params = eval(response)
 
         action = self.action_factory.create_action(action_config)
         action_input: ActionInput
