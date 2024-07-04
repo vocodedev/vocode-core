@@ -600,11 +600,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             f"Action Completed: '{action_name}' completed with the following result:\ninput:'{input}'\noutput:\n{output}",
         )
         # it seems to continue on an on
-        if state["edge"] == "start":
-            self.current_state = None
-            return {}
-        else:
-            return await self.handle_state(state["edge"])
+        return await self.handle_state(state["edge"])
 
     #
     async def call_ai(self, prompt, tool=None, stop=None):
