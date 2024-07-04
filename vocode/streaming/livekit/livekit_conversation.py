@@ -1,6 +1,8 @@
 import asyncio
+import json
 
 from livekit import rtc
+from livekit.rtc.chat import _CHAT_TOPIC
 from loguru import logger
 
 from vocode.streaming.livekit.livekit_events_manager import LiveKitEventsManager
@@ -25,10 +27,16 @@ class LiveKitConversation(StreamingConversation[LiveKitOutputDevice]):
         self.room = room
         room.on("track_subscribed", self._on_track_subscribed)
         room.on("track_unsubscribed", self._on_track_unsubscribed)
+        room.on("data_received", self._on_data_received)
 
         await self.output_device.initialize_source(room)
 
         await super().start()
+
+    def _on_data_received(self, packet: rtc.DataPacket):
+        if packet.topic == _CHAT_TOPIC:
+            chat = json.loads(packet.data.decode("utf-8"))
+            self.receive_message(chat["message"])
 
     def _on_track_subscribed(
         self,
