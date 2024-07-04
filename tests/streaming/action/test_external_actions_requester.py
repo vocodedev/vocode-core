@@ -65,6 +65,7 @@ async def test_send_request_responses(
         JSON_SCHEMA,
         base64.b64encode(os.urandom(32)).decode(),
         additional_payload_values={"call_id": "call_id"},
+        transport_options={"retries": 3, "verify": True},
     )
 
     assert response.success is expected_success
