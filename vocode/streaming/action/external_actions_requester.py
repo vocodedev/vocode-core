@@ -63,7 +63,7 @@ class ExternalActionsRequester:
             "x-vocode-signature": self._encode_payload(encoded_payload, signature_secret),
         }
 
-        transport = httpx.AsyncHTTPTransport(retries=2)
+        transport = httpx.AsyncHTTPTransport(retries=2, verify=False)
         async with httpx.AsyncClient(
             headers=headers,
             transport=transport,
