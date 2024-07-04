@@ -1,34 +1,29 @@
+import inspect
 import io
+import logging
 import os
 import pickle
-import logging
-import inspect
 from collections import defaultdict
-from pydantic.v1 import BaseModel
-from typing import Tuple, Union, Optional, Dict, Type, List
-from pydub import AudioSegment
-from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    ContextTypes,
-    CommandHandler,
-    MessageHandler,
-    filters,
-)
-from vocode.turn_based.transcriber import WhisperTranscriber, BaseTranscriber
-from vocode.turn_based.agent import ChatGPTAgent, BaseAgent
-from vocode.turn_based.synthesizer import (
-    CoquiSynthesizer,
-    StreamElementsSynthesizer,
-    ElevenLabsSynthesizer,
-    PlayHtSynthesizer,
-    AzureSynthesizer,
-    CoquiTTSSynthesizer,
-    RimeSynthesizer,
-    BaseSynthesizer,
-)
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 from dotenv import load_dotenv
+from pydantic.v1 import BaseModel
+from pydub import AudioSegment
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+
+from vocode.turn_based.agent import BaseAgent, ChatGPTAgent
+from vocode.turn_based.synthesizer import (
+    AzureSynthesizer,
+    BaseSynthesizer,
+    CoquiSynthesizer,
+    CoquiTTSSynthesizer,
+    ElevenLabsSynthesizer,
+    PlayHtSynthesizer,
+    RimeSynthesizer,
+    StreamElementsSynthesizer,
+)
+from vocode.turn_based.transcriber import BaseTranscriber, WhisperTranscriber
 
 load_dotenv()
 
@@ -70,9 +65,7 @@ assert set(voice_attr_of.keys()) == set(
     supported_classes
 ), "supported_classes must match the keys of voice_attr_of!"
 
-assert (
-    type(SYNTH) in voice_attr_of.keys()
-), "Synthesizer class must be one of the supported ones!"
+assert type(SYNTH) in voice_attr_of.keys(), "Synthesizer class must be one of the supported ones!"
 # Check voice_attr_of is correct by asserting all classes have their corresponding value as a parameter in the init function
 for key, value in voice_attr_of.items():
     assert value in inspect.signature(key.__init__).parameters
@@ -93,9 +86,7 @@ DEFAULT_VOICES: List[Voice] = [Voice(id=None, name="Coqui Default", description=
 class Chat(BaseModel):
     voices: List[Voice] = DEFAULT_VOICES  # List of available voices for the chat
     current_voice: Voice = DEFAULT_VOICES[0]  # Current voice for the chat
-    current_conversation: Optional[
-        bytes
-    ] = None  # Current conversation as a pickled object
+    current_conversation: Optional[bytes] = None  # Current conversation as a pickled object
 
 
 class VocodeBotResponder:
@@ -149,9 +140,7 @@ class VocodeBotResponder:
         voice_description = user.current_voice.description
 
         # If we have a Coqui voice prompt, use that. Otherwise, set ID as synthesizer expects.
-        if voice_description is not None and isinstance(
-            self.synthesizer, CoquiSynthesizer
-        ):
+        if voice_description is not None and isinstance(self.synthesizer, CoquiSynthesizer):
             self.synthesizer.voice_prompt = voice_description
         elif voice_id is not None:
             setattr(self.synthesizer, voice_attr_of[type(self.synthesizer)], voice_id)
@@ -172,9 +161,7 @@ class VocodeBotResponder:
         start_text = """
 I'm a voice chatbot, send a voice message to me and I'll send one back!" Use /help to see available commands.
 """
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id, text=start_text
-        )
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=start_text)
 
     async def handle_telegram_message(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -183,9 +170,7 @@ I'm a voice chatbot, send a voice message to me and I'll send one back!" Use /he
         chat_id = update.effective_chat.id
         # Accept text or voice messages
         if update.message and update.message.voice:
-            user_telegram_voice = await context.bot.get_file(
-                update.message.voice.file_id
-            )
+            user_telegram_voice = await context.bot.get_file(update.message.voice.file_id)
             bytes = await user_telegram_voice.download_as_bytearray()
             # convert audio bytes to numpy array
             input = AudioSegment.from_file(
@@ -206,9 +191,7 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
         agent_response, synth_response = await self.get_response(int(chat_id), input)
         out_voice = io.BytesIO()
         synth_response.export(out_f=out_voice, format="ogg", codec="libopus")  # type: ignore
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id, text=agent_response
-        )
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=agent_response)
         await context.bot.send_voice(chat_id=str(chat_id), voice=out_voice)
 
     async def handle_telegram_select_voice(
@@ -235,9 +218,7 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
             self.db[chat_id].current_voice = user_voices[new_voice_id]
             # Reset conversation
             self.db[chat_id].current_conversation = None
-            await context.bot.send_message(
-                chat_id=chat_id, text="Voice changed successfully!"
-            )
+            await context.bot.send_message(chat_id=chat_id, text="Voice changed successfully!")
 
     async def handle_telegram_create_voice(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -266,9 +247,7 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
         # Reset conversation
         self.db[chat_id].current_conversation = None
 
-        await context.bot.send_message(
-            chat_id=chat_id, text="Voice changed successfully!"
-        )
+        await context.bot.send_message(chat_id=chat_id, text="Voice changed successfully!")
 
     async def handle_telegram_list_voices(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -287,9 +266,7 @@ Sorry, I only respond to commands, voice, or text messages. Use /help for more i
             chat_id=chat_id, text=f"Available voices:\n{voices_formatted}"
         )
 
-    async def handle_telegram_who(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def handle_telegram_who(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         assert update.effective_chat, "Chat must be defined!"
         chat_id = update.effective_chat.id
         current_voice = self.db[chat_id].current_voice
@@ -334,15 +311,11 @@ if __name__ == "__main__":
     voco = VocodeBotResponder(transcriber, SYSTEM_PROMPT, SYNTH)
     application = ApplicationBuilder().token(os.environ["TELEGRAM_BOT_KEY"]).build()
     application.add_handler(CommandHandler("start", voco.handle_telegram_start))
-    application.add_handler(
-        MessageHandler(~filters.COMMAND, voco.handle_telegram_message)
-    )
+    application.add_handler(MessageHandler(~filters.COMMAND, voco.handle_telegram_message))
     application.add_handler(CommandHandler("create", voco.handle_telegram_create_voice))
     application.add_handler(CommandHandler("voice", voco.handle_telegram_select_voice))
     application.add_handler(CommandHandler("list", voco.handle_telegram_list_voices))
     application.add_handler(CommandHandler("who", voco.handle_telegram_who))
     application.add_handler(CommandHandler("help", voco.handle_telegram_help))
-    application.add_handler(
-        MessageHandler(filters.COMMAND, voco.handle_telegram_unknown_cmd)
-    )
+    application.add_handler(MessageHandler(filters.COMMAND, voco.handle_telegram_unknown_cmd))
     application.run_polling()

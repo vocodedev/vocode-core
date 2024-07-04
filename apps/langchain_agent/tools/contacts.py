@@ -1,4 +1,5 @@
 from typing import List
+
 from langchain.agents import tool
 
 CONTACTS = [{"name": "Ajay", "phone": "+15555555555"}]

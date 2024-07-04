@@ -6,8 +6,8 @@ import aiohttp
 import pytest
 from aioresponses import aioresponses
 from pytest_mock import MockerFixture
-from tests.fakedata.id import generate_uuid
 
+from tests.fakedata.id import generate_uuid
 from vocode.streaming.action.transfer_call import (
     TransferCallEmptyParameters,
     TransferCallVocodeActionConfig,

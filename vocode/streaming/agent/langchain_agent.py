@@ -1,12 +1,11 @@
 from typing import AsyncGenerator, AsyncIterator, Optional
 
 import sentry_sdk
-from loguru import logger
-
+from langchain.chat_models import init_chat_model
 from langchain_core.messages.base import BaseMessage as LangchainBaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables.base import Runnable
-from langchain.chat_models import init_chat_model
+from loguru import logger
 
 from vocode.streaming.action.abstract_factory import AbstractActionFactory
 from vocode.streaming.action.default_factory import DefaultActionFactory

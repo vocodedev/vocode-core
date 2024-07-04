@@ -2,13 +2,14 @@ import base64
 from enum import Enum
 from typing import Optional
 
+from vocode.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
+
 from .agent import AgentConfig
 from .events import Sender
 from .model import TypedModel
 from .synthesizer import SynthesizerConfig
 from .transcriber import TranscriberConfig
 from .transcript import TranscriptEvent
-from vocode.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
 
 
 class WebSocketMessageType(str, Enum):

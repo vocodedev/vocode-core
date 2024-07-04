@@ -1,4 +1,4 @@
-from typing import Literal, Type, Optional, Union, get_args
+from typing import Literal, Optional, Type, Union, get_args
 
 from loguru import logger
 from pydantic.v1 import BaseModel, Field
@@ -33,7 +33,9 @@ class TransferCallResponse(BaseModel):
 
 
 class TransferCallVocodeActionConfig(VocodeActionConfig, type="action_transfer_call"):  # type: ignore
-    phone_number: Optional[str] = Field(None, description="The phone number to transfer the call to")
+    phone_number: Optional[str] = Field(
+        None, description="The phone number to transfer the call to"
+    )
 
     def get_phone_number(self, input: ActionInput) -> str:
         if isinstance(input.params, TransferCallRequiredParameters):

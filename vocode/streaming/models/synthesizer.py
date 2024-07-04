@@ -3,11 +3,12 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic.v1 import validator
 
+from vocode.streaming.models.client_backend import OutputAudioConfig
+from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
+from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
+
 from .audio import AudioEncoding, SamplingRate
 from .model import BaseModel, TypedModel
-from vocode.streaming.models.client_backend import OutputAudioConfig
-from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
 
 
 class SynthesizerType(str, Enum):
@@ -46,7 +47,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):  # type: i
         arbitrary_types_allowed = True
 
     @classmethod
-    def from_output_device(cls, output_device: BaseOutputDevice, **kwargs):
+    def from_output_device(cls, output_device: AbstractOutputDevice, **kwargs):
         return cls(
             sampling_rate=output_device.sampling_rate,
             audio_encoding=output_device.audio_encoding,
@@ -228,7 +229,7 @@ class PollySynthesizerConfig(SynthesizerConfig, type=SynthesizerType.POLLY.value
     sampling_rate: int = DEFAULT_POLLY_SAMPLING_RATE
 
 
-DEFAULT_CARTESIA_MODEL_ID = "upbeat-moon"
+DEFAULT_CARTESIA_MODEL_ID = "sonic-english"
 DEFAULT_CARTESIA_VOICE_ID = "5345cf08-6f37-424d-a5d9-8ae1101b9377"
 
 

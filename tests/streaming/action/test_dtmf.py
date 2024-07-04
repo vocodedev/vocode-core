@@ -1,7 +1,7 @@
 import pytest
 from aioresponses import aioresponses
-from tests.fakedata.id import generate_uuid
 
+from tests.fakedata.id import generate_uuid
 from vocode.streaming.action.dtmf import (
     DTMFParameters,
     DTMFVocodeActionConfig,

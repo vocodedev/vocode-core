@@ -3,8 +3,7 @@ from typing import List, Optional
 
 from pydantic.v1 import validator
 
-from .audio import AudioEncoding
-from .model import TypedModel
+import vocode.streaming.livekit.constants as LiveKitConstants
 from vocode.streaming.input_device.base_input_device import BaseInputDevice
 from vocode.streaming.models.client_backend import InputAudioConfig
 from vocode.streaming.models.model import BaseModel
@@ -13,6 +12,9 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_CHUNK_SIZE,
     DEFAULT_SAMPLING_RATE,
 )
+
+from .audio import AudioEncoding
+from .model import TypedModel
 
 AZURE_DEFAULT_LANGUAGE = "en-US"
 DEEPGRAM_API_WS_URL = "wss://api.deepgram.com"
@@ -101,6 +103,15 @@ class TranscriberConfig(TypedModel, type=TranscriberType.BASE.value):  # type: i
             audio_encoding=input_audio_config.audio_encoding,
             chunk_size=input_audio_config.chunk_size,
             downsampling=input_audio_config.downsampling,
+            **kwargs,
+        )
+
+    @classmethod
+    def from_livekit_input_device(cls, **kwargs):
+        return cls(
+            sampling_rate=LiveKitConstants.DEFAULT_SAMPLING_RATE,
+            audio_encoding=LiveKitConstants.AUDIO_ENCODING,
+            chunk_size=LiveKitConstants.DEFAULT_CHUNK_SIZE,
             **kwargs,
         )
 
