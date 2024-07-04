@@ -9,10 +9,13 @@ class InMemoryConfigManager(BaseConfigManager):
         self.configs = {}
 
     async def save_config(self, conversation_id: str, config: BaseCallConfig):
-        self.configs[conversation_id] = config
+        self.configs[conversation_id] = config.json()
 
     async def get_config(self, conversation_id) -> Optional[BaseCallConfig]:
-        return self.configs.get(conversation_id)
+        raw_config = self.configs.get(conversation_id)
+        if raw_config:
+            return BaseCallConfig.parse_raw(raw_config)
+        return None
 
     async def delete_config(self, conversation_id):
         if conversation_id in self.configs:
