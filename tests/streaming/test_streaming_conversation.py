@@ -373,6 +373,9 @@ async def test_transcriptions_worker_interrupts_on_interim_transcripts(
         conversation_id="test",
     )
 
+    transcriptions_worker_consumer = QueueConsumer()
+    streaming_conversation.transcriptions_worker.consumer = transcriptions_worker_consumer
+    streaming_conversation.transcriptions_worker.start()
     streaming_conversation.transcriptions_worker.consume_nonblocking(
         Transcription(
             message="Sorry, could you stop",
@@ -380,10 +383,6 @@ async def test_transcriptions_worker_interrupts_on_interim_transcripts(
             is_final=False,
         ),
     )
-
-    transcriptions_worker_consumer = QueueConsumer()
-    streaming_conversation.transcriptions_worker.consumer = transcriptions_worker_consumer
-    streaming_conversation.transcriptions_worker.start()
 
     assert await _get_from_consumer_queue_if_exists(transcriptions_worker_consumer) is None
     assert streaming_conversation.broadcast_interrupt.called
@@ -419,6 +418,9 @@ async def test_transcriptions_worker_interrupts_immediately_before_bot_has_begun
 
     streaming_conversation.initial_message_tracker.set()
 
+    transcriptions_worker_consumer = QueueConsumer()
+    streaming_conversation.transcriptions_worker.consumer = transcriptions_worker_consumer
+    streaming_conversation.transcriptions_worker.start()
     streaming_conversation.transcriptions_worker.consume_nonblocking(
         Transcription(
             message="Sorry,",
@@ -426,9 +428,6 @@ async def test_transcriptions_worker_interrupts_immediately_before_bot_has_begun
             is_final=False,
         ),
     )
-    transcriptions_worker_consumer = QueueConsumer()
-    streaming_conversation.transcriptions_worker.consumer = transcriptions_worker_consumer
-    streaming_conversation.transcriptions_worker.start()
 
     assert await _get_from_consumer_queue_if_exists(transcriptions_worker_consumer) is None
     assert streaming_conversation.broadcast_interrupt.called
