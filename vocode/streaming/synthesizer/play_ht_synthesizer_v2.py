@@ -18,7 +18,7 @@ from vocode.streaming.synthesizer.play_ht_synthesizer import (
 )
 from vocode.streaming.synthesizer.synthesizer_utils import split_text
 from vocode.streaming.utils import generate_from_async_iter_with_lookahead, generate_with_is_last
-from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
+from vocode.streaming.utils.create_task import asyncio_create_task
 
 PLAY_HT_ON_PREM_ADDR = os.environ.get("VOCODE_PLAYHT_ON_PREM_ADDR", None)
 PLAY_HT_V2_MAX_CHARS = 200
@@ -86,7 +86,7 @@ class PlayHtSynthesizerV2(VocodePlayHtSynthesizer):
 
         self.total_chars += len(message.text)
         chunk_queue: asyncio.Queue[Optional[bytes]] = asyncio.Queue()
-        asyncio_create_task_with_done_error_log(
+        asyncio_create_task(
             self.get_chunks(
                 message,
                 chunk_size,

@@ -21,7 +21,7 @@ from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
 from vocode.streaming.telephony.constants import MULAW_SILENCE_BYTE, PCM_SILENCE_BYTE
 from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
 from vocode.streaming.utils.async_requester import AsyncRequestor
-from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
+from vocode.streaming.utils.create_task import asyncio_create_task
 from vocode.streaming.utils.worker import QueueConsumer
 
 FILLER_PHRASES = [
@@ -296,7 +296,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
 
     @staticmethod
     def get_message_cutoff_from_voice_speed(
-        message: BaseMessage, seconds: Optional[float], words_per_minute: int
+        message: BaseMessage, seconds: Optional[float], words_per_minute: int = 150
     ) -> str:
 
         if seconds is None:
@@ -427,7 +427,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             miniaudio_worker.consume_nonblocking(None)  # sentinel
 
         try:
-            asyncio_create_task_with_done_error_log(send_chunks(), reraise_cancelled=True)
+            asyncio_create_task(send_chunks(), reraise_cancelled=True)
 
             # Await the output queue of the MiniaudioWorker and yield the wav chunks in another loop
             while True:

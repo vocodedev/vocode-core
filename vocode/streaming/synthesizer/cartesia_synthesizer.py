@@ -7,7 +7,6 @@ from vocode.streaming.models.audio import AudioEncoding, SamplingRate
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import CartesiaSynthesizerConfig
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
-from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
 
 
 class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
@@ -19,46 +18,63 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
 
         # Lazy import the cartesia module
         try:
-            from cartesia.tts import AsyncCartesiaTTS
+            from cartesia import AsyncCartesia
         except ImportError as e:
             raise ImportError(f"Missing required dependancies for CartesiaSynthesizer") from e
-
-        self.cartesia_tts = AsyncCartesiaTTS
 
         self.api_key = synthesizer_config.api_key or getenv("CARTESIA_API_KEY")
         if not self.api_key:
             raise ValueError("Missing Cartesia API key")
 
+        self.cartesia_tts = AsyncCartesia
+
         if synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
-            self.channel_width = 2
             match synthesizer_config.sampling_rate:
                 case SamplingRate.RATE_44100:
-                    self.sampling_rate = 44100
-                    self.output_format = "pcm_44100"
+                    self.output_format = {
+                        "sample_rate": 44100,
+                        "encoding": "pcm_s16le",
+                        "container": "raw",
+                    }
                 case SamplingRate.RATE_22050:
-                    self.sampling_rate = 22050
-                    self.output_format = "pcm_22050"
+                    self.output_format = {
+                        "sample_rate": 22050,
+                        "encoding": "pcm_s16le",
+                        "container": "raw",
+                    }
                 case SamplingRate.RATE_16000:
-                    self.sampling_rate = 16000
-                    self.output_format = "pcm_16000"
+                    self.output_format = {
+                        "sample_rate": 16000,
+                        "encoding": "pcm_s16le",
+                        "container": "raw",
+                    }
+                case SamplingRate.RATE_8000:
+                    self.output_format = {
+                        "sample_rate": 8000,
+                        "encoding": "pcm_s16le",
+                        "container": "raw",
+                    }
                 case _:
                     raise ValueError(
                         f"Unsupported PCM sampling rate {synthesizer_config.sampling_rate}"
                     )
         elif synthesizer_config.audio_encoding == AudioEncoding.MULAW:
-            # Cartesia has issues with MuLaw/8000. Use pcm/16000 and
-            # create_synthesis_result_from_wav will handle the conversion to mulaw/8000
             self.channel_width = 2
-            self.output_format = "pcm_16000"
-            self.sampling_rate = 16000
+            self.output_format = {
+                "sample_rate": 8000,
+                "encoding": "pcm_mulaw",
+                "container": "raw",
+            }
         else:
             raise ValueError(f"Unsupported audio encoding {synthesizer_config.audio_encoding}")
 
+        if not isinstance(self.output_format["sample_rate"], int):
+            raise ValueError(f"Invalid type for sample_rate")
+        self.sampling_rate = self.output_format["sample_rate"]
         self.num_channels = 1
         self.model_id = synthesizer_config.model_id
         self.voice_id = synthesizer_config.voice_id
         self.client = self.cartesia_tts(api_key=self.api_key)
-        self.voice_embedding = self.client.get_voice_embedding(voice_id=self.voice_id)
 
     async def create_speech_uncached(
         self,
@@ -67,32 +83,32 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
         is_first_text_chunk: bool = False,
         is_sole_text_chunk: bool = False,
     ) -> SynthesisResult:
-        generator = await self.client.generate(
-            transcript=message.text,
-            voice=self.voice_embedding,
-            stream=True,
+        generator = await self.client.tts.sse(
             model_id=self.model_id,
-            data_rtype="bytes",
+            transcript=message.text,
+            voice_id=self.voice_id,
+            stream=True,
             output_format=self.output_format,
         )
 
-        audio_file = io.BytesIO()
-        with wave.open(audio_file, "wb") as wav_file:
-            wav_file.setnchannels(self.num_channels)
-            wav_file.setsampwidth(self.channel_width)
-            wav_file.setframerate(self.sampling_rate)
-            async for chunk in generator:
-                wav_file.writeframes(chunk["audio"])
-        audio_file.seek(0)
+        async def chunk_generator(sse):
+            buffer = bytearray()
+            async for event in sse:
+                audio = event.get("audio")
+                buffer.extend(audio)
+                while len(buffer) >= chunk_size:
+                    yield SynthesisResult.ChunkResult(
+                        chunk=buffer[:chunk_size], is_last_chunk=False
+                    )
+                    buffer = buffer[chunk_size:]
+            yield SynthesisResult.ChunkResult(chunk=buffer, is_last_chunk=True)
 
-        result = self.create_synthesis_result_from_wav(
-            synthesizer_config=self.synthesizer_config,
-            file=audio_file,
-            message=message,
-            chunk_size=chunk_size,
+        return SynthesisResult(
+            chunk_generator=chunk_generator(generator),
+            get_message_up_to=lambda seconds: self.get_message_cutoff_from_voice_speed(
+                message, seconds
+            ),
         )
-
-        return result
 
     @classmethod
     def get_voice_identifier(cls, synthesizer_config: CartesiaSynthesizerConfig):
@@ -106,3 +122,7 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
                 synthesizer_config.audio_encoding,
             )
         )
+
+    async def tear_down(self):
+        await super().tear_down()
+        await self.client.close()

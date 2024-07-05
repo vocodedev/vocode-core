@@ -1,5 +1,6 @@
 import time
 
+from vocode.streaming.constants import PER_CHUNK_ALLOWANCE_SECONDS
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
@@ -46,7 +47,9 @@ if __name__ == "__main__":
                 end_time = time.time()
                 await asyncio.sleep(
                     max(
-                        speech_length_seconds - (end_time - start_time),
+                        speech_length_seconds
+                        - (end_time - start_time)
+                        - PER_CHUNK_ALLOWANCE_SECONDS,
                         0,
                     )
                 )

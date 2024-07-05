@@ -61,7 +61,7 @@ from vocode.streaming.utils import (
     enumerate_async_iter,
     get_chunk_size_per_second,
 )
-from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
+from vocode.streaming.utils.create_task import asyncio_create_task
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.speed_manager import SpeedManager
 from vocode.streaming.utils.state_manager import ConversationStateManager
@@ -710,7 +710,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent.start()
         initial_message = self.agent.get_agent_config().initial_message
         if initial_message:
-            asyncio_create_task_with_done_error_log(
+            asyncio_create_task(
                 self.send_initial_message(initial_message),
             )
         else:
@@ -719,11 +719,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if mark_ready:
             await mark_ready()
         self.is_terminated.clear()
-        self.check_for_idle_task = asyncio_create_task_with_done_error_log(
+        self.check_for_idle_task = asyncio_create_task(
             self.check_for_idle(),
         )
         if len(self.events_manager.subscriptions) > 0:
-            self.events_task = asyncio_create_task_with_done_error_log(
+            self.events_task = asyncio_create_task(
                 self.events_manager.start(),
             )
 
