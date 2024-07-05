@@ -27,7 +27,7 @@ class RateLimitInterruptionsOutputDevice(AbstractOutputDevice):
         while True:
             start_time = time.time()
             try:
-                item = await self.input_queue.get()
+                item = await self._input_queue.get()
             except asyncio.CancelledError:
                 return
 

@@ -12,5 +12,6 @@
   "rewrap.wrappingColumn": 100,
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
-  "isort.check": true
+  "isort.check": true,
+  "python.testing.pytestArgs": ["tests"]
 }

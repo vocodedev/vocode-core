@@ -190,7 +190,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             },
         )
         terminate_msg = json.dumps({"type": "CloseStream"}).encode("utf-8")
-        self.input_queue.put_nowait(terminate_msg)
+        self.consume_nonblocking(terminate_msg)  # todo (dow-107): typing
         self._ended = True
         super().terminate()
 
@@ -404,7 +404,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
                     while not self._ended:
                         try:
-                            data = await asyncio.wait_for(self.input_queue.get(), 5)
+                            data = await asyncio.wait_for(self._input_queue.get(), 5)
                         except asyncio.exceptions.TimeoutError:
                             break
 
@@ -485,7 +485,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                                 is_final_ts=is_final_ts,
                                 output_ts=output_ts,
                             )
-                            self.output_queue.put_nowait(
+                            self.produce_nonblocking(
                                 Transcription(
                                     message=buffer,
                                     confidence=buffer_avg_confidence,
@@ -513,7 +513,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                                 else:
                                     interim_message = buffer
 
-                                self.output_queue.put_nowait(
+                                self.produce_nonblocking(
                                     Transcription(
                                         message=interim_message,
                                         confidence=deepgram_response.top_choice.confidence,
