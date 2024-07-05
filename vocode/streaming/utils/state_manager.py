@@ -142,6 +142,9 @@ class VonagePhoneConversationStateManager(PhoneConversationStateManager):
         super().__init__(conversation=conversation)
         self._vonage_phone_conversation = conversation
 
+    def get_vonage_uuid(self):
+        return self._vonage_phone_conversation.vonage_uuid
+    
     def create_vonage_client(self):
         return VonageClient(
             base_url=self._vonage_phone_conversation.base_url,
@@ -156,6 +159,9 @@ class TwilioPhoneConversationStateManager(PhoneConversationStateManager):
 
     def get_twilio_config(self):
         return self._twilio_phone_conversation.twilio_config
+    
+    def get_twilio_sid(self):
+        return self._twilio_phone_conversation.twilio_sid
 
     def create_twilio_client(self):
         return TwilioClient(
