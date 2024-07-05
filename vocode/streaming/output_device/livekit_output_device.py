@@ -25,7 +25,7 @@ class LiveKitOutputDevice(AbstractOutputDevice):
     async def _run_loop(self):
         while True:
             try:
-                item = await self.input_queue.get()
+                item = await self._input_queue.get()
             except asyncio.CancelledError:
                 return
 

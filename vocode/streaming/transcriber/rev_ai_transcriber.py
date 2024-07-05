@@ -74,7 +74,7 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
             async def sender(ws: WebSocketClientProtocol):
                 while not self.closed:
                     try:
-                        data = await asyncio.wait_for(self.input_queue.get(), 5)
+                        data = await asyncio.wait_for(self._input_queue.get(), 5)
                     except asyncio.exceptions.TimeoutError:
                         break
                     await ws.send(data)
@@ -118,12 +118,12 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
 
                     confidence = 1.0
                     if is_done:
-                        self.output_queue.put_nowait(
+                        self.produce_nonblocking(
                             Transcription(message=buffer, confidence=confidence, is_final=True)
                         )
                         buffer = ""
                     else:
-                        self.output_queue.put_nowait(
+                        self.produce_nonblocking(
                             Transcription(
                                 message=buffer,
                                 confidence=confidence,
@@ -137,5 +137,5 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
 
     def terminate(self):
         terminate_msg = json.dumps({"type": "CloseStream"})
-        self.input_queue.put_nowait(terminate_msg)
+        self.consume_nonblocking(terminate_msg)
         self.closed = True
