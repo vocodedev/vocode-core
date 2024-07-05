@@ -428,7 +428,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             miniaudio_worker.consume_nonblocking(None)  # sentinel
 
         try:
-            asyncio_create_task(send_chunks(), reraise_cancelled=True)
+            asyncio_create_task(send_chunks())
 
             # Await the output queue of the MiniaudioWorker and yield the wav chunks in another loop
             while True:

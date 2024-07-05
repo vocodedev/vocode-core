@@ -226,7 +226,6 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
             self.interruptible_event = item
             self.current_task = asyncio_create_task(
                 self.process(item),
-                reraise_cancelled=True,
             )
 
             try:

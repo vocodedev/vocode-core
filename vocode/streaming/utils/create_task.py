@@ -8,7 +8,6 @@ tasks_registry = []
 
 def asyncio_create_task(
     *args,
-    reraise_cancelled: bool = False,
     **kwargs,
 ) -> asyncio.Task:
     task = asyncio.create_task(*args, **kwargs)
