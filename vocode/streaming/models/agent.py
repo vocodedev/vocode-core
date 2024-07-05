@@ -3,10 +3,11 @@ from typing import List, Literal, Optional, Union
 
 from pydantic.v1 import validator
 
-from .model import BaseModel, TypedModel
-from .vector_db import VectorDBConfig
 from vocode.streaming.models.actions import ActionConfig
 from vocode.streaming.models.message import BaseMessage
+
+from .model import BaseModel, TypedModel
+from .vector_db import VectorDBConfig
 
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
 LLM_AGENT_DEFAULT_TEMPERATURE = 1.0
@@ -121,6 +122,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):  # type: i
     openai_api_key: Optional[str] = None
     prompt_preamble: str
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
+    base_url_override: Optional[str] = None
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     azure_params: Optional[AzureOpenAIConfig] = None
@@ -137,7 +139,8 @@ class AnthropicAgentConfig(AgentConfig, type=AgentType.ANTHROPIC.value):  # type
     model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
-    
+
+
 class LangchainAgentConfig(AgentConfig, type=AgentType.LANGCHAIN.value):  # type: ignore
     prompt_preamble: str
     model_name: str
@@ -150,6 +153,7 @@ class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):
     prompt_preamble: str
     model_name: str = CHAT_VERTEX_AI_DEFAULT_MODEL_NAME
     generate_responses: bool = False  # Google Vertex AI doesn't support streaming
+
 
 class GroqAgentConfig(AgentConfig, type=AgentType.GROQ.value):  # type: ignore
     groq_api_key: Optional[str] = None

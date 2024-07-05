@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vocode"
-version = "0.1.113"
+version = "0.1.114a0"
 description = "The all-in-one voice SDK"
 authors = ["Ajay Raj <ajay@vocode.dev>"]
 license = "MIT License"
@@ -43,7 +43,7 @@ groq = { version = "^0.9.0", optional = true }
 # Synthesizers
 google-cloud-texttospeech = { version = "^2.16.3", optional = true }
 pvkoala = { version = "^2.0.1", optional = true }
-cartesia = { version = "^0.1.1", optional = true }
+cartesia = { version = "^1.0.3", optional = true }
 
 # Transcribers
 google-cloud-speech = { version = "^2.26.0", optional = true }
@@ -59,6 +59,8 @@ langchain-openai = { version = "^0.1.8", optional = true }
 langchain-anthropic = { version = "^0.1.15", optional = true }
 langchain-google-vertexai = { version = "^1.0.5", optional = true }
 
+# LiveKit
+livekit = { version = "^0.11.1", optional = true }
 
 [tool.poetry.group.lint.dependencies]
 black = "^24.4.2"
@@ -104,7 +106,8 @@ all = [
     "langchain-anthropic",
     "langchain-google-vertexai",
     "cartesia",
-    "groq"
+    "groq",
+    "livekit"
 ]
 
 [tool.mypy]
@@ -122,8 +125,6 @@ ENVIRONMENT = "test"
 AZURE_OPENAI_API_BASE_EAST_US = "https://api.openai.com"
 AZURE_OPENAI_API_KEY_EAST_US = "test"
 
-[tool.coverage.run]
-omit = ["tests/*"]
 
 [tool.black]
 line-length = 100

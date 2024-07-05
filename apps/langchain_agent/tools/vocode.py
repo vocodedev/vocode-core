@@ -1,23 +1,24 @@
-import logging
 import asyncio
+import logging
 import os
-from langchain.agents import tool
+
+from call_transcript_utils import delete_transcript, get_transcript
 from dotenv import load_dotenv
+from langchain.agents import tool
 
 from vocode.streaming.models.message import BaseMessage
-from call_transcript_utils import delete_transcript, get_transcript
 
 load_dotenv()
 
-from vocode.streaming.telephony.conversation.outbound_call import OutboundCall
-from vocode.streaming.telephony.config_manager.redis_config_manager import (
-    RedisConfigManager,
-)
-from vocode.streaming.models.agent import ChatGPTAgentConfig
 import time
+
+from vocode.streaming.models.agent import ChatGPTAgentConfig
+from vocode.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
+from vocode.streaming.telephony.conversation.outbound_call import OutboundCall
 
 LOOP = asyncio.new_event_loop()
 asyncio.set_event_loop(LOOP)
+
 
 @tool("call phone number")
 def call_phone_number(input: str) -> str:

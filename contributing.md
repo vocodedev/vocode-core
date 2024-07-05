@@ -10,6 +10,12 @@ To install requirements:
 
 ```bash
 poetry install
+```
+
+Install [`pre-commit`](https://pre-commit.com/) to run linting before pushing, e.g. with Homebrew:
+
+```bash
+brew install pre-commit
 poetry run pre-commit install
 ```
 

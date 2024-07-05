@@ -1,13 +1,41 @@
+default_language_version:
+  python: python3.10
+
 repos:
-    - repo: https://github.com/psf/black
-      rev: 24.4.2
-      hooks:
-          - id: black
-    - repo: https://github.com/pre-commit/mirrors-mypy
-      rev: v1.8.0
-      hooks:
-          - id: mypy
-            args: [--ignore-missing-imports, ./]
-            language: system
-            pass_filenames: false
-            stages: [pre-push]
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.6.0
+  hooks:
+  - id: check-ast
+  - id: trailing-whitespace
+  - id: check-toml
+  - id: end-of-file-fixer
+  - id: check-case-conflict
+  - id: check-merge-conflict
+  - id: check-symlinks
+  - id: detect-private-key
+  - id: mixed-line-ending
+    args:
+    - --fix=lf
+
+- repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+  rev: v2.13.0
+  hooks:
+  - id: pretty-format-yaml
+    args:
+    - --autofix
+    - --preserve-quotes
+    - --indent=2
+
+- repo: https://github.com/pycqa/isort
+  rev: 5.13.2
+  hooks:
+  - id: isort
+    args:
+    - --settings-path=./pyproject.toml
+
+- repo: https://github.com/psf/black-pre-commit-mirror
+  rev: 24.4.2
+  hooks:
+  - id: black
+    args:
+    - --config=./pyproject.toml

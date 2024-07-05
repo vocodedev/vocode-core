@@ -1,6 +1,7 @@
 from typing import List
-from langchain.agents import tool
+
 import requests
+from langchain.agents import tool
 
 WORDNIK_URL_WITH_KEY = "https://api.wordnik.com/v4/words.json/wordOfTheDay?api_key=d52b63b6880f17811310d0fbd3b0d3a8ef163a248f58dc831"
 

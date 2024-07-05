@@ -52,6 +52,7 @@ class ExternalActionsRequester:
         payload: Dict[str, Any],
         signature_secret: str,
         additional_payload_values: Dict[str, Any] = {},
+        transport: httpx.AsyncHTTPTransport = httpx.AsyncHTTPTransport(retries=2),
     ) -> ExternalActionResponse:
         encoded_payload = json.dumps({"payload": payload} | additional_payload_values).encode(
             "utf-8"
@@ -63,7 +64,6 @@ class ExternalActionsRequester:
             "x-vocode-signature": self._encode_payload(encoded_payload, signature_secret),
         }
 
-        transport = httpx.AsyncHTTPTransport(retries=2)
         async with httpx.AsyncClient(
             headers=headers,
             transport=transport,
