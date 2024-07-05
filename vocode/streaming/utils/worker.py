@@ -50,7 +50,7 @@ class AsyncWorker(AbstractWorker[WorkerInputType]):
         self,
     ) -> None:
         self.worker_task: Optional[asyncio.Task] = None
-        self.input_queue: asyncio.Queue[WorkerInputType] = asyncio.Queue()
+        self._input_queue: asyncio.Queue[WorkerInputType] = asyncio.Queue()
 
     def start(self) -> asyncio.Task:
         self.worker_task = asyncio_create_task_with_done_error_log(
@@ -61,7 +61,7 @@ class AsyncWorker(AbstractWorker[WorkerInputType]):
         return self.worker_task
 
     def consume_nonblocking(self, item: WorkerInputType):
-        self.input_queue.put_nowait(item)
+        self._input_queue.put_nowait(item)
 
     async def _run_loop(self):
         raise NotImplementedError
@@ -100,7 +100,7 @@ class ThreadAsyncWorker(AsyncWorker[WorkerInputType]):
 
     async def _forward_to_thread(self):
         while True:
-            item = await self.input_queue.get()
+            item = await self._input_queue.get()
             self.input_janus_queue.async_q.put_nowait(item)
 
     def _run_loop(self):
@@ -111,7 +111,7 @@ class AsyncQueueWorker(AsyncWorker[WorkerInputType]):
     async def _run_loop(self):
         while True:
             try:
-                item = await self.input_queue.get()
+                item = await self._input_queue.get()
                 await self.process(item)
             except asyncio.CancelledError:
                 return
@@ -207,7 +207,7 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
         # TODO Implement concurrency with max_nb_of_thread
         while True:
             try:
-                item = await self.input_queue.get()
+                item = await self._input_queue.get()
             except asyncio.CancelledError:
                 return
 

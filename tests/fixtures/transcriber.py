@@ -16,7 +16,7 @@ class TestAsyncTranscriber(BaseAsyncTranscriber[TestTranscriberConfig]):
     async def _run_loop(self):
         while True:
             try:
-                audio_chunk = await self.input_queue.get()
+                audio_chunk = await self._input_queue.get()
                 self.produce_nonblocking(
                     Transcription(message=audio_chunk.decode("utf-8"), confidence=1, is_final=True)
                 )

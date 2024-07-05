@@ -75,7 +75,7 @@ class GladiaTranscriber(BaseAsyncTranscriber[GladiaTranscriberConfig]):
             async def sender(ws):
                 while not self._ended:
                     try:
-                        data = await asyncio.wait_for(self.input_queue.get(), 5)
+                        data = await asyncio.wait_for(self._input_queue.get(), 5)
                     except asyncio.exceptions.TimeoutError:
                         break
 

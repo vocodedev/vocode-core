@@ -235,7 +235,7 @@ async def test_transcriptions_worker_ignores_utterances_before_initial_message(
         mocker,
     )
 
-    streaming_conversation.transcriptions_worker.input_queue = asyncio.Queue()
+    streaming_conversation.transcriptions_worker._input_queue = asyncio.Queue()
     streaming_conversation.transcriptions_worker.output_queue = asyncio.Queue()
     streaming_conversation.transcriptions_worker.start()
     streaming_conversation.transcriptions_worker.consume_nonblocking(
@@ -301,7 +301,7 @@ async def test_transcriptions_worker_ignores_associated_ignored_utterance(
         mocker,
     )
 
-    streaming_conversation.transcriptions_worker.input_queue = asyncio.Queue()
+    streaming_conversation.transcriptions_worker._input_queue = asyncio.Queue()
     streaming_conversation.transcriptions_worker.output_queue = asyncio.Queue()
     streaming_conversation.transcriptions_worker.start()
     streaming_conversation.initial_message_tracker.set()
@@ -370,7 +370,7 @@ async def test_transcriptions_worker_interrupts_on_interim_transcripts(
         mocker,
     )
 
-    streaming_conversation.transcriptions_worker.input_queue = asyncio.Queue()
+    streaming_conversation.transcriptions_worker._input_queue = asyncio.Queue()
     streaming_conversation.transcriptions_worker.output_queue = asyncio.Queue()
     streaming_conversation.transcriptions_worker.start()
     streaming_conversation.initial_message_tracker.set()
@@ -423,7 +423,7 @@ async def test_transcriptions_worker_interrupts_immediately_before_bot_has_begun
         mocker,
     )
 
-    streaming_conversation.transcriptions_worker.input_queue = asyncio.Queue()
+    streaming_conversation.transcriptions_worker._input_queue = asyncio.Queue()
     streaming_conversation.transcriptions_worker.output_queue = asyncio.Queue()
     streaming_conversation.transcriptions_worker.start()
     streaming_conversation.initial_message_tracker.set()

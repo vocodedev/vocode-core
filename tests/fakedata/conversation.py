@@ -70,7 +70,7 @@ class DummyOutputDevice(AbstractOutputDevice):
         chunk_counter = 0
         while True:
             try:
-                item = await self.input_queue.get()
+                item = await self._input_queue.get()
             except asyncio.CancelledError:
                 return
             if self.wait_for_interrupt and chunk_counter == self.chunks_before_interrupt:
@@ -81,7 +81,7 @@ class DummyOutputDevice(AbstractOutputDevice):
     def flush(self):
         while True:
             try:
-                item = self.input_queue.get_nowait()
+                item = self._input_queue.get_nowait()
             except asyncio.QueueEmpty:
                 break
             self.process(item)

@@ -11,7 +11,7 @@ from vocode.streaming.utils.worker import AsyncWorker
 class TranscriptionPrinter(AsyncWorker[Transcription]):
     async def _run_loop(self):
         while True:
-            transcription: Transcription = await self.input_queue.get()
+            transcription: Transcription = await self._input_queue.get()
             print(transcription)
 
 
