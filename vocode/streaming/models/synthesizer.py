@@ -220,7 +220,7 @@ class BarkSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.BARK.value):
 
 DEFAULT_POLLY_LANGUAGE_CODE = "en-US"
 DEFAULT_POLLY_VOICE_ID = "Matthew"
-DEFAULT_POLLY_SAMPLING_RATE = SamplingRate.RATE_16000
+DEFAULT_POLLY_SAMPLING_RATE = SamplingRate.RATE_16000.value
 
 
 class PollySynthesizerConfig(SynthesizerConfig, type=SynthesizerType.POLLY.value):  # type: ignore
