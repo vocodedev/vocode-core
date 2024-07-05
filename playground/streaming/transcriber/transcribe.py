@@ -20,7 +20,7 @@ if __name__ == "__main__":
             print(transcription)
 
     async def listen():
-        microphone_input = MicrophoneInput.from_default_device()
+        input_device = MicrophoneInput.from_default_device()
         # input_device = FileInputDevice(file_path="spacewalk.wav")
 
         # replace with the transcriber you want to test
