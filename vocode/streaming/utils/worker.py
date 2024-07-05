@@ -7,7 +7,7 @@ from typing import Any, Generic, Optional, TypeVar
 import janus
 from loguru import logger
 
-from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
+from vocode.streaming.utils.create_task import asyncio_create_task
 
 WorkerInputType = TypeVar("WorkerInputType")
 
@@ -23,7 +23,7 @@ class AsyncWorker(Generic[WorkerInputType]):
         self.output_queue = output_queue
 
     def start(self) -> asyncio.Task:
-        self.worker_task = asyncio_create_task_with_done_error_log(
+        self.worker_task = asyncio_create_task(
             self._run_loop(),
         )
         if not self.worker_task:
@@ -60,7 +60,7 @@ class ThreadAsyncWorker(AsyncWorker[WorkerInputType]):
     def start(self) -> asyncio.Task:
         self.worker_thread = threading.Thread(target=self._run_loop)
         self.worker_thread.start()
-        self.worker_task = asyncio_create_task_with_done_error_log(
+        self.worker_task = asyncio_create_task(
             self.run_thread_forwarding(),
         )
         if not self.worker_task:
@@ -224,7 +224,7 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
             if item.is_interrupted():
                 continue
             self.interruptible_event = item
-            self.current_task = asyncio_create_task_with_done_error_log(
+            self.current_task = asyncio_create_task(
                 self.process(item),
                 reraise_cancelled=True,
             )

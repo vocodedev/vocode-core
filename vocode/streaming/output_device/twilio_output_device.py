@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
 from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
-from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
+from vocode.streaming.utils.create_task import asyncio_create_task
 from vocode.streaming.utils.worker import InterruptibleEvent
 
 
@@ -95,12 +95,8 @@ class TwilioOutputDevice(AbstractOutputDevice):
             self.interruptible_event.is_interruptible = False
 
     async def _run_loop(self):
-        send_twilio_messages_task = asyncio_create_task_with_done_error_log(
-            self._send_twilio_messages()
-        )
-        process_mark_messages_task = asyncio_create_task_with_done_error_log(
-            self._process_mark_messages()
-        )
+        send_twilio_messages_task = asyncio_create_task(self._send_twilio_messages())
+        process_mark_messages_task = asyncio_create_task(self._process_mark_messages())
         await asyncio.gather(send_twilio_messages_task, process_mark_messages_task)
 
     def _send_audio_chunk_and_mark(self, chunk: bytes, chunk_id: str):
