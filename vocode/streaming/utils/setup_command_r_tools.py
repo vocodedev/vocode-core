@@ -279,8 +279,8 @@ all_optional_tools = {
         "name": "create_sunshine_conversation",
         "description": "Create a sunshine conversation with a human support agent",
         "parameter_definitions": {
-            "contents": {
-                "description": "The text to be used to create the sunshine conversation",
+            "handoff_information": {
+                "description": "The information passed to a human agent when the support ticket is created",
                 "type": "str",
                 "required": True,
             }

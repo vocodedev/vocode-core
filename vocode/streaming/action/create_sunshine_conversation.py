@@ -32,7 +32,9 @@ class CreateSunshineConversationActionConfig(
 
 
 class CreateSunshineConversationParameters(BaseModel):
-    contents: str
+    handoff_information: str = Field(
+        ..., description="The information passed to a human agent when the support ticket is created",
+    )
 
 
 class CreateSunshineConversationResponse(BaseModel):
@@ -75,7 +77,7 @@ class CreateSunshineConversation(
         #     first_name = external_phone_number
 
         return await create_new_conversation(app_id=app_id, phone_number=self.action_config.to_phone,
-                                             text=parameters.contents, integration_id=integration_id,
+                                             text=parameters.handoff_information, integration_id=integration_id,
                                              key_id=key_id,
                                              secret=secret,
                                              first_name=self.action_config.from_phone)
