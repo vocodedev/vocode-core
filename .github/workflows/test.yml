@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, vocode-core-0.1.0]
+    branches: [main, vocode-core-0.1.0, vocodehq-public]
 
 env:
   poetry-version: "1.8.3"
@@ -15,78 +15,78 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - "3.10"
-          - "3.11"
+        - "3.10"
+        - "3.11"
 
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
 
-      - name: Install ffmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+    - name: Install ffmpeg
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
 
-      - name: Set up Poetry
-        uses: abatilo/actions-poetry@v3.0.0
-        with:
-          poetry-version: ${{ env.poetry-version }}
+    - name: Set up Poetry
+      uses: abatilo/actions-poetry@v3.0.0
+      with:
+        poetry-version: ${{ env.poetry-version }}
 
-      - name: Install dependencies
-        run: poetry install -E all
+    - name: Install dependencies
+      run: poetry install -E all
 
-      - name: Run mypy
-        run: |
-          poetry run mypy -p vocode
-          poetry run mypy -p quickstarts
-          poetry run mypy -p playground
+    - name: Run mypy
+      run: |
+        poetry run mypy -p vocode
+        poetry run mypy -p quickstarts
+        poetry run mypy -p playground
 
-      - name: Run black
-        if: success() || failure()
-        run: poetry run black --check .
+    - name: Run black
+      if: success() || failure()
+      run: poetry run black --check .
 
-      - name: Run isort
-        shell: bash
-        if: success() || failure()
-        run: poetry run isort --check .
+    - name: Run isort
+      shell: bash
+      if: success() || failure()
+      run: poetry run isort --check .
 
   pytest:
     strategy:
       fail-fast: false
       matrix:
         python-version:
-          - "3.10"
-          - "3.11"
+        - "3.10"
+        - "3.11"
 
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
 
-      - name: Install ffmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+    - name: Install ffmpeg
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
 
-      - name: Set up Poetry
-        uses: abatilo/actions-poetry@v3.0.0
-        with:
-          poetry-version: ${{ env.poetry-version }}
+    - name: Set up Poetry
+      uses: abatilo/actions-poetry@v3.0.0
+      with:
+        poetry-version: ${{ env.poetry-version }}
 
-      - name: Install dependencies
-        run: poetry install -E all
+    - name: Install dependencies
+      run: poetry install -E all
 
-      - name: Test with pytest
-        run: |
-          poetry run pytest -v tests
+    - name: Test with pytest
+      run: |
+        poetry run pytest -v tests
