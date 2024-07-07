@@ -42,36 +42,30 @@ class BranchDecision(Enum):
 
 
 def parse_llm_dict(s):
-    # Remove leading/trailing whitespace and braces
-    s = s.strip().strip("{}")
+    # if its already a dict return
+    if isinstance(s, dict):
+        return s
 
-    # Make regex to match key-value pairs, allowing for missing quotes around keys
-    # and handling improperly enclosed keys
-    pairs = re.findall(
-        r"(?:'([^']+)'|\"([^\"]+)\"|([^:]+?))\s*:\s*(.+?)(?=,\s*(?:'[^']+'|\"[^\"]+\"|[^:]+?:)|$)",
-        s,
-    )
-
+    # replace all double quotes with single quotes
+    s = s.replace('"', "'")
+    # remove all new lines and extra spacing
+    s = s.replace("\n", "").replace("  ", " ").replace("  ", " ")
+    # replace without space
+    s = s.replace("','", "', '")
     result = {}
-    for match in pairs:
-        key, double_quoted_key, alt_key, value = match
-        key = key or double_quoted_key or alt_key.strip()
+    input_string = s.strip("{}")
+    pairs = input_string.split("', '")
 
-        # Remove surrounding quotes if present
-        value = value.strip()
-        if (value.startswith("'") and value.endswith("'")) or (
-            value.startswith('"') and value.endswith('"')
-        ):
-            value = value[1:-1]
+    for pair in pairs:
+        if ":" in pair:
+            key, value = pair.split(":", 1)
+            key = key.strip().strip("'")
+            value = value.strip().strip("'")
 
-        # Try to parse as JSON if it looks like a nested structure
-        if value.startswith("{") or value.startswith("["):
-            try:
-                value = json.loads(value)
-            except json.JSONDecodeError:
-                pass  # Keep as string if parsing fails
+            if value.isdigit():
+                value = int(value)
 
-        result[key] = value
+            result[key] = value
 
     return result
 
@@ -84,7 +78,7 @@ async def on_user_input_within_state(
     logger: logging.Logger,
 ) -> tuple[BranchDecision, Optional[str]]:
     continue_tool = {
-        "[either 'PAUSE' or 'CONTINUE' or 'SWITCH']": "[insert your response to the user]",
+        '[either "PAUSE" or "CONTINUE" or "SWITCH"]': "[insert your response to the user]",
     }
     if state and state["id"]:
         current_workflow = state["id"].split("::")[0]
@@ -104,14 +98,14 @@ async def on_user_input_within_state(
         f"You are already engaged in the following process: {current_workflow}\n"
         f"{additional_info}\n\n"
         "Now, to best assist the user, decide whether you should:\n"
-        "- 'CONTINUE' the process to the next step\n"
+        "- 'CONTINUE' the process to the next step if the user responded accordingly\n"
         "   Response: Proceed with the next step of the current workflow without additional commentary\n"
-        "- 'PAUSE' the current process if the user seems confused or has asked a question of their own\n"
+        f"- 'PAUSE' the current process if the user seems confused but still wants to engage in the current process '{current_workflow}'\n"
         "   Response: If the user didn't answer, politely restate the question and ask for a clear answer.\n"
         "             If the user asked a question, provide a concise answer and then pause.\n"
         "             Ensure not to suggest any actions or offer alternatives.\n"
-        f"- 'SWITCH' to a different process if '{current_workflow}' is not relevant or if the user entirely changes the subject\n"
-        "   Response: Switch to a different process without additional commentary\n"
+        f"- 'SWITCH' to a different process if the current topic '{current_workflow}' is no longer pertinent—for example, if the user's response indicates they wish to engage in a completely different matter.\n"
+        "   Response: Initiate a transition to the appropriate process without further comment on the previous topic.\n"
     )
     logger.info(f"Prompt: {prompt}")
     # we do not care what it has to say when switching or continuing
@@ -283,13 +277,13 @@ async def handle_options(
                     "speak": True,
                     "aiLabel": "question",
                     "aiDescription": "user seems confused or unsure",
-                }
+                },
             )
 
     logger.info(f"edges {edges}")
     logger.info(f"original edges {state['edges']}")
     index = 0
-    for edge in edges:
+    for index, edge in enumerate(edges):
         if "isDefault" not in edge or not edge["isDefault"]:
             response_to_edge[index] = edge
             if edge.get("aiLabel"):
@@ -298,8 +292,6 @@ async def handle_options(
             ai_options.append(
                 f"{index}: {edge.get('aiDescription', None) or edge.get('aiLabel', None)}"
             )
-            index += 1
-
     if len(ai_options) == 0:
         raise Exception("invalid options state with no options")
 
@@ -323,11 +315,23 @@ async def handle_options(
 
     try:
         condition = parse_llm_dict(response)["condition"]
-        # xtract th number
-        match = re.search(r"\d+", condition)
-        condition = int(match.group()) if match else 1
+        # only int if its not already
+        if isinstance(condition, str):
+            condition = int(condition)
         next_state_id = response_to_edge[condition]["destStateId"]
         if response_to_edge[condition].get("speak"):
+            # we would call ai and speak here
+            prompt = (
+                f"You last stated: '{last_bot_message}', to which the user replied: '{last_user_message}'.\n\n"
+                f"You are already engaged in the following process: {state['id'].split('::')[0]}\n"
+                "Right now, you are pausing the process to assist the confused user.\n"
+                "Respond as follows: If the user didn't answer, politely restate the question and ask for a clear answer.\n"
+                "- If the user asked a question, provide a concise answer and then pause.\n"
+                "- Ensure not to suggest any actions or offer alternatives.\n"
+            )
+            # we do not care what it has to say when switching or continuing
+            output = await call_ai(prompt)
+            speak(output)
 
             async def resume(human_input):
                 logger.info(
@@ -386,18 +390,12 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.stop = False
         self.visited_states = {self.state_machine["startingStateId"]}
         self.chat_history = [("message.bot", self.agent_config.initial_message)]
-        if "medusa" in self.agent_config.model_name.lower():
-            self.base_url = getenv("AI_API_HUGE_BASE")
-            self.model = getenv("AI_MODEL_NAME_HUGE")
-        else:
-            self.base_url = getenv("AI_API_BASE")
-            self.model = getenv("AI_MODEL_NAME_LARGE")
+        self.base_url = getenv("AI_API_HUGE_BASE")
+        self.model = self.agent_config.model_name
         self.client = AsyncOpenAI(
             base_url=self.base_url,
-            api_key="<HF_API_TOKEN>",  # replace with your token
         )
 
-        self.logger.info(f"State machine: {self.state_machine}")
         self.overall_instructions = (
             self.agent_config.prompt_preamble
             + "\n"
@@ -509,7 +507,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         try:
             message = parse_llm_dict(message)
             self.update_history("message.bot", message["response"])
-            return message["response"]
+            return message.get("response")
         except Exception as e:
             self.logger.error(f"Agent could not respond: {e}")
 
@@ -533,7 +531,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
         # We can skip instances where integrations do not need any parameters at all
         if params:
-            dict_to_fill = {param_name: "[insert value]" for param_name in params.keys()}
+            dict_to_fill = {
+                param_name: "[insert value]" for param_name in params.keys()
+            }
             param_descriptions = "\n".join(
                 [
                     f"'{param_name}': description: {params[param_name]['description']}, type: '{params[param_name]['type']})'"
@@ -541,14 +541,14 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 ]
             )
             response = await self.call_ai(
-                prompt=f"Provide the values for these parameters based on the current conversation and the instructions provided: {param_descriptions}",
+                prompt=f"Based on the current conversation and the instructions provided, return a python dictionary with values inserted for these parameters: {param_descriptions}",
                 tool=dict_to_fill,
             )
             self.logger.info(f"Filled params: {response}")
             response = response[response.find("{") : response.rfind("}") + 1]
             self.logger.info(f"Filled params: {response}")
             try:
-                params = eval(response)
+                params = parse_llm_dict(response)
             except Exception as e:
                 response = await self.call_ai(
                     prompt=f"You must return a dictionary as described. Provide the values for these parameters based on the current conversation and the instructions provided: {param_descriptions}",
@@ -556,7 +556,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 )
                 self.logger.info(f"Filled params2: {response}")
                 response = response[response.find("{") : response.rfind("}") + 1]
-                params = eval(response)
+                params = parse_llm_dict(response)
+        self.logger.info(f"Parsed params: {params}")
 
         action = self.action_factory.create_action(action_config)
         action_input: ActionInput
@@ -594,7 +595,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         # accumulate the tasks so we dont wait on each one sequentially
         input, output = await run_action_and_return_input(action, action_input)
         self.block_inputs = False
-        # TODO: HERE we need to actually run it
         self.update_history(
             "action-finish",
             f"Action Completed: '{action_name}' completed with the following result:\ninput:'{input}'\noutput:\n{output}",
@@ -604,15 +604,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
     #
     async def call_ai(self, prompt, tool=None, stop=None):
-        self.logger.info("HI__FS_)FUE)(FWE)(FEW)(GFHWE)(GHE)G(EWH)G(eh)")
-        # self.client = AsyncOpenAI(
-        #     base_url=self.base_url,
-        #     api_key="<HF_API_TOKEN>",  # replace with your token
-        # )
+        stop_tokens = stop if stop is not None else []
+        response_text = ""
         if not tool:
-            # self.update_history("message.instruction", prompt)
-            # return input(f"[message.bot] $: ")
-            chat_completion = await self.client.chat.completions.create(
+            stream = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self.overall_instructions},
@@ -621,33 +616,38 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                         "content": f"Given the chat history, follow the instructions.\nChat history:\n{self.chat_history}\n\n\nInstructions:\n{prompt}",
                     },
                 ],
-                stream=False,
-                stop=stop if stop is not None else [],
+                stream=True,
                 temperature=0.1,
                 max_tokens=500,
             )
-            return chat_completion.choices[0].message.content
+            async for chunk in stream:
+                text_chunk = chunk.choices[0].delta.content
+                if text_chunk:
+                    self.logger.info(f"Chunk: {chunk}")
+                    response_text += text_chunk
+                    if any(token in text_chunk for token in stop_tokens):
+                        break
         else:
-            # log it
-            self.logger.info(f"Prompt: {prompt}")
-            self.logger.info(f"Tool: {tool}")
-
-            # self.update_history("message.instruction", prompt)
-            chat_completion = await self.client.chat.completions.create(
+            stream = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self.overall_instructions},
                     {
                         "role": "user",
-                        "content": f"Given the chat history, follow the instructions.\nChat history:\n{self.chat_history}\n\n\nInstructions:\n{prompt}\nYour response must always be dictionary in the following format: {tool}",
+                        "content": f"Given the chat history, follow the instructions.\nChat history:\n{self.chat_history}\n\n\nInstructions:\n{prompt}\nYour response must always be dictionary in the following format: {str(tool)}",
                     },
                 ],
-                stream=False,
-                stop=stop if stop is not None else [],
+                stream=True,
                 temperature=0.1,
                 max_tokens=500,
             )
-            return chat_completion.choices[0].message.content
+            async for chunk in stream:
+                text_chunk = chunk.choices[0].delta.content
+                if text_chunk:
+                    response_text += text_chunk
+                    if any(token in text_chunk for token in stop_tokens):
+                        break
+        return response_text
 
     def get_functions(self):
         assert self.agent_config.actions
