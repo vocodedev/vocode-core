@@ -2,6 +2,7 @@ import logging
 from typing import Type
 
 from pydantic import BaseModel, Field
+from sunshine_conversations_client import MessagePostResponse
 from vocode.streaming.action.base_action import BaseAction
 from vocode.streaming.models.actions import (
     ActionConfig,
@@ -39,7 +40,6 @@ class CreateSunshineConversationParameters(BaseModel):
 
 class CreateSunshineConversationResponse(BaseModel):
     status: str = Field(None, description="The response received from the recipient")
-    ending_phrase: str = Field(None, description="What the model should say when it has executed the function call")
 
 
 class CreateSunshineConversation(
@@ -60,45 +60,50 @@ class CreateSunshineConversation(
     )
 
     # Create a Sunshine conversation and notify the user via text about the next steps
-    async def create_sunshine_conversation(self, parameters: CreateSunshineConversationParameters):
+    async def create_sunshine_conversation(self, parameters: CreateSunshineConversationParameters) -> MessagePostResponse:
         key_id = self.action_config.credentials.get("KEY_ID")
         app_id = self.action_config.credentials.get("APP_ID")
         secret = self.action_config.credentials.get("SECRET")
         jwt_token = sign_jwt(key_id=key_id, secret=secret)
-        desired_integration = fetch_integrations_with_filters_by_phone_number(app_id=app_id,
-                                                                              jwt_token=jwt_token,
-                                                                              phone_number=self.action_config.to_phone,
-                                                                              integration_type='twilio')
 
+        # internal_phone_number is the store's phone number, which has twilio integrations specific to the number
+        # when testing, hardcode the internal_phone_number to any store's phone_number
+        desired_integration = await fetch_integrations_with_filters_by_phone_number(app_id=app_id,
+                                                                                    jwt_token=jwt_token,
+                                                                                    internal_phone_number=self.action_config.to_phone,
+                                                                                    integration_type='twilio')
         integration_id = desired_integration['id']
 
         # TODO: Boulevard integration to find first name of customer + swap out first name
         # if not first_name:
         #     first_name = external_phone_number
 
-        return await create_new_conversation(app_id=app_id, phone_number=self.action_config.to_phone,
-                                             text=parameters.handoff_information, integration_id=integration_id,
+        INITIAL_CUSTOMER_SERVICE_MESSAGE = "Hello Gorgeous! A team member will be reaching out via SMS within the next 7 minutes to help."
+
+        return await create_new_conversation(app_id=app_id, internal_phone_number=self.action_config.to_phone,
+                                             initial_internal_message=parameters.handoff_information,
+                                             integration_id=integration_id,
                                              key_id=key_id,
                                              secret=secret,
+                                             initial_external_message=INITIAL_CUSTOMER_SERVICE_MESSAGE,
+                                             external_phone_number=self.action_config.from_phone,
                                              first_name=self.action_config.from_phone)
 
     async def run(self,
                   action_input: ActionInput[CreateSunshineConversationParameters]
                   ) -> ActionOutput[CreateSunshineConversationResponse]:
         response = await self.create_sunshine_conversation(parameters=action_input.params)
-        if 200 <= response.status < 300:
+        if response:
             return ActionOutput(
                 action_type=action_input.action_config.type,
                 response=CreateSunshineConversationResponse(
                     status=f"Sunshine conversation has been started for phone number: {self.action_config.from_phone}. "
-                           f"Response is: {response}",
-                    ending_phrase="A team member will be reaching out via SMS within the next 7 minutes to help. "
-                                  "Is there anything else I can help you with?"
+                           f"Response is: {response}"
                 ),
             )
         return ActionOutput(
             action_type=action_input.action_config.type,
             response=CreateSunshineConversationResponse(
-                status=f"Failed to send message to {self.action_config.from_phone}. Error: {response}"
+                status=f"Failed to start sunshine conversation with {self.action_config.from_phone}."
             ),
         )
