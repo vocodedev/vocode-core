@@ -70,63 +70,6 @@ def parse_llm_dict(s):
     return result
 
 
-async def on_user_input_within_state(
-    state,
-    last_user_response: str,
-    original_ai_message: str,
-    call_ai: Callable[[str, str, str], Awaitable[str]],
-    logger: logging.Logger,
-) -> tuple[BranchDecision, Optional[str]]:
-    continue_tool = {
-        '[either "PAUSE" or "CONTINUE" or "SWITCH"]': "[insert your response to the user]",
-    }
-    if state and state["id"]:
-        current_workflow = state["id"].split("::")[0]
-    else:
-        current_workflow = "start of conversation"
-    # if its a conditional, get the conditions
-    if state and state["type"] == "condition":
-        conditions = state["condition"]["conditionToStateLabel"].keys()
-        conditions = "\n".join([f"'{c}'" for c in conditions])
-    additional_info = (
-        f"Decide what to do next. If the user's response aligns with any of the following, 'CONTINUE' the current process:\n{conditions}"
-        if state and state["type"] == "condition"
-        else ""
-    )
-    prompt = (
-        f"You last stated: '{original_ai_message}', to which the user replied: '{last_user_response}'.\n\n"
-        f"You are already engaged in the following process: {current_workflow}\n"
-        f"{additional_info}\n\n"
-        "Now, to best assist the user, decide whether you should:\n"
-        "- 'CONTINUE' the process to the next step if the user responded accordingly\n"
-        "   Response: Proceed with the next step of the current workflow without additional commentary\n"
-        f"- 'PAUSE' the current process if the user seems confused but still wants to engage in the current process '{current_workflow}'\n"
-        "   Response: If the user didn't answer, politely restate the question and ask for a clear answer.\n"
-        "             If the user asked a question, provide a concise answer and then pause.\n"
-        "             Ensure not to suggest any actions or offer alternatives.\n"
-        f"- 'SWITCH' to a different process if the current topic '{current_workflow}' is no longer pertinent—for example, if the user's response indicates they wish to engage in a completely different matter.\n"
-        "   Response: Initiate a transition to the appropriate process without further comment on the previous topic.\n"
-    )
-    logger.info(f"Prompt: {prompt}")
-    # we do not care what it has to say when switching or continuing
-    output = await call_ai(prompt, continue_tool, stop=["CONTINUE", "SWITCH"])
-    logger.info(f"Output: {output}")
-    if "CONTINUE" in output:
-        return (BranchDecision["CONTINUE"], None)
-    if "SWITCH" in output:
-        return (BranchDecision["SWITCH"], None)
-
-    output = output[output.find("{") : output.rfind("}") + 1]
-    output = parse_llm_dict(
-        output.replace("'None'", "'none'").replace("None", "'none'")
-    )
-    if "PAUSE" in output:
-        return (BranchDecision["PAUSE"], output["PAUSE"])
-
-    logger.info(f"falling back with {output}")
-    return (BranchDecision["PAUSE"], "Sorry, I'm not sure what you mean.")
-
-
 def get_state(state_id_or_label: str, state_machine):
     state_id = (
         state_machine["labelToStateId"][state_id_or_label]
@@ -162,38 +105,15 @@ def translate_to_english(
 async def handle_question(
     state,
     go_to_state: Callable[[str], Awaitable[Any]],
-    speak: Callable[[str], None],
-    get_question_text: Callable[[None], Awaitable[str]],
-    call_ai: Callable[[str, str, str], Awaitable[str]],
+    speak_message: Callable[[Any], None],
     logger: logging.Logger,
 ):
-    question_text = await get_question_text()
+
+    await speak_message(state["question"])
 
     async def resume(human_input):
         logger.info(f"continuing at {state['id']} with user response {human_input}")
-        branch_decision, ai_response = await on_user_input_within_state(
-            state, human_input, question_text, call_ai, logger
-        )
-
-        if branch_decision == BranchDecision.PAUSE:
-            if ai_response:
-                speak(ai_response)
-
-            async def get_stored_question_text():
-                return question_text
-
-            return await handle_question(
-                state=state,
-                go_to_state=go_to_state,
-                speak=speak,
-                call_ai=call_ai,
-                logger=logger,
-                get_question_text=get_stored_question_text,
-            )
-        if branch_decision == BranchDecision.CONTINUE:
-            return await go_to_state(get_default_next_state(state))
-        if branch_decision == BranchDecision.SWITCH:
-            return await go_to_state("start")
+        return await go_to_state(get_default_next_state(state))
 
     return resume
 
@@ -202,7 +122,7 @@ async def handle_options(
     state: Any,
     go_to_state: Callable[[str], Awaitable[Any]],
     speak: Callable[[str], None],
-    call_ai: Callable[[str, str, Optional[str]], Awaitable[str]],
+    call_ai: Callable[[str, Dict[str, Any], Optional[str]], Awaitable[str]],
     state_machine: Any,
     get_chat_history: Callable[[], List[Tuple[str, str]]],
     logger: logging.Logger,
@@ -252,7 +172,7 @@ async def handle_options(
         f"araus = {action_result_after_user_spoke} state id is {state['id']} and startingStateId is {state_machine['startingStateId']}"
     )
     if (
-        state["id"] != state_machine["startingStateId"]  # state["id"] is
+        state["id"] != state_machine["startingStateId"]
         and not action_result_after_user_spoke
     ):
         edges.append(
@@ -299,7 +219,7 @@ async def handle_options(
     prompt = (
         f"Bot's last statement: '{last_bot_message}'\n"
         f"User's response: '{last_user_message}'\n"
-        f"{'Last tool output: ' + action_result_after_user_spoke if action_result_after_user_spoke else ''}\n\n"  # TODO: also render the action output if it was before the user spoke
+        f"{'Last tool output: ' + action_result_after_user_spoke if action_result_after_user_spoke else ''}\n\n"
         "Identify the number associated with the most fitting condition from the list below:\n"
         f"{ai_options_str}\n\n"
         "Always return a number from the above list. Return the number of the condition that best applies."
@@ -330,33 +250,14 @@ async def handle_options(
                 "- Ensure not to suggest any actions or offer alternatives.\n"
             )
             # we do not care what it has to say when switching or continuing
-            output = await call_ai(prompt)
+            output = await call_ai(prompt, {})
             speak(output)
 
             async def resume(human_input):
                 logger.info(
                     f"continuing at {state['id']} with user response {human_input}"
                 )
-                branch_decision, ai_response = await on_user_input_within_state(
-                    state, human_input, last_bot_message, call_ai, logger
-                )
-
-                if branch_decision == BranchDecision.PAUSE:
-                    if ai_response:
-                        speak(ai_response)
-                    return await handle_options(
-                        state=state,
-                        go_to_state=go_to_state,
-                        speak=speak,
-                        call_ai=call_ai,
-                        state_machine=state_machine,
-                        get_chat_history=get_chat_history,
-                        logger=logger,
-                    )
-                if branch_decision == BranchDecision.CONTINUE:
-                    return await go_to_state(get_default_next_state(state))
-                if branch_decision == BranchDecision.SWITCH:
-                    return await go_to_state("start")
+                return await go_to_state(state["id"])
 
             return resume
         return await go_to_state(next_state_id)
@@ -391,7 +292,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.visited_states = {self.state_machine["startingStateId"]}
         self.chat_history = [("message.bot", self.agent_config.initial_message)]
         self.base_url = getenv("AI_API_HUGE_BASE")
-        self.model = self.agent_config.model_name or "accounts/fireworks/models/qwen2-72b-instruct"
+        self.model = (
+            self.agent_config.model_name
+            or "accounts/fireworks/models/qwen2-72b-instruct"
+        )
         self.client = AsyncOpenAI(
             base_url=self.base_url,
         )
@@ -431,12 +335,14 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
     async def print_start_message(self, state, start: bool):
         if start and "start_message" in state:
-            start_message = state["start_message"]
-            if start_message["type"] == "verbatim":
-                self.update_history("message.bot", start_message["message"])
-            else:
-                guide = start_message["description"]
-                await self.guided_response(guide)
+            await self.print_message(state["start_message"])
+
+    async def print_message(self, message):
+        if message["type"] == "verbatim":
+            self.update_history("message.bot", message["message"])
+        else:
+            guide = message["description"]
+            await self.guided_response(guide)
 
     # recursively traverses the state machine
     # if it returns a function, call that function on the next human input to resume traversal
@@ -457,6 +363,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
         go_to_state = lambda s: self.handle_state(s)
         speak = lambda text: self.update_history("message.bot", text)
+        speak_message = lambda message: self.print_message(message)
         call_ai = lambda prompt, tool, stop=None: self.call_ai(prompt, tool, stop)
 
         if state["type"] == "question":
@@ -475,9 +382,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             return await handle_question(
                 state=state,
                 go_to_state=go_to_state,
-                get_question_text=ask_question,
-                call_ai=call_ai,
-                speak=speak,
+                speak_message=speak_message,
                 logger=self.logger,
             )
 
