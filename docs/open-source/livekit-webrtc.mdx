@@ -1,0 +1,45 @@
+---
+title: "Using WebRTC with LiveKit"
+description: "Deploy your Vocode Agents using WebRTC"
+---
+
+# Overview
+
+[WebRTC](https://webrtc.org/) is an alternative to websockets for real-time P2P communication. Vocode Agents are compatible with both WebRTC and websockets, enabling developers to pick
+the stack best suited for their application.
+
+To connect Vocode agents to WebRTC, Vocode uses [LiveKit](https://livekit.io/)–an open source platform for building on WebRTC. For a background on how LiveKit
+works, please see their [documentation](https://docs.livekit.io/home/get-started/intro-to-livekit/).
+
+In this guide, we'll be walking through how to connect a Vocode Agent to the [LiveKit Agents Playground](https://agents-playground.livekit.io/).
+
+# Walkthrough: hooking up a Vocode Agent to a LiveKit Room
+
+## Setting up your LiveKit Server
+
+First, you'll want to set up a LiveKit Server for your Agent. For simplicity, we are using LiveKit's hosted offering–but it can also be self hosted, since LiveKit is open source!
+
+In our LiveKit dashboard, we first generate our websocket URL, API key, and Secret Key.
+
+![Setup](/images/livekit_keys.png)
+
+## Deploying your Vocode agent to a LiveKit Room
+
+Once you have your LiveKit Server credentials, we can hook it up to Vocode via the `LiveKitConversation` abstraction. Using the starter code in
+[vocode-core/apps/livekit/app.py](https://github.com/vocodedev/vocode-core/blob/main/apps/livekit/app.py), you can quickly deploy a Vocode Agent to accept
+new job requests.
+
+Fill in your credentials in `.env`:
+
+```bash
+
+LIVEKIT_SERVER_URL=wss://your-livekit-ws-url.livekit.cloud
+LIVEKIT_API_KEY="KEY"
+LIVEKIT_API_SECRET="SECRET"
+```
+
+Followed by
+`poetry run python app.py dev`
+
+And now you can connect to the [Agents Playground](https://agents-playground.livekit.io/) to interact with your agent. With LiveKit, you can connect Vocode
+agents to any web application and leverage their [React Component](https://docs.livekit.io/reference/components/react/) library.

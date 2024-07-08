@@ -65,6 +65,7 @@
         "open-source/python-quickstart",
         "open-source/react-quickstart",
         "open-source/telephony",
+        "open-source/livekit-webrtc",
         "open-source/turn-based-conversation"
       ]
     },
