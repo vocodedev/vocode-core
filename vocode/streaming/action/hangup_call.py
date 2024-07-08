@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 
@@ -48,7 +49,7 @@ class HangUpCall(
     response_type: Type[HangUpCallResponse] = HangUpCallResponse
 
     async def hangup_twilio_call(
-        self, call_status: str, call_type: CallType, twilio_call_sid: str
+        self, call_status: CallStatus, call_type: CallType, twilio_call_sid: str
     ):
         """
         Hangs up an active Twilio call.
@@ -73,6 +74,7 @@ class HangUpCall(
     ) -> ActionOutput[HangUpCallResponse]:
         twilio_call_sid = self.get_twilio_sid(action_input)
 
+        await asyncio.sleep(3.5)
         await self.hangup_twilio_call(
             call_status=self.action_config.call_status,
             call_type=self.action_config.call_type,
