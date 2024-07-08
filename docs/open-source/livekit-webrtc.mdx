@@ -26,8 +26,8 @@ In our LiveKit dashboard, we first generate our websocket URL, API key, and Secr
 ## Deploying your Vocode agent to a LiveKit Room
 
 Once you have your LiveKit Server credentials, we can hook it up to Vocode via the `LiveKitConversation` abstraction. Using the starter code in
-[vocode-core/apps/livekit/app.py](https://github.com/vocodedev/vocode-core/blob/main/apps/livekit/app.py), you can quickly deploy a Vocode Agent to
-a LiveKit Room.
+[vocode-core/apps/livekit/app.py](https://github.com/vocodedev/vocode-core/blob/main/apps/livekit/app.py), you can quickly deploy a Vocode Agent to accept
+new job requests.
 
 Fill in your credentials:
 
@@ -41,4 +41,5 @@ LIVEKIT_API_SECRET="SECRET"
 Followed by
 `poetry run python app.py dev`
 
-And now you can connect to the [Agents Playground](https://agents-playground.livekit.io/) to interact with your agent.
+And now you can connect to the [Agents Playground](https://agents-playground.livekit.io/) to interact with your agent. With LiveKit, you can connect Vocode
+agents to any web application and leverage their [React Component](https://docs.livekit.io/reference/components/react/) library.
