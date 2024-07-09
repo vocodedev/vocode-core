@@ -314,11 +314,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.info(
                     f"BufferCancel? {self.buffer_check_task.cancel()}"
                 )
-            # if there is an initial message, we're in outbound mode and we should say it right off
             if self.initial_message:
-                asyncio.create_task(
-                    self.conversation.send_initial_message(self.initial_message)
-                )  # TODO: this seems like its hanging, why not await?
+                await self.conversation.send_initial_message(self.initial_message)
                 self.initial_message = None
                 return
             stashed_buffer = deepcopy(self.buffer)
