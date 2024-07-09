@@ -21,7 +21,7 @@ from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.telephony import VonageConfig
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
 from vocode.streaming.utils import create_conversation_id
-from vocode.streaming.utils.dtmf_utils import generate_dtmf_tone
+from vocode.streaming.utils.dtmf_utils import DTMFToneGenerator
 from vocode.streaming.utils.state_manager import (
     TwilioPhoneConversationStateManager,
     VonagePhoneConversationStateManager,
@@ -116,7 +116,7 @@ async def test_twilio_dtmf_press_digits(
     mock_twilio_output_device.terminate()
 
     for digit, call in zip(digits, mock_twilio_output_device.ws.send_text.call_args_list):
-        expected_dtmf = generate_dtmf_tone(
+        expected_dtmf = DTMFToneGenerator().generate(
             digit, sampling_rate=8000, audio_encoding=AudioEncoding.MULAW
         )
         media_message = json.loads(call[0][0])

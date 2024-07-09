@@ -15,7 +15,7 @@ from vocode.streaming.output_device.abstract_output_device import AbstractOutput
 from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
 from vocode.streaming.utils.create_task import asyncio_create_task
-from vocode.streaming.utils.dtmf_utils import KeypadEntry, generate_dtmf_tone
+from vocode.streaming.utils.dtmf_utils import DTMFToneGenerator, KeypadEntry
 from vocode.streaming.utils.worker import InterruptibleEvent
 
 
@@ -57,9 +57,10 @@ class TwilioOutputDevice(AbstractOutputDevice):
         self._mark_message_queue.put_nowait(mark_message)
 
     def send_dtmf_tones(self, keypad_entries: List[KeypadEntry]):
+        tone_generator = DTMFToneGenerator()
         for keypad_entry in keypad_entries:
-            logger.info(f"Sending DTMF tone {keypad_entry}")
-            dtmf_tone = generate_dtmf_tone(
+            logger.info(f"Sending DTMF tone {keypad_entry.value}")
+            dtmf_tone = tone_generator.generate(
                 keypad_entry, sampling_rate=self.sampling_rate, audio_encoding=self.audio_encoding
             )
             dtmf_message = {

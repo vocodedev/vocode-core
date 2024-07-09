@@ -9,7 +9,7 @@ from vocode.streaming.action.phone_call_action import (
 )
 from vocode.streaming.models.actions import ActionConfig as VocodeActionConfig
 from vocode.streaming.models.actions import ActionInput, ActionOutput
-from vocode.streaming.utils.dtmf_utils import KeypadEntry
+from vocode.streaming.utils.dtmf_utils import DTMFToneGenerator, KeypadEntry
 from vocode.streaming.utils.state_manager import (
     TwilioPhoneConversationStateManager,
     VonagePhoneConversationStateManager,

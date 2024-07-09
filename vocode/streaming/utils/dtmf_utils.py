@@ -1,9 +1,12 @@
 import audioop
+from ast import Tuple
 from enum import Enum
+from typing import Dict
 
 import numpy as np
 
 from vocode.streaming.models.audio import AudioEncoding
+from vocode.streaming.utils.singleton import Singleton
 
 DEFAULT_DTMF_TONE_LENGTH_SECONDS = 0.3
 MAX_INT = 32767
@@ -36,18 +39,28 @@ DTMF_FREQUENCIES = {
 }
 
 
-def generate_dtmf_tone(
-    keypad_entry: KeypadEntry,
-    sampling_rate: int,
-    audio_encoding: AudioEncoding,
-    duration_seconds: float = DEFAULT_DTMF_TONE_LENGTH_SECONDS,
-) -> bytes:
-    f1, f2 = DTMF_FREQUENCIES[keypad_entry]
-    t = np.linspace(0, duration_seconds, int(sampling_rate * duration_seconds), endpoint=False)
-    tone = np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)
-    tone = tone / np.max(np.abs(tone))  # Normalize to [-1, 1]
-    pcm = (tone * MAX_INT).astype(np.int16).tobytes()
-    if audio_encoding == AudioEncoding.MULAW:
-        return audioop.lin2ulaw(pcm, 2)
-    else:
-        return pcm
+class DTMFToneGenerator(Singleton):
+
+    def __init__(self):
+        self.tone_cache: Dict[Tuple[KeypadEntry, int, AudioEncoding], bytes] = {}
+
+    def generate(
+        self,
+        keypad_entry: KeypadEntry,
+        sampling_rate: int,
+        audio_encoding: AudioEncoding,
+        duration_seconds: float = DEFAULT_DTMF_TONE_LENGTH_SECONDS,
+    ) -> bytes:
+        if (keypad_entry, sampling_rate, audio_encoding) in self.tone_cache:
+            return self.tone_cache[(keypad_entry, sampling_rate, audio_encoding)]
+        f1, f2 = DTMF_FREQUENCIES[keypad_entry]
+        t = np.linspace(0, duration_seconds, int(sampling_rate * duration_seconds), endpoint=False)
+        tone = np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)
+        tone = tone / np.max(np.abs(tone))  # Normalize to [-1, 1]
+        pcm = (tone * MAX_INT).astype(np.int16).tobytes()
+        if audio_encoding == AudioEncoding.MULAW:
+            output = audioop.lin2ulaw(pcm, 2)
+        else:
+            output = pcm
+        self.tone_cache[(keypad_entry, sampling_rate, audio_encoding)] = output
+        return output
