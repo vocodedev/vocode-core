@@ -36,7 +36,6 @@ class OutboundCall:
         digits: Optional[
             str
         ] = None,  # Keys to press when the call connects, see send_digits https://www.twilio.com/docs/voice/api/call-resource#create-a-call-resource
-        output_to_speaker: bool = False,
     ):
         self.base_url = base_url
         self.to_phone = to_phone
@@ -49,7 +48,6 @@ class OutboundCall:
         self.telephony_client = self.create_telephony_client()
         self.transcriber_config = self.create_transcriber_config(transcriber_config)
         self.synthesizer_config = self.create_synthesizer_config(synthesizer_config)
-        self.output_to_speaker = output_to_speaker
         self.sentry_tags = sentry_tags
         self.digits = digits
 
@@ -115,7 +113,6 @@ class OutboundCall:
                 vonage_uuid=self.telephony_id,
                 from_phone=self.from_phone,
                 to_phone=self.to_phone,
-                output_to_speaker=False,
                 sentry_tags=self.sentry_tags,
                 telephony_params=self.telephony_params,
                 direction="outbound",

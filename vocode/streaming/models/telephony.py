@@ -101,7 +101,6 @@ class VonageCallConfig(BaseCallConfig):
     type: Literal["call_config_vonage"] = "call_config_vonage"
     vonage_config: VonageConfig
     vonage_uuid: str
-    output_to_speaker: bool = False
 
     @staticmethod
     def default_transcriber_config():
