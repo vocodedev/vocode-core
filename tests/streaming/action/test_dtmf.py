@@ -109,8 +109,13 @@ async def test_twilio_dtmf_press_digits(
     )
 
     mock_twilio_output_device.start()
-    while not mock_twilio_output_device._twilio_events_queue.empty():
+    max_wait_seconds = 1
+    waited_seconds = 0
+    while mock_twilio_output_device.ws.send_text.call_count < len(digits):
         await asyncio.sleep(0.1)
+        waited_seconds += 0.1
+        if waited_seconds > max_wait_seconds:
+            assert False, "Timed out waiting for DTMF tones to be sent"
 
     assert action_output.response.success
     mock_twilio_output_device.terminate()
