@@ -54,6 +54,7 @@ class TwilioClient(BaseTelephonyClient):
             from_=from_phone,
             send_digits=digits,
             record=record,
+            timeout=20,
             # status_callback=f"{os.getenv('BASE_URL')}/update_call_status",
             # status_callback_event=['busy', 'completed', 'failed', 'in-progress',
             #                        'initiated', 'no-answer', 'queued', 'ringing'],
