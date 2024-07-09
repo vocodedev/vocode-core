@@ -12,6 +12,7 @@ from vocode.streaming.models.actions import (
     ActionOutput,
     ActionType,
 )
+from vocode.streaming.models.telephony import TwilioConfig
 
 from telephony_app.models.call_status import CallStatus
 from telephony_app.models.call_type import CallType
@@ -29,6 +30,7 @@ class HangUpCallActionConfig(ActionConfig, type=ActionType.HANGUP_CALL):
     call_status: CallStatus
     call_type: CallType
     starting_phrase: str
+    twilio_config: TwilioConfig
 
 
 class HangUpCallParameters(BaseModel):
@@ -49,7 +51,8 @@ class HangUpCall(
     response_type: Type[HangUpCallResponse] = HangUpCallResponse
 
     async def hangup_twilio_call(
-        self, call_status: CallStatus, call_type: CallType, twilio_call_sid: str
+        self, call_status: CallStatus, call_type: CallType, twilio_call_sid: str,
+            twilio_config: TwilioConfig
     ):
         """
         Hangs up an active Twilio call.
@@ -57,9 +60,10 @@ class HangUpCall(
         :param call_status: The call status we want the call to be updated to
         :param call_type: Type of the call (inbound or outbound)
         :param twilio_call_sid: The twilio SID of the call to hang up
+        :param twilio_config: The twilio config for the account we're calling with
         """
         twilio_rest_client = TwilioRestClient(
-            os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN")
+            twilio_config.account_sid, twilio_config.auth_token
         )
         logger.info(f"The call sid that is being hung up is {twilio_call_sid}")
 
@@ -79,6 +83,7 @@ class HangUpCall(
             call_status=self.action_config.call_status,
             call_type=self.action_config.call_type,
             twilio_call_sid=twilio_call_sid,
+            twilio_config=self.action_config.twilio_config
         )
 
         return ActionOutput(
