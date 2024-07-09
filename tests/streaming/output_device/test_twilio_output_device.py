@@ -10,6 +10,8 @@ from vocode.streaming.output_device.twilio_output_device import (
     ChunkFinishedMarkMessage,
     TwilioOutputDevice,
 )
+from vocode.streaming.utils.dtmf_utils import DTMFToneGenerator, KeypadEntry
+from vocode.streaming.utils.singleton import SingletonMeta
 from vocode.streaming.utils.worker import InterruptibleEvent
 
 
@@ -137,3 +139,17 @@ async def test_interrupted_audio_chunks_are_not_sent_but_are_marked_interrupted(
     assert audio_chunk.state == ChunkState.INTERRUPTED
 
     twilio_output_device.ws.send_text.assert_not_called()
+
+
+def test_dtmf_tone_generator_caches(
+    twilio_output_device: TwilioOutputDevice, mocker: MockerFixture
+):
+    del SingletonMeta._instances[DTMFToneGenerator]
+    lin2ulaw_mock = mocker.patch(
+        "audioop.lin2ulaw",
+        return_value=b"ulaw_encoded",
+    )
+
+    twilio_output_device.send_dtmf_tones([KeypadEntry.ONE, KeypadEntry.ONE])
+
+    lin2ulaw_mock.assert_called_once()
