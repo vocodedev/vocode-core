@@ -9,6 +9,7 @@ from vocode.streaming.action.phone_call_action import (
 )
 from vocode.streaming.models.actions import ActionConfig as VocodeActionConfig
 from vocode.streaming.models.actions import ActionInput, ActionOutput
+from vocode.streaming.utils.dtmf import KeypadEntry
 from vocode.streaming.utils.state_manager import (
     TwilioPhoneConversationStateManager,
     VonagePhoneConversationStateManager,
@@ -76,8 +77,19 @@ class TwilioDTMF(
         )
 
     async def run(self, action_input: ActionInput[DTMFParameters]) -> ActionOutput[DTMFResponse]:
-        logger.error("DTMF not yet supported with Twilio")
-        return ActionOutput(
-            action_type=action_input.action_config.type,
-            response=DTMFResponse(success=False),
-        )
+        buttons = action_input.params.buttons
+        if not all(button in KeypadEntry for button in buttons):
+            logger.warning(f"Invalid DTMF buttons: {buttons}")
+            return ActionOutput(
+                action_type=action_input.action_config.type,
+                response=DTMFResponse(success=False),
+            )
+        else:
+            keypad_entries = [KeypadEntry(button) for button in buttons]
+            self.conversation_state_manager._twilio_phone_conversation.output_device.send_dtmf_tones(
+                keypad_entries=keypad_entries
+            )
+            return ActionOutput(
+                action_type=action_input.action_config.type,
+                response=DTMFResponse(success=False),
+            )

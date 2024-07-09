@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import audioop
 import base64
 import json
-import uuid
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from fastapi import WebSocket
 from fastapi.websockets import WebSocketState
@@ -15,6 +15,7 @@ from vocode.streaming.output_device.abstract_output_device import AbstractOutput
 from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
 from vocode.streaming.utils.create_task import asyncio_create_task
+from vocode.streaming.utils.dtmf import KeypadEntry, generate_dtmf_tone
 from vocode.streaming.utils.worker import InterruptibleEvent
 
 
@@ -54,6 +55,17 @@ class TwilioOutputDevice(AbstractOutputDevice):
 
     def enqueue_mark_message(self, mark_message: MarkMessage):
         self._mark_message_queue.put_nowait(mark_message)
+
+    def send_dtmf_tones(self, keypad_entries: List[KeypadEntry]):
+        for keypad_entry in keypad_entries:
+            dtmf_tone_pcm = generate_dtmf_tone(keypad_entry, sampling_rate=self.sampling_rate)
+            dtmf_tone_mulaw = audioop.lin2ulaw(dtmf_tone_pcm, 2)
+            dtmf_message = {
+                "event": "media",
+                "streamSid": self.stream_sid,
+                "media": {"payload": base64.b64encode(dtmf_tone_mulaw).decode("utf-8")},
+            }
+            self._twilio_events_queue.put_nowait(json.dumps(dtmf_message))
 
     async def _send_twilio_messages(self):
         while True:
