@@ -84,14 +84,7 @@ class TranscriptionAgentInput(_AgentInput):
     transcription: Transcription
 
 
-class ActionResultAgentInput(_AgentInput):
-    type: Literal["agent_input_action_result"] = "agent_input_action_result"
-    action_input: ActionInput
-    action_output: ActionOutput
-    is_quiet: bool = False
-
-
-AgentInput = Union[TranscriptionAgentInput, ActionResultAgentInput]
+AgentInput = Union[TranscriptionAgentInput]
 
 
 class AgentResponseMessage(BaseModel):
@@ -435,7 +428,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             should_stop = False
             if self.agent_config.generate_responses:
                 # TODO (EA): this is quite ugly but necessary to have the agent act properly after an action completes
-                if not isinstance(agent_input, ActionResultAgentInput):
+                if not isinstance(agent_input, ActionResponse):
                     sentry_create_span(
                         sentry_callable=sentry_sdk.start_span,
                         op=CustomSentrySpans.LANGUAGE_MODEL_TIME_TO_FIRST_TOKEN,
