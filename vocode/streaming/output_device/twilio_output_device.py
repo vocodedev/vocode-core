@@ -58,6 +58,7 @@ class TwilioOutputDevice(AbstractOutputDevice):
 
     def send_dtmf_tones(self, keypad_entries: List[KeypadEntry]):
         for keypad_entry in keypad_entries:
+            logger.info(f"Sending DTMF tone {keypad_entry}")
             dtmf_tone = generate_dtmf_tone(
                 keypad_entry, sampling_rate=self.sampling_rate, audio_encoding=self.audio_encoding
             )
