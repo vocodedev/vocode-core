@@ -1,4 +1,4 @@
-from typing import Type
+from typing import List, Type
 
 from loguru import logger
 from pydantic.v1 import BaseModel, Field
@@ -9,7 +9,7 @@ from vocode.streaming.action.phone_call_action import (
 )
 from vocode.streaming.models.actions import ActionConfig as VocodeActionConfig
 from vocode.streaming.models.actions import ActionInput, ActionOutput
-from vocode.streaming.utils.dtmf import KeypadEntry
+from vocode.streaming.utils.dtmf_utils import KeypadEntry
 from vocode.streaming.utils.state_manager import (
     TwilioPhoneConversationStateManager,
     VonagePhoneConversationStateManager,
@@ -78,18 +78,19 @@ class TwilioDTMF(
 
     async def run(self, action_input: ActionInput[DTMFParameters]) -> ActionOutput[DTMFResponse]:
         buttons = action_input.params.buttons
-        if not all(button in KeypadEntry for button in buttons):
+        keypad_entries: List[KeypadEntry]
+        try:
+            keypad_entries = [KeypadEntry(button) for button in buttons]
+        except ValueError:
             logger.warning(f"Invalid DTMF buttons: {buttons}")
             return ActionOutput(
                 action_type=action_input.action_config.type,
                 response=DTMFResponse(success=False),
             )
-        else:
-            keypad_entries = [KeypadEntry(button) for button in buttons]
-            self.conversation_state_manager._twilio_phone_conversation.output_device.send_dtmf_tones(
-                keypad_entries=keypad_entries
-            )
-            return ActionOutput(
-                action_type=action_input.action_config.type,
-                response=DTMFResponse(success=False),
-            )
+        self.conversation_state_manager._twilio_phone_conversation.output_device.send_dtmf_tones(
+            keypad_entries=keypad_entries
+        )
+        return ActionOutput(
+            action_type=action_input.action_config.type,
+            response=DTMFResponse(success=False),
+        )

@@ -36,5 +36,5 @@ def generate_dtmf_tone(
     f1, f2 = DTMF_FREQUENCIES[keypad_entry]
     t = np.linspace(0, duration_seconds, int(sampling_rate * duration_seconds), endpoint=False)
     tone = np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)
-    tone = tone * 32767 / np.max(np.abs(tone))  # Normalize to [-1, 1]
-    return tone.tobytes()
+    tone = tone / np.max(np.abs(tone))  # Normalize to [-1, 1]
+    return (tone * 32767).astype(np.int16).tobytes()
