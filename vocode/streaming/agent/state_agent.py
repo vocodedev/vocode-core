@@ -180,6 +180,14 @@ async def handle_options(
         and (prev_state and prev_state["type"] == "question")
         and not action_result_after_user_spoke
     ):
+        #  In-place injection to bias the AI against picking the default options (better options are present)
+        if len(edges) > 0:
+            if edges[-1].get("aiDescription"):
+                edges[-1]["aiDescription"] = f'{edges[-1]["aiDescription"]}\n\nOnly pick the following options if none of ' \
+                                             f'the above options can be applied to the current circumstance:'
+            else:
+                edges[-1]["aiLabel"] = f'{edges[-1]["aiLabel"]}\n\nOnly pick the following options if none of the ' \
+                                       f'above options can be applied to the current circumstance:'
         edges.append(
             {
                 "destStateId": state_machine["startingStateId"],
@@ -217,8 +225,6 @@ async def handle_options(
             ai_options.append(
                 f"{index}: {edge.get('aiDescription', None) or edge.get('aiLabel', None)}"
             )
-    if len(ai_options) == 0:
-        raise Exception("invalid options state with no options")
 
     ai_options_str = "\n".join(ai_options)
     prompt = (
@@ -511,10 +517,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             stream = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": self.overall_instructions},
+                    {"role": "system"},
                     {
                         "role": "user",
-                        "content": f"Given the chat history, follow the instructions.\nChat history:\n{self.chat_history}\n\n\nInstructions:\n{prompt}",
+                        "content": f"{self.overall_instructions}\n\n Given the chat history, follow the instructions.\nChat history:\n{self.chat_history}\n\n\nInstructions:\n{prompt}",
                     },
                 ],
                 stream=True,
