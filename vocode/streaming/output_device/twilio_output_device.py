@@ -58,12 +58,13 @@ class TwilioOutputDevice(AbstractOutputDevice):
 
     def send_dtmf_tones(self, keypad_entries: List[KeypadEntry]):
         for keypad_entry in keypad_entries:
-            dtmf_tone_pcm = generate_dtmf_tone(keypad_entry, sampling_rate=self.sampling_rate)
-            dtmf_tone_mulaw = audioop.lin2ulaw(dtmf_tone_pcm, 2)
+            dtmf_tone = generate_dtmf_tone(
+                keypad_entry, sampling_rate=self.sampling_rate, audio_encoding=self.audio_encoding
+            )
             dtmf_message = {
                 "event": "media",
                 "streamSid": self.stream_sid,
-                "media": {"payload": base64.b64encode(dtmf_tone_mulaw).decode("utf-8")},
+                "media": {"payload": base64.b64encode(dtmf_tone).decode("utf-8")},
             }
             self._twilio_events_queue.put_nowait(json.dumps(dtmf_message))
 

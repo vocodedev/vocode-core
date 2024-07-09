@@ -1,6 +1,11 @@
+import audioop
 from enum import Enum
 
 import numpy as np
+
+from vocode.streaming.models.audio import AudioEncoding
+
+DEFAULT_DTMF_TONE_LENGTH_SECONDS = 0.3
 
 
 class KeypadEntry(str, Enum):
@@ -31,10 +36,17 @@ DTMF_FREQUENCIES = {
 
 
 def generate_dtmf_tone(
-    keypad_entry: KeypadEntry, sampling_rate: int, duration_seconds: float = 0.3
+    keypad_entry: KeypadEntry,
+    sampling_rate: int,
+    audio_encoding: AudioEncoding,
+    duration_seconds: float = DEFAULT_DTMF_TONE_LENGTH_SECONDS,
 ) -> bytes:
     f1, f2 = DTMF_FREQUENCIES[keypad_entry]
     t = np.linspace(0, duration_seconds, int(sampling_rate * duration_seconds), endpoint=False)
     tone = np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)
     tone = tone / np.max(np.abs(tone))  # Normalize to [-1, 1]
-    return (tone * 32767).astype(np.int16).tobytes()
+    pcm = (tone * 32767).astype(np.int16).tobytes()
+    if audio_encoding == AudioEncoding.MULAW:
+        return audioop.lin2ulaw(pcm, 2)
+    else:
+        return pcm
