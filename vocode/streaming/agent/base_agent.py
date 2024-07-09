@@ -340,15 +340,13 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 agent_response_tracker=end_of_turn_agent_response_tracker,
             )
 
-        phrase_trigger_match = (
+        phrase_trigger_match_action_config = (
             matches_phrase_trigger(responses_buffer, self.agent_config.actions)
             if self.agent_config.actions
             else None
         )
-        if phrase_trigger_match:
-            action_config = self._get_action_config(phrase_trigger_match)
-            assert action_config is not None
-            action = self.action_factory.create_action(action_config)
+        if phrase_trigger_match_action_config:
+            action = self.action_factory.create_action(phrase_trigger_match_action_config)
             action_input = self.create_action_input(
                 action,
                 agent_input,
