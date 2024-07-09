@@ -623,7 +623,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         self.transcriber.consumer = self.transcriptions_worker
 
         # Agent
-        self.transcriptions_worker.consumer = self.agent
+        self.transcriptions_worker.consumer = self.agent  # type: ignore
         self.agent.set_interruptible_event_factory(self.interruptible_event_factory)
         self.agent.streaming_conversation = self
 
@@ -642,7 +642,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 interruptible_event_factory=self.interruptible_event_factory,
             )
             self.actions_worker.pipeline = self
-            self.actions_worker.consumer = self.agent
+            self.actions_worker.consumer = self.agent  # type: ignore
             self.agent.actions_consumer = self.actions_worker
 
         # Synthesis Results Worker

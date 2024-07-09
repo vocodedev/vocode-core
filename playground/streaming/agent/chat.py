@@ -191,7 +191,7 @@ async def run_agent(
         actions_worker = ActionsWorker(
             action_factory=agent.action_factory,
         )
-        actions_worker.consumer = agent
+        actions_worker.consumer = agent  # type: ignore
         agent.actions_consumer = actions_worker
         actions_worker.pipeline = agent.streaming_conversation
         actions_worker.start()
