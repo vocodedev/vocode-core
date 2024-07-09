@@ -6,6 +6,7 @@ import numpy as np
 from vocode.streaming.models.audio import AudioEncoding
 
 DEFAULT_DTMF_TONE_LENGTH_SECONDS = 0.3
+MAX_INT = 32767
 
 
 class KeypadEntry(str, Enum):
@@ -45,7 +46,7 @@ def generate_dtmf_tone(
     t = np.linspace(0, duration_seconds, int(sampling_rate * duration_seconds), endpoint=False)
     tone = np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)
     tone = tone / np.max(np.abs(tone))  # Normalize to [-1, 1]
-    pcm = (tone * 32767).astype(np.int16).tobytes()
+    pcm = (tone * MAX_INT).astype(np.int16).tobytes()
     if audio_encoding == AudioEncoding.MULAW:
         return audioop.lin2ulaw(pcm, 2)
     else:

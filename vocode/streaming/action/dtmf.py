@@ -92,5 +92,5 @@ class TwilioDTMF(
         )
         return ActionOutput(
             action_type=action_input.action_config.type,
-            response=DTMFResponse(success=False),
+            response=DTMFResponse(success=True),
         )
