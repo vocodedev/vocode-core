@@ -148,3 +148,4 @@ async def test_twilio_dtmf_failure(
     )
 
     assert not action_output.response.success
+    assert action_output.response.message == "Invalid DTMF buttons, can only accept 0-9"

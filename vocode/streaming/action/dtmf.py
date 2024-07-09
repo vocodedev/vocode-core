@@ -1,4 +1,4 @@
-from typing import List, Type
+from typing import List, Optional, Type
 
 from loguru import logger
 from pydantic.v1 import BaseModel, Field
@@ -22,6 +22,7 @@ class DTMFParameters(BaseModel):
 
 class DTMFResponse(BaseModel):
     success: bool
+    message: Optional[str] = None
 
 
 class DTMFVocodeActionConfig(VocodeActionConfig, type="action_dtmf"):  # type: ignore
@@ -32,7 +33,12 @@ class DTMFVocodeActionConfig(VocodeActionConfig, type="action_dtmf"):  # type: i
     def action_result_to_string(self, input: ActionInput, output: ActionOutput) -> str:
         assert isinstance(input.params, DTMFParameters)
         assert isinstance(output.response, DTMFResponse)
-        return f"Pressed numbers {list(input.params.buttons)} successfully"
+        if output.response.success:
+            return f"Pressed numbers {list(input.params.buttons)} successfully"
+        else:
+            return (
+                f"Failed to press numbers {list(input.params.buttons)}: {output.response.message}"
+            )
 
 
 FUNCTION_DESCRIPTION = "Presses a string numbers using DTMF tones."
@@ -85,7 +91,9 @@ class TwilioDTMF(
             logger.warning(f"Invalid DTMF buttons: {buttons}")
             return ActionOutput(
                 action_type=action_input.action_config.type,
-                response=DTMFResponse(success=False),
+                response=DTMFResponse(
+                    success=False, message="Invalid DTMF buttons, can only accept 0-9"
+                ),
             )
         self.conversation_state_manager._twilio_phone_conversation.output_device.send_dtmf_tones(
             keypad_entries=keypad_entries
