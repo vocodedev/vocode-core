@@ -199,8 +199,10 @@ def create_fake_twilio_phone_conversation_with_streaming_conversation_pipeline(
     twilio_config: Optional[TwilioConfig] = None,
     config_manager: Optional[BaseConfigManager] = None,
     events_manager: Optional[EventsManager] = None,
+    twilio_stream_sid: str = "test_stream_sid",
+    attach_mock_ws: bool = False,
 ):
-    return TwilioPhoneConversation(
+    twilio_phone_conversation = TwilioPhoneConversation(
         direction=direction,
         from_phone=from_phone,
         to_phone=to_phone,
@@ -212,6 +214,10 @@ def create_fake_twilio_phone_conversation_with_streaming_conversation_pipeline(
         twilio_config=twilio_config,
         events_manager=events_manager,
     )
+    if attach_mock_ws:
+        twilio_phone_conversation.pipeline.output_device.ws = mocker.AsyncMock()
+    twilio_phone_conversation.pipeline.output_device.stream_sid = twilio_stream_sid
+    return twilio_phone_conversation
 
 
 def create_fake_vonage_phone_conversation_with_streaming_conversation_pipeline(
@@ -225,8 +231,9 @@ def create_fake_vonage_phone_conversation_with_streaming_conversation_pipeline(
     vonage_config: Optional[VonageConfig] = None,
     config_manager: Optional[BaseConfigManager] = None,
     events_manager: Optional[EventsManager] = None,
+    attach_mock_ws: bool = False,
 ):
-    return VonagePhoneConversation(
+    vonage_phone_conversation = VonagePhoneConversation(
         direction=direction,
         from_phone=from_phone,
         to_phone=to_phone,
@@ -238,3 +245,6 @@ def create_fake_vonage_phone_conversation_with_streaming_conversation_pipeline(
         vonage_config=vonage_config or mocker.MagicMock(),
         events_manager=events_manager,
     )
+    if attach_mock_ws:
+        vonage_phone_conversation.pipeline.output_device.ws = mocker.AsyncMock()
+    return vonage_phone_conversation

@@ -39,13 +39,15 @@ class TestSynthesizer(BaseSynthesizer[TestSynthesizerConfig]):
         is_first_text_chunk: bool = False,
         is_sole_text_chunk: bool = False,
     ) -> SynthesisResult:
-        return self.create_synthesis_result_from_wav(
-            synthesizer_config=self.synthesizer_config,
-            message=message,
-            chunk_size=chunk_size,
-            file=create_fake_audio(
-                message=message.text, synthesizer_config=self.synthesizer_config
-            ),
+        async def chunk_generator():
+            for i in range(0, len(message.text), chunk_size):
+                yield SynthesisResult.ChunkResult(
+                    chunk=message.text[i : i + chunk_size].encode(), is_last_chunk=False
+                )
+
+        return SynthesisResult(
+            chunk_generator=chunk_generator(),
+            get_message_up_to=lambda seconds: message.text,
         )
 
     @classmethod

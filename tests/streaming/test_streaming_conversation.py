@@ -610,3 +610,4 @@ async def test_streaming_conversation_pipeline(
     assert initial_message_audio_chunk.data == b"Hi there"
     first_response_audio_chunk = await output_device.dummy_playback_queue.get()
     assert first_response_audio_chunk.data == b"test"
+    await streaming_conversation.terminate()
