@@ -24,6 +24,7 @@ import sentry_sdk
 from loguru import logger
 from sentry_sdk.tracing import Span
 
+from vocode import conversation_id as ctx_conversation_id
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
     AgentInput,
@@ -61,6 +62,7 @@ from vocode.streaming.utils import (
     enumerate_async_iter,
     get_chunk_size_per_second,
 )
+from vocode.streaming.utils.audio_pipeline import AudioPipeline, OutputDeviceType
 from vocode.streaming.utils.create_task import asyncio_create_task
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.speed_manager import SpeedManager
@@ -107,10 +109,7 @@ BACKCHANNEL_PATTERNS = [
 LOW_INTERRUPT_SENSITIVITY_BACKCHANNEL_UTTERANCE_LENGTH_THRESHOLD = 3
 
 
-OutputDeviceType = TypeVar("OutputDeviceType", bound=AbstractOutputDevice)
-
-
-class StreamingConversation(Generic[OutputDeviceType]):
+class StreamingConversation(AudioPipeline[OutputDeviceType]):
     class QueueingInterruptibleEventFactory(InterruptibleEventFactory):
         def __init__(self, conversation: "StreamingConversation"):
             self.conversation = conversation
@@ -593,6 +592,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         events_manager: Optional[EventsManager] = None,
     ):
         self.id = conversation_id or create_conversation_id()
+        ctx_conversation_id.set(self.id)
+
         self.output_device = output_device
         self.transcriber = transcriber
         self.agent = agent
