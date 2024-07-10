@@ -314,7 +314,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.info(
                     f"BufferCancel? {self.buffer_check_task.cancel()}"
                 )
-            if self.initial_message:
+            if self.initial_message and transcription.is_final:
                 await self.conversation.send_initial_message(self.initial_message)
                 self.initial_message = None
                 return
