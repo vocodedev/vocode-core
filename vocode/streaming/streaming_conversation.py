@@ -318,6 +318,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 await self.conversation.send_initial_message(self.initial_message)
                 self.initial_message = None
                 return
+            if not transcription.is_final:
+                return
             stashed_buffer = deepcopy(self.buffer)
             # Broadcast an interrupt and set the buffer status to DISCARD
             await self.conversation.broadcast_interrupt()
