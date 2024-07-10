@@ -1011,12 +1011,6 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         logger.debug("Tearing down synthesizer")
         await self.synthesizer.tear_down()
         logger.debug("Terminating agent")
-        if isinstance(self.agent, ChatGPTAgent) and self.agent.agent_config.vector_db_config:
-            # Shutting down the vector db should be done in the agent's terminate method,
-            # but it is done here because `vector_db.tear_down()` is async and
-            # `agent.terminate()` is not async.
-            logger.debug("Terminating vector db")
-            await self.agent.vector_db.tear_down()
         await self.agent.terminate()
         logger.debug("Terminating output device")
         await self.output_device.terminate()
