@@ -107,7 +107,7 @@ async def handle_question(
     go_to_state: Callable[[str, List[str]], Awaitable[Any]],
     speak_message: Callable[[Any], None],
     logger: logging.Logger,
-    state_history: List[Any]
+    state_history: List[Any],
 ):
 
     await speak_message(state["question"])
@@ -183,11 +183,15 @@ async def handle_options(
         #  In-place injection to bias the AI against picking the default options (better options are present)
         if len(edges) > 0:
             if edges[-1].get("aiDescription"):
-                edges[-1]["aiDescription"] = f'{edges[-1]["aiDescription"]}\n\nOnly pick the following options if none of ' \
-                                             f'the above options can be applied to the current circumstance:'
+                edges[-1]["aiDescription"] = (
+                    f'{edges[-1]["aiDescription"]}\n\nOnly pick the following options if none of '
+                    f"the above options can be applied to the current circumstance:"
+                )
             else:
-                edges[-1]["aiLabel"] = f'{edges[-1]["aiLabel"]}\n\nOnly pick the following options if none of the ' \
-                                       f'above options can be applied to the current circumstance:'
+                edges[-1]["aiLabel"] = (
+                    f'{edges[-1]["aiLabel"]}\n\nOnly pick the following options if none of the '
+                    f"above options can be applied to the current circumstance:"
+                )
         edges.append(
             {
                 "destStateId": state_machine["startingStateId"],
@@ -195,13 +199,22 @@ async def handle_options(
                 "aiDescription": f"user no longer needs help with '{state['id'].split('::')[0]}'",
             }
         )
-        edges.append(
-            {
-                "destStateId": default_next_state,
-                "aiLabel": "continue",
-                "aiDescription": f"user still needs help with '{state['id'].split('::')[0]}' but no condition applies",
-            }
-        )
+        if len(edges) == 1:
+            edges.append(
+                {
+                    "destStateId": default_next_state,
+                    "aiLabel": "continue",
+                    "aiDescription": f"user provided an answer to the question",
+                }
+            )
+        else:
+            edges.append(
+                {
+                    "destStateId": default_next_state,
+                    "aiLabel": "continue",
+                    "aiDescription": f"user still needs help with '{state['id'].split('::')[0]}' but no condition applies",
+                }
+            )
         # extra edge if this state was part of a question section
         if "question" in state["id"].split("::")[-2]:
             edges.append(
@@ -213,8 +226,6 @@ async def handle_options(
                 },
             )
 
-    logger.info(f"edges {edges}")
-    logger.info(f"original edges {state['edges']}")
     index = 0
     for index, edge in enumerate(edges):
         if "isDefault" not in edge or not edge["isDefault"]:
@@ -242,16 +253,16 @@ async def handle_options(
     )
 
     logger.info(f"Chose condition: {response}")
-    response = response[response.find("{") : response.rfind("}") + 1]
-
     try:
-        condition = parse_llm_dict(response)["condition"]
-        # only int if its not already
-        if isinstance(condition, str):
-            condition = int(condition)
+        response_dict = parse_llm_dict(response)
+        condition = response_dict.get("condition")
+        if condition is None:
+            raise ValueError("No condition was provided in the response.")
+        condition = int(condition)  # Ensure condition is an integer
         next_state_id = response_to_edge[condition]["destStateId"]
         if response_to_edge[condition].get("speak"):
             # we would call ai and speak here
+            tool = {"response": "insert your response to the user"}
             prompt = (
                 f"You last stated: '{last_bot_message}', to which the user replied: '{last_user_message}'.\n\n"
                 f"You are already engaged in the following process: {state['id'].split('::')[0]}\n"
@@ -261,8 +272,11 @@ async def handle_options(
                 "- Ensure not to suggest any actions or offer alternatives.\n"
             )
             # we do not care what it has to say when switching or continuing
-            output = await call_ai(prompt, {})
-            speak(output)
+            output = await call_ai(prompt, tool)
+            output = output[output.find("{") : output.find("}") + 1]
+            parsed_output = parse_llm_dict(output)
+            to_speak = parsed_output["response"]
+            speak(to_speak)
 
             async def resume(human_input):
                 logger.info(
@@ -294,7 +308,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         super().__init__(agent_config=agent_config, logger=logger)
         self.state_machine = self.agent_config.user_json_prompt["converted"]
         self.current_state = None
-        self.resume = lambda _: self.handle_state(self.state_machine["startingStateId"], [])
+        self.resume = lambda _: self.handle_state(
+            self.state_machine["startingStateId"], []
+        )
         self.can_send = False
         self.conversation_id = None
         self.twilio_sid = None
@@ -383,7 +399,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 go_to_state=go_to_state,
                 speak_message=speak_message,
                 logger=self.logger,
-                state_history=state_history
+                state_history=state_history,
             )
 
         if state["type"] == "options":
@@ -395,7 +411,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 state_machine=self.state_machine,
                 get_chat_history=lambda: self.chat_history,
                 logger=self.logger,
-                state_history=state_history
+                state_history=state_history,
             )
 
         if state["type"] == "action":
@@ -404,11 +420,11 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
     async def guided_response(self, guide):
         tool = {"response": "[insert your response]"}
         message = await self.call_ai(
-            f"Draft your next response to the user based on the latest chat history, taking into account the following guidance:\n'{guide}'",
+            f"Draft a single response to the user based on the latest chat history, taking into account the following guidance:\n'{guide}'",
             tool,
         )
         self.logger.info(f"Guided response: {message}")
-        message = message[message.find("{") : message.rfind("}") + 1]
+        message = message[message.find("{") : message.find("}") + 1]
         self.logger.info(f"Guided response2: {message}")
         try:
             message = parse_llm_dict(message)
@@ -452,7 +468,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 tool=dict_to_fill,
             )
             self.logger.info(f"Filled params: {response}")
-            response = response[response.find("{") : response.rfind("}") + 1]
+            response = response[response.find("{") : response.find("}") + 1]
             self.logger.info(f"Filled params: {response}")
             try:
                 params = parse_llm_dict(response)
@@ -462,7 +478,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     tool=dict_to_fill,
                 )
                 self.logger.info(f"Filled params2: {response}")
-                response = response[response.find("{") : response.rfind("}") + 1]
+                response = response[response.find("{") : response.find("}") + 1]
                 params = parse_llm_dict(response)
         self.logger.info(f"Parsed params: {params}")
 
@@ -512,15 +528,23 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
     #
     async def call_ai(self, prompt, tool=None, stop=None):
         stop_tokens = stop if stop is not None else []
+        stop_tokens.append("}")
         response_text = ""
-        if not tool:
+        pretty_chat_history = "\n".join(
+            [
+                f"{'Bot' if role == 'message.bot' else 'Human'}: {message.text if isinstance(message, BaseMessage) else message}"
+                for role, message in self.chat_history
+            ]
+        )
+        if not tool or tool == {}:
+            prompt = f"{self.overall_instructions}\n\n Given the chat history, follow the instructions.\nChat history:\n{pretty_chat_history}\n\n\nInstructions:\n{prompt}\n\nReturn a single response."
+            self.logger.debug(f"prompt is: {prompt}")
             stream = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system"},
                     {
                         "role": "user",
-                        "content": f"{self.overall_instructions}\n\n Given the chat history, follow the instructions.\nChat history:\n{self.chat_history}\n\n\nInstructions:\n{prompt}",
+                        "content": prompt,
                     },
                 ],
                 stream=True,
@@ -535,14 +559,14 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     if any(token in text_chunk for token in stop_tokens):
                         break
         else:
+            prompt = f"Given the chat history, follow the instructions.\nChat history:\n{pretty_chat_history}\n\n\nInstructions:\n{prompt}\nYour response must always be dictionary in the following format: {str(tool)}"
+            self.logger.debug(f"prompt is: {prompt}")
+
             stream = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self.overall_instructions},
-                    {
-                        "role": "user",
-                        "content": f"Given the chat history, follow the instructions.\nChat history:\n{self.chat_history}\n\n\nInstructions:\n{prompt}\nYour response must always be dictionary in the following format: {str(tool)}",
-                    },
+                    {"role": "user", "content": prompt},
                 ],
                 stream=True,
                 temperature=0.1,
