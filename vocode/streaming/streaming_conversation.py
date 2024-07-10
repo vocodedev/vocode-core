@@ -801,8 +801,8 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         )
         self.transcriptions_worker.consume_nonblocking(transcription)
 
-    def receive_audio(self, chunk: bytes):
-        self.transcriber.send_audio(chunk)
+    def consume_nonblocking(self, item: bytes):
+        self.transcriber.send_audio(item)
 
     def warmup_synthesizer(self):
         self.synthesizer.ready_synthesizer(self._get_synthesizer_chunk_size())
