@@ -3,18 +3,22 @@ from __future__ import annotations
 import asyncio
 import audioop
 from abc import ABC, abstractmethod
-from typing import Generic, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Generic, Optional, TypeVar, Union
 
 from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.transcriber import TranscriberConfig, Transcription
 from vocode.streaming.utils.speed_manager import SpeedManager
 from vocode.streaming.utils.worker import AbstractWorker, AsyncWorker, ThreadAsyncWorker
 
+if TYPE_CHECKING:
+    from vocode.streaming.streaming_conversation import StreamingConversation
+
 TranscriberConfigType = TypeVar("TranscriberConfigType", bound=TranscriberConfig)
 
 
 class AbstractTranscriber(Generic[TranscriberConfigType], AbstractWorker[bytes]):
     consumer: AbstractWorker[Transcription]
+    streaming_conversation: "StreamingConversation"
 
     def __init__(self, transcriber_config: TranscriberConfigType):
         AbstractWorker.__init__(self)
