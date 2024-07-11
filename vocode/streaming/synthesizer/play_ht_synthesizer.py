@@ -12,6 +12,10 @@ from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, Synth
 TTS_ENDPOINT = "https://play.ht/api/v2/tts/stream"
 
 
+class PlayHTV1APIError(Exception):
+    pass
+
+
 class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
     def __init__(
         self,
@@ -78,14 +82,26 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
                 timeout=ClientTimeout(total=15),
             )
             if not response.ok:
-                raise Exception(f"Play.ht API error status code {response.status}")
+                raise PlayHTV1APIError(
+                    f"Play.ht API error status code {response.status}",
+                    (await response.json()).get(
+                        "error_message",
+                        f"Request to Play.HT failed with status code {str(response.status)}",
+                    ),
+                )
             if response.status == 429 and attempt < max_backoff_retries - 1:
                 await asyncio.sleep(backoff_retry_delay)
                 backoff_retry_delay *= 2  # Exponentially increase delay
                 continue
 
             if not response.ok:
-                raise Exception(f"Play.ht API error status code {response.status}")
+                raise PlayHTV1APIError(
+                    f"Play.ht API error status code {response.status}",
+                    (await response.json()).get(
+                        "error_message",
+                        f"Request to Play.HT failed with status code {str(response.status)}",
+                    ),
+                )
 
             if self.experimental_streaming:
                 return SynthesisResult(
