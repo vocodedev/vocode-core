@@ -1,6 +1,4 @@
 import hashlib
-import io
-import wave
 
 from vocode import getenv
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
@@ -83,17 +81,20 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
         is_first_text_chunk: bool = False,
         is_sole_text_chunk: bool = False,
     ) -> SynthesisResult:
-        generator = await self.client.tts.sse(
+        ws = await self.client.tts.websocket()
+        ctx = ws.context()
+
+        await ctx.send(
             model_id=self.model_id,
             transcript=message.text,
             voice_id=self.voice_id,
-            stream=True,
+            continue_=True,
             output_format=self.output_format,
         )
 
-        async def chunk_generator(sse):
+        async def chunk_generator(websocket, context):
             buffer = bytearray()
-            async for event in sse:
+            async for event in context.receive():
                 audio = event.get("audio")
                 buffer.extend(audio)
                 while len(buffer) >= chunk_size:
@@ -102,9 +103,11 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
                     )
                     buffer = buffer[chunk_size:]
             yield SynthesisResult.ChunkResult(chunk=buffer, is_last_chunk=True)
+            await context.no_more_inputs()
+            await websocket.close()
 
         return SynthesisResult(
-            chunk_generator=chunk_generator(generator),
+            chunk_generator=chunk_generator(ws, ctx),
             get_message_up_to=lambda seconds: self.get_message_cutoff_from_voice_speed(
                 message, seconds
             ),
