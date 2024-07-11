@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import google.auth
-from google.cloud import texttospeech as tts  # type: ignore
+from google.cloud import texttospeech_v1beta1 as tts  # type: ignore
 
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import GoogleSynthesizerConfig
@@ -34,7 +34,7 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
         # Select the type of audio file you want returned
         self.audio_config = tts.AudioConfig(
             audio_encoding=tts.AudioEncoding.LINEAR16,
-            sample_rate_hertz=24000,
+            sample_rate_hertz=synthesizer_config.sampling_rate,
             speaking_rate=synthesizer_config.speaking_rate,
             pitch=synthesizer_config.pitch,
             effects_profile_id=["telephony-class-application"],
@@ -75,7 +75,7 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
         in_memory_wav.setnchannels(1)
         in_memory_wav.setsampwidth(2)
         in_memory_wav.setframerate(output_sample_rate)
-        in_memory_wav.writeframes(response.audio_content)
+        in_memory_wav.writeframes(response.audio_content[44:])
         output_bytes_io.seek(0)
 
         result = self.create_synthesis_result_from_wav(
