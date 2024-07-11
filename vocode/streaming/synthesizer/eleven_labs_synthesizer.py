@@ -148,7 +148,6 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
             if not stream.is_success:
                 error = await stream.aread()
-                logger.error(f"ElevenLabs API failed: {stream.status_code} {error.decode('utf-8')}")
                 raise ElevenlabsException(
                     f"ElevenLabs API returned {stream.status_code} status code and the following details: {error.decode('utf-8')}"
                 )
