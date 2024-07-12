@@ -14,16 +14,6 @@ from .transcriber import TranscriberConfig
 from .transcript import TranscriptEvent
 
 
-class WebSocketMessageType(str, Enum):
-    BASE = "websocket_base"
-    START = "websocket_start"
-    AUDIO = "websocket_audio"
-    TRANSCRIPT = "websocket_transcript"
-    READY = "websocket_ready"
-    STOP = "websocket_stop"
-    AUDIO_CONFIG_START = "websocket_audio_config_start"
-
-
 class WebSocketMessage(AdaptiveObject, ABC):
     type: Any
 

@@ -5,7 +5,7 @@ from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 
 from vocode.streaming.models.actions import ActionInput, ActionOutput
-from vocode.streaming.models.events import ActionEvent, Event, EventType, Sender
+from vocode.streaming.models.events import ActionEvent, Event, Sender
 from vocode.streaming.utils.events_manager import EventsManager
 
 

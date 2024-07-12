@@ -8,12 +8,6 @@ from vocode.streaming.models.adaptive_object import AdaptiveObject
 from vocode.streaming.models.agent import AgentConfig
 
 
-class WebSocketAgentMessageType(str, Enum):
-    BASE = "websocket_agent_base"
-    TEXT = "websocket_agent_text"
-    STOP = "websocket_agent_stop"
-
-
 class WebSocketAgentMessage(AdaptiveObject, ABC):
     type: Any
     conversation_id: Optional[str] = None

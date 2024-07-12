@@ -6,7 +6,7 @@ from loguru import logger
 
 from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
-from vocode.streaming.models.events import Event, EventType
+from vocode.streaming.models.events import Event
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
@@ -111,13 +111,12 @@ class TranscriptEventManager(events_manager.EventsManager):
         self,
         output_device: WebsocketOutputDevice,
     ):
-        super().__init__(subscriptions=[EventType.TRANSCRIPT])
+        super().__init__(subscriptions=["event_transcript"])
         self.output_device = output_device
 
     async def handle_event(self, event: Event):
-        if event.type == EventType.TRANSCRIPT:
-            transcript_event = typing.cast(TranscriptEvent, event)
-            await self.output_device.send_transcript(transcript_event)
+        if isinstance(event, TranscriptEvent):
+            await self.output_device.send_transcript(event)
             # logger.debug(event.dict())
 
     def restart(self, output_device: WebsocketOutputDevice):

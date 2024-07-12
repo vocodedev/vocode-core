@@ -15,20 +15,20 @@ from vocode.streaming.action.wait import Wait
 from vocode.streaming.models.actions import ActionConfig, ActionType
 
 CONVERSATION_ACTIONS: Dict[ActionType, Type[BaseAction]] = {
-    ActionType.END_CONVERSATION: EndConversation,
-    ActionType.RECORD_EMAIL: RecordEmail,
-    ActionType.WAIT: Wait,
-    ActionType.EXECUTE_EXTERNAL_ACTION: ExecuteExternalAction,
+    "action_end_conversation": EndConversation,
+    "action_record_email": RecordEmail,
+    "action_wait": Wait,
+    "action_external": ExecuteExternalAction,
 }
 
 VONAGE_ACTIONS: Dict[ActionType, Type[VonagePhoneConversationAction]] = {
-    ActionType.TRANSFER_CALL: VonageTransferCall,
-    ActionType.DTMF: VonageDTMF,
+    "action_transfer_call": VonageTransferCall,
+    "action_dtmf": VonageDTMF,
 }
 
 TWILIO_ACTIONS: Dict[ActionType, Type[TwilioPhoneConversationAction]] = {
-    ActionType.TRANSFER_CALL: TwilioTransferCall,
-    ActionType.DTMF: TwilioDTMF,
+    "action_transfer_call": TwilioTransferCall,
+    "action_dtmf": TwilioDTMF,
 }
 
 

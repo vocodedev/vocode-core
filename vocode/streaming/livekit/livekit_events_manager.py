@@ -18,8 +18,8 @@ class LiveKitEventsManager(EventsManager):
         self,
         subscriptions: List[EventType] = [],
     ):
-        if EventType.TRANSCRIPT not in subscriptions:
-            subscriptions.append(EventType.TRANSCRIPT)
+        if "event_transcript" not in subscriptions:
+            subscriptions.append("event_transcript")
         super().__init__(subscriptions)
 
     def attach_conversation(self, conversation: "LiveKitConversation"):
