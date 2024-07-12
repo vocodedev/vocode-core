@@ -10,14 +10,19 @@ from loguru import logger
 from pyngrok import ngrok
 
 # Local application/library specific imports
-from speller_agent import SpellerAgentFactory
+from speller_agent import SpellerAgentConfig, SpellerAgentFactory
 
 from vocode.logging import configure_pretty_logging
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.telephony import TwilioConfig
+from vocode.streaming.models.pipeline import StreamingConversationConfig
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.models.telephony import TwilioCallConfig, TwilioConfig
+from vocode.streaming.models.transcriber import DeepgramTranscriberConfig
+from vocode.streaming.streaming_conversation import StreamingConversationFactory
 from vocode.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
 from vocode.streaming.telephony.server.base import TelephonyServer, TwilioInboundCallConfig
+from vocode.streaming.transcriber.deepgram_transcriber import DeepgramEndpointingConfig
 
 # if running from python, this will load the local .env
 # docker-compose will load the .env file by itself
@@ -50,25 +55,26 @@ telephony_server = TelephonyServer(
     inbound_call_configs=[
         TwilioInboundCallConfig(
             url="/inbound_call",
-            agent_config=ChatGPTAgentConfig(
-                initial_message=BaseMessage(text="What up"),
-                prompt_preamble="Have a pleasant conversation about life",
-                generate_responses=True,
+            pipeline_config=StreamingConversationConfig(
+                transcriber_config=TwilioCallConfig.default_transcriber_config(),
+                # uncomment this to use the speller agent instead
+                # agent_config=SpellerAgentConfig(),
+                agent_config=ChatGPTAgentConfig(
+                    initial_message=BaseMessage(text="What up"),
+                    prompt_preamble="Have a pleasant conversation about life",
+                    generate_responses=True,
+                ),
+                synthesizer_config=AzureSynthesizerConfig.from_telephone_output_device(
+                    voice_name="en-US-AriaNeural"
+                ),
             ),
-            # uncomment this to use the speller agent instead
-            # agent_config=SpellerAgentConfig(
-            #     initial_message=BaseMessage(
-            #         text="im a speller agent, say something to me and ill spell it out for you"
-            #     ),
-            #     generate_responses=False,
-            # ),
             twilio_config=TwilioConfig(
                 account_sid=os.environ["TWILIO_ACCOUNT_SID"],
                 auth_token=os.environ["TWILIO_AUTH_TOKEN"],
             ),
         )
     ],
-    agent_factory=SpellerAgentFactory(),
+    pipeline_factory=StreamingConversationFactory(agent_factory=SpellerAgentFactory()),
 )
 
 app.include_router(telephony_server.get_router())

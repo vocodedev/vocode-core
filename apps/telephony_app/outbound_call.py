@@ -4,7 +4,9 @@ from dotenv import load_dotenv
 
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.telephony import TwilioConfig
+from vocode.streaming.models.pipeline import StreamingConversationConfig
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.models.telephony import TwilioCallConfig, TwilioConfig
 
 load_dotenv()
 
@@ -24,10 +26,16 @@ async def main():
         to_phone="+15555555555",
         from_phone="+15555555555",
         config_manager=config_manager,
-        agent_config=ChatGPTAgentConfig(
-            initial_message=BaseMessage(text="What up"),
-            prompt_preamble="Have a pleasant conversation about life",
-            generate_responses=True,
+        pipeline_config=StreamingConversationConfig(
+            transcriber_config=TwilioCallConfig.default_transcriber_config(),
+            agent_config=ChatGPTAgentConfig(
+                initial_message=BaseMessage(text="What up"),
+                prompt_preamble="Have a pleasant conversation about life",
+                generate_responses=True,
+            ),
+            synthesizer_config=AzureSynthesizerConfig.from_telephone_output_device(
+                voice_name="en-US-AriaNeural"
+            ),
         ),
         telephony_config=TwilioConfig(
             account_sid=os.environ["TWILIO_ACCOUNT_SID"],

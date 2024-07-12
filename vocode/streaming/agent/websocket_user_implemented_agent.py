@@ -20,13 +20,13 @@ from vocode.streaming.models.websocket_agent import (
     WebSocketAgentTextMessage,
     WebSocketUserImplementedAgentConfig,
 )
-from vocode.streaming.utils.worker import InterruptibleAgentResponseEvent, InterruptibleEvent
+from vocode.streaming.pipeline.worker import InterruptibleAgentResponseEvent, InterruptibleEvent
 
 NUM_RESTARTS = 5
 
 
 class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfig]):
-    input_queue: asyncio.Queue[InterruptibleEvent[AgentInput]]
+    input_queue: asyncio.Queue[InterruptibleEvent[AgentInput | AgentResponse]]
 
     def __init__(
         self,

@@ -25,7 +25,11 @@ from loguru import logger
 from sentry_sdk.tracing import Span
 
 from vocode import conversation_id as ctx_conversation_id
+from vocode.streaming.action.abstract_factory import AbstractActionFactory
+from vocode.streaming.action.base_action import BaseAction
+from vocode.streaming.action.streaming_conversation_action import StreamingConversationAction
 from vocode.streaming.action.worker import ActionsWorker
+from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
 from vocode.streaming.agent.base_agent import (
     AgentInput,
     AgentResponse,
@@ -36,6 +40,7 @@ from vocode.streaming.agent.base_agent import (
     TranscriptionAgentInput,
 )
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode.streaming.agent.default_factory import DefaultAgentFactory
 from vocode.streaming.constants import (
     ALLOWED_IDLE_TIME,
     CHECK_HUMAN_PRESENT_MESSAGE_CHOICES,
@@ -45,37 +50,40 @@ from vocode.streaming.models.actions import EndOfTurn
 from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage, BotBackchannel, LLMToken, SilenceMessage
+from vocode.streaming.models.pipeline import StreamingConversationConfig
 from vocode.streaming.models.transcriber import TranscriberConfig, Transcription
 from vocode.streaming.models.transcript import Message, Transcript, TranscriptCompleteEvent
-from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
 from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
+from vocode.streaming.pipeline.abstract_pipeline_factory import AbstractPipelineFactory
+from vocode.streaming.pipeline.audio_pipeline import AudioPipeline, OutputDeviceType
+from vocode.streaming.pipeline.worker import (
+    AbstractWorker,
+    AsyncQueueWorker,
+    InterruptibleAgentResponseEvent,
+    InterruptibleEvent,
+    InterruptibleEventFactory,
+    InterruptibleWorker,
+)
+from vocode.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     FillerAudio,
     SynthesisResult,
 )
+from vocode.streaming.synthesizer.default_factory import DefaultSynthesizerFactory
 from vocode.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
+from vocode.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
 from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
+from vocode.streaming.transcriber.default_factory import DefaultTranscriberFactory
 from vocode.streaming.utils import (
     create_conversation_id,
     enumerate_async_iter,
     get_chunk_size_per_second,
 )
-from vocode.streaming.utils.audio_pipeline import AudioPipeline, OutputDeviceType
 from vocode.streaming.utils.create_task import asyncio_create_task
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.speed_manager import SpeedManager
-from vocode.streaming.utils.state_manager import ConversationStateManager
-from vocode.streaming.utils.worker import (
-    AbstractWorker,
-    AsyncQueueWorker,
-    InterruptibleAgentResponseEvent,
-    InterruptibleAgentResponseWorker,
-    InterruptibleEvent,
-    InterruptibleEventFactory,
-    InterruptibleWorker,
-)
 from vocode.utils.sentry_utils import (
     CustomSentrySpans,
     complete_span_by_op,
@@ -144,7 +152,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         """Processes all transcriptions: sends an interrupt if needed
         and sends final transcriptions to the output queue"""
 
-        consumer: AbstractWorker[InterruptibleEvent[Transcription]]
+        consumer: AbstractWorker[InterruptibleEvent[TranscriptionAgentInput]]
 
         def __init__(
             self,
@@ -307,8 +315,6 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                     TranscriptionAgentInput(
                         transcription=transcription,
                         conversation_id=self.conversation.id,
-                        vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
-                        twilio_sid=getattr(self.conversation, "twilio_sid", None),
                         agent_response_tracker=agent_response_tracker,
                     ),
                 )
@@ -589,6 +595,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         synthesizer: BaseSynthesizer,
         speed_coefficient: float = 1.0,
         conversation_id: Optional[str] = None,
+        actions_worker: Optional[ActionsWorker] = None,
         events_manager: Optional[EventsManager] = None,
     ):
         self.id = conversation_id or create_conversation_id()
@@ -607,7 +614,6 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 Tuple[Union[BaseMessage, EndOfTurn], Optional[SynthesisResult]]
             ]
         ] = asyncio.Queue()
-        self.state_manager = self.create_state_manager()
 
         # Transcriptions Worker
         self.transcriptions_worker = self.TranscriptionsWorker(
@@ -617,9 +623,9 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         self.transcriber.consumer = self.transcriptions_worker
 
         # Agent
-        self.transcriptions_worker.consumer = self.agent
+        self.transcriptions_worker.consumer = self.agent  # type: ignore
         self.agent.set_interruptible_event_factory(self.interruptible_event_factory)
-        self.agent.attach_conversation_state_manager(self.state_manager)
+        self.agent.streaming_conversation = self
 
         # Agent Responses Worker
         self.agent_responses_worker = self.AgentResponsesWorker(
@@ -631,12 +637,12 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         # Actions Worker
         self.actions_worker = None
         if self.agent.get_agent_config().actions:
-            self.actions_worker = ActionsWorker(
+            self.actions_worker = actions_worker or ActionsWorker(
                 action_factory=self.agent.action_factory,
                 interruptible_event_factory=self.interruptible_event_factory,
             )
-            self.actions_worker.attach_conversation_state_manager(self.state_manager)
-            self.actions_worker.consumer = self.agent
+            self.actions_worker.pipeline = self
+            self.actions_worker.consumer = self.agent  # type: ignore
             self.agent.actions_consumer = self.actions_worker
 
         # Synthesis Results Worker
@@ -681,9 +687,6 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         )
 
         self.interrupt_lock = asyncio.Lock()
-
-    def create_state_manager(self) -> ConversationStateManager:
-        return ConversationStateManager(conversation=self)
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
@@ -989,6 +992,12 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             synthesis_result.synthesis_total_span.finish()
         return message_sent, cut_off
 
+    def using_input_streaming_synthesizer(self):
+        return isinstance(
+            self.synthesizer,
+            InputStreamingSynthesizer,
+        )
+
     def mark_terminated(self, bot_disconnect: bool = False):
         self.is_terminated.set()
 
@@ -1035,3 +1044,38 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
 
     async def wait_for_termination(self):
         await self.is_terminated.wait()
+
+
+class StreamingConversationFactory(
+    AbstractPipelineFactory[StreamingConversationConfig, OutputDeviceType]
+):
+
+    def __init__(
+        self,
+        transcriber_factory: AbstractTranscriberFactory = DefaultTranscriberFactory(),
+        agent_factory: AbstractAgentFactory = DefaultAgentFactory(),
+        synthesizer_factory: AbstractSynthesizerFactory = DefaultSynthesizerFactory(),
+        speed_coefficient: float = 1.0,
+    ):
+        self.transcriber_factory = transcriber_factory
+        self.agent_factory = agent_factory
+        self.synthesizer_factory = synthesizer_factory
+
+    def create_pipeline(
+        self,
+        config: StreamingConversationConfig,
+        output_device: OutputDeviceType,
+        id: Optional[str] = None,
+        events_manager: Optional[EventsManager] = None,
+        actions_worker: Optional[ActionsWorker] = None,
+    ):
+        return StreamingConversation(
+            output_device=output_device,
+            transcriber=self.transcriber_factory.create_transcriber(config.transcriber_config),
+            agent=self.agent_factory.create_agent(config.agent_config),
+            synthesizer=self.synthesizer_factory.create_synthesizer(config.synthesizer_config),
+            conversation_id=id,
+            events_manager=events_manager,
+            actions_worker=actions_worker,
+            speed_coefficient=config.speed_coefficient,
+        )

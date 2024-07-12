@@ -6,6 +6,11 @@ import pytest
 from aioresponses import aioresponses
 from pytest_mock import MockerFixture
 
+from tests.fakedata.conversation import (
+    create_fake_agent,
+    create_fake_streaming_conversation_factory,
+    create_fake_vonage_phone_conversation_with_streaming_conversation_pipeline,
+)
 from tests.fakedata.id import generate_uuid
 from vocode.streaming.action.dtmf import (
     DTMFParameters,
@@ -13,19 +18,13 @@ from vocode.streaming.action.dtmf import (
     TwilioDTMF,
     VonageDTMF,
 )
-from vocode.streaming.models.actions import (
-    TwilioPhoneConversationActionInput,
-    VonagePhoneConversationActionInput,
-)
+from vocode.streaming.models.actions import ActionInput
+from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.telephony import VonageConfig
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
 from vocode.streaming.utils import create_conversation_id
 from vocode.streaming.utils.dtmf_utils import DTMFToneGenerator
-from vocode.streaming.utils.state_manager import (
-    TwilioPhoneConversationStateManager,
-    VonagePhoneConversationStateManager,
-)
 
 
 @pytest.mark.asyncio
@@ -34,22 +33,35 @@ async def test_vonage_dtmf_press_digits(mocker, mock_env):
     vonage_uuid = generate_uuid()
     digits = "1234"
 
-    vonage_phone_conversation_mock = mocker.MagicMock()
     vonage_config = VonageConfig(
         api_key="api_key",
         api_secret="api_secret",
         application_id="application_id",
         private_key="-----BEGIN PRIVATE KEY-----\nasdf\n-----END PRIVATE KEY-----",
     )
-    vonage_phone_conversation_mock.vonage_config = vonage_config
+    vonage_phone_conversation_mock = (
+        create_fake_vonage_phone_conversation_with_streaming_conversation_pipeline(
+            mocker,
+            streaming_conversation_factory=create_fake_streaming_conversation_factory(
+                mocker,
+                agent=create_fake_agent(
+                    mocker,
+                    agent_config=ChatGPTAgentConfig(
+                        prompt_preamble="",
+                        actions=[action.action_config],
+                    ),
+                ),
+            ),
+            vonage_config=vonage_config,
+            vonage_uuid=vonage_uuid,
+        )
+    )
     mocker.patch("vonage.Client._create_jwt_auth_string", return_value=b"asdf")
 
-    action.attach_conversation_state_manager(
-        VonagePhoneConversationStateManager(vonage_phone_conversation_mock)
-    )
+    vonage_phone_conversation_mock.pipeline.actions_worker.attach_state(action)
 
     assert (
-        action.conversation_state_manager.create_vonage_client().get_telephony_config()
+        vonage_phone_conversation_mock.create_vonage_client().get_telephony_config()
         == vonage_config
     )
 
@@ -59,11 +71,10 @@ async def test_vonage_dtmf_press_digits(mocker, mock_env):
             status=200,
         )
         action_output = await action.run(
-            action_input=VonagePhoneConversationActionInput(
+            action_input=ActionInput(
                 action_config=DTMFVocodeActionConfig(),
                 conversation_id=create_conversation_id(),
                 params=DTMFParameters(buttons=digits),
-                vonage_uuid=str(vonage_uuid),
             )
         )
 
@@ -83,7 +94,7 @@ def mock_twilio_phone_conversation(
     mocker: MockerFixture, mock_twilio_output_device: TwilioOutputDevice
 ):
     twilio_phone_conversation_mock = mocker.MagicMock()
-    twilio_phone_conversation_mock.output_device = mock_twilio_output_device
+    twilio_phone_conversation_mock.pipeline.output_device = mock_twilio_output_device
     return twilio_phone_conversation_mock
 
 
@@ -92,15 +103,12 @@ async def test_twilio_dtmf_press_digits(
     mocker, mock_env, mock_twilio_phone_conversation, mock_twilio_output_device: TwilioOutputDevice
 ):
     action = TwilioDTMF(action_config=DTMFVocodeActionConfig())
+    action.twilio_phone_conversation = mock_twilio_phone_conversation
     digits = "1234"
     twilio_sid = "twilio_sid"
 
-    action.attach_conversation_state_manager(
-        TwilioPhoneConversationStateManager(mock_twilio_phone_conversation)
-    )
-
     action_output = await action.run(
-        action_input=TwilioPhoneConversationActionInput(
+        action_input=ActionInput(
             action_config=DTMFVocodeActionConfig(),
             conversation_id=create_conversation_id(),
             params=DTMFParameters(buttons=digits),
@@ -136,19 +144,15 @@ async def test_twilio_dtmf_failure(
     mocker, mock_env, mock_twilio_phone_conversation, mock_twilio_output_device: TwilioOutputDevice
 ):
     action = TwilioDTMF(action_config=DTMFVocodeActionConfig())
+    action.twilio_phone_conversation = mock_twilio_phone_conversation
     digits = "****"
     twilio_sid = "twilio_sid"
 
-    action.attach_conversation_state_manager(
-        TwilioPhoneConversationStateManager(mock_twilio_phone_conversation)
-    )
-
     action_output = await action.run(
-        action_input=TwilioPhoneConversationActionInput(
+        action_input=ActionInput(
             action_config=DTMFVocodeActionConfig(),
             conversation_id=create_conversation_id(),
             params=DTMFParameters(buttons=digits),
-            twilio_sid=twilio_sid,
         )
     )
 
