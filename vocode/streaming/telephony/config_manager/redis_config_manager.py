@@ -18,7 +18,6 @@ class RedisConfigManager(BaseConfigManager):
 
     async def save_config(self, conversation_id: str, config: BaseCallConfig):
         logger.debug(f"Saving config for {conversation_id}")
-        print(config)
         await self._set_with_one_day_expiration(conversation_id, config.json())
 
     async def get_config(self, conversation_id) -> Optional[BaseCallConfig]:

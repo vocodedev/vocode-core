@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any
+from typing import Any, Dict
 
 from pydantic import BaseModel, ValidationError, model_validator
 
@@ -17,9 +17,7 @@ class AdaptiveObject(BaseModel, ABC):
             return handler(data)
 
         # try to validate the data for each possible type
-        print(data)
         for subcls in cls._find_all_possible_types():
-            print(subcls)
             try:
                 # return the first successful validation
                 return subcls.model_validate(data)
@@ -42,3 +40,9 @@ class AdaptiveObject(BaseModel, ABC):
         # continue looking for possible types in subclasses
         for subclass in cls.__subclasses__():
             yield from subclass._find_all_possible_types()
+
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
+        return super().model_dump(serialize_as_any=True, **kwargs)
+
+    def model_dump_json(self, **kwargs) -> str:
+        return super().model_dump_json(serialize_as_any=True, **kwargs)
