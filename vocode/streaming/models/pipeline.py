@@ -1,21 +1,18 @@
-from enum import Enum
+from abc import ABC
+from typing import Any, Literal
 
+from vocode.streaming.models.adaptive_object import AdaptiveObject
 from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.model import TypedModel
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.models.transcriber import TranscriberConfig
 
 
-class PipelineType(str, Enum):
-    BASE = "pipeline_base"
-    STREAMING_CONVERSATION = "pipeline_streaming_conversation"
+class PipelineConfig(AdaptiveObject, ABC):
+    type: Any
 
 
-class PipelineConfig(TypedModel, type=PipelineType.BASE):
-    pass
-
-
-class StreamingConversationConfig(TypedModel, type=PipelineType.STREAMING_CONVERSATION):
+class StreamingConversationConfig(PipelineConfig):
+    type: Literal["pipeline_streaming_conversation"] = "pipeline_streaming_conversation"
     transcriber_config: TranscriberConfig
     agent_config: AgentConfig
     synthesizer_config: SynthesizerConfig
