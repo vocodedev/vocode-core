@@ -118,7 +118,7 @@ async def test_twilio_dtmf_press_digits(
             assert False, "Timed out waiting for DTMF tones to be sent"
 
     assert action_output.response.success
-    mock_twilio_output_device.terminate()
+    await mock_twilio_output_device.terminate()
 
     for digit, call in zip(digits, mock_twilio_output_device.ws.send_text.call_args_list):
         expected_dtmf = DTMFToneGenerator().generate(

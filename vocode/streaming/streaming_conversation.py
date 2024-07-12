@@ -24,6 +24,7 @@ import sentry_sdk
 from loguru import logger
 from sentry_sdk.tracing import Span
 
+from vocode import conversation_id as ctx_conversation_id
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
     AgentInput,
@@ -61,6 +62,7 @@ from vocode.streaming.utils import (
     enumerate_async_iter,
     get_chunk_size_per_second,
 )
+from vocode.streaming.utils.audio_pipeline import AudioPipeline, OutputDeviceType
 from vocode.streaming.utils.create_task import asyncio_create_task
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.speed_manager import SpeedManager
@@ -107,10 +109,7 @@ BACKCHANNEL_PATTERNS = [
 LOW_INTERRUPT_SENSITIVITY_BACKCHANNEL_UTTERANCE_LENGTH_THRESHOLD = 3
 
 
-OutputDeviceType = TypeVar("OutputDeviceType", bound=AbstractOutputDevice)
-
-
-class StreamingConversation(Generic[OutputDeviceType]):
+class StreamingConversation(AudioPipeline[OutputDeviceType]):
     class QueueingInterruptibleEventFactory(InterruptibleEventFactory):
         def __init__(self, conversation: "StreamingConversation"):
             self.conversation = conversation
@@ -593,6 +592,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         events_manager: Optional[EventsManager] = None,
     ):
         self.id = conversation_id or create_conversation_id()
+        ctx_conversation_id.set(self.id)
+
         self.output_device = output_device
         self.transcriber = transcriber
         self.agent = agent
@@ -800,8 +801,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         self.transcriptions_worker.consume_nonblocking(transcription)
 
-    def receive_audio(self, chunk: bytes):
-        self.transcriber.send_audio(chunk)
+    def consume_nonblocking(self, item: bytes):
+        self.transcriber.send_audio(item)
 
     def warmup_synthesizer(self):
         self.synthesizer.ready_synthesizer(self._get_synthesizer_chunk_size())
@@ -1010,29 +1011,23 @@ class StreamingConversation(Generic[OutputDeviceType]):
         logger.debug("Tearing down synthesizer")
         await self.synthesizer.tear_down()
         logger.debug("Terminating agent")
-        if isinstance(self.agent, ChatGPTAgent) and self.agent.agent_config.vector_db_config:
-            # Shutting down the vector db should be done in the agent's terminate method,
-            # but it is done here because `vector_db.tear_down()` is async and
-            # `agent.terminate()` is not async.
-            logger.debug("Terminating vector db")
-            await self.agent.vector_db.tear_down()
-        self.agent.terminate()
+        await self.agent.terminate()
         logger.debug("Terminating output device")
-        self.output_device.terminate()
+        await self.output_device.terminate()
         logger.debug("Terminating speech transcriber")
-        self.transcriber.terminate()
+        await self.transcriber.terminate()
         logger.debug("Terminating transcriptions worker")
-        self.transcriptions_worker.terminate()
+        await self.transcriptions_worker.terminate()
         logger.debug("Terminating final transcriptions worker")
-        self.agent_responses_worker.terminate()
+        await self.agent_responses_worker.terminate()
         logger.debug("Terminating synthesis results worker")
-        self.synthesis_results_worker.terminate()
+        await self.synthesis_results_worker.terminate()
         if self.filler_audio_worker is not None:
             logger.debug("Terminating filler audio worker")
-            self.filler_audio_worker.terminate()
+            await self.filler_audio_worker.terminate()
         if self.actions_worker is not None:
             logger.debug("Terminating actions worker")
-            self.actions_worker.terminate()
+            await self.actions_worker.terminate()
         logger.debug("Successfully terminated")
 
     def is_active(self):

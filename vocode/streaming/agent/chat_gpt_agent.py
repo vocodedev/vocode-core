@@ -290,3 +290,8 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfigType]):
                     message=message,
                     is_interruptible=True,
                 )
+
+    async def terminate(self):
+        if hasattr(self, "vector_db") and self.vector_db is not None:
+            await self.vector_db.tear_down()
+        return await super().terminate()

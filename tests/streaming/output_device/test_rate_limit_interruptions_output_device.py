@@ -65,4 +65,4 @@ async def test_calls_callbacks():
     await uninterruptible_played_event.wait()
     assert uninterruptible_audio_chunk.state == ChunkState.PLAYED
 
-    output_device.terminate()
+    await output_device.terminate()
