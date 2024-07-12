@@ -1,13 +1,13 @@
-from typing import Optional, Tuple, cast
+from typing import Optional, Tuple
 
 import aiohttp
 from loguru import logger
 
 from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.agent import (
+    RESTfulAgentEnd,
     RESTfulAgentInput,
     RESTfulAgentOutput,
-    RESTfulAgentOutputType,
     RESTfulAgentText,
     RESTfulUserImplementedAgentConfig,
 )
@@ -47,9 +47,9 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
                     output: RESTfulAgentOutput = RESTfulAgentOutput.parse_obj(await response.json())
                     output_response = None
                     should_stop = False
-                    if output.type == RESTfulAgentOutputType.TEXT:
-                        output_response = cast(RESTfulAgentText, output).response
-                    elif output.type == RESTfulAgentOutputType.END:
+                    if isinstance(output, RESTfulAgentText):
+                        output_response = output.response
+                    elif isinstance(output, RESTfulAgentEnd):
                         should_stop = True
                     return output_response, should_stop
         except Exception as e:

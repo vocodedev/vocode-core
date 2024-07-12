@@ -1,7 +1,9 @@
 import base64
+from abc import ABC
 from enum import Enum
-from typing import Optional
+from typing import Any, Literal, Optional
 
+from vocode.streaming.models.adaptive_object import AdaptiveObject
 from vocode.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
 
 from .agent import AgentConfig
@@ -22,11 +24,12 @@ class WebSocketMessageType(str, Enum):
     AUDIO_CONFIG_START = "websocket_audio_config_start"
 
 
-class WebSocketMessage(TypedModel, type=WebSocketMessageType.BASE):  # type: ignore
-    pass
+class WebSocketMessage(AdaptiveObject, ABC):
+    type: Any
 
 
-class AudioMessage(WebSocketMessage, type=WebSocketMessageType.AUDIO):  # type: ignore
+class AudioMessage(WebSocketMessage):
+    type: Literal["websocket_audio"] = "websocket_audio"
     data: str
 
     @classmethod
@@ -37,7 +40,8 @@ class AudioMessage(WebSocketMessage, type=WebSocketMessageType.AUDIO):  # type: 
         return base64.b64decode(self.data)
 
 
-class TranscriptMessage(WebSocketMessage, type=WebSocketMessageType.TRANSCRIPT):  # type: ignore
+class TranscriptMessage(WebSocketMessage):
+    type: Literal["websocket_transcript"] = "websocket_transcript"
     text: str
     sender: Sender
     timestamp: float
@@ -47,25 +51,25 @@ class TranscriptMessage(WebSocketMessage, type=WebSocketMessageType.TRANSCRIPT):
         return cls(text=event.text, sender=event.sender, timestamp=event.timestamp)
 
 
-class StartMessage(WebSocketMessage, type=WebSocketMessageType.START):  # type: ignore
+class StartMessage(WebSocketMessage):
+    type: Literal["websocket_start"] = "websocket_start"
     transcriber_config: TranscriberConfig
     agent_config: AgentConfig
     synthesizer_config: SynthesizerConfig
     conversation_id: Optional[str] = None
 
 
-class AudioConfigStartMessage(
-    WebSocketMessage, type=WebSocketMessageType.AUDIO_CONFIG_START  # type: ignore
-):
+class AudioConfigStartMessage(WebSocketMessage):
+    type: Literal["websocket_audio_config_start"] = "websocket_audio_config_start"
     input_audio_config: InputAudioConfig
     output_audio_config: OutputAudioConfig
     conversation_id: Optional[str] = None
     subscribe_transcript: Optional[bool] = None
 
 
-class ReadyMessage(WebSocketMessage, type=WebSocketMessageType.READY):  # type: ignore
-    pass
+class ReadyMessage(WebSocketMessage):
+    type: Literal["websocket_ready"] = "websocket_ready"
 
 
-class StopMessage(WebSocketMessage, type=WebSocketMessageType.STOP):  # type: ignore
-    pass
+class StopMessage(WebSocketMessage):
+    type: Literal["websocket_stop"] = "websocket_stop"

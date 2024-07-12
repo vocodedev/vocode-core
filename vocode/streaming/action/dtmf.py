@@ -1,7 +1,7 @@
-from typing import List, Optional, Type
+from typing import List, Literal, Optional, Type
 
 from loguru import logger
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from vocode.streaming.action.phone_call_action import (
     TwilioPhoneConversationAction,
@@ -25,7 +25,9 @@ class DTMFResponse(BaseModel):
     message: Optional[str] = None
 
 
-class DTMFVocodeActionConfig(VocodeActionConfig, type="action_dtmf"):  # type: ignore
+class DTMFVocodeActionConfig(VocodeActionConfig):
+    type: Literal["action_dtmf"] = "action_dtmf"
+
     def action_attempt_to_string(self, input: ActionInput) -> str:
         assert isinstance(input.params, DTMFParameters)
         return "Attempting to press numbers: " f"{list(input.params.buttons)}"

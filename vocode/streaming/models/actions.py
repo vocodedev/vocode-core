@@ -1,11 +1,12 @@
 import asyncio
+from abc import ABC
 from enum import Enum
-from typing import Annotated, Generic, List, Literal, Optional, TypeVar, Union
+from typing import Annotated, Any, Generic, List, Literal, Optional, TypeVar, Union
 
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
+from vocode.streaming.models.adaptive_object import AdaptiveObject
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.model import TypedModel
 
 TriggerType = Literal["action_trigger_function_call", "action_trigger_phrase_based"]
 
@@ -69,7 +70,8 @@ ACTION_STARTED_FORMAT_STRING = "!STARTING ACTION {action_name} WITH PARAMETERS {
 ACTION_FINISHED_FORMAT_STRING = "!ACTION {action_name} FINISHED WITH OUTPUT {action_output}!"
 
 
-class ActionConfig(TypedModel, type=ActionType.BASE):  # type: ignore
+class ActionConfig(AdaptiveObject, ABC):
+    type: Any
     action_trigger: ActionTrigger = FunctionCallActionTrigger(type="action_trigger_function_call")
 
     def action_attempt_to_string(self, input: "ActionInput") -> str:

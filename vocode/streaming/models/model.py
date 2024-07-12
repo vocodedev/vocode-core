@@ -1,6 +1,6 @@
 from typing import Any, List, Tuple
 
-from pydantic.v1 import BaseModel as Pydantic1BaseModel
+from pydantic import BaseModel as Pydantic1BaseModel
 
 
 class BaseModel(Pydantic1BaseModel):

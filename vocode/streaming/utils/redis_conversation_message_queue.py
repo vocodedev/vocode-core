@@ -1,7 +1,7 @@
 from typing import AsyncGenerator
 
 from loguru import logger
-from pydantic.v1 import BaseModel, parse_obj_as
+from pydantic import BaseModel, parse_obj_as
 from redis.asyncio import Redis
 
 from vocode.streaming.utils.redis import initialize_redis

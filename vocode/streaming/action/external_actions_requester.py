@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 from loguru import logger
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 
 class ExternalActionValueError(ValueError):

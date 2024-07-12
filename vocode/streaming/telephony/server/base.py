@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Form, Request, Response
 from loguru import logger
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
 from vocode.streaming.agent.default_factory import DefaultAgentFactory

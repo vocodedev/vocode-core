@@ -17,9 +17,10 @@ from vocode.streaming.models.websocket import (
     AudioConfigStartMessage,
     AudioMessage,
     ReadyMessage,
+    StopMessage,
     WebSocketMessage,
-    WebSocketMessageType,
 )
+from vocode.streaming.models.websocket_agent import WebSocketAgentStopMessage
 from vocode.streaming.output_device.websocket_output_device import WebsocketOutputDevice
 from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
@@ -94,7 +95,7 @@ class ConversationRouter(BaseRouter):
         await conversation.start(lambda: websocket.send_text(ReadyMessage().json()))
         while conversation.is_active():
             message: WebSocketMessage = WebSocketMessage.parse_obj(await websocket.receive_json())
-            if message.type == WebSocketMessageType.STOP:
+            if isinstance(message, StopMessage):
                 break
             audio_message = typing.cast(AudioMessage, message)
             conversation.receive_audio(audio_message.get_bytes())
