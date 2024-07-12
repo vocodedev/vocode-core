@@ -6,6 +6,7 @@ from typing import Optional
 
 from fastapi import WebSocket
 from loguru import logger
+from pydantic import BaseModel
 
 from vocode.streaming.action.abstract_factory import AbstractActionFactory
 from vocode.streaming.action.base_action import BaseAction
@@ -13,7 +14,6 @@ from vocode.streaming.action.default_factory import DefaultTwilioPhoneConversati
 from vocode.streaming.action.phone_call_action import TwilioPhoneConversationAction
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.models.events import PhoneCallConnectedEvent
-from vocode.streaming.models.model import BaseModel
 from vocode.streaming.models.telephony import PhoneCallDirection, TwilioConfig
 from vocode.streaming.output_device.twilio_output_device import (
     ChunkFinishedMarkMessage,

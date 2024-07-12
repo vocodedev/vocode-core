@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Generic, Optional, TypeVar
 
+from pydantic import BaseModel
+
 from vocode.streaming.action.worker import ActionsWorker
-from vocode.streaming.models.model import BaseModel
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
 from vocode.streaming.pipeline.audio_pipeline import AudioPipeline, OutputDeviceType
 from vocode.streaming.utils.events_manager import EventsManager
