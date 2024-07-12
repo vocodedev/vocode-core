@@ -27,7 +27,7 @@ class AbstractWorker(Generic[WorkerInputType], ABC):
     def consume_nonblocking(self, item: WorkerInputType):
         raise NotImplementedError
 
-    def terminate(self):
+    async def terminate(self):
         pass
 
 
@@ -66,7 +66,7 @@ class AsyncWorker(AbstractWorker[WorkerInputType]):
     async def _run_loop(self):
         raise NotImplementedError
 
-    def terminate(self):
+    async def terminate(self):
         if self.worker_task:
             return self.worker_task.cancel()
 

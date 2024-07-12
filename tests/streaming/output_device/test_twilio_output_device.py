@@ -57,7 +57,7 @@ async def test_calls_play_callbacks(twilio_output_device: TwilioOutputDevice):
     assert mark_message["streamSid"] == twilio_output_device.stream_sid
     assert mark_message["mark"]["name"] == str(audio_chunk.chunk_id)
 
-    twilio_output_device.terminate()
+    await twilio_output_device.terminate()
 
 
 @pytest.mark.asyncio

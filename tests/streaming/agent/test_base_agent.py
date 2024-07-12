@@ -140,7 +140,7 @@ async def test_generate_responses(mocker: MockerFixture):
     agent.agent_responses_consumer = agent_consumer
     agent.start()
     agent_responses = await _consume_until_end_of_turn(agent_consumer)
-    agent.terminate()
+    await agent.terminate()
 
     messages = [response.message for response in agent_responses]
 
