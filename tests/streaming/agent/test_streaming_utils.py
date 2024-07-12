@@ -2,7 +2,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import pytest
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from vocode.streaming.agent.openai_utils import openai_get_tokens
 from vocode.streaming.agent.streaming_utils import collate_response_async

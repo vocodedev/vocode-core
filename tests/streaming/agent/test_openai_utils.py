@@ -1,3 +1,7 @@
+from typing import Literal
+
+from pydantic import BaseModel
+
 from vocode.streaming.agent.openai_utils import format_openai_chat_messages_from_transcript
 from vocode.streaming.models.actions import (
     ACTION_FINISHED_FORMAT_STRING,
@@ -11,7 +15,15 @@ from vocode.streaming.models.events import Sender
 from vocode.streaming.models.transcript import ActionFinish, ActionStart, Message, Transcript
 
 
-class WeatherActionConfig(ActionConfig, type="weather"):
+class WeatherActionConfig(ActionConfig):
+    type: Literal["weather"] = "weather"
+
+
+class WeatherActionParams(BaseModel):
+    pass
+
+
+class WeatherActionResponse(BaseModel):
     pass
 
 
@@ -23,12 +35,12 @@ def test_format_openai_chat_messages_from_transcript():
     test_action_input_nophrase = ActionInput(
         action_config=WeatherActionConfig(),
         conversation_id="asdf",
-        params={},
+        params=WeatherActionParams(),
     )
     test_action_input_phrase = ActionInput(
         action_config=WeatherActionConfig(action_trigger=create_fake_vocode_phrase_trigger()),
         conversation_id="asdf",
-        params={},
+        params=WeatherActionParams(),
     )
 
     test_cases = [
@@ -85,7 +97,9 @@ def test_format_openai_chat_messages_from_transcript():
                         ActionFinish(
                             action_type="weather",
                             action_input=test_action_input_nophrase,
-                            action_output=ActionOutput(action_type="weather", response={}),
+                            action_output=ActionOutput(
+                                action_type="weather", response=WeatherActionResponse()
+                            ),
                         ),
                     ]
                 ),
@@ -127,7 +141,9 @@ def test_format_openai_chat_messages_from_transcript():
                         ActionFinish(
                             action_type="weather",
                             action_input=test_action_input_phrase,
-                            action_output=ActionOutput(action_type="weather", response={}),
+                            action_output=ActionOutput(
+                                action_type="weather", response=WeatherActionResponse()
+                            ),
                         ),
                     ]
                 ),
@@ -300,4 +316,5 @@ def test_format_openai_chat_messages_from_transcript_context_limit():
     ]
 
     for params, expected_output in test_cases:
+        assert format_openai_chat_messages_from_transcript(*params) == expected_output
         assert format_openai_chat_messages_from_transcript(*params) == expected_output

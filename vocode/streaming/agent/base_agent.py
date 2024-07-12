@@ -72,8 +72,8 @@ POST_QUESTION_BACKCHANNELS = [
 
 class _AgentInput(BaseModel):
     conversation_id: str
-    vonage_uuid: Optional[str]
-    twilio_sid: Optional[str]
+    vonage_uuid: Optional[str] = None
+    twilio_sid: Optional[str] = None
     agent_response_tracker: Optional[asyncio.Event] = None
 
     class Config:

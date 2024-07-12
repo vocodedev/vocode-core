@@ -2,6 +2,7 @@ from typing import Optional, Tuple
 
 import aiohttp
 from loguru import logger
+from pydantic import TypeAdapter
 
 from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.agent import (
@@ -44,7 +45,9 @@ class RESTfulUserImplementedAgent(RespondAgent[RESTfulUserImplementedAgentConfig
                     timeout=aiohttp.ClientTimeout(total=15),
                 ) as response:
                     assert response.status == 200
-                    output: RESTfulAgentOutput = RESTfulAgentOutput.parse_obj(await response.json())
+                    output: RESTfulAgentOutput = TypeAdapter(RESTfulAgentOutput).validate_python(
+                        await response.json()
+                    )
                     output_response = None
                     should_stop = False
                     if isinstance(output, RESTfulAgentText):

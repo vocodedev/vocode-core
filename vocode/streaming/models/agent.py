@@ -195,12 +195,12 @@ class RESTfulAgentInput(BaseModel):
 
 
 class RESTfulAgentText(BaseModel):
-    type: Literal["restful_agent_text"] = "restful_agent_text"
+    type: Literal["restful_agent_text"]
     response: str
 
 
 class RESTfulAgentEnd(BaseModel):
-    type: Literal["restful_agent_end"] = "restful_agent_end"
+    type: Literal["restful_agent_end"]
 
 
 RESTfulAgentOutput = Union[RESTfulAgentText, RESTfulAgentEnd]

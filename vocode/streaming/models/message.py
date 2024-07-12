@@ -3,14 +3,6 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel
 
-
-class MessageType(str, Enum):
-    BASE = "message_base"
-    SSML = "message_ssml"
-    BOT_BACKCHANNEL = "bot_backchannel"
-    LLM_TOKEN = "llm_token"
-
-
 MessageType = Literal["message_base", "message_ssml", "bot_backchannel", "llm_token"]
 
 
