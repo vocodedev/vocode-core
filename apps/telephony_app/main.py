@@ -10,7 +10,7 @@ from loguru import logger
 from pyngrok import ngrok
 
 # Local application/library specific imports
-from speller_agent import SpellerAgentFactory
+from speller_agent import SpellerAgentConfig, SpellerAgentFactory
 
 from vocode.logging import configure_pretty_logging
 from vocode.streaming.models.agent import ChatGPTAgentConfig
@@ -52,12 +52,13 @@ if not BASE_URL:
 telephony_server = TelephonyServer(
     base_url=BASE_URL,
     config_manager=config_manager,
-    pipeline_factory=StreamingConversationFactory(),
     inbound_call_configs=[
         TwilioInboundCallConfig(
             url="/inbound_call",
             pipeline_config=StreamingConversationConfig(
                 transcriber_config=TwilioCallConfig.default_transcriber_config(),
+                # uncomment this to use the speller agent instead
+                # agent_config=SpellerAgentConfig(),
                 agent_config=ChatGPTAgentConfig(
                     initial_message=BaseMessage(text="What up"),
                     prompt_preamble="Have a pleasant conversation about life",
@@ -67,20 +68,13 @@ telephony_server = TelephonyServer(
                     voice_name="en-US-AriaNeural"
                 ),
             ),
-            # uncomment this to use the speller agent instead
-            # agent_config=SpellerAgentConfig(
-            #     initial_message=BaseMessage(
-            #         text="im a speller agent, say something to me and ill spell it out for you"
-            #     ),
-            #     generate_responses=False,
-            # ),
             twilio_config=TwilioConfig(
                 account_sid=os.environ["TWILIO_ACCOUNT_SID"],
                 auth_token=os.environ["TWILIO_AUTH_TOKEN"],
             ),
         )
     ],
-    # agent_factory=SpellerAgentFactory(),
+    pipeline_factory=StreamingConversationFactory(agent_factory=SpellerAgentFactory()),
 )
 
 app.include_router(telephony_server.get_router())
