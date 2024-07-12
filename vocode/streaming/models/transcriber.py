@@ -1,14 +1,12 @@
 from abc import ABC
-from enum import Enum
 from typing import Any, List, Literal, Optional
 
-from pydantic import field_validator
+from pydantic import BaseModel, field_validator
 
 import vocode.streaming.livekit.constants as LiveKitConstants
 from vocode.streaming.input_device.base_input_device import BaseInputDevice
 from vocode.streaming.models.adaptive_object import AdaptiveObject
 from vocode.streaming.models.client_backend import InputAudioConfig
-from vocode.streaming.models.model import BaseModel
 from vocode.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_CHUNK_SIZE,

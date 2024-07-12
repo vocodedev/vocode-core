@@ -8,7 +8,6 @@ from vocode.streaming.models.client_backend import InputAudioConfig, OutputAudio
 
 from .agent import AgentConfig
 from .events import Sender
-from .model import TypedModel
 from .synthesizer import SynthesizerConfig
 from .transcriber import TranscriberConfig
 from .transcript import TranscriptEvent
