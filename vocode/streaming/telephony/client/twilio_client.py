@@ -63,7 +63,7 @@ class TwilioClient(AbstractTelephonyClient):
         ) as response:
             if not response.ok:
                 if response.status == 400:
-                    logger.error(
+                    logger.warning(
                         f"Failed to create call: {response.status} {response.reason} {await response.json()}"
                     )
                     raise TwilioBadRequestException(
