@@ -34,7 +34,6 @@ class StateMachine(BaseModel):
     initial_state_id: str
 
 
-# thing to say, switch/continue/pause
 class BranchDecision(Enum):
     PAUSE = 1
     SWITCH = 2
@@ -42,16 +41,10 @@ class BranchDecision(Enum):
 
 
 def parse_llm_dict(s):
-    # if its already a dict return
     if isinstance(s, dict):
         return s
 
-    # replace all double quotes with single quotes
-    s = s.replace('"', "'")
-    # remove all new lines and extra spacing
-    s = s.replace("\n", "").replace("  ", " ").replace("  ", " ")
-    # replace without space
-    s = s.replace("','", "', '")
+    s = s.replace('"', "'").replace("\n", "").replace("  ", " ").replace("','", "', '")
     result = {}
     input_string = s.strip("{}")
     pairs = input_string.split("', '")
@@ -104,7 +97,7 @@ def translate_to_english(
 
 async def handle_question(
     state,
-    go_to_state: Callable[[str, List[str]], Awaitable[Any]],
+    go_to_state: Callable[[str], Awaitable[Any]],
     speak_message: Callable[[Any], None],
     logger: logging.Logger,
     state_history: List[Any],
@@ -114,14 +107,14 @@ async def handle_question(
 
     async def resume(human_input):
         logger.info(f"continuing at {state['id']} with user response {human_input}")
-        return await go_to_state(get_default_next_state(state), state_history + [state])
+        return await go_to_state(get_default_next_state(state))
 
     return resume
 
 
 async def handle_options(
     state: Any,
-    go_to_state: Callable[[str, List[str]], Awaitable[Any]],
+    go_to_state: Callable[[str], Awaitable[Any]],
     speak: Callable[[str], None],
     call_ai: Callable[[str, Dict[str, Any], Optional[str]], Awaitable[str]],
     state_machine: Any,
@@ -132,16 +125,15 @@ async def handle_options(
     last_user_message_index = None
     last_user_message = None
     last_bot_message = state_machine["states"]["start"]["start_message"]["message"]
-    next_state_history = state_history + [state]
     action_result_after_user_spoke = None
-    # Iterate through the chat history to find the last user message
+    next_state_history = state_history + [state]
+
     for i, (role, msg) in enumerate(reversed(get_chat_history())):
         if last_user_message_index is None and role == "human" and msg:
             last_user_message_index = len(get_chat_history()) - i - 1
             last_user_message = msg
             break
 
-    # If a user message was found, iterate again to find the last bot message before the user message
     if last_user_message_index is not None:
         for i, (role, msg) in enumerate(
             reversed(get_chat_history()[:last_user_message_index])
@@ -150,7 +142,6 @@ async def handle_options(
                 last_bot_message = msg
                 break
 
-    action_result_after_user_spoke = None
     if last_user_message_index:
         for i, (role, msg) in enumerate(
             get_chat_history()[last_user_message_index + 1 :]
@@ -171,16 +162,14 @@ async def handle_options(
         if (edge.get("aiLabel") or edge.get("aiDescription"))
     ]
 
-    # add disambiguation edges unless we're at in the start state or an action just finished
     logger.info(
         f"araus = {action_result_after_user_spoke} state id is {state['id']} and startingStateId is {state_machine['startingStateId']}"
     )
     if (
         state["id"] != state_machine["startingStateId"]
-        and (prev_state and prev_state["type"] == "question")
+        and (prev_state and "question" in prev_state["id"].lower())
         and not action_result_after_user_spoke
     ):
-        #  In-place injection to bias the AI against picking the default options (better options are present)
         if len(edges) > 0:
             if edges[-1].get("aiDescription"):
                 edges[-1]["aiDescription"] = (
@@ -215,7 +204,6 @@ async def handle_options(
                     "aiDescription": f"user still needs help with '{state['id'].split('::')[0]}' but no condition applies",
                 }
             )
-        # extra edge if this state was part of a question section
         if "question" in state["id"].split("::")[-2]:
             edges.append(
                 {
@@ -258,10 +246,9 @@ async def handle_options(
         condition = response_dict.get("condition")
         if condition is None:
             raise ValueError("No condition was provided in the response.")
-        condition = int(condition)  # Ensure condition is an integer
+        condition = int(condition)
         next_state_id = response_to_edge[condition]["destStateId"]
         if response_to_edge[condition].get("speak"):
-            # we would call ai and speak here
             tool = {"response": "insert your response to the user"}
             prompt = (
                 f"You last stated: '{last_bot_message}', to which the user replied: '{last_user_message}'.\n\n"
@@ -271,7 +258,6 @@ async def handle_options(
                 "- If the user asked a question, provide a concise answer and then pause.\n"
                 "- Ensure not to suggest any actions or offer alternatives.\n"
             )
-            # we do not care what it has to say when switching or continuing
             output = await call_ai(prompt, tool)
             output = output[output.find("{") : output.find("}") + 1]
             parsed_output = parse_llm_dict(output)
@@ -282,13 +268,13 @@ async def handle_options(
                 logger.info(
                     f"continuing at {state['id']} with user response {human_input}"
                 )
-                return await go_to_state(state["id"], next_state_history)
+                return await go_to_state(state["id"])
 
             return resume
-        return await go_to_state(next_state_id, next_state_history)
+        return await go_to_state(next_state_id)
     except Exception as e:
         logger.error(f"Agent chose no condition: {e}. Response was {response}")
-        return await go_to_state(default_next_state, next_state_history)
+        return await go_to_state(default_next_state)
 
 
 def get_default_next_state(state):
@@ -308,15 +294,15 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         super().__init__(agent_config=agent_config, logger=logger)
         self.state_machine = self.agent_config.user_json_prompt["converted"]
         self.current_state = None
-        self.resume = lambda _: self.handle_state(
-            self.state_machine["startingStateId"], []
-        )
+        self.resume_task = None
+        self.resume = lambda _: self.handle_state(self.state_machine["startingStateId"])
         self.can_send = False
         self.conversation_id = None
         self.twilio_sid = None
-        self.block_inputs = False  # independent of interruptions, actions cannot be interrupted when a starting phrase is present
+        self.block_inputs = False
         self.stop = False
         self.visited_states = {self.state_machine["startingStateId"]}
+        self.state_history = []
         self.chat_history = [("message.bot", self.agent_config.initial_message)]
         self.base_url = getenv("AI_API_HUGE_BASE")
         self.model = (
@@ -333,8 +319,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             + self.state_machine["states"]["start"]["instructions"]
         )
         self.label_to_state_id = self.state_machine["labelToStateId"]
-        #     self.state_machine.initial_state_id
-        # )["instructions"]
 
     def update_history(self, role, message):
         self.chat_history.append((role, message))
@@ -355,9 +339,19 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.logger.info(
             f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{human_input}"
         )
-        if self.resume:
-            self.resume = await self.resume(human_input)
-
+        if (
+            self.resume_task
+            and not self.resume_task.cancelled()
+            and not self.resume_task.done()
+        ):  # if something in progress, we want to move back when cancelling
+            self.resume_task.cancel()
+            # self.move_back_state()
+            try:
+                await self.resume_task
+            except asyncio.CancelledError:
+                self.logger.info(f"Old resume task cancelled")
+        self.resume_task = asyncio.create_task(self.resume(human_input))
+        await self.resume_task
         return "", True
 
     async def print_start_message(self, state, start: bool):
@@ -371,9 +365,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             guide = message["description"]
             await self.guided_response(guide)
 
-    # recursively traverses the state machine
-    # if it returns a function, call that function on the next human input to resume traversal
-    async def handle_state(self, state_id_or_label: str, state_history: List[Any]):
+    async def handle_state(self, state_id_or_label: str):
         start = state_id_or_label not in self.visited_states
         self.visited_states.add(state_id_or_label)
         state = get_state(state_id_or_label, self.state_machine)
@@ -381,14 +373,15 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         if not state:
             return
 
+        self.state_history.append(state)
         self.logger.info(f"Current State: {state}")
 
         await self.print_start_message(state, start=start)
 
         if state["type"] == "basic":
-            return await self.handle_state(state["edge"], state_history + [state])
+            return await self.handle_state(state["edge"])
 
-        go_to_state = lambda s, h: self.handle_state(s, h)
+        go_to_state = lambda s: self.handle_state(s)
         speak = lambda text: self.update_history("message.bot", text)
         speak_message = lambda message: self.print_message(message)
         call_ai = lambda prompt, tool, stop=None: self.call_ai(prompt, tool, stop)
@@ -399,7 +392,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 go_to_state=go_to_state,
                 speak_message=speak_message,
                 logger=self.logger,
-                state_history=state_history,
+                state_history=self.state_history,
             )
 
         if state["type"] == "options":
@@ -411,11 +404,11 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 state_machine=self.state_machine,
                 get_chat_history=lambda: self.chat_history,
                 logger=self.logger,
-                state_history=state_history,
+                state_history=self.state_history,
             )
 
         if state["type"] == "action":
-            return await self.compose_action(state, state_history)
+            return await self.compose_action(state)
 
     async def guided_response(self, guide):
         tool = {"response": "[insert your response]"}
@@ -433,26 +426,22 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         except Exception as e:
             self.logger.error(f"Agent could not respond: {e}")
 
-    async def compose_action(self, state, state_history: List[Any]):
+    async def compose_action(self, state):
         action = state["action"]
-        next_state_history = state_history + [state]
+        self.state_history.append(state)
         self.logger.info(f"Attempting to call: {action}")
         action_name = action["name"]
         action_config = self._get_action_config(action_name)
         if not action_config.starting_phrase or action_config.starting_phrase == "":
             action_config.starting_phrase = "One moment please..."
-        # the value of starting_phrase is the message it says during the action
         to_say_start = action_config.starting_phrase
-        # if not self.streamed and not self.agent_config.use_streaming:
         self.produce_interruptible_agent_response_event_nonblocking(
             AgentResponseMessage(message=BaseMessage(text=to_say_start))
         )
-        # if we're using streaming, we need to block inputs until the tool calls are done
-        self.block_inputs = True
+        # self.block_inputs = True
         action_description = action["description"]
         params = action["params"]
 
-        # We can skip instances where integrations do not need any parameters at all
         if params:
             dict_to_fill = {
                 param_name: "[insert value]" for param_name in params.keys()
@@ -501,12 +490,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 user_message_tracker=None,
             )
 
-        # check if starting_phrase exists and has content
-        # TODO handle if it doesnt have one
-
         async def run_action_and_return_input(action, action_input):
             action_output = await action.run(action_input)
-            # also log the output
             pretty_function_call = (
                 f"Tool Response: {action_name}, Output: {action_output}"
             )
@@ -515,17 +500,14 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             )
             return action_input, action_output
 
-        # accumulate the tasks so we dont wait on each one sequentially
         input, output = await run_action_and_return_input(action, action_input)
         self.block_inputs = False
         self.update_history(
             "action-finish",
             f"Action Completed: '{action_name}' completed with the following result:\ninput:'{input}'\noutput:\n{output}",
         )
-        # it seems to continue on an on
-        return await self.handle_state(state["edge"], next_state_history)
+        return await self.handle_state(state["edge"])
 
-    #
     async def call_ai(self, prompt, tool=None, stop=None):
         stop_tokens = stop if stop is not None else []
         stop_tokens.append("}")
@@ -534,6 +516,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             [
                 f"{'Bot' if role == 'message.bot' else 'Human'}: {message.text if isinstance(message, BaseMessage) else message}"
                 for role, message in self.chat_history
+                if (isinstance(message, BaseMessage) and len(message.text) > 0)
+                or (not isinstance(message, BaseMessage) and len(str(message)) > 0)
             ]
         )
         if not tool or tool == {}:
@@ -588,3 +572,90 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             self.action_factory.create_action(action_config).get_openai_function()
             for action_config in self.agent_config.actions
         ]
+
+    def move_back_state(self):
+        # Remove the current state
+        if self.state_history:
+            self.state_history.pop()
+
+        # Find the last question state
+        while self.state_history:
+            previous_state = self.state_history[-1]
+            if previous_state["type"] == "question":
+                break
+            self.state_history.pop()
+
+        # Merge consecutive messages of the same role
+        merged_messages = []
+        for role, message in self.chat_history:
+            current_message = (
+                message.text if isinstance(message, BaseMessage) else message
+            )
+            if merged_messages and merged_messages[-1][0] == role:
+                last_message = merged_messages[-1][1]
+                if isinstance(last_message, BaseMessage):
+                    merged_messages[-1] = (
+                        role,
+                        BaseMessage(text=f"{last_message.text} {current_message}"),
+                    )
+                else:
+                    merged_messages[-1] = (role, f"{last_message} {current_message}")
+            else:
+                if isinstance(message, BaseMessage):
+                    merged_messages.append((role, BaseMessage(text=current_message)))
+                else:
+                    merged_messages.append((role, current_message))
+
+        # Log the merged messages for debugging
+        self.logger.info(f"Merged messages: {merged_messages}")
+        self.chat_history = merged_messages
+        # self.chat_history = list(reversed(merged_messages))
+        # Remove everything after the second to latest user message and replace the second to latest with the removed latest
+        user_messages = [
+            i for i, (role, _) in enumerate(merged_messages) if role == "human"
+        ]
+        if len(user_messages) >= 2:
+            second_last_user_index = user_messages[-2]
+            last_user_index = user_messages[-1]
+            merged_messages[second_last_user_index] = merged_messages[last_user_index]
+            self.chat_history = merged_messages[: second_last_user_index + 1]
+        else:
+            self.chat_history = merged_messages
+        merged_messages = []
+        for role, message in self.chat_history:
+            current_message = (
+                message.text if isinstance(message, BaseMessage) else message
+            )
+            if merged_messages and merged_messages[-1][0] == role:
+                last_message = merged_messages[-1][1]
+                if isinstance(last_message, BaseMessage):
+                    merged_messages[-1] = (
+                        role,
+                        BaseMessage(text=f"{last_message.text} {current_message}"),
+                    )
+                else:
+                    merged_messages[-1] = (role, f"{last_message} {current_message}")
+            else:
+                if isinstance(message, BaseMessage):
+                    merged_messages.append((role, BaseMessage(text=current_message)))
+                else:
+                    merged_messages.append((role, current_message))
+
+        # Log the merged messages for debugging
+        self.chat_history = merged_messages
+        # Set the resume state
+        if self.state_history:
+            self.resume = lambda _: self.handle_state(self.state_history[-1]["id"])
+        else:
+            self.resume = lambda _: self.handle_state(
+                self.state_machine["startingStateId"]
+            )
+
+    # this might not be needed.
+    def restore_resume_state(self):
+        if self.state_history:
+            current_state = self.state_history[-1]
+            if "edge" in current_state:
+                self.resume = lambda _: self.handle_state(current_state["edge"])
+            else:
+                self.resume = lambda _: self.handle_state("start")
