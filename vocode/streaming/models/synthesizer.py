@@ -230,7 +230,7 @@ class PollySynthesizerConfig(SynthesizerConfig, type=SynthesizerType.POLLY.value
 
 
 DEFAULT_CARTESIA_MODEL_ID = "sonic-english"
-DEFAULT_CARTESIA_VOICE_ID = "5345cf08-6f37-424d-a5d9-8ae1101b9377"
+DEFAULT_CARTESIA_VOICE_ID = "829ccd10-f8b3-43cd-b8a0-4aeaa81f3b30"
 
 
 class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA.value):  # type: ignore

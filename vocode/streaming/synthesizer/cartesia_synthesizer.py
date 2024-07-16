@@ -1,6 +1,5 @@
 import hashlib
-import io
-import wave
+from typing import List, Optional, TypedDict
 
 from vocode import getenv
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
@@ -9,10 +8,31 @@ from vocode.streaming.models.synthesizer import CartesiaSynthesizerConfig
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
 
 
+class VoiceControls(TypedDict):
+    """Defines different voice control parameters for voice synthesis.
+
+
+    For a complete list of supported parameters, refer to the Cartesia API documentation.
+    https://docs.cartesia.ai/api-reference
+
+    Examples:
+        >>> {"speed": "fastest"}
+        >>> {"speed": "slow", "emotion": ["sadness:high"]}
+        >>> {"emotion": ["surprise:highest", "curiosity"]}
+
+    Note:
+        This is an experimental class and is subject to rapid change in future versions.
+    """
+
+    speed: str
+    emotion: List[str]
+
+
 class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: CartesiaSynthesizerConfig,
+        _experimental_voice_controls: Optional[List[VoiceControls]] = None,
     ):
         super().__init__(synthesizer_config)
 
@@ -20,7 +40,7 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
         try:
             from cartesia import AsyncCartesia
         except ImportError as e:
-            raise ImportError(f"Missing required dependancies for CartesiaSynthesizer") from e
+            raise ImportError("Missing required dependancies for CartesiaSynthesizer") from e
 
         self.api_key = synthesizer_config.api_key or getenv("CARTESIA_API_KEY")
         if not self.api_key:
@@ -28,8 +48,16 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
 
         self.cartesia_tts = AsyncCartesia
 
+        self._experimental_voice_controls = _experimental_voice_controls
+
         if synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
             match synthesizer_config.sampling_rate:
+                case SamplingRate.RATE_48000:
+                    self.output_format = {
+                        "sample_rate": 48000,
+                        "encoding": "pcm_s16le",
+                        "container": "raw",
+                    }
                 case SamplingRate.RATE_44100:
                     self.output_format = {
                         "sample_rate": 44100,
@@ -69,12 +97,20 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
             raise ValueError(f"Unsupported audio encoding {synthesizer_config.audio_encoding}")
 
         if not isinstance(self.output_format["sample_rate"], int):
-            raise ValueError(f"Invalid type for sample_rate")
+            raise ValueError("Invalid type for sample_rate")
         self.sampling_rate = self.output_format["sample_rate"]
         self.num_channels = 1
         self.model_id = synthesizer_config.model_id
         self.voice_id = synthesizer_config.voice_id
         self.client = self.cartesia_tts(api_key=self.api_key)
+        self.ws = None
+        self.ctx = None
+
+    async def initialize_ws(self):
+        if self.ws is None:
+            self.ws = await self.client.tts.websocket()
+        if self.ctx is None or self.ctx.is_closed():
+            self.ctx = self.ws.context()
 
     async def create_speech_uncached(
         self,
@@ -83,17 +119,26 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
         is_first_text_chunk: bool = False,
         is_sole_text_chunk: bool = False,
     ) -> SynthesisResult:
-        generator = await self.client.tts.sse(
-            model_id=self.model_id,
-            transcript=message.text,
-            voice_id=self.voice_id,
-            stream=True,
-            output_format=self.output_format,
-        )
+        await self.initialize_ws()
 
-        async def chunk_generator(sse):
+        transcript = message.text
+
+        if not message.text.endswith(" "):
+            transcript = message.text + " "
+
+        if self.ctx is not None:
+            await self.ctx.send(
+                model_id=self.model_id,
+                transcript=transcript,
+                voice_id=self.voice_id,
+                continue_=not is_sole_text_chunk,
+                output_format=self.output_format,
+                _experimental_voice_controls=self._experimental_voice_controls,
+            )
+
+        async def chunk_generator(context):
             buffer = bytearray()
-            async for event in sse:
+            async for event in context.receive():
                 audio = event.get("audio")
                 buffer.extend(audio)
                 while len(buffer) >= chunk_size:
@@ -102,9 +147,11 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
                     )
                     buffer = buffer[chunk_size:]
             yield SynthesisResult.ChunkResult(chunk=buffer, is_last_chunk=True)
+            if not context.is_closed():
+                await context.no_more_inputs()
 
         return SynthesisResult(
-            chunk_generator=chunk_generator(generator),
+            chunk_generator=chunk_generator(self.ctx),
             get_message_up_to=lambda seconds: self.get_message_cutoff_from_voice_speed(
                 message, seconds
             ),
@@ -125,4 +172,5 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
 
     async def tear_down(self):
         await super().tear_down()
+        await self.ws.close()
         await self.client.close()
