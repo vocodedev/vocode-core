@@ -55,10 +55,10 @@ class TwilioClient(BaseTelephonyClient):
             send_digits=digits,
             record=record,
             timeout=20,
-            # status_callback=f"{os.getenv('BASE_URL')}/update_call_status",
-            # status_callback_event=['busy', 'completed', 'failed', 'in-progress',
-            #                        'initiated', 'no-answer', 'queued', 'ringing'],
-            # status_callback_method="POST",
+            status_callback=f"{os.getenv('BASE_URL')}/handle_status_callback",
+            status_callback_event=['initiated', 'ringing', 'answered', 'completed'],
+            status_callback_method="POST",
+            machine_detection="Enable",
             **self.get_telephony_config().extra_params,
         )
         return twilio_call.sid
