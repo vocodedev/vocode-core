@@ -2,7 +2,7 @@ import abc
 from functools import partial
 from typing import List, Optional
 
-from fastapi import APIRouter, Form, Request, Response
+from fastapi import APIRouter, Form, Request, Response, Query
 from loguru import logger
 from pydantic.v1 import BaseModel, Field
 
@@ -15,12 +15,13 @@ from vocode.streaming.models.telephony import (
     TwilioCallConfig,
     TwilioConfig,
     VonageCallConfig,
-    VonageConfig,
+    VonageConfig, ExotelConfig, ExotelCallConfig,
 )
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
 from vocode.streaming.synthesizer.default_factory import DefaultSynthesizerFactory
 from vocode.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
+from vocode.streaming.telephony.client.exotel_client import ExotelClient
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
 from vocode.streaming.telephony.client.vonage_client import VonageClient
 from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
@@ -45,6 +46,10 @@ class TwilioInboundCallConfig(AbstractInboundCallConfig):
 
 class VonageInboundCallConfig(AbstractInboundCallConfig):
     vonage_config: VonageConfig
+
+
+class ExotelInboundCallConfig(AbstractInboundCallConfig):
+    exotel_config: ExotelConfig
 
 
 class VonageAnswerRequest(BaseModel):
@@ -82,7 +87,7 @@ class TelephonyServer:
             self.router.add_api_route(
                 config.url,
                 self.create_inbound_route(inbound_call_config=config),
-                methods=["POST"],
+                methods=["POST", "GET"],
             )
         # vonage requires an events endpoint
         self.router.add_api_route("/events", self.events, methods=["GET", "POST"])
@@ -159,6 +164,33 @@ class TelephonyServer:
                 record=vonage_config.record,
             )
 
+        async def exotel_route(
+                exotel_config: ExotelConfig,
+                exotel_sid: str = Query(..., alias="CallSid"),
+                exotel_from: str = Query(..., alias="CallFrom"),
+                exotel_to: str = Query(..., alias="CallTo"),
+                conversation_id: str = Query(None, alias="CustomField"),
+        ):
+            call_config = ExotelCallConfig(
+                transcriber_config=inbound_call_config.transcriber_config
+                                   or ExotelCallConfig.default_transcriber_config(),
+                agent_config=inbound_call_config.agent_config,
+                synthesizer_config=inbound_call_config.synthesizer_config
+                                   or ExotelCallConfig.default_synthesizer_config(),
+                exotel_config=exotel_config,
+                exotel_sid=exotel_sid,
+                from_phone=exotel_from,
+                to_phone=exotel_to,
+                direction="inbound",
+            )
+
+            conversation_id = conversation_id or create_conversation_id()
+            await self.config_manager.save_config(conversation_id, call_config)
+            return ExotelClient.create_call_exotel(
+                base_url=self.base_url,
+                conversation_id=conversation_id
+            )
+
         if isinstance(inbound_call_config, TwilioInboundCallConfig):
             logger.info(
                 f"Set up inbound call TwiML at https://{self.base_url}{inbound_call_config.url}"
@@ -169,6 +201,11 @@ class TelephonyServer:
                 f"Set up inbound call NCCO at https://{self.base_url}{inbound_call_config.url}"
             )
             return partial(vonage_route, inbound_call_config.vonage_config)
+        elif isinstance(inbound_call_config, ExotelInboundCallConfig):
+            logger.info(
+                f"Set up inbound call Exotel at https://{self.base_url}{inbound_call_config.url}"
+            )
+            return partial(exotel_route, inbound_call_config.exotel_config)
         else:
             raise ValueError(f"Unknown inbound call config type {type(inbound_call_config)}")
 

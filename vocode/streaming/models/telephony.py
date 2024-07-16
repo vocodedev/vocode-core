@@ -15,7 +15,7 @@ from vocode.streaming.telephony.constants import (
     DEFAULT_SAMPLING_RATE,
     VONAGE_AUDIO_ENCODING,
     VONAGE_CHUNK_SIZE,
-    VONAGE_SAMPLING_RATE,
+    VONAGE_SAMPLING_RATE, EXOTEL_AUDIO_ENCODING, EXOTEL_CHUNK_SIZE,
 )
 
 
@@ -35,6 +35,15 @@ class VonageConfig(TelephonyProviderConfig):
     api_secret: str
     application_id: str
     private_key: str
+
+
+class ExotelConfig(TelephonyProviderConfig):
+    account_sid: str
+    subdomain: str
+    api_key: str
+    api_token: str
+    app_id: str = None
+    extra_params: Optional[Dict[str, Any]] = {}
 
 
 class CallEntity(BaseModel):
@@ -89,6 +98,7 @@ class CallConfigType(str, Enum):
     BASE = "call_config_base"
     TWILIO = "call_config_twilio"
     VONAGE = "call_config_vonage"
+    EXOTEL = "call_config_exotel"
 
 
 PhoneCallDirection = Literal["inbound", "outbound"]
@@ -137,6 +147,29 @@ class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):  # typ
         )
 
 
+class ExotelCallConfig(BaseCallConfig, type=CallConfigType.EXOTEL.value):
+    exotel_config: ExotelConfig
+    exotel_sid: str
+
+    @staticmethod
+    def default_transcriber_config():
+        return DeepgramTranscriberConfig(
+            sampling_rate=DEFAULT_SAMPLING_RATE,
+            audio_encoding=EXOTEL_AUDIO_ENCODING,
+            chunk_size=EXOTEL_CHUNK_SIZE,
+            model="phonecall",
+            tier="nova",
+            endpointing_config=PunctuationEndpointingConfig(),
+        )
+
+    @staticmethod
+    def default_synthesizer_config():
+        return AzureSynthesizerConfig(
+            sampling_rate=DEFAULT_SAMPLING_RATE,
+            audio_encoding=EXOTEL_AUDIO_ENCODING,
+        )
+
+
 class VonageCallConfig(BaseCallConfig, type=CallConfigType.VONAGE.value):  # type: ignore
     vonage_config: VonageConfig
     vonage_uuid: str
@@ -161,4 +194,4 @@ class VonageCallConfig(BaseCallConfig, type=CallConfigType.VONAGE.value):  # typ
         )
 
 
-TelephonyConfig = Union[TwilioConfig, VonageConfig]
+TelephonyConfig = Union[TwilioConfig, VonageConfig, ExotelConfig]

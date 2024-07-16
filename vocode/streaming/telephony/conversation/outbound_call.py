@@ -9,10 +9,11 @@ from vocode.streaming.models.telephony import (
     TwilioCallConfig,
     TwilioConfig,
     VonageCallConfig,
-    VonageConfig,
+    VonageConfig, ExotelConfig, ExotelCallConfig,
 )
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
+from vocode.streaming.telephony.client.exotel_client import ExotelClient
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
 from vocode.streaming.telephony.client.vonage_client import VonageClient
 from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
@@ -58,6 +59,8 @@ class OutboundCall:
             return TwilioClient(base_url=self.base_url, maybe_twilio_config=self.telephony_config)
         elif isinstance(self.telephony_config, VonageConfig):
             return VonageClient(base_url=self.base_url, maybe_vonage_config=self.telephony_config)
+        elif isinstance(self.telephony_config, ExotelConfig):
+            return ExotelClient(base_url=self.base_url, maybe_exotel_config=self.telephony_config)
 
     def create_transcriber_config(
         self, transcriber_config_override: Optional[TranscriberConfig]
@@ -68,6 +71,8 @@ class OutboundCall:
             return TwilioCallConfig.default_transcriber_config()
         elif isinstance(self.telephony_config, VonageConfig):
             return VonageCallConfig.default_transcriber_config()
+        elif isinstance(self.telephony_config, ExotelConfig):
+            return ExotelCallConfig.default_transcriber_config()
         else:
             raise ValueError("No telephony config provided")
 
@@ -80,6 +85,8 @@ class OutboundCall:
             return TwilioCallConfig.default_synthesizer_config()
         elif isinstance(self.telephony_config, VonageConfig):
             return VonageCallConfig.default_synthesizer_config()
+        elif isinstance(self.telephony_config, ExotelConfig):
+            return ExotelCallConfig.default_synthesizer_config()
         else:
             raise ValueError("No telephony config provided")
 
@@ -113,6 +120,20 @@ class OutboundCall:
                 synthesizer_config=self.synthesizer_config,
                 vonage_config=self.telephony_client.vonage_config,
                 vonage_uuid=self.telephony_id,
+                from_phone=self.from_phone,
+                to_phone=self.to_phone,
+                output_to_speaker=False,
+                sentry_tags=self.sentry_tags,
+                telephony_params=self.telephony_params,
+                direction="outbound",
+            )
+        elif isinstance(self.telephony_client, ExotelClient):
+            call_config = ExotelCallConfig(
+                transcriber_config=self.transcriber_config,
+                agent_config=self.agent_config,
+                synthesizer_config=self.synthesizer_config,
+                exotel_config=self.telephony_client.exotel_config,
+                exotel_sid=self.telephony_id,
                 from_phone=self.from_phone,
                 to_phone=self.to_phone,
                 output_to_speaker=False,

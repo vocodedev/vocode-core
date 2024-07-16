@@ -7,13 +7,14 @@ from loguru import logger
 from vocode import sentry_transaction
 from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
 from vocode.streaming.agent.default_factory import DefaultAgentFactory
-from vocode.streaming.models.telephony import BaseCallConfig, TwilioCallConfig, VonageCallConfig
+from vocode.streaming.models.telephony import BaseCallConfig, TwilioCallConfig, VonageCallConfig, ExotelCallConfig
 from vocode.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
 from vocode.streaming.synthesizer.default_factory import DefaultSynthesizerFactory
 from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
 from vocode.streaming.telephony.conversation.abstract_phone_conversation import (
     AbstractPhoneConversation,
 )
+from vocode.streaming.telephony.conversation.exotel_phone_conversation import ExotelPhoneConversation
 from vocode.streaming.telephony.conversation.twilio_phone_conversation import (
     TwilioPhoneConversation,
 )
@@ -92,6 +93,24 @@ class CallsRouter(BaseRouter):
                 synthesizer_factory=synthesizer_factory,
                 events_manager=events_manager,
                 output_to_speaker=call_config.output_to_speaker,
+                direction=call_config.direction,
+            )
+        elif isinstance(call_config, ExotelCallConfig):
+            return ExotelPhoneConversation(
+                to_phone=call_config.to_phone,
+                from_phone=call_config.from_phone,
+                base_url=base_url,
+                config_manager=config_manager,
+                agent_config=call_config.agent_config,
+                transcriber_config=call_config.transcriber_config,
+                synthesizer_config=call_config.synthesizer_config,
+                exotel_config=call_config.exotel_config,
+                exotel_sid=call_config.exotel_sid,
+                conversation_id=conversation_id,
+                transcriber_factory=transcriber_factory,
+                agent_factory=agent_factory,
+                synthesizer_factory=synthesizer_factory,
+                events_manager=events_manager,
                 direction=call_config.direction,
             )
         else:
