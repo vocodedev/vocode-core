@@ -207,12 +207,12 @@ Vocode expects responses from the user’s API in JSON in the following format:
 
 ```python
 Response {
-	result: Any
+	result: Dict[str, Any]
 	agent_message: Optional[str] = None
 }
 ```
 
-- `result` is a payload containing the result of the action on the user’s side, and can be in any format
+- `result` is a payload containing the result of the action on the user’s side, and can have any schema
 - `agent_message` optionally contains a message that will be synthesized into audio and sent back to the phone call (see [Configuring the External Action](/external-actions#configuring-the-external-action) above for more info)
 
 In the [Meeting Assistant Example](/external-actions#meeting-assistant-example) below, the user’s API could return back a JSON response that looks like:
