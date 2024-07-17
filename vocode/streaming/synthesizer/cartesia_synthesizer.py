@@ -121,6 +121,10 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
     ) -> SynthesisResult:
         await self.initialize_ws()
 
+        if is_first_text_chunk:
+            await self.ctx.no_more_inputs()
+            self.ctx = self.ws.context()
+
         transcript = message.text
 
         if not message.text.endswith(" "):
@@ -138,6 +142,8 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
 
         async def chunk_generator(context):
             buffer = bytearray()
+            if context.is_closed():
+                return
             async for event in context.receive():
                 audio = event.get("audio")
                 buffer.extend(audio)
@@ -147,8 +153,6 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
                     )
                     buffer = buffer[chunk_size:]
             yield SynthesisResult.ChunkResult(chunk=buffer, is_last_chunk=True)
-            if not context.is_closed():
-                await context.no_more_inputs()
 
         return SynthesisResult(
             chunk_generator=chunk_generator(self.ctx),
