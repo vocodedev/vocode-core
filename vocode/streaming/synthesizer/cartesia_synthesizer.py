@@ -1,5 +1,4 @@
 import hashlib
-from typing import List, Optional, TypedDict
 
 from vocode import getenv
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
@@ -8,31 +7,10 @@ from vocode.streaming.models.synthesizer import CartesiaSynthesizerConfig
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
 
 
-class VoiceControls(TypedDict):
-    """Defines different voice control parameters for voice synthesis.
-
-
-    For a complete list of supported parameters, refer to the Cartesia API documentation.
-    https://docs.cartesia.ai/api-reference
-
-    Examples:
-        >>> {"speed": "fastest"}
-        >>> {"speed": "slow", "emotion": ["sadness:high"]}
-        >>> {"emotion": ["surprise:highest", "curiosity"]}
-
-    Note:
-        This is an experimental class and is subject to rapid change in future versions.
-    """
-
-    speed: str
-    emotion: List[str]
-
-
 class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
     def __init__(
         self,
         synthesizer_config: CartesiaSynthesizerConfig,
-        _experimental_voice_controls: Optional[List[VoiceControls]] = None,
     ):
         super().__init__(synthesizer_config)
 
@@ -48,7 +26,7 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
 
         self.cartesia_tts = AsyncCartesia
 
-        self._experimental_voice_controls = _experimental_voice_controls
+        self._experimental_voice_controls = synthesizer_config._experimental_voice_controls
 
         if synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
             match synthesizer_config.sampling_rate:
@@ -121,7 +99,7 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
     ) -> SynthesisResult:
         await self.initialize_ws()
 
-        if is_first_text_chunk:
+        if is_first_text_chunk and self.ws and self.ctx:
             await self.ctx.no_more_inputs()
             self.ctx = self.ws.context()
 
@@ -176,5 +154,7 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
 
     async def tear_down(self):
         await super().tear_down()
+        if self.ctx:
+            self.ctx._close()
         await self.ws.close()
         await self.client.close()
