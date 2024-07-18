@@ -234,7 +234,7 @@ DEFAULT_CARTESIA_VOICE_ID = "829ccd10-f8b3-43cd-b8a0-4aeaa81f3b30"
 
 
 class CartesiaVoiceControls(TypedDict):
-    """Check out our guide at https://docs.cartesia.ai/user-guides/voice-control"""
+    """See https://docs.cartesia.ai/user-guides/voice-control"""
 
     speed: str
     emotion: List[str]
