@@ -55,7 +55,7 @@ class SearchOnline(
             "Authorization": "Bearer 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",
         }
         body = {
-            "model": "sonar-small-online",
+            "model": "llama-3-sonar-small-32k-online",
             "messages": [
                 {
                     "role": "user",
