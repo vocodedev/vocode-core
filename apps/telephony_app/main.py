@@ -2,15 +2,19 @@
 import os
 import sys
 
+import twilio
+from custom_action_factory import MyCustomActionFactory
+from custom_agent import CustomAgentConfig
+from custom_agent_factory import CustomAgentFactory
+
+# Local application/library specific imports
 from dotenv import load_dotenv
 
 # Third-party imports
 from fastapi import FastAPI
 from loguru import logger
 from pyngrok import ngrok
-
-# Local application/library specific imports
-from speller_agent import SpellerAgentFactory
+from sms_send_appointment_noti import SMSSendAppointmentNotiVocodeActionConfig
 
 from vocode.logging import configure_pretty_logging
 from vocode.streaming.models.agent import ChatGPTAgentConfig
@@ -44,31 +48,39 @@ if not BASE_URL:
 if not BASE_URL:
     raise ValueError("BASE_URL must be set in environment if not using pyngrok")
 
+agent_config=CustomAgentConfig(
+    initial_message=BaseMessage(text="Hello! Are you here to set up an appointment?"),
+    prompt_preamble="""If the caller confirms that they want to set up an appointment, complete these steps without moving onto the next step until the previous step is complete:
+    - Collect patient's name and date of birth
+    - Collect insurance information including payer name and ID
+    - Ask if they have a referral, and to which physician
+    - Collect chief medical complaint/reason they are coming in
+    - Collect other demographics like address
+    - Collect contact information, specifically phone number including the country code
+    - Offer up best available providers and times with the following options: July 22nd at 9:00 AM with Dr. Shen or August 1st at 12:30 PM with Dr. Jaron""",
+    generate_responses=True,
+    openai_api_key=os.environ["OPENAI_API_KEY"],
+    actions=[
+        SMSSendAppointmentNotiVocodeActionConfig(
+            type = "action_SMS_send_appointment_noti"
+        ),
+    ]
+)
+
 telephony_server = TelephonyServer(
     base_url=BASE_URL,
     config_manager=config_manager,
     inbound_call_configs=[
         TwilioInboundCallConfig(
             url="/inbound_call",
-            agent_config=ChatGPTAgentConfig(
-                initial_message=BaseMessage(text="What up"),
-                prompt_preamble="Have a pleasant conversation about life",
-                generate_responses=True,
-            ),
-            # uncomment this to use the speller agent instead
-            # agent_config=SpellerAgentConfig(
-            #     initial_message=BaseMessage(
-            #         text="im a speller agent, say something to me and ill spell it out for you"
-            #     ),
-            #     generate_responses=False,
-            # ),
+            agent_config=agent_config,
             twilio_config=TwilioConfig(
                 account_sid=os.environ["TWILIO_ACCOUNT_SID"],
                 auth_token=os.environ["TWILIO_AUTH_TOKEN"],
             ),
         )
     ],
-    agent_factory=SpellerAgentFactory(),
+    agent_factory=CustomAgentFactory(agent_config, action_factory=MyCustomActionFactory()),
 )
 
 app.include_router(telephony_server.get_router())
