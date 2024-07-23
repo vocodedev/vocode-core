@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import audioop
 import base64
 import json
 from typing import List, Optional, Union
@@ -11,6 +10,7 @@ from fastapi.websockets import WebSocketState
 from loguru import logger
 from pydantic import BaseModel
 
+from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
 from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
@@ -27,12 +27,13 @@ MarkMessage = Union[ChunkFinishedMarkMessage]  # space for more mark messages
 
 
 class TwilioOutputDevice(AbstractOutputDevice):
-    def __init__(self, ws: Optional[WebSocket] = None, stream_sid: Optional[str] = None):
-        super().__init__(sampling_rate=DEFAULT_SAMPLING_RATE, audio_encoding=DEFAULT_AUDIO_ENCODING)
+    def __init__(self, ws: Optional[WebSocket] = None, stream_sid: Optional[str] = None, 
+                 stream_sid_key: str = "streamSid", audio_encoding: AudioEncoding = DEFAULT_AUDIO_ENCODING):
+        super().__init__(sampling_rate=DEFAULT_SAMPLING_RATE, audio_encoding=audio_encoding)
         self.ws = ws
         self.stream_sid = stream_sid
         self.active = True
-
+        self.stream_sid_key = stream_sid_key
         self._twilio_events_queue: asyncio.Queue[str] = asyncio.Queue()
         self._mark_message_queue: asyncio.Queue[MarkMessage] = asyncio.Queue()
         self._unprocessed_audio_chunks_queue: asyncio.Queue[InterruptibleEvent[AudioChunk]] = (
@@ -65,7 +66,7 @@ class TwilioOutputDevice(AbstractOutputDevice):
             )
             dtmf_message = {
                 "event": "media",
-                "streamSid": self.stream_sid,
+                self.stream_sid_key: self.stream_sid,
                 "media": {"payload": base64.b64encode(dtmf_tone).decode("utf-8")},
             }
             self._twilio_events_queue.put_nowait(json.dumps(dtmf_message))
@@ -117,13 +118,13 @@ class TwilioOutputDevice(AbstractOutputDevice):
     def _send_audio_chunk_and_mark(self, chunk: bytes, chunk_id: str):
         media_message = {
             "event": "media",
-            "streamSid": self.stream_sid,
+            self.stream_sid_key: self.stream_sid,
             "media": {"payload": base64.b64encode(chunk).decode("utf-8")},
         }
         self._twilio_events_queue.put_nowait(json.dumps(media_message))
         mark_message = {
             "event": "mark",
-            "streamSid": self.stream_sid,
+            self.stream_sid_key: self.stream_sid,
             "mark": {
                 "name": chunk_id,
             },
@@ -133,6 +134,6 @@ class TwilioOutputDevice(AbstractOutputDevice):
     def _send_clear_message(self):
         clear_message = {
             "event": "clear",
-            "streamSid": self.stream_sid,
+            self.stream_sid_key: self.stream_sid,
         }
         self._twilio_events_queue.put_nowait(json.dumps(clear_message))
