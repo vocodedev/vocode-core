@@ -71,6 +71,7 @@ async def test_send_request_responses(
     )
 
     assert httpx_mock.get_request().headers["x-vocode-test"] == "test"
+    assert "x-vocode-signature" in httpx_mock.get_request().headers
 
     assert response.success is expected_success
 
