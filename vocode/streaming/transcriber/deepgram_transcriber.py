@@ -1,20 +1,14 @@
 import asyncio
+import audioop
 import json
 import logging
 from typing import Optional
-
-from openai import AsyncOpenAI, OpenAI
-import websockets
-from websockets.client import WebSocketClientProtocol
-import audioop
 from urllib.parse import urlencode
-from vocode import getenv
 
-from vocode.streaming.transcriber.base_transcriber import (
-    BaseAsyncTranscriber,
-    Transcription,
-    meter,
-)
+import websockets
+from openai import AsyncOpenAI, OpenAI
+from vocode import getenv
+from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.transcriber import (
     ClassifierEndpointingConfig,
     DeepgramTranscriberConfig,
@@ -23,8 +17,12 @@ from vocode.streaming.models.transcriber import (
     PunctuationEndpointingConfig,
     TimeEndpointingConfig,
 )
-from vocode.streaming.models.audio_encoding import AudioEncoding
-
+from vocode.streaming.transcriber.base_transcriber import (
+    BaseAsyncTranscriber,
+    Transcription,
+    meter,
+)
+from websockets.client import WebSocketClientProtocol
 
 PUNCTUATION_TERMINATORS = [".", "!", "?"]
 MAX_SILENCE_DURATION = 2.0
@@ -130,7 +128,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         ):
             extra_params["punctuate"] = "true"
         url_params.update(extra_params)
-        return f"wss://api.deepgram.com/v1/listen?{urlencode(url_params)}"
+        return f"wss://api.deepgram.com/v1/listen?{urlencode(url_params, doseq=True)}"
 
     # This function will return how long the time silence for endpointing should be
     def get_classify_endpointing_silence_duration(self, transcript: str):
