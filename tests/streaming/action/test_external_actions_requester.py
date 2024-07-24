@@ -66,8 +66,12 @@ async def test_send_request_responses(
         JSON_SCHEMA,
         base64.b64encode(os.urandom(32)).decode(),
         additional_payload_values={"call_id": "call_id"},
+        additional_headers={"x-vocode-test": "test"},
         transport=httpx.AsyncHTTPTransport(retries=3, verify=True),
     )
+
+    assert httpx_mock.get_request().headers["x-vocode-test"] == "test"
+    assert "x-vocode-signature" in httpx_mock.get_request().headers
 
     assert response.success is expected_success
 
