@@ -32,7 +32,7 @@ from vocode.streaming.utils.state_manager import (
 async def test_vonage_dtmf_press_digits(mocker, mock_env):
     action = VonageDTMF(action_config=DTMFVocodeActionConfig())
     vonage_uuid = generate_uuid()
-    digits = "1234"
+    digits = "1234*#"
 
     vonage_phone_conversation_mock = mocker.MagicMock()
     vonage_config = VonageConfig(
@@ -92,7 +92,7 @@ async def test_twilio_dtmf_press_digits(
     mocker, mock_env, mock_twilio_phone_conversation, mock_twilio_output_device: TwilioOutputDevice
 ):
     action = TwilioDTMF(action_config=DTMFVocodeActionConfig())
-    digits = "1234"
+    digits = "1234*#"
     twilio_sid = "twilio_sid"
 
     action.attach_conversation_state_manager(
@@ -118,7 +118,7 @@ async def test_twilio_dtmf_press_digits(
             assert False, "Timed out waiting for DTMF tones to be sent"
 
     assert action_output.response.success
-    mock_twilio_output_device.terminate()
+    await mock_twilio_output_device.terminate()
 
     for digit, call in zip(digits, mock_twilio_output_device.ws.send_text.call_args_list):
         expected_dtmf = DTMFToneGenerator().generate(
@@ -136,7 +136,7 @@ async def test_twilio_dtmf_failure(
     mocker, mock_env, mock_twilio_phone_conversation, mock_twilio_output_device: TwilioOutputDevice
 ):
     action = TwilioDTMF(action_config=DTMFVocodeActionConfig())
-    digits = "****"
+    digits = "%%%%"
     twilio_sid = "twilio_sid"
 
     action.attach_conversation_state_manager(

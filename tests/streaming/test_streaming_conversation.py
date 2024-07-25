@@ -287,7 +287,7 @@ async def test_transcriptions_worker_ignores_utterances_before_initial_message(
         backchannel.sender == Sender.HUMAN and backchannel.is_backchannel
         for backchannel in human_backchannels
     )
-    streaming_conversation.transcriptions_worker.terminate()
+    await streaming_conversation.transcriptions_worker.terminate()
 
 
 @pytest.mark.asyncio
@@ -355,7 +355,7 @@ async def test_transcriptions_worker_ignores_associated_ignored_utterance(
         "I'm listening.",
     ]
     assert streaming_conversation.transcript.event_logs[-1].is_backchannel
-    streaming_conversation.transcriptions_worker.terminate()
+    await streaming_conversation.transcriptions_worker.terminate()
 
 
 @pytest.mark.asyncio
@@ -405,7 +405,7 @@ async def test_transcriptions_worker_interrupts_on_interim_transcripts(
 
     assert streaming_conversation.transcript.event_logs[-1].sender == Sender.BOT
     assert streaming_conversation.transcript.event_logs[-1].text == "Hi, I was wondering"
-    streaming_conversation.transcriptions_worker.terminate()
+    await streaming_conversation.transcriptions_worker.terminate()
 
 
 @pytest.mark.asyncio
@@ -460,7 +460,7 @@ async def test_transcriptions_worker_interrupts_immediately_before_bot_has_begun
     assert await _get_from_consumer_queue_if_exists(transcriptions_worker_consumer) is None
     assert streaming_conversation.broadcast_interrupt.called
 
-    streaming_conversation.transcriptions_worker.terminate()
+    await streaming_conversation.transcriptions_worker.terminate()
 
 
 def _create_dummy_synthesis_result(
@@ -576,7 +576,7 @@ async def test_send_speech_to_output_interrupted_during_playback(
     stop_event.set()
     streaming_conversation.output_device.interrupt_event.set()
     message_sent, cut_off = await send_speech_to_output_task
-    streaming_conversation.output_device.terminate()
+    await streaming_conversation.output_device.terminate()
 
     assert message_sent != "Hi there"
     assert cut_off

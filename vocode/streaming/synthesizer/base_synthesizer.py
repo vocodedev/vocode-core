@@ -462,7 +462,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         except asyncio.CancelledError:
             pass
         finally:
-            miniaudio_worker.terminate()
+            await miniaudio_worker.terminate()
 
     def _resample_chunk(
         self,
