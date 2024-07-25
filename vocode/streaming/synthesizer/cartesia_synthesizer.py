@@ -89,8 +89,14 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
     async def initialize_ws(self):
         if self.ws is None:
             self.ws = await self.client.tts.websocket()
+
+    async def initialize_ctx(self, is_first_text_chunk: bool):
         if self.ctx is None or self.ctx.is_closed():
             self.ctx = self.ws.context()
+        else:
+            if is_first_text_chunk:
+                await self.ctx.no_more_inputs()
+                self.ctx = self.ws.context()
 
     async def create_speech_uncached(
         self,
@@ -100,13 +106,7 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
         is_sole_text_chunk: bool = False,
     ) -> SynthesisResult:
         await self.initialize_ws()
-
-        if is_first_text_chunk and self.ws and self.ctx:
-            try:
-                await self.ctx.no_more_inputs()
-            except ValueError:
-                pass
-            self.ctx = self.ws.context()
+        await self.initialize_ctx(is_first_text_chunk)
 
         transcript = message.text
 
