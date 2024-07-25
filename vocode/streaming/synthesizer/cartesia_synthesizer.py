@@ -92,7 +92,8 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
 
     async def initialize_ctx(self, is_first_text_chunk: bool):
         if self.ctx is None or self.ctx.is_closed():
-            self.ctx = self.ws.context()
+            if self.ws:
+                self.ctx = self.ws.context()
         else:
             if is_first_text_chunk:
                 await self.ctx.no_more_inputs()
