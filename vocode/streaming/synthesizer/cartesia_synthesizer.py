@@ -1,5 +1,7 @@
 import hashlib
 
+from loguru import logger
+
 from vocode import getenv
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
 from vocode.streaming.models.message import BaseMessage
@@ -100,7 +102,10 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
         await self.initialize_ws()
 
         if is_first_text_chunk and self.ws and self.ctx:
-            await self.ctx.no_more_inputs()
+            try:
+                await self.ctx.no_more_inputs()
+            except ValueError:
+                pass
             self.ctx = self.ws.context()
 
         transcript = message.text
@@ -122,15 +127,22 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
             buffer = bytearray()
             if context.is_closed():
                 return
-            async for event in context.receive():
-                audio = event.get("audio")
-                buffer.extend(audio)
-                while len(buffer) >= chunk_size:
-                    yield SynthesisResult.ChunkResult(
-                        chunk=buffer[:chunk_size], is_last_chunk=False
-                    )
-                    buffer = buffer[chunk_size:]
-            yield SynthesisResult.ChunkResult(chunk=buffer, is_last_chunk=True)
+            try:
+                async for event in context.receive():
+                    audio = event.get("audio")
+                    buffer.extend(audio)
+                    while len(buffer) >= chunk_size:
+                        yield SynthesisResult.ChunkResult(
+                            chunk=buffer[:chunk_size], is_last_chunk=False
+                        )
+                        buffer = buffer[chunk_size:]
+            except Exception as e:
+                logger.info(
+                    f"Caught error while receiving audio chunks from CartesiaSynthesizer: {e}"
+                )
+                self.ctx._close()
+            if buffer:
+                yield SynthesisResult.ChunkResult(chunk=buffer, is_last_chunk=True)
 
         return SynthesisResult(
             chunk_generator=chunk_generator(self.ctx),
