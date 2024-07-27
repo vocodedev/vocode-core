@@ -80,8 +80,7 @@ class CreateSunshineConversation(
 
         INITIAL_CUSTOMER_SERVICE_MESSAGE = "Hello Gorgeous! A team member will be reaching out via SMS within the next 7 minutes to help."
 
-        return await create_new_conversation(app_id=app_id, internal_phone_number=self.action_config.to_phone,
-                                             initial_internal_message=parameters.handoff_information,
+        return await create_new_conversation(app_id=app_id, initial_internal_message=parameters.handoff_information,
                                              integration_id=integration_id,
                                              key_id=key_id,
                                              secret=secret,
