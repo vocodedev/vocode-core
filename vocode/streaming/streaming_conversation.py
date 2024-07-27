@@ -425,7 +425,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation = conversation
             self.interruptible_event_factory = interruptible_event_factory
             self.convoCache = {}
-            self.chunk_size = (
+            self.chunk_size = int(
                 get_chunk_size_per_second(
                     self.conversation.synthesizer.get_synthesizer_config().audio_encoding,
                     self.conversation.synthesizer.get_synthesizer_config().sampling_rate,
@@ -1065,7 +1065,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         num_interrupts += 1
             except asyncio.QueueEmpty:
                 break
-
+        await self.output_device.clear()
         return num_interrupts > 0
 
     def is_interrupt(self, transcription: Transcription):
@@ -1120,11 +1120,22 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.transcriptions_worker.synthesis_done = True
                 started_event.set()
             if stop_event.is_set() and self.agent.agent_config.allow_interruptions:
-                self.interrupt_count += 1
-
-                if not resumed and not moved_back and self.interrupt_count == 1:
+                if (
+                    time.time() - time_started_speaking < 3
+                    and isinstance(self.agent, StateAgent)
+                    and not moved_back
+                ):
                     self.agent.move_back_state()
-                return "", False
+                    moved_back = True
+                    return "", False
+                elif (
+                    time.time() - time_started_speaking >= 3
+                    and not resumed
+                    and not moved_back
+                ):
+                    self.agent.restore_resume_state()
+                    resumed = True
+                    return "", False
             if len(speech_data) > chunk_size:
                 self.transcriptions_worker.block_inputs = True
                 self.transcriptions_worker.time_silent = 0.0
@@ -1184,7 +1195,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             f"Sleeping for {piece_size / chunk_size} seconds"
                         )
                         await asyncio.sleep(
-                            (piece_size / chunk_size) - PER_CHUNK_ALLOWANCE_SECONDS
+                            ((piece_size / chunk_size) - PER_CHUNK_ALLOWANCE_SECONDS)
+                            * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
                         )
 
                     if not buffer_cleared and not stop_event.is_set():
@@ -1215,6 +1227,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             self.agent.restore_resume_state()
                             resumed = True
                             self.interrupt_count = 0
+                        return "", False
                 else:
                     self.transcriptions_worker.buffer.clear()
                     self.mark_last_action_timestamp()
@@ -1258,6 +1271,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 moved_back = True
                 self.agent.move_back_state()
+                return "", False
             self.logger.debug("Interrupted speech output on the last chunk")
             return "", False
         if (
@@ -1268,6 +1282,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         ):
             self.agent.restore_resume_state()
             resumed = True
+            return "", False
         self.interrupt_count = 0
 
         self.transcriptions_worker.synthesis_done = True
@@ -1295,7 +1310,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriptions_worker.block_inputs = True
         self.transcriptions_worker.time_silent = 0.0
         self.transcriptions_worker.triggered_affirmative = False
-        self.transcriptions_worker.buffer.clear()
         start_time = time.time()
         end_time = time.time()
 
@@ -1323,7 +1337,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             0,
         )
         self.logger.info(f"Sleeping for {speech_length_seconds} seconds")
-        await asyncio.sleep(speech_length_seconds)
+        await asyncio.sleep(speech_length_seconds * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS)
 
         # Update the last action timestamp after sending speech
         self.mark_last_action_timestamp()
@@ -1341,11 +1355,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # if stop_event.is_set() and not moved_back and self.interrupt_count == 1:
         #     moved_back = True
         #     self.agent.move_back_state() #maybe dont do this because it would have finished talking lol
+        if not stop_event.is_set():
+            self.transcriptions_worker.buffer.clear()
+        if stop_event.is_set() and time.time() - time_started_speaking < 3:
+            moved_back = True
+            self.agent.move_back_state()
+            return "", False
         if not moved_back and not resumed:
             self.agent.restore_resume_state()
             resumed = True
-            self.interrupt_count = 0
-
+        self.interrupt_count = 0
         # Reset the transcription worker's flags and buffer status
         # check if there is more in the queue making this one be called again, if so, dont unblock
         if (
