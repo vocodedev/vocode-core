@@ -193,7 +193,7 @@ async def handle_options(
                 {
                     "destStateId": default_next_state,
                     "aiLabel": "continue",
-                    "aiDescription": f"user provided an answer to the question",
+                    "aiDescription": f"user provided an answer to the question",  # TODO: it seems to repeat the state on this
                 }
             )
         else:
@@ -263,6 +263,9 @@ async def handle_options(
             parsed_output = parse_llm_dict(output)
             to_speak = parsed_output["response"]
             speak(to_speak)
+            clarification_state = state_history[
+                -1
+            ].copy()  # we want to copy the last question state
 
             async def resume(human_input):
                 logger.info(
@@ -270,11 +273,11 @@ async def handle_options(
                 )
                 return await go_to_state(state["id"])
 
-            return resume
-        return await go_to_state(next_state_id)
+            return resume, clarification_state
+        return await go_to_state(next_state_id), None
     except Exception as e:
         logger.error(f"Agent chose no condition: {e}. Response was {response}")
-        return await go_to_state(default_next_state)
+        return await go_to_state(default_next_state), None
 
 
 def get_default_next_state(state):
@@ -396,7 +399,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             )
 
         if state["type"] == "options":
-            return await handle_options(
+            out, clarification_state = await handle_options(
                 state=state,
                 go_to_state=go_to_state,
                 speak=speak,
@@ -406,6 +409,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 logger=self.logger,
                 state_history=self.state_history,
             )
+            if clarification_state:
+                self.state_history.append(clarification_state)
+            return out
 
         if state["type"] == "action":
             return await self.compose_action(state)
@@ -583,7 +589,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             previous_state = self.state_history[-1]
             if previous_state["type"] == "question":
                 break
-            self.state_history.pop()
+            else:
+                self.state_history.pop()
 
         # Merge consecutive messages of the same role
         merged_messages = []
@@ -610,13 +617,15 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.logger.info(f"Merged messages: {merged_messages}")
         self.chat_history = merged_messages
         # self.chat_history = list(reversed(merged_messages))
-        # Remove everything after the second to latest user message and replace the second to latest with the removed latest
-        user_messages = [
-            i for i, (role, _) in enumerate(merged_messages) if role == "human"
+        # Remove everything after the second to latest bot message and replace the second to latest with the removed latest
+        bot_messages = [
+            i
+            for i, (role, _) in enumerate(merged_messages)
+            if role == "bot"  # try with bot message
         ]
-        if len(user_messages) >= 2:
-            second_last_user_index = user_messages[-2]
-            last_user_index = user_messages[-1]
+        if len(bot_messages) >= 2:
+            second_last_user_index = bot_messages[-2]
+            last_user_index = bot_messages[-1]
             merged_messages[second_last_user_index] = merged_messages[last_user_index]
             self.chat_history = merged_messages[: second_last_user_index + 1]
         else:
@@ -641,8 +650,20 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 else:
                     merged_messages.append((role, current_message))
 
-        # Log the merged messages for debugging
         self.chat_history = merged_messages
+        # if the last message is a user message and there are consecutive user messages before it that are contained in the last user message, remove the consecutive before ones
+        if self.chat_history[-1][0] == "human":
+            # go backwards
+            for i in range(len(self.chat_history) - 2, -1, -1):
+                if (
+                    self.chat_history[i][0] == "human"
+                    and self.chat_history[i][1].text in self.chat_history[-1][1].text
+                ):
+                    self.chat_history = self.chat_history[: i + 1]
+                    break
+                else:
+                    break
+
         # Set the resume state
         if self.state_history:
             self.resume = lambda _: self.handle_state(self.state_history[-1]["id"])
@@ -657,5 +678,11 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             current_state = self.state_history[-1]
             if "edge" in current_state:
                 self.resume = lambda _: self.handle_state(current_state["edge"])
+            elif "edges" in current_state:
+                for state in current_state["edges"]:
+                    if "isDefault" in state and state["isDefault"]:
+                        self.resume = lambda _: self.handle_state(state["destStateId"])
+                        return
+                self.resume = lambda _: self.handle_state(current_state[id])
             else:
                 self.resume = lambda _: self.handle_state("start")
