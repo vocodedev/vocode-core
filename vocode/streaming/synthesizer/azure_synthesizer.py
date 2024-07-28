@@ -311,9 +311,6 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             .replace(":ns0", "")
             .replace("ns0", "")
         )
-        out = out.replace(
-            '<break time="100ms" />', '<break time="100ms" /> ...'
-        )  # fixes the clicking
         return out
 
     def synthesize_ssml(self, ssml: str) -> speechsdk.AudioDataStream:
