@@ -687,9 +687,11 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
 
     async def start(self, mark_ready: Optional[Callable[[], Awaitable[None]]] = None):
         self.transcriber.start()
+        self.transcriber.streaming_conversation = self
         self.transcriptions_worker.start()
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
+        self.synthesizer.streaming_conversation = self
         self.output_device.start()
         if self.filler_audio_worker is not None:
             self.filler_audio_worker.start()

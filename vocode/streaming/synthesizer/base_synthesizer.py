@@ -4,7 +4,18 @@ import io
 import math
 import os
 import wave
-from typing import Any, AsyncGenerator, Callable, Generic, List, Optional, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncGenerator,
+    Callable,
+    Generic,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import aiohttp
 from loguru import logger
@@ -23,6 +34,9 @@ from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
 from vocode.streaming.utils.async_requester import AsyncRequestor
 from vocode.streaming.utils.create_task import asyncio_create_task
 from vocode.streaming.utils.worker import QueueConsumer
+
+if TYPE_CHECKING:
+    from vocode.streaming.streaming_conversation import StreamingConversation
 
 FILLER_PHRASES = [
     BaseMessage(text="Um..."),
@@ -224,6 +238,8 @@ SynthesizerConfigType = TypeVar("SynthesizerConfigType", bound=SynthesizerConfig
 
 
 class BaseSynthesizer(Generic[SynthesizerConfigType]):
+    streaming_conversation: "StreamingConversation"
+
     def __init__(
         self,
         synthesizer_config: SynthesizerConfigType,

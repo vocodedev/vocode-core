@@ -25,6 +25,10 @@ from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, Synth
 WAV_HEADER_LENGTH = 44
 
 
+class RimeError(Exception):
+    pass
+
+
 class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
     def __init__(
         self,
@@ -73,7 +77,7 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
             timeout=aiohttp.ClientTimeout(total=15),
         ) as response:
             if not response.ok:
-                raise Exception(f"Rime API error: {response.status}, {await response.text()}")
+                raise RimeError(f"Rime API error: {response.status}, {await response.text()}")
             data = json.loads(await response.text())
 
             audio_content = data.get("audioContent")
@@ -117,8 +121,9 @@ class RimeSynthesizer(BaseSynthesizer[RimeSynthesizerConfig]):
             )
             if not stream.is_success:
                 error = await stream.aread()
-                logger.error(f"Rime API failed: {stream.status_code} {error.decode('utf-8')}")
-                raise Exception(f"Rime API returned {stream.status_code} status code")
+                raise RimeError(
+                    f"Rime API returned {stream.status_code} status code with the following details: {error.decode('utf-8')}"
+                )
             async for chunk in stream.aiter_bytes(chunk_size):
                 chunk_queue.put_nowait(chunk)
         except asyncio.CancelledError:
