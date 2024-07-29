@@ -84,13 +84,15 @@ class PlayHtSynthesizer(BaseSynthesizer[PlayHtSynthesizerConfig]):
             if not response.ok:
                 response_json = await response.json()
                 if response_json and "error_message" in response_json:
-                    message = response_json["error_message"]
+                    error_message = response_json["error_message"]
                 else:
-                    message = f"Request to Play.HT failed with status code {str(response.status)}"
+                    error_message = (
+                        f"Request to Play.HT failed with status code {str(response.status)}"
+                    )
 
                 raise PlayHTV1APIError(
                     f"Play.ht API error status code {response.status}",
-                    message,
+                    error_message,
                 )
             if response.status == 429 and attempt < max_backoff_retries - 1:
                 await asyncio.sleep(backoff_retry_delay)
