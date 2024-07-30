@@ -220,9 +220,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
 
                 # Get the latest bot and human messages
-                if isinstance(self.conversation.agent, StateAgent):
+                latest_human_message = initial_buffer
+                if (
+                    isinstance(self.conversation.agent, StateAgent)
+                    and latest_human_message.strip().lower() != "hello"
+                ):
                     try:
-                        latest_human_message = initial_buffer
                         latest_bot_message = (
                             self.conversation.agent.get_latest_bot_message()
                         )
