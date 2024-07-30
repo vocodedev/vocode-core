@@ -249,7 +249,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         # Parse the response and calculate sleep time
                         if not isinstance(response, str):
                             response = response.text
-                        sleep_time = float(response) - request_duration
+                        sleep_time = (float(response) ** 2) * 2 - request_duration
                         if sleep_time > 0:
                             # TODO: HERE, CONNECT IT TO THE SLIDER
                             self.conversation.logger.info(

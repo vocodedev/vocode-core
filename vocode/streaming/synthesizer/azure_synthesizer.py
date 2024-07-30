@@ -400,6 +400,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         async def chunk_generator(
             audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
         ):
+            yielded = False
             while True:
                 audio_buffer = bytes(chunk_size)
                 filled_size = await asyncio.get_event_loop().run_in_executor(
@@ -407,7 +408,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                     lambda: audio_data_stream.read_data(audio_buffer),
                 )
                 self.logger.debug(f"Filled size: {filled_size}")
-                if filled_size == 0:
+                if filled_size == 0 and not yielded:
                     self.logger.debug(
                         "No audio data returned, attempting to resume speech"
                     )
@@ -428,11 +429,13 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                     yield SynthesisResult.ChunkResult(
                         chunk_transform(audio_buffer[offset:filled_size]), True
                     )
+                    yielded = True
                     break
                 else:
                     yield SynthesisResult.ChunkResult(
                         chunk_transform(audio_buffer[offset:]), False
                     )
+                    yielded = True
 
         word_boundary_event_pool = WordBoundaryEventPool()
         self.synthesizer.synthesis_word_boundary.connect(
