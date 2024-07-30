@@ -220,9 +220,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
 
                 # Get the latest bot and human messages
-                if isinstance(self.conversation.agent, StateAgent):
+                latest_human_message = initial_buffer
+                if (
+                    isinstance(self.conversation.agent, StateAgent)
+                    and latest_human_message.strip().lower() != "hello"
+                ):
                     try:
-                        latest_human_message = initial_buffer
                         latest_bot_message = (
                             self.conversation.agent.get_latest_bot_message()
                         )
@@ -249,7 +252,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         # Parse the response and calculate sleep time
                         if not isinstance(response, str):
                             response = response.text
-                        sleep_time = (float(response) ** 2) * 2 - request_duration
+                        sleep_time = (float(response) ** 2) * 1.5 - request_duration
                         if sleep_time > 0:
                             # TODO: HERE, CONNECT IT TO THE SLIDER
                             self.conversation.logger.info(
