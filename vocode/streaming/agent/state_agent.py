@@ -330,6 +330,15 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 AgentResponseMessage(message=BaseMessage(text=message))
             )
 
+    def get_latest_bot_message(self):
+        for role, message in reversed(self.chat_history):
+            if isinstance(message, BaseMessage):
+                if role == "message.bot" and len(message.text.strip()) > 0:
+                    return message.text
+            else:
+                return message
+        return "How can I assist you today?"
+
     async def generate_completion(
         self,
         affirmative_phrase: Optional[str],
