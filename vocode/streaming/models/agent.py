@@ -134,6 +134,11 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):  # type: i
     llm_fallback: Optional[LLMFallback] = None
 
 
+class DifyAgentConfig(AgentConfig, type=AgentType.DIFY.value):  # type: ignore
+    difyaai_api_key: Optional[str] = None
+    model_name: str = "gpt-3.5-turbo"
+    
+
 class AnthropicAgentConfig(AgentConfig, type=AgentType.ANTHROPIC.value):  # type: ignore
     prompt_preamble: str
     model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
