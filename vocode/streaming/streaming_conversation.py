@@ -15,6 +15,8 @@ import typing
 import numpy
 import requests
 import aiohttp
+import httpx
+
 from telephony_app.models.call_type import CallType
 from vocode import getenv
 from openai import AsyncOpenAI, OpenAI
@@ -195,54 +197,78 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.initial_message = None
 
         async def _buffer_check(self, initial_buffer: str):
-            if (
-                len(initial_buffer) == 0
-            ):  # it might be empty if the its just started and no final one has been sent in
-                return
-            self.conversation.transcript.remove_last_human_message()
-            # Reset the current sleep time to zero
-            self.current_sleep_time = 0.0
-            # Create a transcription object with the current buffer content
-            transcription = Transcription(
-                message=initial_buffer,
-                confidence=1.0,  # We assume full confidence as it's not explicitly provided
-                is_final=True,
-                time_silent=self.time_silent,
-            )
-            current_phrase = self.chosen_affirmative_phrase
-            event = self.interruptible_event_factory.create_interruptible_event(
-                payload=TranscriptionAgentInput(
-                    transcription=transcription,
-                    affirmative_phrase=current_phrase,
-                    conversation_id=self.conversation.id,
-                    vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
-                    twilio_sid=getattr(self.conversation, "twilio_sid", None),
-                ),
-            )
-            # wait until the time since last interrupt is at least 1.5 seconds
-            if self.conversation.interrupt_count == 2:
-                # while time.time() - self.conversation.interrupt_count < 1.5:
-                await asyncio.sleep(0.5)
-                self.conversation.logger.debug("Sleeping... recent interrupt")
-            if self.conversation.interrupt_count >= 1:
-                await asyncio.sleep(1)
-
-                self.conversation.logger.debug(
-                    "Sleeping for even longer... recent interrupt"
+            try:
+                if len(initial_buffer) == 0:
+                    return
+                self.conversation.transcript.remove_last_human_message()
+                self.current_sleep_time = 0.0
+                transcription = Transcription(
+                    message=initial_buffer,
+                    confidence=1.0,
+                    is_final=True,
+                    time_silent=self.time_silent,
                 )
-            # Place the event in the output queue for further processing
-            self.output_queue.put_nowait(event)
+                current_phrase = self.chosen_affirmative_phrase
+                event = self.interruptible_event_factory.create_interruptible_event(
+                    payload=TranscriptionAgentInput(
+                        transcription=transcription,
+                        affirmative_phrase=current_phrase,
+                        conversation_id=self.conversation.id,
+                        vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
+                        twilio_sid=getattr(self.conversation, "twilio_sid", None),
+                    ),
+                )
 
-            self.conversation.logger.info("Transcription event put in output queue")
+                # Get the latest bot and human messages
+                if isinstance(self.conversation.agent, StateAgent):
+                    try:
+                        latest_human_message = initial_buffer
+                        latest_bot_message = (
+                            self.conversation.agent.get_latest_bot_message()
+                        )
 
-            # Set the buffer status to HOLD, indicating we're not ready to send it yet
-            self.ready_to_send = BufferStatus.HOLD
+                        # Prepare the request data
+                        request_data = {
+                            "question": latest_bot_message,
+                            "response": latest_human_message,
+                        }
 
-            self.conversation.logger.info(f"Marking as send")
-            self.ready_to_send = BufferStatus.SEND
-            # releast the action, if there is one
-            self.conversation.agent.can_send = True
-            return
+                        # Make the async request
+                        start_time = time.time()
+                        async with httpx.AsyncClient() as client:
+                            response = await client.post(
+                                "http://148.64.105.83:58000/inference/",
+                                headers={
+                                    "accept": "application/json",
+                                    "Content-Type": "application/json",
+                                },
+                                json=request_data,
+                            )
+                        request_duration = time.time() - start_time
+
+                        # Parse the response and calculate sleep time
+                        if not isinstance(response, str):
+                            response = response.text
+                        sleep_time = float(response) - request_duration
+                        if sleep_time > 0:
+                            # TODO: HERE, CONNECT IT TO THE SLIDER
+                            self.conversation.logger.info(
+                                f"heuristically sleeping for {sleep_time} seconds"
+                            )
+                            await asyncio.sleep(sleep_time)
+                    except Exception as e:
+                        self.conversation.logger.error(f"Error making request: {e}")
+
+                    # Place the event in the output queue for further processing
+                self.output_queue.put_nowait(event)
+
+                self.conversation.logger.info("Transcription event put in output queue")
+                # release the action, if there is one
+                self.conversation.agent.can_send = True
+                self.buffer_check_task = None
+                return
+            except Exception as e:
+                self.conversation.logger.error(f"Error in _buffer_check: {e}")
 
         async def process(self, transcription: Transcription):
             # Ignore the transcription if we are currently in-flight (i.e., the agent is speaking)
@@ -266,20 +292,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
             # If the message is just "vad", handle it without resetting the buffer check
             if transcription.message.strip() == "vad":
-
-                if len(self.buffer) == 0:
-                    return
-
-                # If a buffer check task is running, extend the current sleep time
-                if self.buffer_check_task and not self.buffer_check_task.done():
-                    self.conversation.logger.info(
-                        "Adding waiting chunk to buffer check task due to VAD"
-                    )
-
-                    self.current_sleep_time = self.vad_time
-                    self.vad_time = self.vad_time / 3
-                    # when we wait more, they were silent so we want to push out a filler audio
-
                 return
             if "words" not in json.loads(transcription.message):
                 self.conversation.logger.info(
@@ -321,9 +333,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
             # If a buffer check task exists, cancel it and start a new one
             if self.buffer_check_task:
-                self.conversation.logger.info("Cancelling buffer check task")
-                cancelled = self.buffer_check_task.cancel()
-                self.conversation.logger.info(f"BufferCancel? {cancelled}")
+                try:
+                    self.conversation.logger.info("Cancelling buffer check task")
+                    cancelled = self.buffer_check_task.cancel()
+                    self.conversation.logger.info(f"BufferCancel? {cancelled}")
+                    self.buffer_check_task = None
+                except Exception as e:
+                    self.conversation.logger.error(
+                        f"Error cancelling buffer check task: {e}"
+                    )
             if self.initial_message and transcription.is_final:
                 await self.conversation.send_initial_message(self.initial_message)
                 self.initial_message = None
@@ -339,7 +357,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 self.buffer = stashed_buffer
             self.ready_to_send = BufferStatus.DISCARD
-
             # Start a new buffer check task to recalculate the timing
             self.buffer_check_task = asyncio.create_task(
                 self._buffer_check(deepcopy(self.buffer.to_message()))
@@ -1199,7 +1216,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
                         )
 
-                    if not buffer_cleared and not stop_event.is_set():
+                    if (
+                        not buffer_cleared
+                        and not stop_event.is_set()
+                        and time.time() - time_started_speaking > 3
+                    ):
                         buffer_cleared = True
                         self.transcriptions_worker.buffer.clear()
                     elif stop_event.is_set():
@@ -1229,7 +1250,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                             self.interrupt_count = 0
                         return "", False
                 else:
-                    self.transcriptions_worker.buffer.clear()
                     self.mark_last_action_timestamp()
                     await self.output_device.consume_nonblocking(speech_data)
                     # Sleep is implemented here to synchronize the timeline between the audio data sent and the time muted.
@@ -1290,22 +1310,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         # If a buffer check task exists, wait for it to complete before proceeding
         if self.transcriptions_worker.buffer_check_task:
-            try:
-                await self.transcriptions_worker.buffer_check_task
-                # Handle cancellation of the buffer check task
-                if self.transcriptions_worker.buffer_check_task.cancelled():
-                    self.logger.debug("Buffer check task was cancelled.")
-                    return "", False
 
-            except asyncio.CancelledError:
-                # Handle external cancellation of the buffer check task
-                self.logger.debug(
-                    "Buffer check task was cancelled by an external event."
-                )
-                return "", False
+            return "", False
         else:
             # Proceed if no buffer check task is found
-            self.logger.debug("No buffer check task found, proceeding without waiting.")
+            self.logger.debug("No buffer check task found, proceeding.")
 
         # Clear the transcription worker's buffer and related attributes before sending
         self.transcriptions_worker.block_inputs = True
@@ -1356,8 +1365,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # if stop_event.is_set() and not moved_back and self.interrupt_count == 1:
         #     moved_back = True
         #     self.agent.move_back_state() #maybe dont do this because it would have finished talking lol
-        if not stop_event.is_set():
+        if not stop_event.is_set() and not buffer_cleared:
             self.transcriptions_worker.buffer.clear()
+            buffer_cleared = True
         if stop_event.is_set() and time.time() - time_started_speaking < 3:
             moved_back = True
             self.agent.move_back_state()
