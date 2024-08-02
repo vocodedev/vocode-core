@@ -169,11 +169,13 @@ class TwilioCall(Call[TwilioOutputDevice]):
         elif data["event"] == "stop":
             self.logger.debug(f"Media WS: Received event 'stop': {message}")
             self.logger.debug("Stopping...")
+            json_transcript = self.agent.get_json_transcript()
             status_update_task = asyncio.create_task(
                 execute_status_update_by_telephony_id(
                     telephony_id=data["stop"]["callSid"],
                     call_status=CallStatus.ENDED_BEFORE_TRANSFER,
                     call_type=self.agent.agent_config.call_type,
+                    json_transcript=json_transcript.dict() if json_transcript else None
                 )
             )
             send_call_end_notification_task = asyncio.create_task(

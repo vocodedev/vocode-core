@@ -39,6 +39,7 @@ from vocode.streaming.models.agent import (
 )
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.model import BaseModel, TypedModel
+from vocode.streaming.models.state_agent_transcript import JsonTranscript
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import remove_non_letters_digits
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
@@ -179,6 +180,9 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
 
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript
+    
+    def get_json_transcript(self) -> Optional[JsonTranscript]:
+        return None
 
     def attach_conversation_state_manager(
         self, conversation_state_manager: ConversationStateManager
