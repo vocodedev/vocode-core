@@ -171,21 +171,22 @@ class TelephonyServer:
                 exotel_to: str = Query(..., alias="CallTo"),
                 conversation_id: str = Query(None, alias="CustomField"),
         ):
-            call_config = ExotelCallConfig(
-                transcriber_config=inbound_call_config.transcriber_config
-                                   or ExotelCallConfig.default_transcriber_config(),
-                agent_config=inbound_call_config.agent_config,
-                synthesizer_config=inbound_call_config.synthesizer_config
-                                   or ExotelCallConfig.default_synthesizer_config(),
-                exotel_config=exotel_config,
-                exotel_sid=exotel_sid,
-                from_phone=exotel_from,
-                to_phone=exotel_to,
-                direction="inbound",
-            )
-
-            conversation_id = conversation_id or create_conversation_id()
-            await self.config_manager.save_config(conversation_id, call_config)
+            if not conversation_id:
+                call_config = ExotelCallConfig(
+                    transcriber_config=inbound_call_config.transcriber_config
+                                       or ExotelCallConfig.default_transcriber_config(),
+                    agent_config=inbound_call_config.agent_config,
+                    synthesizer_config=inbound_call_config.synthesizer_config
+                                       or ExotelCallConfig.default_synthesizer_config(),
+                    exotel_config=exotel_config,
+                    exotel_sid=exotel_sid,
+                    from_phone=exotel_from,
+                    to_phone=exotel_to,
+                    direction="inbound",
+                )
+    
+                conversation_id = create_conversation_id()
+                await self.config_manager.save_config(conversation_id, call_config)
             return ExotelClient.create_call_exotel(
                 base_url=self.base_url,
                 conversation_id=conversation_id
