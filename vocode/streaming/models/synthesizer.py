@@ -25,6 +25,7 @@ class SynthesizerType(str, Enum):
     BARK = "synthesizer_bark"
     POLLY = "synthesizer_polly"
     CARTESIA = "synthesizer_cartesia"
+    LMNT = "synthesizer_lmnt"
 
 
 class SentimentConfig(BaseModel):
@@ -245,3 +246,21 @@ class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA
     model_id: str = DEFAULT_CARTESIA_MODEL_ID
     voice_id: str = DEFAULT_CARTESIA_VOICE_ID
     _experimental_voice_controls: Optional[CartesiaVoiceControls] = None
+    
+
+class LMNTSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.LMNT.value):
+    api_key: Optional[str] = None
+    voice_id: Optional[str] = "lily"
+    stability: Optional[float] = None
+    similarity_boost: Optional[float] = None
+
+    @validator("voice_id")
+    def set_default_voice_id(cls, voice_id):
+        return voice_id or "lily"
+
+    @validator("similarity_boost", always=True)
+    def stability_and_similarity_boost_check(cls, similarity_boost, values):
+        stability = values.get("stability")
+        if (stability is None) != (similarity_boost is None):
+            raise ValueError("Both stability and similarity_boost must be set or not set.")
+        return similarity_boost
