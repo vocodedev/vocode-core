@@ -28,7 +28,7 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
 
         self.cartesia_tts = AsyncCartesia
 
-        self._experimental_voice_controls = synthesizer_config._experimental_voice_controls
+        self._experimental_voice_controls = synthesizer_config.experimental_voice_controls
 
         if synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
             match synthesizer_config.sampling_rate:
