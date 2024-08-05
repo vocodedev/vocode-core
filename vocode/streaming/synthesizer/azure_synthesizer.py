@@ -32,6 +32,10 @@ ElementTree.register_namespace("mstts", NAMESPACES["mstts"])
 _AZURE_INSIDE_VOICE_REGEX = r"<voice[^>]*>(.*?)<\/voice>"
 
 
+class AzureSynthesizerException(Exception):
+    pass
+
+
 class WordBoundaryEventPool:
     def __init__(self):
         self.events = []
@@ -231,6 +235,15 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 return ssml_fragment.split(">")[-1]
         return message
 
+    async def _check_stream_for_errors(self, audio_data_stream: speechsdk.AudioDataStream):
+        if (
+            audio_data_stream.cancellation_details
+            and audio_data_stream.cancellation_details.reason == speechsdk.CancellationReason.Error
+        ):
+            raise AzureSynthesizerException(
+                f"Azure Synthesizer Error: {audio_data_stream.cancellation_details.error_details}"
+            )
+
     async def create_speech_uncached(
         self,
         message: BaseMessage,
@@ -259,6 +272,8 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 self.thread_pool_executor,
                 lambda: audio_data_stream.read_data(audio_buffer),
             )
+
+            await self._check_stream_for_errors(audio_data_stream)
             if filled_size != chunk_size:
                 yield SynthesisResult.ChunkResult(chunk_transform(audio_buffer[offset:]), True)
                 return

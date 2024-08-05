@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vocode"
-version = "0.1.114a0"
+version = "0.1.114a1"
 description = "The all-in-one voice SDK"
 authors = ["Ajay Raj <ajay@vocode.dev>"]
 license = "MIT License"

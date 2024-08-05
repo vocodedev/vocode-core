@@ -16,6 +16,10 @@ ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
 STREAMED_CHUNK_SIZE = 16000 * 2 // 4  # 1/8 of a second of 16kHz audio with 16-bit samples
 
 
+class ElevenlabsException(Exception):
+    pass
+
+
 class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
     def __init__(
         self,
@@ -144,8 +148,9 @@ class ElevenLabsSynthesizer(BaseSynthesizer[ElevenLabsSynthesizerConfig]):
 
             if not stream.is_success:
                 error = await stream.aread()
-                logger.error(f"ElevenLabs API failed: {stream.status_code} {error.decode('utf-8')}")
-                raise Exception(f"ElevenLabs API returned {stream.status_code} status code")
+                raise ElevenlabsException(
+                    f"ElevenLabs API returned {stream.status_code} status code and the following details: {error.decode('utf-8')}"
+                )
             async for chunk in stream.aiter_bytes(chunk_size):
                 if self.upsample:
                     chunk = self._resample_chunk(
