@@ -2,9 +2,9 @@ import os
 from typing import Any, AsyncGenerator, Dict
 
 import google.generativeai as genai
+import grpc
 from google.generativeai.generative_models import _USER_ROLE
 from google.generativeai.types import content_types, generation_types
-import grpc
 
 grpc.aio.init_grpc_aio()  # we initialize gRPC aio to avoid this issue: https://github.com/google-gemini/generative-ai-python/issues/207
 import sentry_sdk
