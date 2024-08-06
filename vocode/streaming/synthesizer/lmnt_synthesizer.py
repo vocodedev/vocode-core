@@ -52,9 +52,9 @@ class LMNTSynthesizer(BaseSynthesizer[LMNTSynthesizerConfig]):
         headers = {"X-API-Key": self.api_key}
         body = {
             "text": message.text,
-            "voice": self.voice_id,
-            "stability": self.stability,
-            "similarity_boost": self.similarity_boost,
+            "voice": self.voice_id
+            # "stability": self.stability,
+            # "similarity_boost": self.similarity_boost,
         }
 
         # Debugging output
@@ -97,7 +97,7 @@ class LMNTSynthesizer(BaseSynthesizer[LMNTSynthesizerConfig]):
         chunk_queue: asyncio.Queue[Optional[bytes]],
     ):
         try:
-            async with self.session.post(url, headers=headers, json=body) as resp:
+            async with self.session.post(url, headers=headers, data=body) as resp:
                 if resp.status != 200:
                     logger.error(f"LMNT API failed: {resp.status} {await resp.text()}")
                     raise Exception(f"LMNT API returned {resp.status} status code")
