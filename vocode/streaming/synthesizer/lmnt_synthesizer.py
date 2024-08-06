@@ -8,7 +8,7 @@ from vocode.streaming.models.audio import AudioEncoding, SamplingRate
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import LMNTSynthesizerConfig
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
-from vocode.streaming.utils.create_task import asyncio_create_task_with_done_error_log
+from vocode.streaming.utils.create_task import asyncio_create_task
 
 LMNT_BASE_URL = "https://api.lmnt.com/v1"
 STREAMED_CHUNK_SIZE = 16000 * 2 // 4  # 1/8 of a second of 16kHz audio with 16-bit samples
@@ -65,7 +65,7 @@ class LMNTSynthesizer(BaseSynthesizer[LMNTSynthesizerConfig]):
         assert body["voice"], "Voice ID must not be empty"
 
         chunk_queue: asyncio.Queue[Optional[bytes]] = asyncio.Queue()
-        asyncio_create_task_with_done_error_log(
+        asyncio_create_task(
             self.get_chunks(url, headers, body, chunk_size, chunk_queue),
         )
 
