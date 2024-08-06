@@ -1,9 +1,11 @@
 import asyncio
+import base64
 import hashlib
 from typing import Optional
+
 import aiohttp
-import base64
 from loguru import logger
+
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import LMNTSynthesizerConfig
@@ -12,6 +14,7 @@ from vocode.streaming.utils.create_task import asyncio_create_task
 
 LMNT_BASE_URL = "https://api.lmnt.com/v1"
 STREAMED_CHUNK_SIZE = 16000 * 2 // 4  # 1/8 of a second of 16kHz audio with 16-bit samples
+
 
 class LMNTSynthesizer(BaseSynthesizer[LMNTSynthesizerConfig]):
     def __init__(
@@ -52,7 +55,7 @@ class LMNTSynthesizer(BaseSynthesizer[LMNTSynthesizerConfig]):
         headers = {"X-API-Key": self.api_key}
         body = {
             "text": message.text,
-            "voice": self.voice_id
+            "voice": self.voice_id,
             # "stability": self.stability,
             # "similarity_boost": self.similarity_boost,
         }
@@ -101,7 +104,7 @@ class LMNTSynthesizer(BaseSynthesizer[LMNTSynthesizerConfig]):
                 if resp.status != 200:
                     logger.error(f"LMNT API failed: {resp.status} {await resp.text()}")
                     raise Exception(f"LMNT API returned {resp.status} status code")
-                
+
                 data = await resp.json()
                 audio = base64.b64decode(data["audio"])
                 chunk_queue.put_nowait(audio)

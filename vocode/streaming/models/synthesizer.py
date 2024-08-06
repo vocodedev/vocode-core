@@ -246,7 +246,7 @@ class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA
     model_id: str = DEFAULT_CARTESIA_MODEL_ID
     voice_id: str = DEFAULT_CARTESIA_VOICE_ID
     _experimental_voice_controls: Optional[CartesiaVoiceControls] = None
-    
+
 
 class LMNTSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.LMNT.value):
     api_key: Optional[str] = None

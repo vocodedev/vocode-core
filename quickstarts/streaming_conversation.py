@@ -8,22 +8,27 @@ from vocode.logging import configure_pretty_logging
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
+
+# Import LMNT synthesizer
 # from vocode.streaming.synthesizer.eleven_labs_websocket_synthesizer import ElevenLabsWSSynthesizer
 # from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
 # from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode.streaming.models.synthesizer import GoogleSynthesizerConfig, AudioEncoding
+from vocode.streaming.models.synthesizer import (
+    AudioEncoding,
+    GoogleSynthesizerConfig,
+    LMNTSynthesizerConfig,
+)
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
 )
 from vocode.streaming.streaming_conversation import StreamingConversation
+from vocode.streaming.synthesizer.lmnt_synthesizer import LMNTSynthesizer
+
 # from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 # from vocode.streaming.synthesizer.google_synthesizer import GoogleSynthesizer
 from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 
-# Import LMNT synthesizer
-from vocode.streaming.models.synthesizer import LMNTSynthesizerConfig
-from vocode.streaming.synthesizer.lmnt_synthesizer import LMNTSynthesizer
 configure_pretty_logging()
 
 
@@ -80,7 +85,7 @@ async def main():
                 stability=0.5,
                 similarity_boost=0.75,
                 sampling_rate=16000,
-                audio_encoding=AudioEncoding.LINEAR16
+                audio_encoding=AudioEncoding.LINEAR16,
             )
         ),
     )
