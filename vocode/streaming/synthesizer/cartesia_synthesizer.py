@@ -28,7 +28,10 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
 
         self.cartesia_tts = AsyncCartesia
 
-        self._experimental_voice_controls = synthesizer_config.experimental_voice_controls
+        if synthesizer_config.experimental_voice_controls:
+            self._experimental_voice_controls = (
+                synthesizer_config.experimental_voice_controls.dict()
+            )
 
         if synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
             match synthesizer_config.sampling_rate:
@@ -143,6 +146,13 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
                 )
                 self.ctx._close()
             if buffer:
+                # pad the leftover buffer with silence
+                if len(buffer) < chunk_size:
+                    padding_size = chunk_size - len(buffer)
+                    if self.output_format["encoding"] == "pcm_mulaw":
+                        buffer.extend(b"\x7f" * padding_size)  # 127 is silence in mu-law
+                    elif self.output_format["encoding"] == "pcm_s16le":
+                        buffer.extend(b"\x00\x00" * padding_size)  # 0 is silence in s16le
                 yield SynthesisResult.ChunkResult(chunk=buffer, is_last_chunk=True)
 
         return SynthesisResult(
