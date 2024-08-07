@@ -309,6 +309,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                         conversation_id=self.conversation.id,
                         vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
                         twilio_sid=getattr(self.conversation, "twilio_sid", None),
+                        exotel_sid=getattr(self.conversation, "exotel_sid", None),
                         agent_response_tracker=agent_response_tracker,
                     ),
                 )

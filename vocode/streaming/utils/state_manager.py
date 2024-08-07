@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Optional
 
 from vocode.streaming.models.transcriber import EndpointingConfig
 from vocode.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
+from vocode.streaming.telephony.client.exotel_client import ExotelClient
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
 from vocode.streaming.telephony.client.vonage_client import VonageClient
 from vocode.streaming.utils.redis_conversation_message_queue import RedisConversationMessageQueue
@@ -16,6 +17,9 @@ if TYPE_CHECKING:
     )
     from vocode.streaming.telephony.conversation.vonage_phone_conversation import (
         VonagePhoneConversation,
+    )
+    from vocode.streaming.telephony.conversation.exotel_phone_conversation import (
+        ExotelPhoneConversation,
     )
 
 
@@ -167,4 +171,22 @@ class TwilioPhoneConversationStateManager(PhoneConversationStateManager):
         return TwilioClient(
             base_url=self._twilio_phone_conversation.base_url,
             maybe_twilio_config=self.get_twilio_config(),
+        )
+
+
+class ExotelPhoneConversationStateManager(PhoneConversationStateManager):
+    def __init__(self, conversation: "ExotelPhoneConversation"):
+        super().__init__(conversation=conversation)
+        self._exotel_phone_conversation = conversation
+
+    def get_exotel_config(self):
+        return self._exotel_phone_conversation.exotel_config
+
+    def get_exotel_sid(self):
+        return self._exotel_phone_conversation.exotel_sid
+
+    def create_exotel_client(self):
+        return ExotelClient(
+            base_url=self._exotel_phone_conversation.base_url,
+            maybe_exotel_config=self.get_exotel_config(),
         )

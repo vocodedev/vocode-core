@@ -72,6 +72,7 @@ class AgentInput(TypedModel, type=AgentInputType.BASE.value):  # type: ignore
     conversation_id: str
     vonage_uuid: Optional[str]
     twilio_sid: Optional[str]
+    exotel_sid: Optional[str]
     agent_response_tracker: Optional[asyncio.Event] = None
 
     class Config:
