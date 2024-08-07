@@ -16,6 +16,8 @@ class PineconeDB(VectorDB):
 
         self.index_name = self.config.index
         self.pinecone_api_key = getenv("PINECONE_API_KEY") or self.config.api_key
+        if not self.pinecone_api_key:
+            raise ValueError("Pinecone API key not set")
         self.pinecone_environment = getenv("PINECONE_ENVIRONMENT") or self.config.api_environment
         self.pinecone_url = f"https://{self.index_name}.svc.{self.pinecone_environment}.pinecone.io"
         self._text_key = "text"
