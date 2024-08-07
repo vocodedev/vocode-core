@@ -1,7 +1,7 @@
 from typing import Literal, Optional, Type, Union, get_args
 
 from loguru import logger
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from vocode.streaming.action.phone_call_action import (
     TwilioPhoneConversationAction,
@@ -32,7 +32,8 @@ class TransferCallResponse(BaseModel):
     success: bool
 
 
-class TransferCallVocodeActionConfig(VocodeActionConfig, type="action_transfer_call"):  # type: ignore
+class TransferCallVocodeActionConfig(VocodeActionConfig):
+    type: Literal["action_transfer_call"] = "action_transfer_call"
     phone_number: Optional[str] = Field(
         None, description="The phone number to transfer the call to"
     )

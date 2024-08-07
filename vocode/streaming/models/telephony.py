@@ -1,8 +1,11 @@
+from abc import ABC
 from enum import Enum
 from typing import Any, Dict, Literal, Optional, Union
 
+from pydantic import BaseModel
+
+from vocode.streaming.models.adaptive_object import AdaptiveObject
 from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.model import BaseModel, TypedModel
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig, SynthesizerConfig
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
@@ -85,16 +88,11 @@ class DialIntoZoomCall(BaseModel):
     twilio_config: Optional[TwilioConfig] = None
 
 
-class CallConfigType(str, Enum):
-    BASE = "call_config_base"
-    TWILIO = "call_config_twilio"
-    VONAGE = "call_config_vonage"
-
-
 PhoneCallDirection = Literal["inbound", "outbound"]
 
 
-class BaseCallConfig(TypedModel, type=CallConfigType.BASE.value):  # type: ignore
+class BaseCallConfig(AdaptiveObject, ABC):
+    type: Any
     transcriber_config: TranscriberConfig
     agent_config: AgentConfig
     synthesizer_config: SynthesizerConfig
@@ -114,7 +112,8 @@ class BaseCallConfig(TypedModel, type=CallConfigType.BASE.value):  # type: ignor
         raise NotImplementedError
 
 
-class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):  # type: ignore
+class TwilioCallConfig(BaseCallConfig):
+    type: Literal["call_config_twilio"] = "call_config_twilio"
     twilio_config: TwilioConfig
     twilio_sid: str
 
@@ -137,7 +136,8 @@ class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):  # typ
         )
 
 
-class VonageCallConfig(BaseCallConfig, type=CallConfigType.VONAGE.value):  # type: ignore
+class VonageCallConfig(BaseCallConfig):
+    type: Literal["call_config_vonage"] = "call_config_vonage"
     vonage_config: VonageConfig
     vonage_uuid: str
     output_to_speaker: bool = False

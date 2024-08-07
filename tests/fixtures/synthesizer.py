@@ -1,5 +1,6 @@
 import wave
 from io import BytesIO
+from typing import Literal
 
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import SynthesizerConfig
@@ -17,8 +18,10 @@ def create_fake_audio(message: str, synthesizer_config: SynthesizerConfig):
     return file
 
 
-class TestSynthesizerConfig(SynthesizerConfig, type="synthesizer_test"):
+class TestSynthesizerConfig(SynthesizerConfig):
     __test__ = False
+
+    type: Literal["synthesizer_test"] = "synthesizer_test"
 
 
 class TestSynthesizer(BaseSynthesizer[TestSynthesizerConfig]):

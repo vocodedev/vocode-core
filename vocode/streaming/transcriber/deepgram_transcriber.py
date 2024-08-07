@@ -1,13 +1,13 @@
 import asyncio
 import json
 from datetime import datetime, timezone
-from typing import List, Optional, Tuple, Union
+from typing import List, Literal, Optional, Tuple, Union
 from urllib.parse import urlencode
 
 import sentry_sdk
 import websockets
 from loguru import logger
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 from websockets.client import WebSocketClientProtocol
 
 from vocode import getenv
@@ -37,14 +37,14 @@ class TimeSilentConfig(BaseModel):
     post_punctuation_time_seconds: float = 0.5
 
 
-class InternalPunctuationEndpointingConfig(  # type: ignore
-    EndpointingConfig, type="internal_punctuation_based"
-):
+class InternalPunctuationEndpointingConfig(EndpointingConfig):  # type: ignore
+    type: Literal["internal_punctuation_based"] = "internal_punctuation_based"
     time_silent_config: TimeSilentConfig = Field(default_factory=TimeSilentConfig)
     use_single_utterance_endpointing_for_first_utterance: bool = False
 
 
-class DeepgramEndpointingConfig(EndpointingConfig, type="deepgram"):  # type: ignore
+class DeepgramEndpointingConfig(EndpointingConfig):
+    type: Literal["deepgram"] = "deepgram"
     vad_threshold_ms: int = 500
     utterance_cutoff_ms: int = 1000
     time_silent_config: Optional[TimeSilentConfig] = Field(default_factory=TimeSilentConfig)

@@ -1,12 +1,13 @@
+from abc import ABC
 from enum import Enum
-from typing import List, Literal, Optional, Union
+from typing import Any, List, Literal, Optional, Union
 
-from pydantic.v1 import validator
+from pydantic import BaseModel, model_validator
 
 from vocode.streaming.models.actions import ActionConfig
+from vocode.streaming.models.adaptive_object import AdaptiveObject
 from vocode.streaming.models.message import BaseMessage
 
-from .model import BaseModel, TypedModel
 from .vector_db import VectorDBConfig
 
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
@@ -40,36 +41,18 @@ GROQ_GEMMA_7B_MODEL_NAME = "gemma-7b-it"
 InterruptSensitivity = Literal["low", "high"]
 
 
-class AgentType(str, Enum):
-    BASE = "agent_base"
-    LLM = "agent_llm"
-    CHAT_GPT_ALPHA = "agent_chat_gpt_alpha"
-    CHAT_GPT = "agent_chat_gpt"
-    ANTHROPIC = "agent_anthropic"
-    CHAT_VERTEX_AI = "agent_chat_vertex_ai"
-    ECHO = "agent_echo"
-    GPT4ALL = "agent_gpt4all"
-    LLAMACPP = "agent_llamacpp"
-    GROQ = "agent_groq"
-    INFORMATION_RETRIEVAL = "agent_information_retrieval"
-    RESTFUL_USER_IMPLEMENTED = "agent_restful_user_implemented"
-    WEBSOCKET_USER_IMPLEMENTED = "agent_websocket_user_implemented"
-    ACTION = "agent_action"
-    LANGCHAIN = "agent_langchain"
-
-
 class FillerAudioConfig(BaseModel):
     silence_threshold_seconds: float = FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS
     use_phrases: bool = True
     use_typing_noise: bool = False
 
-    @validator("use_typing_noise")
-    def typing_noise_excludes_phrases(cls, v, values):
-        if v and values.get("use_phrases"):
-            values["use_phrases"] = False
-        if not v and not values.get("use_phrases"):
+    @model_validator(mode="after")
+    def typing_noise_excludes_phrases(self):
+        if self.use_typing_noise and self.use_phrases:
+            self.use_phrases = False
+        if not self.use_typing_noise and not self.use_phrases:
             raise ValueError("must use either typing noise or phrases for filler audio")
-        return v
+        return self
 
 
 class WebhookConfig(BaseModel):
@@ -90,7 +73,8 @@ class CutOffResponse(BaseModel):
     messages: List[BaseMessage] = [BaseMessage(text="Sorry?")]
 
 
-class AgentConfig(TypedModel, type=AgentType.BASE.value):  # type: ignore
+class AgentConfig(AdaptiveObject, ABC):
+    type: Any
     initial_message: Optional[BaseMessage] = None
     generate_responses: bool = True
     allowed_idle_time_seconds: Optional[float] = None
@@ -106,7 +90,8 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):  # type: ignore
     cut_off_response: Optional[CutOffResponse] = None
 
 
-class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):  # type: ignore
+class LLMAgentConfig(AgentConfig):
+    type: Literal["agent_llm"] = "agent_llm"
     prompt_preamble: str
     model_name: str = LLM_AGENT_DEFAULT_MODEL_NAME
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
@@ -118,7 +103,8 @@ class LLMFallback(BaseModel):
     model_name: str
 
 
-class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):  # type: ignore
+class ChatGPTAgentConfig(AgentConfig):
+    type: Literal["agent_chat_gpt"] = "agent_chat_gpt"
     openai_api_key: Optional[str] = None
     prompt_preamble: str
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
@@ -134,14 +120,16 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):  # type: i
     llm_fallback: Optional[LLMFallback] = None
 
 
-class AnthropicAgentConfig(AgentConfig, type=AgentType.ANTHROPIC.value):  # type: ignore
+class AnthropicAgentConfig(AgentConfig):
+    type: Literal["agent_anthropic"] = "agent_anthropic"
     prompt_preamble: str
     model_name: str = CHAT_ANTHROPIC_DEFAULT_MODEL_NAME
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
     temperature: float = LLM_AGENT_DEFAULT_TEMPERATURE
 
 
-class LangchainAgentConfig(AgentConfig, type=AgentType.LANGCHAIN.value):  # type: ignore
+class LangchainAgentConfig(AgentConfig):
+    type: Literal["agent_langchain"] = "agent_langchain"
     prompt_preamble: str
     model_name: str
     provider: str
@@ -149,13 +137,15 @@ class LangchainAgentConfig(AgentConfig, type=AgentType.LANGCHAIN.value):  # type
     max_tokens: int = LLM_AGENT_DEFAULT_MAX_TOKENS
 
 
-class ChatVertexAIAgentConfig(AgentConfig, type=AgentType.CHAT_VERTEX_AI.value):  # type: ignore
+class ChatVertexAIAgentConfig(AgentConfig):
+    type: Literal["agent_chat_vertex_ai"] = "agent_chat_vertex_ai"
     prompt_preamble: str
     model_name: str = CHAT_VERTEX_AI_DEFAULT_MODEL_NAME
     generate_responses: bool = False  # Google Vertex AI doesn't support streaming
 
 
-class GroqAgentConfig(AgentConfig, type=AgentType.GROQ.value):  # type: ignore
+class GroqAgentConfig(AgentConfig):
+    type: Literal["agent_groq"] = "agent_groq"
     groq_api_key: Optional[str] = None
     prompt_preamble: str
     model_name: str = GROQ_DEFAULT_MODEL_NAME
@@ -168,9 +158,8 @@ class GroqAgentConfig(AgentConfig, type=AgentType.GROQ.value):  # type: ignore
     first_response_filler_message: Optional[str] = None
 
 
-class InformationRetrievalAgentConfig(
-    AgentConfig, type=AgentType.INFORMATION_RETRIEVAL.value  # type: ignore
-):
+class InformationRetrievalAgentConfig(AgentConfig):
+    type: Literal["agent_information_retrieval"] = "agent_information_retrieval"
     recipient_descriptor: str
     caller_descriptor: str
     goal_description: str
@@ -178,23 +167,23 @@ class InformationRetrievalAgentConfig(
     # TODO: add fields for IVR, voicemail
 
 
-class EchoAgentConfig(AgentConfig, type=AgentType.ECHO.value):  # type: ignore
-    pass
+class EchoAgentConfig(AgentConfig):
+    type: Literal["agent_echo"] = "agent_echo"
 
 
-class GPT4AllAgentConfig(AgentConfig, type=AgentType.GPT4ALL.value):  # type: ignore
+class GPT4AllAgentConfig(AgentConfig):
+    type: Literal["agent_gpt4all"] = "agent_gpt4all"
     prompt_preamble: str
     model_path: str
     generate_responses: bool = False
 
 
-class RESTfulUserImplementedAgentConfig(
-    AgentConfig, type=AgentType.RESTFUL_USER_IMPLEMENTED.value  # type: ignore
-):
+class RESTfulUserImplementedAgentConfig(AgentConfig):
     class EndpointConfig(BaseModel):
         url: str
         method: str = "POST"
 
+    type: Literal["agent_restful_user_implemented"] = "agent_restful_user_implemented"
     respond: EndpointConfig
     generate_responses: bool = False
     # generate_response: Optional[EndpointConfig]
@@ -205,19 +194,13 @@ class RESTfulAgentInput(BaseModel):
     human_input: str
 
 
-class RESTfulAgentOutputType(str, Enum):
-    BASE = "restful_agent_base"
-    TEXT = "restful_agent_text"
-    END = "restful_agent_end"
-
-
-class RESTfulAgentOutput(TypedModel, type=RESTfulAgentOutputType.BASE):  # type: ignore
-    pass
-
-
-class RESTfulAgentText(RESTfulAgentOutput, type=RESTfulAgentOutputType.TEXT):  # type: ignore
+class RESTfulAgentText(BaseModel):
+    type: Literal["restful_agent_text"]
     response: str
 
 
-class RESTfulAgentEnd(RESTfulAgentOutput, type=RESTfulAgentOutputType.END):  # type: ignore
-    pass
+class RESTfulAgentEnd(BaseModel):
+    type: Literal["restful_agent_end"]
+
+
+RESTfulAgentOutput = Union[RESTfulAgentText, RESTfulAgentEnd]

@@ -1,7 +1,8 @@
 from typing import Optional
 
+from pydantic import BaseModel
+
 from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.model import BaseModel
 
 
 class InputAudioConfig(BaseModel):

@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from vocode.streaming.models.events import EventType, PhoneCallEndedEvent
+from vocode.streaming.models.events import PhoneCallEndedEvent
 from vocode.streaming.utils.events_manager import EventsManager
 
 CONVERSATION_ID = "1"
@@ -19,9 +19,9 @@ async def test_initialization():
 @pytest.mark.asyncio
 async def test_publish_event():
     event = PhoneCallEndedEvent(
-        conversation_id=CONVERSATION_ID, type=EventType.PHONE_CALL_ENDED
+        conversation_id=CONVERSATION_ID, type="event_phone_call_ended"
     )  # Replace with actual Event creation
-    manager = EventsManager([EventType.PHONE_CALL_ENDED])
+    manager = EventsManager(["event_phone_call_ended"])
     manager.publish_event(event)
     assert not manager.queue.empty()
 
@@ -29,16 +29,16 @@ async def test_publish_event():
 @pytest.mark.asyncio
 async def test_handle_event_default_implementation():
     event = PhoneCallEndedEvent(
-        conversation_id=CONVERSATION_ID, type=EventType.PHONE_CALL_ENDED
+        conversation_id=CONVERSATION_ID, type="event_phone_call_ended"
     )  # Replace with actual Event creation
-    manager = EventsManager([EventType.PHONE_CALL_ENDED])
+    manager = EventsManager(["event_phone_call_ended"])
     await manager.handle_event(event)
 
 
 @pytest.mark.asyncio
 async def test_handle_event_non_async_override(mocker):
-    event = PhoneCallEndedEvent(conversation_id=CONVERSATION_ID, type=EventType.PHONE_CALL_ENDED)
-    manager = EventsManager([EventType.PHONE_CALL_ENDED])
+    event = PhoneCallEndedEvent(conversation_id=CONVERSATION_ID, type="event_phone_call_ended")
+    manager = EventsManager(["event_phone_call_ended"])
     manager.publish_event(event)
 
     error_logger_mock = mocker.patch("vocode.streaming.utils.events_manager.logger.error")
@@ -53,9 +53,9 @@ async def test_handle_event_non_async_override(mocker):
 @pytest.mark.asyncio
 async def test_start_and_active_loop():
     event = PhoneCallEndedEvent(
-        conversation_id=CONVERSATION_ID, type=EventType.PHONE_CALL_ENDED
+        conversation_id=CONVERSATION_ID, type="event_phone_call_ended"
     )  # Replace with actual Event creation
-    manager = EventsManager([EventType.PHONE_CALL_ENDED])
+    manager = EventsManager(["event_phone_call_ended"])
     asyncio.create_task(manager.start())
     manager.publish_event(event)
     await asyncio.sleep(0.1)
@@ -64,8 +64,8 @@ async def test_start_and_active_loop():
 
 @pytest.mark.asyncio
 async def test_flush_method():
-    event = PhoneCallEndedEvent(conversation_id=CONVERSATION_ID, type=EventType.PHONE_CALL_ENDED)
-    manager = EventsManager([EventType.PHONE_CALL_ENDED])
+    event = PhoneCallEndedEvent(conversation_id=CONVERSATION_ID, type="event_phone_call_ended")
+    manager = EventsManager(["event_phone_call_ended"])
     for _ in range(5):
         manager.publish_event(event)
     await manager.flush()
@@ -74,6 +74,6 @@ async def test_flush_method():
 
 @pytest.mark.asyncio
 async def test_queue_empty_and_timeout():
-    manager = EventsManager([EventType.TRANSCRIPT])
+    manager = EventsManager(["event_transcript"])
     await manager.flush()
     assert manager.queue.empty()

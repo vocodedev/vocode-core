@@ -1,11 +1,14 @@
 import asyncio
+from typing import Literal
 
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.transcriber.base_transcriber import BaseAsyncTranscriber, Transcription
 
 
-class TestTranscriberConfig(TranscriberConfig, type="transcriber_test"):
+class TestTranscriberConfig(TranscriberConfig):
     __test__ = False
+
+    type: Literal["transcriber_test"] = "transcriber_test"
 
 
 class TestAsyncTranscriber(BaseAsyncTranscriber[TestTranscriberConfig]):
