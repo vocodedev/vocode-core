@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic.v1 import validator
 
@@ -236,7 +236,7 @@ DEFAULT_CARTESIA_VOICE_ID = "f9836c6e-a0bd-460e-9d3c-f7299fa60f94"
 class CartesiaVoiceControls(BaseModel):
     """See https://docs.cartesia.ai/user-guides/voice-control"""
 
-    speed: Optional[str | float] = None
+    speed: Optional[Union[float, str]] = None
     emotion: Optional[List[str]] = None
 
 
