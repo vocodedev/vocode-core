@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, TypedDict
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic.v1 import validator
 
@@ -230,18 +230,18 @@ class PollySynthesizerConfig(SynthesizerConfig, type=SynthesizerType.POLLY.value
 
 
 DEFAULT_CARTESIA_MODEL_ID = "sonic-english"
-DEFAULT_CARTESIA_VOICE_ID = "829ccd10-f8b3-43cd-b8a0-4aeaa81f3b30"
+DEFAULT_CARTESIA_VOICE_ID = "f9836c6e-a0bd-460e-9d3c-f7299fa60f94"
 
 
-class CartesiaVoiceControls(TypedDict):
+class CartesiaVoiceControls(BaseModel):
     """See https://docs.cartesia.ai/user-guides/voice-control"""
 
-    speed: str
-    emotion: List[str]
+    speed: Optional[Union[float, str]] = None
+    emotion: Optional[List[str]] = None
 
 
 class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA.value):  # type: ignore
     api_key: Optional[str] = None
     model_id: str = DEFAULT_CARTESIA_MODEL_ID
     voice_id: str = DEFAULT_CARTESIA_VOICE_ID
-    _experimental_voice_controls: Optional[CartesiaVoiceControls] = None
+    experimental_voice_controls: Optional[CartesiaVoiceControls] = None
