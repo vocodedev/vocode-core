@@ -502,12 +502,12 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=to_say_start))
             )
-            self.json_transcript.entries.append(
-                StateAgentTranscriptActionError(
-                    action_name=action_name,
-                    message=f"Failed to run action due to lack of config. We're gonna assume this is a demo and hallucinate a response.",
-                )
-            )
+            # self.json_transcript.entries.append(
+            #     StateAgentTranscriptActionError(
+            #         action_name=action_name,
+            #         message=f"Failed to run action due to lack of config. We're gonna assume this is a demo and hallucinate a response.",
+            #     )
+            # )
             return await saveActionResultAndMoveOn(
                 action_result=f"Action Completed: Demo Action, {action_name}, was simulated successfully."
             )
