@@ -505,8 +505,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             self.json_transcript.entries.append(
                 StateAgentTranscriptActionError(
                     action_name=action_name,
-                    message=f"Failed to run action due to lack of config. We're gonna assume this is a demo and hallucinate a response. Raw input was {action_input}",
-                    raw_error_message=str(e),
+                    message=f"Failed to run action due to lack of config. We're gonna assume this is a demo and hallucinate a response.",
                 )
             )
             return await saveActionResultAndMoveOn(
