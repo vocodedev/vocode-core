@@ -482,21 +482,40 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.state_history.append(state)
         self.logger.info(f"Attempting to call: {action}")
         action_name = action["name"]
-        action_config = self._get_action_config(action_name)
-        if not action_config.starting_phrase or action_config.starting_phrase == "":
-            action_config.starting_phrase = "One moment please..."
-        to_say_start = action_config.starting_phrase
-        self.produce_interruptible_agent_response_event_nonblocking(
-            AgentResponseMessage(message=BaseMessage(text=to_say_start))
-        )
-        # self.block_inputs = True
-        action_description = action["description"]
-        params = action["params"]
 
         async def saveActionResultAndMoveOn(action_result: str):
             self.block_inputs = False
             self.update_history("action-finish", action_result)
             return await self.handle_state(state["edge"])
+
+        try:
+            action_config = self._get_action_config(action_name)
+            if not action_config.starting_phrase or action_config.starting_phrase == "":
+                action_config.starting_phrase = "One moment please..."
+            to_say_start = action_config.starting_phrase
+            self.produce_interruptible_agent_response_event_nonblocking(
+                AgentResponseMessage(message=BaseMessage(text=to_say_start))
+            )
+        except Exception as e:
+            self.logger.error(f"Action config not found. Simulating action completion.")
+            to_say_start = "One moment please..."
+            self.produce_interruptible_agent_response_event_nonblocking(
+                AgentResponseMessage(message=BaseMessage(text=to_say_start))
+            )
+            self.json_transcript.entries.append(
+                StateAgentTranscriptActionError(
+                    action_name=action_name,
+                    message=f"Failed to run action due to lack of config. We're gonna assume this is a demo and hallucinate a response. Raw input was {action_input}",
+                    raw_error_message=str(e),
+                )
+            )
+            return await saveActionResultAndMoveOn(
+                action_result=f"Action Completed: Demo Action, {action_name}, was simulated successfully."
+            )
+
+        # self.block_inputs = True
+        action_description = action["description"]
+        params = action["params"]
 
         if params:
             dict_to_fill = {
@@ -537,7 +556,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     raw_error_message=str(e),
                 )
             )
-            return saveActionResultAndMoveOn(
+            self.logger.error(f"Internal error in action config or not found.")
+            return await saveActionResultAndMoveOn(
                 action_result=f"action {action_name} failed to run due to an internal error"
             )
 
@@ -567,7 +587,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                         raw_error_message=str(e),
                     )
                 )
-                return saveActionResultAndMoveOn(
+                return await saveActionResultAndMoveOn(
                     action_result=f"action {action_name} failed to run due to an internal error"
                 )
 
@@ -586,6 +606,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         try:
             input, output = await run_action_and_return_input(action, action_input)
         except Exception as e:
+            self.logger.error(f"Action failed to run. Error: {str(e)}")
             self.json_transcript.entries.append(
                 StateAgentTranscriptActionError(
                     action_name=action_name,
@@ -594,7 +615,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 )
             )
 
-        return saveActionResultAndMoveOn(
+        return await saveActionResultAndMoveOn(
             f"Action Completed: '{action_name}' completed with the following result:\ninput:'{input}'\noutput:\n{output}"
         )
 
