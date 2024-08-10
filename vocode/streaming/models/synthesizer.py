@@ -245,17 +245,3 @@ class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA
     api_key: Optional[str] = None
     model_id: str = DEFAULT_CARTESIA_MODEL_ID
     voice_id: str = DEFAULT_CARTESIA_VOICE_ID
-    experimental_voice_controls: Optional[CartesiaVoiceControls] = None
-
-
-DEFAULT_DEEPGRAM_LANGUAGE_CODE = "en"
-DEFAULT_DEEPGRAM_VOICE_NAME = "perseus"
-DEFAULT_DEEPGRAM_MODEL_NAME = "aura"
-
-
-class DeepgramSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.DEEPGRAM.value):  # type: ignore
-    api_key: Optional[str] = None
-    language_code: str = DEFAULT_DEEPGRAM_LANGUAGE_CODE
-    voice_name: str = DEFAULT_DEEPGRAM_VOICE_NAME
-    model_name: str = DEFAULT_DEEPGRAM_MODEL_NAME
-    model: str = f"{model_name}-{voice_name}-{language_code}"
