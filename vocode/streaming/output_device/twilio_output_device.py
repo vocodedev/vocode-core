@@ -5,11 +5,16 @@ import audioop
 import base64
 import json
 from typing import List, Optional, Union
+import os
+import io
+import time
+from dataclasses import dataclass
 
 from fastapi import WebSocket
 from fastapi.websockets import WebSocketState
 from loguru import logger
 from pydantic import BaseModel
+from pydub import AudioSegment
 
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
 from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
@@ -19,11 +24,25 @@ from vocode.streaming.utils.dtmf_utils import DTMFToneGenerator, KeypadEntry
 from vocode.streaming.utils.worker import InterruptibleEvent
 
 
+BACKGROUND_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "background_audio")
+BACKGROUND_NOISE_PATH = "%s/city-sounds-5m.wav" % BACKGROUND_AUDIO_PATH
+
+AUDIO_FRAME_RATE = 8000
+AUDIO_SAMPLE_WIDTH = 1
+AUDIO_CHANNELS = 1
+
+
 class ChunkFinishedMarkMessage(BaseModel):
     chunk_id: str
 
 
 MarkMessage = Union[ChunkFinishedMarkMessage]  # space for more mark messages
+
+
+@dataclass
+class AudioItem:
+    chunk: bytes
+    chunk_id: str
 
 
 class TwilioOutputDevice(AbstractOutputDevice):
@@ -38,12 +57,16 @@ class TwilioOutputDevice(AbstractOutputDevice):
         self._unprocessed_audio_chunks_queue: asyncio.Queue[InterruptibleEvent[AudioChunk]] = (
             asyncio.Queue()
         )
+        self._audio_queue: asyncio.Queue[AudioItem] = asyncio.Queue()
 
     def consume_nonblocking(self, item: InterruptibleEvent[AudioChunk]):
         if not item.is_interrupted():
-            self._send_audio_chunk_and_mark(
-                chunk=item.payload.data, chunk_id=str(item.payload.chunk_id)
+            self._audio_queue.put_nowait(
+                AudioItem(chunk=item.payload.data, chunk_id=str(item.payload.chunk_id))
             )
+            # self._send_audio_chunk_and_mark(
+            #     chunk=item.payload.data, chunk_id=str(item.payload.chunk_id)
+            # )
             self._unprocessed_audio_chunks_queue.put_nowait(item)
         else:
             audio_chunk = item.payload
@@ -112,7 +135,10 @@ class TwilioOutputDevice(AbstractOutputDevice):
     async def _run_loop(self):
         send_twilio_messages_task = asyncio_create_task(self._send_twilio_messages())
         process_mark_messages_task = asyncio_create_task(self._process_mark_messages())
-        await asyncio.gather(send_twilio_messages_task, process_mark_messages_task)
+        send_background_noise_task = asyncio_create_task(self._send_background_noise())
+        await asyncio.gather(
+            send_twilio_messages_task, process_mark_messages_task, send_background_noise_task
+        )
 
     def _send_audio_chunk_and_mark(self, chunk: bytes, chunk_id: str):
         media_message = {
@@ -136,3 +162,81 @@ class TwilioOutputDevice(AbstractOutputDevice):
             "streamSid": self.stream_sid,
         }
         self._twilio_events_queue.put_nowait(json.dumps(clear_message))
+
+    async def _send_background_noise(self):
+        sound = AudioSegment.from_file(BACKGROUND_NOISE_PATH)
+        sound = sound.set_channels(AUDIO_CHANNELS)
+        sound = sound.set_frame_rate(AUDIO_FRAME_RATE)
+        sound = sound.set_sample_width(AUDIO_SAMPLE_WIDTH)
+        sound = sound - 8  # 8dB quieter
+        output_bytes_io = io.BytesIO()
+        sound.export(output_bytes_io, format="raw")
+        raw_bytes = output_bytes_io.getvalue()
+        raw_data = audioop.lin2ulaw(raw_bytes, 1)
+        default_noise_chunk_size = 800  # 100ms
+        current_position = 0
+
+        while True:
+            current_time = time.perf_counter()
+            # TODO: Handle the wrap-around case better.
+            if current_position + default_noise_chunk_size >= len(raw_data):
+                current_position = 0
+
+            try:
+                audio_item = self._audio_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                audio_item = None
+
+            if audio_item is None:
+                chunk_size = default_noise_chunk_size
+                chunk = raw_data[current_position : current_position + chunk_size]
+                self._send_noise_message(chunk)
+            else:
+                audio_chunk = audio_item.chunk
+                chunk_size = len(audio_chunk)
+                noise_chunk = raw_data[current_position : current_position + chunk_size]
+                chunk = overlap_with_noise(audio_chunk, noise_chunk)
+                self._send_audio_chunk_and_mark(chunk, audio_item.chunk_id)
+
+            current_position += chunk_size
+            elapsed_time = time.perf_counter() - current_time
+            duration = chunk_size / AUDIO_FRAME_RATE
+            sleep_seconds = max(duration - elapsed_time, 0)
+            await asyncio.sleep(sleep_seconds)
+
+    def _send_noise_message(self, chunk: bytes):
+        media_message = {
+            "event": "media",
+            "streamSid": self.stream_sid,
+            "media": {"payload": base64.b64encode(chunk).decode("utf-8")},
+        }
+        self._twilio_events_queue.put_nowait(json.dumps(media_message))
+
+
+def overlap_with_noise(chunk: bytes, noise_chunk: bytes) -> bytes:
+    chunk_linear = audioop.ulaw2lin(chunk, 1)
+    noise_linear = audioop.ulaw2lin(noise_chunk, 1)
+
+    chunk_sound = AudioSegment.from_raw(
+        io.BytesIO(chunk_linear),
+        frame_rate=AUDIO_FRAME_RATE,
+        sample_width=AUDIO_SAMPLE_WIDTH,
+        channels=AUDIO_CHANNELS,
+    )
+
+    noise_sound = AudioSegment.from_raw(
+        io.BytesIO(noise_linear),
+        frame_rate=AUDIO_FRAME_RATE,
+        sample_width=AUDIO_SAMPLE_WIDTH,
+        channels=AUDIO_CHANNELS,
+    )
+    mixed = chunk_sound.overlay(noise_sound)
+    mixed = mixed.set_channels(AUDIO_CHANNELS)
+    mixed = mixed.set_frame_rate(AUDIO_FRAME_RATE)
+    mixed = mixed.set_sample_width(AUDIO_SAMPLE_WIDTH)
+
+    output_bytes_io = io.BytesIO()
+    mixed.export(output_bytes_io, format="raw")
+    raw_bytes = output_bytes_io.getvalue()
+
+    return audioop.lin2ulaw(raw_bytes, 1)
