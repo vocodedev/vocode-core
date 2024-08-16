@@ -125,6 +125,7 @@
         "api-reference/numbers/list-numbers",
         "api-reference/numbers/get-number",
         "api-reference/numbers/buy-number",
+        "api-reference/numbers/link-number",
         "api-reference/numbers/update-number",
         "api-reference/numbers/cancel-number"
       ]

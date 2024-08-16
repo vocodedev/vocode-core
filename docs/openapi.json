@@ -20,34 +20,38 @@
         "tags": ["numbers"],
         "summary": "List Numbers",
         "operationId": "list_numbers",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Page", "default": 1 },
             "name": "page",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "title": "Page" }
           },
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
-            "in": "query"
-          },
-          {
+            "in": "query",
             "required": false,
-            "schema": { "type": "string", "title": "Sort Column" },
-            "name": "sort_column",
-            "in": "query"
+            "schema": { "type": "integer", "default": 10, "title": "Size" }
           },
           {
+            "name": "sort_column",
+            "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "title": "Sort Desc",
-              "default": false
-            },
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Sort Column"
+            }
+          },
+          {
             "name": "sort_desc",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+              "default": false,
+              "title": "Sort Desc"
+            }
           }
         ],
         "responses": {
@@ -67,8 +71,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/numbers": {
@@ -76,12 +79,13 @@
         "tags": ["numbers"],
         "summary": "Get Number",
         "operationId": "get_number",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "title": "Phone Number" },
             "name": "phone_number",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "title": "Phone Number" }
           }
         ],
         "responses": {
@@ -101,8 +105,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/numbers/buy": {
@@ -149,21 +152,22 @@
         "tags": ["numbers"],
         "summary": "Update Number",
         "operationId": "update_number",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "title": "Phone Number" },
             "name": "phone_number",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "title": "Phone Number" }
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": { "$ref": "#/components/schemas/UpdateNumberRequest" }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -182,8 +186,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/numbers/cancel": {
@@ -191,12 +194,13 @@
         "tags": ["numbers"],
         "summary": "Cancel Number",
         "operationId": "cancel_number",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "title": "Phone Number" },
             "name": "phone_number",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "title": "Phone Number" }
           }
         ],
         "responses": {
@@ -216,8 +220,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/numbers/link": {
@@ -261,34 +264,38 @@
         "tags": ["calls"],
         "summary": "List Calls",
         "operationId": "list_calls",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Page", "default": 1 },
             "name": "page",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "title": "Page" }
           },
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
-            "in": "query"
-          },
-          {
+            "in": "query",
             "required": false,
-            "schema": { "type": "string", "title": "Sort Column" },
-            "name": "sort_column",
-            "in": "query"
+            "schema": { "type": "integer", "default": 10, "title": "Size" }
           },
           {
+            "name": "sort_column",
+            "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "title": "Sort Desc",
-              "default": false
-            },
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Sort Column"
+            }
+          },
+          {
             "name": "sort_desc",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+              "default": false,
+              "title": "Sort Desc"
+            }
           }
         ],
         "responses": {
@@ -308,8 +315,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/calls": {
@@ -317,12 +323,13 @@
         "tags": ["calls"],
         "summary": "Get Call",
         "operationId": "get_call",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "responses": {
@@ -342,8 +349,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/calls/end": {
@@ -351,12 +357,13 @@
         "tags": ["calls"],
         "summary": "End Call",
         "operationId": "end_call",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "responses": {
@@ -376,8 +383,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/calls/create": {
@@ -419,12 +425,13 @@
         "tags": ["calls"],
         "summary": "Get Recording",
         "operationId": "get_recording",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "responses": {
@@ -440,8 +447,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/usage": {
@@ -467,12 +473,13 @@
         "tags": ["actions"],
         "summary": "Get Action",
         "operationId": "get_action",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "responses": {
@@ -492,8 +499,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/actions/list": {
@@ -501,34 +507,38 @@
         "tags": ["actions"],
         "summary": "List Actions",
         "operationId": "list_actions",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Page", "default": 1 },
             "name": "page",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "title": "Page" }
           },
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
-            "in": "query"
-          },
-          {
+            "in": "query",
             "required": false,
-            "schema": { "type": "string", "title": "Sort Column" },
-            "name": "sort_column",
-            "in": "query"
+            "schema": { "type": "integer", "default": 10, "title": "Size" }
           },
           {
+            "name": "sort_column",
+            "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "title": "Sort Desc",
-              "default": false
-            },
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Sort Column"
+            }
+          },
+          {
             "name": "sort_desc",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+              "default": false,
+              "title": "Sort Desc"
+            }
           }
         ],
         "responses": {
@@ -548,8 +558,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/actions/create": {
@@ -591,23 +600,24 @@
         "tags": ["actions"],
         "summary": "Update Action",
         "operationId": "update_action",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ActionUpdateParamsRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -626,8 +636,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/agents": {
@@ -635,12 +644,13 @@
         "tags": ["agents"],
         "summary": "Get Agent",
         "operationId": "get_agent",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "responses": {
@@ -660,8 +670,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/agents/list": {
@@ -669,34 +678,38 @@
         "tags": ["agents"],
         "summary": "List Agents",
         "operationId": "list_agents",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Page", "default": 1 },
             "name": "page",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "title": "Page" }
           },
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
-            "in": "query"
-          },
-          {
+            "in": "query",
             "required": false,
-            "schema": { "type": "string", "title": "Sort Column" },
-            "name": "sort_column",
-            "in": "query"
+            "schema": { "type": "integer", "default": 10, "title": "Size" }
           },
           {
+            "name": "sort_column",
+            "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "title": "Sort Desc",
-              "default": false
-            },
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Sort Column"
+            }
+          },
+          {
             "name": "sort_desc",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+              "default": false,
+              "title": "Sort Desc"
+            }
           }
         ],
         "responses": {
@@ -716,8 +729,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/agents/create": {
@@ -759,21 +771,22 @@
         "tags": ["agents"],
         "summary": "Update Agent",
         "operationId": "update_agent",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": { "$ref": "#/components/schemas/AgentUpdateParams" }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -792,8 +805,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/voices": {
@@ -801,12 +813,13 @@
         "tags": ["voices"],
         "summary": "Get Voice",
         "operationId": "get_voice",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "responses": {
@@ -826,8 +839,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/voices/list": {
@@ -835,34 +847,38 @@
         "tags": ["voices"],
         "summary": "List Voices",
         "operationId": "list_voices",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Page", "default": 1 },
             "name": "page",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "title": "Page" }
           },
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
-            "in": "query"
-          },
-          {
+            "in": "query",
             "required": false,
-            "schema": { "type": "string", "title": "Sort Column" },
-            "name": "sort_column",
-            "in": "query"
+            "schema": { "type": "integer", "default": 10, "title": "Size" }
           },
           {
+            "name": "sort_column",
+            "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "title": "Sort Desc",
-              "default": false
-            },
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Sort Column"
+            }
+          },
+          {
             "name": "sort_desc",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+              "default": false,
+              "title": "Sort Desc"
+            }
           }
         ],
         "responses": {
@@ -882,8 +898,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/voices/create": {
@@ -925,23 +940,24 @@
         "tags": ["voices"],
         "summary": "Update Voice",
         "operationId": "update_voice",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/VoiceUpdateParamsRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -960,8 +976,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/webhooks": {
@@ -969,12 +984,13 @@
         "tags": ["webhooks"],
         "summary": "Get Webhook",
         "operationId": "get_webhook",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "responses": {
@@ -994,8 +1010,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/webhooks/list": {
@@ -1003,34 +1018,38 @@
         "tags": ["webhooks"],
         "summary": "List Webhooks",
         "operationId": "list_webhooks",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Page", "default": 1 },
             "name": "page",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "title": "Page" }
           },
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
-            "in": "query"
-          },
-          {
+            "in": "query",
             "required": false,
-            "schema": { "type": "string", "title": "Sort Column" },
-            "name": "sort_column",
-            "in": "query"
+            "schema": { "type": "integer", "default": 10, "title": "Size" }
           },
           {
+            "name": "sort_column",
+            "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "title": "Sort Desc",
-              "default": false
-            },
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Sort Column"
+            }
+          },
+          {
             "name": "sort_desc",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+              "default": false,
+              "title": "Sort Desc"
+            }
           }
         ],
         "responses": {
@@ -1050,8 +1069,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/webhooks/create": {
@@ -1093,21 +1111,22 @@
         "tags": ["webhooks"],
         "summary": "Update Webhook",
         "operationId": "update_webhook",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": { "$ref": "#/components/schemas/WebhookUpdateParams" }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1126,8 +1145,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/prompts": {
@@ -1135,12 +1153,13 @@
         "tags": ["prompts"],
         "summary": "Get Prompt",
         "operationId": "get_prompt",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "responses": {
@@ -1160,8 +1179,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/prompts/list": {
@@ -1169,34 +1187,38 @@
         "tags": ["prompts"],
         "summary": "List Prompts",
         "operationId": "list_prompts",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Page", "default": 1 },
             "name": "page",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "title": "Page" }
           },
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
-            "in": "query"
-          },
-          {
+            "in": "query",
             "required": false,
-            "schema": { "type": "string", "title": "Sort Column" },
-            "name": "sort_column",
-            "in": "query"
+            "schema": { "type": "integer", "default": 10, "title": "Size" }
           },
           {
+            "name": "sort_column",
+            "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "title": "Sort Desc",
-              "default": false
-            },
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Sort Column"
+            }
+          },
+          {
             "name": "sort_desc",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+              "default": false,
+              "title": "Sort Desc"
+            }
           }
         ],
         "responses": {
@@ -1216,8 +1238,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/prompts/create": {
@@ -1259,21 +1280,22 @@
         "tags": ["prompts"],
         "summary": "Update Prompt",
         "operationId": "update_prompt",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": { "$ref": "#/components/schemas/PromptUpdateParams" }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1292,8 +1314,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/vector_databases": {
@@ -1301,12 +1322,13 @@
         "tags": ["vector_databases"],
         "summary": "Get Vector Database",
         "operationId": "get_vector_database",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "responses": {
@@ -1328,8 +1350,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/vector_databases/list": {
@@ -1337,34 +1358,38 @@
         "tags": ["vector_databases"],
         "summary": "List Vector Databases",
         "operationId": "list_vector_databases",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Page", "default": 1 },
             "name": "page",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "title": "Page" }
           },
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
-            "in": "query"
-          },
-          {
+            "in": "query",
             "required": false,
-            "schema": { "type": "string", "title": "Sort Column" },
-            "name": "sort_column",
-            "in": "query"
+            "schema": { "type": "integer", "default": 10, "title": "Size" }
           },
           {
+            "name": "sort_column",
+            "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "title": "Sort Desc",
-              "default": false
-            },
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Sort Column"
+            }
+          },
+          {
             "name": "sort_desc",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+              "default": false,
+              "title": "Sort Desc"
+            }
           }
         ],
         "responses": {
@@ -1384,8 +1409,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/vector_databases/create": {
@@ -1431,23 +1455,24 @@
         "tags": ["vector_databases"],
         "summary": "Update Vector Database",
         "operationId": "update_vector_database",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/PineconeVectorDatabaseUpdateParams"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1468,8 +1493,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/account_connections": {
@@ -1477,12 +1501,13 @@
         "tags": ["account_connections"],
         "summary": "Get Account Connection",
         "operationId": "get_account_connection",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "responses": {
@@ -1504,8 +1529,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/account_connections/list": {
@@ -1513,34 +1537,38 @@
         "tags": ["account_connections"],
         "summary": "List Account Connections",
         "operationId": "list_account_connections",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Page", "default": 1 },
             "name": "page",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "title": "Page" }
           },
           {
-            "required": false,
-            "schema": { "type": "integer", "title": "Size", "default": 10 },
             "name": "size",
-            "in": "query"
-          },
-          {
+            "in": "query",
             "required": false,
-            "schema": { "type": "string", "title": "Sort Column" },
-            "name": "sort_column",
-            "in": "query"
+            "schema": { "type": "integer", "default": 10, "title": "Size" }
           },
           {
+            "name": "sort_column",
+            "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "title": "Sort Desc",
-              "default": false
-            },
+              "anyOf": [{ "type": "string" }, { "type": "null" }],
+              "title": "Sort Column"
+            }
+          },
+          {
             "name": "sort_desc",
-            "in": "query"
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [{ "type": "boolean" }, { "type": "null" }],
+              "default": false,
+              "title": "Sort Desc"
+            }
           }
         ],
         "responses": {
@@ -1562,8 +1590,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/account_connections/create": {
@@ -1609,23 +1636,24 @@
         "tags": ["account_connections"],
         "summary": "Update Account Connection",
         "operationId": "update_account_connection",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AccountConnectionUpdateParamsRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1646,8 +1674,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/account_connections/add_to_steering_pool": {
@@ -1655,19 +1682,24 @@
         "tags": ["account_connections"],
         "summary": "Add To Steering Pool",
         "operationId": "add_to_steering_pool",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AddToSteeringPoolRequest"
+                "anyOf": [
+                  { "$ref": "#/components/schemas/AddToSteeringPoolRequest" },
+                  { "type": "null" }
+                ],
+                "title": "Add To Steering Pool Request"
               }
             }
           }
@@ -1685,8 +1717,7 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
       }
     },
     "/v1/account_connections/remove_from_steering_pool": {
@@ -1694,23 +1725,24 @@
         "tags": ["account_connections"],
         "summary": "Remove From Steering Pool",
         "operationId": "remove_from_steering_pool",
+        "security": [{ "HTTPBearer": [] }],
         "parameters": [
           {
-            "required": true,
-            "schema": { "type": "string", "format": "uuid", "title": "Id" },
             "name": "id",
-            "in": "query"
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid", "title": "Id" }
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RemoveFromSteeringPoolRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1725,8 +1757,20 @@
               }
             }
           }
-        },
-        "security": [{ "HTTPBearer": [] }]
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "summary": "Metrics",
+        "description": "Endpoint that serves Prometheus metrics.",
+        "operationId": "metrics_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
       }
     }
   },
@@ -1743,8 +1787,8 @@
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "account_connection_twilio": "#/components/schemas/TwilioAccountConnection",
-                  "account_connection_openai": "#/components/schemas/OpenAIAccountConnection"
+                  "account_connection_openai": "#/components/schemas/OpenAIAccountConnection",
+                  "account_connection_twilio": "#/components/schemas/TwilioAccountConnection"
                 }
               }
             },
@@ -1780,8 +1824,8 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "account_connection_twilio": "#/components/schemas/TwilioAccountConnectionParams",
-            "account_connection_openai": "#/components/schemas/OpenAIAccountConnectionParams"
+            "account_connection_openai": "#/components/schemas/OpenAIAccountConnectionParams",
+            "account_connection_twilio": "#/components/schemas/TwilioAccountConnectionParams"
           }
         }
       },
@@ -1794,8 +1838,8 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "account_connection_twilio": "#/components/schemas/TwilioAccountConnection",
-            "account_connection_openai": "#/components/schemas/OpenAIAccountConnection"
+            "account_connection_openai": "#/components/schemas/OpenAIAccountConnection",
+            "account_connection_twilio": "#/components/schemas/TwilioAccountConnection"
           }
         }
       },
@@ -1810,8 +1854,8 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "account_connection_twilio": "#/components/schemas/TwilioAccountConnectionUpdateParams",
-            "account_connection_openai": "#/components/schemas/OpenAIAccountConnectionUpdateParams"
+            "account_connection_openai": "#/components/schemas/OpenAIAccountConnectionUpdateParams",
+            "account_connection_twilio": "#/components/schemas/TwilioAccountConnectionUpdateParams"
           }
         }
       },
@@ -1830,12 +1874,12 @@
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "action_transfer_call": "#/components/schemas/TransferCallAction",
-                  "action_end_conversation": "#/components/schemas/EndConversationAction",
-                  "action_dtmf": "#/components/schemas/DTMFAction",
                   "action_add_to_conference": "#/components/schemas/AddToConferenceAction",
+                  "action_dtmf": "#/components/schemas/DTMFAction",
+                  "action_end_conversation": "#/components/schemas/EndConversationAction",
+                  "action_external": "#/components/schemas/ExternalAction",
                   "action_set_hold": "#/components/schemas/SetHoldAction",
-                  "action_external": "#/components/schemas/ExternalAction"
+                  "action_transfer_call": "#/components/schemas/TransferCallAction"
                 }
               }
             },
@@ -1875,12 +1919,12 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "action_transfer_call": "#/components/schemas/TransferCallActionParams",
-            "action_end_conversation": "#/components/schemas/EndConversationActionParams",
-            "action_dtmf": "#/components/schemas/DTMFActionParams",
             "action_add_to_conference": "#/components/schemas/AddToConferenceActionParams",
+            "action_dtmf": "#/components/schemas/DTMFActionParams",
+            "action_end_conversation": "#/components/schemas/EndConversationActionParams",
+            "action_external": "#/components/schemas/ExternalActionParams",
             "action_set_hold": "#/components/schemas/SetHoldActionParams",
-            "action_external": "#/components/schemas/ExternalActionParams"
+            "action_transfer_call": "#/components/schemas/TransferCallActionParams"
           }
         }
       },
@@ -1897,12 +1941,12 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "action_transfer_call": "#/components/schemas/TransferCallAction",
-            "action_end_conversation": "#/components/schemas/EndConversationAction",
-            "action_dtmf": "#/components/schemas/DTMFAction",
             "action_add_to_conference": "#/components/schemas/AddToConferenceAction",
+            "action_dtmf": "#/components/schemas/DTMFAction",
+            "action_end_conversation": "#/components/schemas/EndConversationAction",
+            "action_external": "#/components/schemas/ExternalAction",
             "action_set_hold": "#/components/schemas/SetHoldAction",
-            "action_external": "#/components/schemas/ExternalAction"
+            "action_transfer_call": "#/components/schemas/TransferCallAction"
           }
         }
       },
@@ -1919,12 +1963,12 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "action_transfer_call": "#/components/schemas/TransferCallActionUpdateParams",
-            "action_end_conversation": "#/components/schemas/EndConversationActionUpdateParams",
-            "action_dtmf": "#/components/schemas/DTMFActionUpdateParams",
             "action_add_to_conference": "#/components/schemas/AddToConferenceActionUpdateParams",
+            "action_dtmf": "#/components/schemas/DTMFActionUpdateParams",
+            "action_end_conversation": "#/components/schemas/EndConversationActionUpdateParams",
+            "action_external": "#/components/schemas/ExternalActionUpdateParams",
             "action_set_hold": "#/components/schemas/SetHoldActionUpdateParams",
-            "action_external": "#/components/schemas/ExternalActionUpdateParams"
+            "action_transfer_call": "#/components/schemas/TransferCallActionUpdateParams"
           }
         }
       },
@@ -1935,13 +1979,14 @@
           "type": {
             "type": "string",
             "enum": ["action_add_to_conference"],
+            "const": "action_add_to_conference",
             "title": "Type"
           },
           "config": { "$ref": "#/components/schemas/AddToConferenceConfig" },
           "action_trigger": {
             "oneOf": [
               { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger-Output" }
             ],
             "title": "Action Trigger",
             "default": { "type": "action_trigger_function_call", "config": {} },
@@ -1949,7 +1994,7 @@
               "propertyName": "type",
               "mapping": {
                 "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
-                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger-Output"
               }
             }
           }
@@ -1963,13 +2008,14 @@
           "type": {
             "type": "string",
             "enum": ["action_add_to_conference"],
+            "const": "action_add_to_conference",
             "title": "Type"
           },
           "config": { "$ref": "#/components/schemas/AddToConferenceConfig" },
           "action_trigger": {
             "oneOf": [
               { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger-Input" }
             ],
             "title": "Action Trigger",
             "default": { "type": "action_trigger_function_call", "config": {} },
@@ -1977,7 +2023,7 @@
               "propertyName": "type",
               "mapping": {
                 "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
-                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger-Input"
               }
             }
           }
@@ -1991,6 +2037,7 @@
           "type": {
             "type": "string",
             "enum": ["action_add_to_conference"],
+            "const": "action_add_to_conference",
             "title": "Type"
           },
           "config": {
@@ -2005,8 +2052,17 @@
               {
                 "oneOf": [
                   { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-                  { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
-                ]
+                  {
+                    "$ref": "#/components/schemas/PhraseBasedActionTrigger-Input"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                    "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger-Input"
+                  }
+                }
               },
               { "$ref": "#/components/schemas/Undefined" }
             ],
@@ -2033,17 +2089,22 @@
       },
       "AddToSteeringPoolRequest": {
         "properties": {
-          "phone_number": { "type": "string", "title": "Phone Number" }
+          "phone_number": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Phone Number"
+          }
         },
         "type": "object",
-        "required": ["phone_number"],
         "title": "AddToSteeringPoolRequest"
       },
       "Agent": {
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
-          "name": { "type": "string", "title": "Name" },
+          "name": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Name"
+          },
           "prompt": { "$ref": "#/components/schemas/Prompt" },
           "language": {
             "allOf": [{ "$ref": "#/components/schemas/Language" }],
@@ -2062,12 +2123,12 @@
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "action_transfer_call": "#/components/schemas/TransferCallAction",
-                  "action_end_conversation": "#/components/schemas/EndConversationAction",
-                  "action_dtmf": "#/components/schemas/DTMFAction",
                   "action_add_to_conference": "#/components/schemas/AddToConferenceAction",
+                  "action_dtmf": "#/components/schemas/DTMFAction",
+                  "action_end_conversation": "#/components/schemas/EndConversationAction",
+                  "action_external": "#/components/schemas/ExternalAction",
                   "action_set_hold": "#/components/schemas/SetHoldAction",
-                  "action_external": "#/components/schemas/ExternalAction"
+                  "action_transfer_call": "#/components/schemas/TransferCallAction"
                 }
               }
             },
@@ -2079,29 +2140,45 @@
               { "$ref": "#/components/schemas/AzureVoice" },
               { "$ref": "#/components/schemas/RimeVoice" },
               { "$ref": "#/components/schemas/ElevenLabsVoice" },
-              { "$ref": "#/components/schemas/PlayHtVoice" }
+              { "$ref": "#/components/schemas/PlayHtVoice" },
+              { "$ref": "#/components/schemas/VocodeVoice" }
             ],
             "title": "Voice",
             "discriminator": {
               "propertyName": "type",
               "mapping": {
                 "voice_azure": "#/components/schemas/AzureVoice",
-                "voice_rime": "#/components/schemas/RimeVoice",
                 "voice_eleven_labs": "#/components/schemas/ElevenLabsVoice",
-                "voice_play_ht": "#/components/schemas/PlayHtVoice"
+                "voice_play_ht": "#/components/schemas/PlayHtVoice",
+                "voice_rime": "#/components/schemas/RimeVoice",
+                "voice_vocode": "#/components/schemas/VocodeVoice"
               }
             }
           },
-          "initial_message": { "type": "string", "title": "Initial Message" },
-          "webhook": { "$ref": "#/components/schemas/Webhook" },
+          "initial_message": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Initial Message"
+          },
+          "webhook": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/Webhook" },
+              { "type": "null" }
+            ]
+          },
           "vector_database": {
-            "$ref": "#/components/schemas/PineconeVectorDatabase"
+            "anyOf": [
+              { "$ref": "#/components/schemas/PineconeVectorDatabase" },
+              { "type": "null" }
+            ]
           },
           "interrupt_sensitivity": {
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
             "default": "low"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "context_endpoint": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Context Endpoint"
+          },
           "noise_suppression": {
             "type": "boolean",
             "title": "Noise Suppression",
@@ -2130,7 +2207,7 @@
             "default": 0.0
           },
           "openai_model_name_override": {
-            "type": "string",
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
             "title": "Openai Model Name Override"
           },
           "ask_if_human_present_on_idle": {
@@ -2139,12 +2216,33 @@
             "default": false
           },
           "openai_account_connection": {
-            "$ref": "#/components/schemas/OpenAIAccountConnection"
+            "anyOf": [
+              { "$ref": "#/components/schemas/OpenAIAccountConnection" },
+              { "type": "null" }
+            ]
           },
           "run_do_not_call_detection": {
             "type": "boolean",
             "title": "Run Do Not Call Detection",
             "default": false
+          },
+          "llm_fallback": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/InternalLLMFallback" },
+              { "type": "null" }
+            ]
+          },
+          "deepgram_keywords": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [{ "type": "integer" }, { "type": "number" }]
+                },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "title": "Deepgram Keywords"
           },
           "llm_temperature": {
             "type": "number",
@@ -2185,7 +2283,10 @@
       },
       "AgentParams": {
         "properties": {
-          "name": { "type": "string", "title": "Name" },
+          "name": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Name"
+          },
           "prompt": {
             "anyOf": [
               { "type": "string", "format": "uuid" },
@@ -2213,7 +2314,18 @@
                     },
                     { "$ref": "#/components/schemas/SetHoldActionParams" },
                     { "$ref": "#/components/schemas/ExternalActionParams" }
-                  ]
+                  ],
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "action_add_to_conference": "#/components/schemas/AddToConferenceActionParams",
+                      "action_dtmf": "#/components/schemas/DTMFActionParams",
+                      "action_end_conversation": "#/components/schemas/EndConversationActionParams",
+                      "action_external": "#/components/schemas/ExternalActionParams",
+                      "action_set_hold": "#/components/schemas/SetHoldActionParams",
+                      "action_transfer_call": "#/components/schemas/TransferCallActionParams"
+                    }
+                  }
                 }
               ]
             },
@@ -2229,24 +2341,40 @@
                   { "$ref": "#/components/schemas/AzureVoiceParams" },
                   { "$ref": "#/components/schemas/RimeVoiceParams" },
                   { "$ref": "#/components/schemas/ElevenLabsVoiceParams" },
-                  { "$ref": "#/components/schemas/PlayHtVoiceParams" }
-                ]
+                  { "$ref": "#/components/schemas/PlayHtVoiceParams" },
+                  { "$ref": "#/components/schemas/VocodeVoiceParams" }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "voice_azure": "#/components/schemas/AzureVoiceParams",
+                    "voice_eleven_labs": "#/components/schemas/ElevenLabsVoiceParams",
+                    "voice_play_ht": "#/components/schemas/PlayHtVoiceParams",
+                    "voice_rime": "#/components/schemas/RimeVoiceParams",
+                    "voice_vocode": "#/components/schemas/VocodeVoiceParams"
+                  }
+                }
               }
             ],
             "title": "Voice"
           },
-          "initial_message": { "type": "string", "title": "Initial Message" },
+          "initial_message": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Initial Message"
+          },
           "webhook": {
             "anyOf": [
               { "type": "string", "format": "uuid" },
-              { "$ref": "#/components/schemas/WebhookParams" }
+              { "$ref": "#/components/schemas/WebhookParams" },
+              { "type": "null" }
             ],
             "title": "Webhook"
           },
           "vector_database": {
             "anyOf": [
               { "type": "string", "format": "uuid" },
-              { "$ref": "#/components/schemas/PineconeVectorDatabaseParams" }
+              { "$ref": "#/components/schemas/PineconeVectorDatabaseParams" },
+              { "type": "null" }
             ],
             "title": "Vector Database"
           },
@@ -2254,7 +2382,10 @@
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
             "default": "low"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "context_endpoint": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Context Endpoint"
+          },
           "noise_suppression": {
             "type": "boolean",
             "title": "Noise Suppression",
@@ -2283,7 +2414,7 @@
             "default": 0.0
           },
           "openai_model_name_override": {
-            "type": "string",
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
             "title": "Openai Model Name Override"
           },
           "ask_if_human_present_on_idle": {
@@ -2294,7 +2425,8 @@
           "openai_account_connection": {
             "anyOf": [
               { "$ref": "#/components/schemas/OpenAIAccountConnection" },
-              { "type": "string", "format": "uuid" }
+              { "type": "string", "format": "uuid" },
+              { "type": "null" }
             ],
             "title": "Openai Account Connection"
           },
@@ -2302,6 +2434,24 @@
             "type": "boolean",
             "title": "Run Do Not Call Detection",
             "default": false
+          },
+          "llm_fallback": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/InternalLLMFallback" },
+              { "type": "null" }
+            ]
+          },
+          "deepgram_keywords": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [{ "type": "integer" }, { "type": "number" }]
+                },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "title": "Deepgram Keywords"
           },
           "llm_temperature": {
             "type": "number",
@@ -2318,7 +2468,8 @@
           "name": {
             "anyOf": [
               { "type": "string" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Name"
           },
@@ -2363,7 +2514,18 @@
                         {
                           "$ref": "#/components/schemas/ExternalActionUpdateParams"
                         }
-                      ]
+                      ],
+                      "discriminator": {
+                        "propertyName": "type",
+                        "mapping": {
+                          "action_add_to_conference": "#/components/schemas/AddToConferenceActionUpdateParams",
+                          "action_dtmf": "#/components/schemas/DTMFActionUpdateParams",
+                          "action_end_conversation": "#/components/schemas/EndConversationActionUpdateParams",
+                          "action_external": "#/components/schemas/ExternalActionUpdateParams",
+                          "action_set_hold": "#/components/schemas/SetHoldActionUpdateParams",
+                          "action_transfer_call": "#/components/schemas/TransferCallActionUpdateParams"
+                        }
+                      }
                     }
                   ]
                 },
@@ -2383,8 +2545,19 @@
                   {
                     "$ref": "#/components/schemas/ElevenLabsVoiceUpdateParams"
                   },
-                  { "$ref": "#/components/schemas/PlayHtVoiceUpdateParams" }
-                ]
+                  { "$ref": "#/components/schemas/PlayHtVoiceUpdateParams" },
+                  { "$ref": "#/components/schemas/VocodeVoiceUpdateParams" }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "voice_azure": "#/components/schemas/AzureVoiceUpdateParams",
+                    "voice_eleven_labs": "#/components/schemas/ElevenLabsVoiceUpdateParams",
+                    "voice_play_ht": "#/components/schemas/PlayHtVoiceUpdateParams",
+                    "voice_rime": "#/components/schemas/RimeVoiceUpdateParams",
+                    "voice_vocode": "#/components/schemas/VocodeVoiceUpdateParams"
+                  }
+                }
               },
               { "$ref": "#/components/schemas/Undefined" }
             ],
@@ -2393,7 +2566,8 @@
           "initial_message": {
             "anyOf": [
               { "type": "string" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Initial Message"
           },
@@ -2401,7 +2575,8 @@
             "anyOf": [
               { "type": "string", "format": "uuid" },
               { "$ref": "#/components/schemas/WebhookUpdateParams" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Webhook"
           },
@@ -2411,7 +2586,8 @@
               {
                 "$ref": "#/components/schemas/PineconeVectorDatabaseUpdateParams"
               },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Vector Database"
           },
@@ -2425,7 +2601,8 @@
           "context_endpoint": {
             "anyOf": [
               { "type": "string" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Context Endpoint"
           },
@@ -2467,7 +2644,8 @@
           "openai_model_name_override": {
             "anyOf": [
               { "type": "string" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Openai Model Name Override"
           },
@@ -2482,7 +2660,8 @@
             "anyOf": [
               { "$ref": "#/components/schemas/OpenAIAccountConnection" },
               { "type": "string", "format": "uuid" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Openai Account Connection"
           },
@@ -2492,6 +2671,27 @@
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Run Do Not Call Detection"
+          },
+          "llm_fallback": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/InternalLLMFallback" },
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
+            ],
+            "title": "Llm Fallback"
+          },
+          "deepgram_keywords": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [{ "type": "integer" }, { "type": "number" }]
+                },
+                "type": "object"
+              },
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
+            ],
+            "title": "Deepgram Keywords"
           }
         },
         "type": "object",
@@ -2504,6 +2704,7 @@
           "type": {
             "type": "string",
             "enum": ["voice_azure"],
+            "const": "voice_azure",
             "title": "Type"
           },
           "voice_name": { "type": "string", "title": "Voice Name" },
@@ -2519,6 +2720,7 @@
           "type": {
             "type": "string",
             "enum": ["voice_azure"],
+            "const": "voice_azure",
             "title": "Type"
           },
           "voice_name": { "type": "string", "title": "Voice Name" },
@@ -2534,6 +2736,7 @@
           "type": {
             "type": "string",
             "enum": ["voice_azure"],
+            "const": "voice_azure",
             "title": "Type"
           },
           "voice_name": {
@@ -2564,7 +2767,10 @@
       },
       "BuyPhoneNumberRequest": {
         "properties": {
-          "area_code": { "type": "string", "title": "Area Code" },
+          "area_code": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Area Code"
+          },
           "telephony_provider": {
             "type": "string",
             "enum": ["vonage", "twilio"],
@@ -2572,9 +2778,20 @@
             "default": "vonage"
           },
           "telephony_account_connection": {
-            "type": "string",
-            "format": "uuid",
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "type": "null" }
+            ],
             "title": "Telephony Account Connection"
+          },
+          "inbound_agent": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/AgentParams" },
+              { "type": "string", "format": "uuid" },
+              { "type": "string", "enum": ["default"], "const": "default" },
+              { "type": "null" }
+            ],
+            "title": "Inbound Agent"
           }
         },
         "type": "object",
@@ -2588,51 +2805,92 @@
             "allOf": [{ "$ref": "#/components/schemas/CallStatus" }],
             "default": "not_started"
           },
-          "error_message": { "type": "string", "title": "Error Message" },
+          "error_message": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Error Message"
+          },
           "recording_available": {
             "type": "boolean",
             "title": "Recording Available",
             "default": false
           },
-          "transcript": { "type": "string", "title": "Transcript" },
+          "transcript": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Transcript"
+          },
           "human_detection_result": {
-            "type": "string",
-            "enum": ["human", "no_human"],
+            "anyOf": [
+              { "type": "string", "enum": ["human", "no_human"] },
+              { "type": "null" }
+            ],
             "title": "Human Detection Result"
           },
           "do_not_call_result": {
-            "type": "boolean",
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
             "title": "Do Not Call Result"
           },
-          "telephony_id": { "type": "string", "title": "Telephony Id" },
+          "telephony_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Telephony Id"
+          },
           "stage": {
-            "type": "string",
-            "enum": [
-              "created",
-              "picked_up",
-              "transfer_started",
-              "transfer_successful"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "created",
+                  "picked_up",
+                  "transfer_started",
+                  "transfer_successful"
+                ]
+              },
+              { "type": "null" }
             ],
             "title": "Stage"
           },
           "stage_outcome": {
-            "type": "string",
-            "enum": [
-              "human_unanswered",
-              "call_did_not_connect",
-              "human_disconnected",
-              "bot_disconnected",
-              "transfer_unanswered",
-              "transfer_disconnected"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "human_unanswered",
+                  "call_did_not_connect",
+                  "human_disconnected",
+                  "bot_disconnected",
+                  "transfer_unanswered",
+                  "transfer_disconnected"
+                ]
+              },
+              { "type": "null" }
             ],
             "title": "Stage Outcome"
           },
           "telephony_metadata": {
             "anyOf": [
-              { "$ref": "#/components/schemas/VonageTelephonyMetadata" },
-              { "$ref": "#/components/schemas/TwilioTelephonyMetadata" }
+              {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/VonageTelephonyMetadata" },
+                  { "$ref": "#/components/schemas/TwilioTelephonyMetadata" }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "telephony_metadata_twilio": "#/components/schemas/TwilioTelephonyMetadata",
+                    "telephony_metadata_vonage": "#/components/schemas/VonageTelephonyMetadata"
+                  }
+                }
+              },
+              { "type": "null" }
             ],
             "title": "Telephony Metadata"
+          },
+          "start_time": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Start Time"
+          },
+          "end_time": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "End Time"
           },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
@@ -2646,41 +2904,46 @@
             "type": "string",
             "title": "Agent Phone Number"
           },
-          "start_time": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Start Time"
-          },
-          "end_time": {
-            "type": "string",
-            "format": "date-time",
-            "title": "End Time"
-          },
           "hipaa_compliant": {
             "type": "boolean",
             "title": "Hipaa Compliant",
             "default": false
           },
           "on_no_human_answer": {
-            "type": "string",
-            "enum": ["continue", "hangup"],
+            "anyOf": [
+              { "type": "string", "enum": ["continue", "hangup"] },
+              { "type": "null" }
+            ],
             "title": "On No Human Answer"
           },
           "context": {
-            "additionalProperties": { "type": "string" },
-            "type": "object",
+            "anyOf": [
+              {
+                "additionalProperties": { "type": "string" },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
             "title": "Context"
           },
           "run_do_not_call_detection": {
-            "type": "boolean",
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
             "title": "Run Do Not Call Detection"
           },
           "telephony_account_connection": {
-            "$ref": "#/components/schemas/TwilioAccountConnection"
+            "anyOf": [
+              { "$ref": "#/components/schemas/TwilioAccountConnection" },
+              { "type": "null" }
+            ]
           },
           "telephony_params": {
-            "additionalProperties": { "type": "string" },
-            "type": "object",
+            "anyOf": [
+              {
+                "additionalProperties": { "type": "string" },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
             "title": "Telephony Params"
           }
         },
@@ -2726,19 +2989,22 @@
       "CallStatus": {
         "type": "string",
         "enum": ["not_started", "in_progress", "error", "ended"],
-        "title": "CallStatus",
-        "description": "An enumeration."
+        "title": "CallStatus"
       },
       "CollectField": {
         "properties": {
           "field_type": {
             "type": "string",
             "enum": ["field_type_email"],
+            "const": "field_type_email",
             "title": "Field Type"
           },
           "label": { "type": "string", "title": "Label" },
           "name": { "type": "string", "title": "Name" },
-          "description": { "type": "string", "title": "Description" }
+          "description": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Description"
+          }
         },
         "type": "object",
         "required": ["field_type", "label", "name"],
@@ -2746,7 +3012,10 @@
       },
       "CreateCallAgentParams": {
         "properties": {
-          "name": { "type": "string", "title": "Name" },
+          "name": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Name"
+          },
           "prompt": {
             "anyOf": [
               { "type": "string", "format": "uuid" },
@@ -2774,7 +3043,18 @@
                     },
                     { "$ref": "#/components/schemas/SetHoldActionParams" },
                     { "$ref": "#/components/schemas/ExternalActionParams" }
-                  ]
+                  ],
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "action_add_to_conference": "#/components/schemas/AddToConferenceActionParams",
+                      "action_dtmf": "#/components/schemas/DTMFActionParams",
+                      "action_end_conversation": "#/components/schemas/EndConversationActionParams",
+                      "action_external": "#/components/schemas/ExternalActionParams",
+                      "action_set_hold": "#/components/schemas/SetHoldActionParams",
+                      "action_transfer_call": "#/components/schemas/TransferCallActionParams"
+                    }
+                  }
                 }
               ]
             },
@@ -2790,24 +3070,40 @@
                   { "$ref": "#/components/schemas/AzureVoiceParams" },
                   { "$ref": "#/components/schemas/RimeVoiceParams" },
                   { "$ref": "#/components/schemas/ElevenLabsVoiceParams" },
-                  { "$ref": "#/components/schemas/PlayHtVoiceParams" }
-                ]
+                  { "$ref": "#/components/schemas/PlayHtVoiceParams" },
+                  { "$ref": "#/components/schemas/VocodeVoiceParams" }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "voice_azure": "#/components/schemas/AzureVoiceParams",
+                    "voice_eleven_labs": "#/components/schemas/ElevenLabsVoiceParams",
+                    "voice_play_ht": "#/components/schemas/PlayHtVoiceParams",
+                    "voice_rime": "#/components/schemas/RimeVoiceParams",
+                    "voice_vocode": "#/components/schemas/VocodeVoiceParams"
+                  }
+                }
               }
             ],
             "title": "Voice"
           },
-          "initial_message": { "type": "string", "title": "Initial Message" },
+          "initial_message": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Initial Message"
+          },
           "webhook": {
             "anyOf": [
               { "type": "string", "format": "uuid" },
-              { "$ref": "#/components/schemas/WebhookParams" }
+              { "$ref": "#/components/schemas/WebhookParams" },
+              { "type": "null" }
             ],
             "title": "Webhook"
           },
           "vector_database": {
             "anyOf": [
               { "type": "string", "format": "uuid" },
-              { "$ref": "#/components/schemas/PineconeVectorDatabaseParams" }
+              { "$ref": "#/components/schemas/PineconeVectorDatabaseParams" },
+              { "type": "null" }
             ],
             "title": "Vector Database"
           },
@@ -2815,7 +3111,10 @@
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
             "default": "low"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "context_endpoint": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Context Endpoint"
+          },
           "noise_suppression": {
             "type": "boolean",
             "title": "Noise Suppression",
@@ -2844,7 +3143,7 @@
             "default": 0.0
           },
           "openai_model_name_override": {
-            "type": "string",
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
             "title": "Openai Model Name Override"
           },
           "ask_if_human_present_on_idle": {
@@ -2855,7 +3154,8 @@
           "openai_account_connection": {
             "anyOf": [
               { "$ref": "#/components/schemas/OpenAIAccountConnection" },
-              { "type": "string", "format": "uuid" }
+              { "type": "string", "format": "uuid" },
+              { "type": "null" }
             ],
             "title": "Openai Account Connection"
           },
@@ -2863,6 +3163,24 @@
             "type": "boolean",
             "title": "Run Do Not Call Detection",
             "default": false
+          },
+          "llm_fallback": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/InternalLLMFallback" },
+              { "type": "null" }
+            ]
+          },
+          "deepgram_keywords": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [{ "type": "integer" }, { "type": "number" }]
+                },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "title": "Deepgram Keywords"
           },
           "llm_temperature": {
             "type": "number",
@@ -2892,7 +3210,7 @@
             "default": "continue"
           },
           "run_do_not_call_detection": {
-            "type": "boolean",
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
             "title": "Run Do Not Call Detection"
           },
           "hipaa_compliant": {
@@ -2901,13 +3219,23 @@
             "default": false
           },
           "context": {
-            "additionalProperties": { "type": "string" },
-            "type": "object",
+            "anyOf": [
+              {
+                "additionalProperties": { "type": "string" },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
             "title": "Context"
           },
           "telephony_params": {
-            "additionalProperties": { "type": "string" },
-            "type": "object",
+            "anyOf": [
+              {
+                "additionalProperties": { "type": "string" },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
             "title": "Telephony Params"
           }
         },
@@ -2922,23 +3250,15 @@
           "type": {
             "type": "string",
             "enum": ["action_dtmf"],
+            "const": "action_dtmf",
             "title": "Type"
           },
           "config": { "$ref": "#/components/schemas/EmptyActionConfig" },
           "action_trigger": {
-            "oneOf": [
-              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            "allOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" }
             ],
-            "title": "Action Trigger",
-            "default": { "type": "action_trigger_function_call", "config": {} },
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
-                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
-              }
-            }
+            "default": { "type": "action_trigger_function_call", "config": {} }
           }
         },
         "type": "object",
@@ -2950,23 +3270,15 @@
           "type": {
             "type": "string",
             "enum": ["action_dtmf"],
+            "const": "action_dtmf",
             "title": "Type"
           },
           "config": { "$ref": "#/components/schemas/EmptyActionConfig" },
           "action_trigger": {
-            "oneOf": [
-              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            "allOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" }
             ],
-            "title": "Action Trigger",
-            "default": { "type": "action_trigger_function_call", "config": {} },
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
-                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
-              }
-            }
+            "default": { "type": "action_trigger_function_call", "config": {} }
           }
         },
         "type": "object",
@@ -2978,6 +3290,7 @@
           "type": {
             "type": "string",
             "enum": ["action_dtmf"],
+            "const": "action_dtmf",
             "title": "Type"
           },
           "config": {
@@ -2989,12 +3302,7 @@
           },
           "action_trigger": {
             "anyOf": [
-              {
-                "oneOf": [
-                  { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-                  { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
-                ]
-              },
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Action Trigger",
@@ -3012,17 +3320,30 @@
           "type": {
             "type": "string",
             "enum": ["voice_eleven_labs"],
+            "const": "voice_eleven_labs",
             "title": "Type"
           },
           "voice_id": { "type": "string", "title": "Voice Id" },
-          "stability": { "type": "number", "title": "Stability" },
-          "similarity_boost": { "type": "number", "title": "Similarity Boost" },
-          "api_key": { "type": "string", "title": "Api Key" },
+          "stability": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Stability"
+          },
+          "similarity_boost": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Similarity Boost"
+          },
+          "api_key": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Api Key"
+          },
           "optimize_streaming_latency": {
-            "type": "integer",
+            "anyOf": [{ "type": "integer" }, { "type": "null" }],
             "title": "Optimize Streaming Latency"
           },
-          "model_id": { "type": "string", "title": "Model Id" },
+          "model_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Model Id"
+          },
           "experimental_input_streaming": {
             "type": "boolean",
             "title": "Experimental Input Streaming",
@@ -3038,17 +3359,30 @@
           "type": {
             "type": "string",
             "enum": ["voice_eleven_labs"],
+            "const": "voice_eleven_labs",
             "title": "Type"
           },
           "voice_id": { "type": "string", "title": "Voice Id" },
-          "stability": { "type": "number", "title": "Stability" },
-          "similarity_boost": { "type": "number", "title": "Similarity Boost" },
-          "api_key": { "type": "string", "title": "Api Key" },
+          "stability": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Stability"
+          },
+          "similarity_boost": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Similarity Boost"
+          },
+          "api_key": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Api Key"
+          },
           "optimize_streaming_latency": {
-            "type": "integer",
+            "anyOf": [{ "type": "integer" }, { "type": "null" }],
             "title": "Optimize Streaming Latency"
           },
-          "model_id": { "type": "string", "title": "Model Id" },
+          "model_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Model Id"
+          },
           "experimental_input_streaming": {
             "type": "boolean",
             "title": "Experimental Input Streaming",
@@ -3064,6 +3398,7 @@
           "type": {
             "type": "string",
             "enum": ["voice_eleven_labs"],
+            "const": "voice_eleven_labs",
             "title": "Type"
           },
           "voice_id": {
@@ -3076,35 +3411,40 @@
           "stability": {
             "anyOf": [
               { "type": "number" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Stability"
           },
           "similarity_boost": {
             "anyOf": [
               { "type": "number" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Similarity Boost"
           },
           "api_key": {
             "anyOf": [
               { "type": "string" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Api Key"
           },
           "optimize_streaming_latency": {
             "anyOf": [
               { "type": "integer" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Optimize Streaming Latency"
           },
           "model_id": {
             "anyOf": [
               { "type": "string" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Model Id"
           },
@@ -3132,13 +3472,14 @@
           "type": {
             "type": "string",
             "enum": ["action_end_conversation"],
+            "const": "action_end_conversation",
             "title": "Type"
           },
           "config": { "$ref": "#/components/schemas/EmptyActionConfig" },
           "action_trigger": {
             "oneOf": [
               { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger-Output" }
             ],
             "title": "Action Trigger",
             "default": { "type": "action_trigger_function_call", "config": {} },
@@ -3146,7 +3487,7 @@
               "propertyName": "type",
               "mapping": {
                 "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
-                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger-Output"
               }
             }
           }
@@ -3160,13 +3501,14 @@
           "type": {
             "type": "string",
             "enum": ["action_end_conversation"],
+            "const": "action_end_conversation",
             "title": "Type"
           },
           "config": { "$ref": "#/components/schemas/EmptyActionConfig" },
           "action_trigger": {
             "oneOf": [
               { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger-Input" }
             ],
             "title": "Action Trigger",
             "default": { "type": "action_trigger_function_call", "config": {} },
@@ -3174,7 +3516,7 @@
               "propertyName": "type",
               "mapping": {
                 "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
-                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger-Input"
               }
             }
           }
@@ -3188,6 +3530,7 @@
           "type": {
             "type": "string",
             "enum": ["action_end_conversation"],
+            "const": "action_end_conversation",
             "title": "Type"
           },
           "config": {
@@ -3202,8 +3545,17 @@
               {
                 "oneOf": [
                   { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-                  { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
-                ]
+                  {
+                    "$ref": "#/components/schemas/PhraseBasedActionTrigger-Input"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                    "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger-Input"
+                  }
+                }
               },
               { "$ref": "#/components/schemas/Undefined" }
             ],
@@ -3227,8 +3579,7 @@
           "event_recording",
           "event_human_detection"
         ],
-        "title": "EventType",
-        "description": "An enumeration."
+        "title": "EventType"
       },
       "ExternalAction": {
         "properties": {
@@ -3237,23 +3588,15 @@
           "type": {
             "type": "string",
             "enum": ["action_external"],
+            "const": "action_external",
             "title": "Type"
           },
           "config": { "$ref": "#/components/schemas/ExternalActionConfig" },
           "action_trigger": {
-            "oneOf": [
-              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            "allOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" }
             ],
-            "title": "Action Trigger",
-            "default": { "type": "action_trigger_function_call", "config": {} },
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
-                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
-              }
-            }
+            "default": { "type": "action_trigger_function_call", "config": {} }
           }
         },
         "type": "object",
@@ -3265,6 +3608,7 @@
           "processing_mode": {
             "type": "string",
             "enum": ["muted"],
+            "const": "muted",
             "title": "Processing Mode",
             "default": "muted"
           },
@@ -3273,7 +3617,11 @@
           "url": { "type": "string", "title": "Url" },
           "input_schema": { "type": "object", "title": "Input Schema" },
           "speak_on_send": { "type": "boolean", "title": "Speak On Send" },
-          "speak_on_receive": { "type": "boolean", "title": "Speak On Receive" }
+          "speak_on_receive": {
+            "type": "boolean",
+            "title": "Speak On Receive"
+          },
+          "signature_secret": { "type": "string", "title": "Signature Secret" }
         },
         "type": "object",
         "required": [
@@ -3291,23 +3639,15 @@
           "type": {
             "type": "string",
             "enum": ["action_external"],
+            "const": "action_external",
             "title": "Type"
           },
           "config": { "$ref": "#/components/schemas/ExternalActionConfig" },
           "action_trigger": {
-            "oneOf": [
-              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+            "allOf": [
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" }
             ],
-            "title": "Action Trigger",
-            "default": { "type": "action_trigger_function_call", "config": {} },
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
-                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
-              }
-            }
+            "default": { "type": "action_trigger_function_call", "config": {} }
           }
         },
         "type": "object",
@@ -3319,6 +3659,7 @@
           "type": {
             "type": "string",
             "enum": ["action_external"],
+            "const": "action_external",
             "title": "Type"
           },
           "config": {
@@ -3330,12 +3671,7 @@
           },
           "action_trigger": {
             "anyOf": [
-              {
-                "oneOf": [
-                  { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-                  { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
-                ]
-              },
+              { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
               { "$ref": "#/components/schemas/Undefined" }
             ],
             "title": "Action Trigger",
@@ -3351,6 +3687,7 @@
           "type": {
             "type": "string",
             "enum": ["action_trigger_function_call"],
+            "const": "action_trigger_function_call",
             "title": "Type"
           },
           "config": {
@@ -3369,8 +3706,7 @@
       "HTTPMethod": {
         "type": "string",
         "enum": ["GET", "POST"],
-        "title": "HTTPMethod",
-        "description": "An enumeration."
+        "title": "HTTPMethod"
       },
       "HTTPValidationError": {
         "properties": {
@@ -3383,11 +3719,23 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "InternalLLMFallback": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": ["openai", "azure"],
+            "title": "Provider"
+          },
+          "model_name": { "type": "string", "title": "Model Name" }
+        },
+        "type": "object",
+        "required": ["provider", "model_name"],
+        "title": "InternalLLMFallback"
+      },
       "InterruptSensitivity": {
         "type": "string",
         "enum": ["low", "high"],
-        "title": "InterruptSensitivity",
-        "description": "An enumeration."
+        "title": "InterruptSensitivity"
       },
       "Language": {
         "type": "string",
@@ -3404,8 +3752,7 @@
           "ja",
           "ko"
         ],
-        "title": "Language",
-        "description": "An enumeration."
+        "title": "Language"
       },
       "LinkPhoneNumberRequest": {
         "properties": {
@@ -3419,6 +3766,15 @@
             "type": "boolean",
             "title": "Outbound Only",
             "default": false
+          },
+          "inbound_agent": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/AgentParams" },
+              { "type": "string", "format": "uuid" },
+              { "type": "string", "enum": ["default"], "const": "default" },
+              { "type": "null" }
+            ],
+            "title": "Inbound Agent"
           }
         },
         "type": "object",
@@ -3429,7 +3785,10 @@
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
-          "name": { "type": "string", "title": "Name" },
+          "name": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Name"
+          },
           "prompt": {
             "anyOf": [
               { "type": "string", "format": "uuid" },
@@ -3447,12 +3806,22 @@
             "title": "Actions"
           },
           "voice": { "type": "string", "format": "uuid", "title": "Voice" },
-          "initial_message": { "type": "string", "title": "Initial Message" },
-          "webhook": { "type": "string", "format": "uuid", "title": "Webhook" },
+          "initial_message": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Initial Message"
+          },
+          "webhook": {
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "type": "null" }
+            ],
+            "title": "Webhook"
+          },
           "vector_database": {
             "anyOf": [
               { "type": "string", "format": "uuid" },
-              { "$ref": "#/components/schemas/PineconeVectorDatabaseParams" }
+              { "$ref": "#/components/schemas/PineconeVectorDatabaseParams" },
+              { "type": "null" }
             ],
             "title": "Vector Database"
           },
@@ -3460,7 +3829,10 @@
             "allOf": [{ "$ref": "#/components/schemas/InterruptSensitivity" }],
             "default": "low"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "context_endpoint": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Context Endpoint"
+          },
           "noise_suppression": {
             "type": "boolean",
             "title": "Noise Suppression",
@@ -3489,7 +3861,7 @@
             "default": 0.0
           },
           "openai_model_name_override": {
-            "type": "string",
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
             "title": "Openai Model Name Override"
           },
           "ask_if_human_present_on_idle": {
@@ -3500,7 +3872,8 @@
           "openai_account_connection": {
             "anyOf": [
               { "$ref": "#/components/schemas/OpenAIAccountConnection" },
-              { "type": "string", "format": "uuid" }
+              { "type": "string", "format": "uuid" },
+              { "type": "null" }
             ],
             "title": "Openai Account Connection"
           },
@@ -3508,6 +3881,24 @@
             "type": "boolean",
             "title": "Run Do Not Call Detection",
             "default": false
+          },
+          "llm_fallback": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/InternalLLMFallback" },
+              { "type": "null" }
+            ]
+          },
+          "deepgram_keywords": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [{ "type": "integer" }, { "type": "number" }]
+                },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "title": "Deepgram Keywords"
           },
           "llm_temperature": {
             "type": "number",
@@ -3527,51 +3918,92 @@
             "allOf": [{ "$ref": "#/components/schemas/CallStatus" }],
             "default": "not_started"
           },
-          "error_message": { "type": "string", "title": "Error Message" },
+          "error_message": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Error Message"
+          },
           "recording_available": {
             "type": "boolean",
             "title": "Recording Available",
             "default": false
           },
-          "transcript": { "type": "string", "title": "Transcript" },
+          "transcript": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Transcript"
+          },
           "human_detection_result": {
-            "type": "string",
-            "enum": ["human", "no_human"],
+            "anyOf": [
+              { "type": "string", "enum": ["human", "no_human"] },
+              { "type": "null" }
+            ],
             "title": "Human Detection Result"
           },
           "do_not_call_result": {
-            "type": "boolean",
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
             "title": "Do Not Call Result"
           },
-          "telephony_id": { "type": "string", "title": "Telephony Id" },
+          "telephony_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Telephony Id"
+          },
           "stage": {
-            "type": "string",
-            "enum": [
-              "created",
-              "picked_up",
-              "transfer_started",
-              "transfer_successful"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "created",
+                  "picked_up",
+                  "transfer_started",
+                  "transfer_successful"
+                ]
+              },
+              { "type": "null" }
             ],
             "title": "Stage"
           },
           "stage_outcome": {
-            "type": "string",
-            "enum": [
-              "human_unanswered",
-              "call_did_not_connect",
-              "human_disconnected",
-              "bot_disconnected",
-              "transfer_unanswered",
-              "transfer_disconnected"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "human_unanswered",
+                  "call_did_not_connect",
+                  "human_disconnected",
+                  "bot_disconnected",
+                  "transfer_unanswered",
+                  "transfer_disconnected"
+                ]
+              },
+              { "type": "null" }
             ],
             "title": "Stage Outcome"
           },
           "telephony_metadata": {
             "anyOf": [
-              { "$ref": "#/components/schemas/VonageTelephonyMetadata" },
-              { "$ref": "#/components/schemas/TwilioTelephonyMetadata" }
+              {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/VonageTelephonyMetadata" },
+                  { "$ref": "#/components/schemas/TwilioTelephonyMetadata" }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "telephony_metadata_twilio": "#/components/schemas/TwilioTelephonyMetadata",
+                    "telephony_metadata_vonage": "#/components/schemas/VonageTelephonyMetadata"
+                  }
+                }
+              },
+              { "type": "null" }
             ],
             "title": "Telephony Metadata"
+          },
+          "start_time": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Start Time"
+          },
+          "end_time": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "End Time"
           },
           "to_number": { "type": "string", "title": "To Number" },
           "from_number": { "type": "string", "title": "From Number" },
@@ -3585,45 +4017,48 @@
             "type": "string",
             "title": "Agent Phone Number"
           },
-          "start_time": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Start Time"
-          },
-          "end_time": {
-            "type": "string",
-            "format": "date-time",
-            "title": "End Time"
-          },
           "hipaa_compliant": {
             "type": "boolean",
             "title": "Hipaa Compliant",
             "default": false
           },
           "on_no_human_answer": {
-            "type": "string",
-            "enum": ["continue", "hangup"],
+            "anyOf": [
+              { "type": "string", "enum": ["continue", "hangup"] },
+              { "type": "null" }
+            ],
             "title": "On No Human Answer"
           },
           "context": {
-            "additionalProperties": { "type": "string" },
-            "type": "object",
+            "anyOf": [
+              {
+                "additionalProperties": { "type": "string" },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
             "title": "Context"
           },
           "run_do_not_call_detection": {
-            "type": "boolean",
+            "anyOf": [{ "type": "boolean" }, { "type": "null" }],
             "title": "Run Do Not Call Detection"
           },
           "telephony_account_connection": {
             "anyOf": [
               { "type": "string", "format": "uuid" },
-              { "$ref": "#/components/schemas/TwilioAccountConnection" }
+              { "$ref": "#/components/schemas/TwilioAccountConnection" },
+              { "type": "null" }
             ],
             "title": "Telephony Account Connection"
           },
           "telephony_params": {
-            "additionalProperties": { "type": "string" },
-            "type": "object",
+            "anyOf": [
+              {
+                "additionalProperties": { "type": "string" },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
             "title": "Telephony Params"
           }
         },
@@ -3646,8 +4081,10 @@
           "active": { "type": "boolean", "title": "Active", "default": true },
           "label": { "type": "string", "title": "Label", "default": "" },
           "inbound_agent": {
-            "type": "string",
-            "format": "uuid",
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "type": "null" }
+            ],
             "title": "Inbound Agent"
           },
           "outbound_only": {
@@ -3656,8 +4093,13 @@
             "default": false
           },
           "example_context": {
-            "additionalProperties": { "type": "string" },
-            "type": "object",
+            "anyOf": [
+              {
+                "additionalProperties": { "type": "string" },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
             "title": "Example Context"
           },
           "number": { "type": "string", "title": "Number" },
@@ -3670,13 +4112,14 @@
           "telephony_account_connection": {
             "anyOf": [
               { "type": "string", "format": "uuid" },
-              { "$ref": "#/components/schemas/TwilioAccountConnection" }
+              { "$ref": "#/components/schemas/TwilioAccountConnection" },
+              { "type": "null" }
             ],
             "title": "Telephony Account Connection"
           }
         },
         "type": "object",
-        "required": ["id", "user_id", "inbound_agent", "number"],
+        "required": ["id", "user_id", "number"],
         "title": "NormalizedPhoneNumber"
       },
       "NormalizedPrompt": {
@@ -3685,14 +4128,24 @@
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
           "content": { "type": "string", "title": "Content", "default": "" },
           "collect_fields": {
-            "items": { "$ref": "#/components/schemas/CollectField" },
-            "type": "array",
+            "anyOf": [
+              {
+                "items": { "$ref": "#/components/schemas/CollectField" },
+                "type": "array"
+              },
+              { "type": "null" }
+            ],
             "title": "Collect Fields"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "context_endpoint": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Context Endpoint"
+          },
           "prompt_template": {
-            "type": "string",
-            "format": "uuid",
+            "anyOf": [
+              { "type": "string", "format": "uuid" },
+              { "type": "null" }
+            ],
             "title": "Prompt Template"
           }
         },
@@ -3708,6 +4161,7 @@
           "type": {
             "type": "string",
             "enum": ["account_connection_openai"],
+            "const": "account_connection_openai",
             "title": "Type"
           }
         },
@@ -3721,6 +4175,7 @@
           "type": {
             "type": "string",
             "enum": ["account_connection_openai"],
+            "const": "account_connection_openai",
             "title": "Type"
           }
         },
@@ -3740,6 +4195,7 @@
           "type": {
             "type": "string",
             "enum": ["account_connection_openai"],
+            "const": "account_connection_openai",
             "title": "Type"
           }
         },
@@ -3761,15 +4217,25 @@
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
           "active": { "type": "boolean", "title": "Active", "default": true },
           "label": { "type": "string", "title": "Label", "default": "" },
-          "inbound_agent": { "$ref": "#/components/schemas/Agent" },
+          "inbound_agent": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/Agent" },
+              { "type": "null" }
+            ]
+          },
           "outbound_only": {
             "type": "boolean",
             "title": "Outbound Only",
             "default": false
           },
           "example_context": {
-            "additionalProperties": { "type": "string" },
-            "type": "object",
+            "anyOf": [
+              {
+                "additionalProperties": { "type": "string" },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
             "title": "Example Context"
           },
           "number": { "type": "string", "title": "Number" },
@@ -3780,11 +4246,14 @@
             "default": "vonage"
           },
           "telephony_account_connection": {
-            "$ref": "#/components/schemas/TwilioAccountConnection"
+            "anyOf": [
+              { "$ref": "#/components/schemas/TwilioAccountConnection" },
+              { "type": "null" }
+            ]
           }
         },
         "type": "object",
-        "required": ["id", "user_id", "inbound_agent", "number"],
+        "required": ["id", "user_id", "number"],
         "title": "PhoneNumber"
       },
       "PhoneNumberPage": {
@@ -3814,11 +4283,28 @@
         ],
         "title": "PhoneNumberPage"
       },
-      "PhraseBasedActionTrigger": {
+      "PhraseBasedActionTrigger-Input": {
         "properties": {
           "type": {
             "type": "string",
             "enum": ["action_trigger_phrase_based"],
+            "const": "action_trigger_phrase_based",
+            "title": "Type"
+          },
+          "config": {
+            "$ref": "#/components/schemas/PhraseBasedActionTriggerConfig"
+          }
+        },
+        "type": "object",
+        "required": ["type", "config"],
+        "title": "PhraseBasedActionTrigger"
+      },
+      "PhraseBasedActionTrigger-Output": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["action_trigger_phrase_based"],
+            "const": "action_trigger_phrase_based",
             "title": "Type"
           },
           "config": {
@@ -3847,7 +4333,8 @@
           "conditions": {
             "items": {
               "type": "string",
-              "enum": ["phrase_condition_type_contains"]
+              "enum": ["phrase_condition_type_contains"],
+              "const": "phrase_condition_type_contains"
             },
             "type": "array",
             "title": "Conditions"
@@ -3864,6 +4351,7 @@
           "type": {
             "type": "string",
             "enum": ["vector_database_pinecone"],
+            "const": "vector_database_pinecone",
             "title": "Type"
           },
           "index": { "type": "string", "title": "Index" },
@@ -3886,6 +4374,7 @@
           "type": {
             "type": "string",
             "enum": ["vector_database_pinecone"],
+            "const": "vector_database_pinecone",
             "title": "Type"
           },
           "index": { "type": "string", "title": "Index" },
@@ -3901,6 +4390,7 @@
           "type": {
             "type": "string",
             "enum": ["vector_database_pinecone"],
+            "const": "vector_database_pinecone",
             "title": "Type"
           },
           "index": {
@@ -3937,8 +4427,7 @@
           "plan_enterprise",
           "plan_unlimited"
         ],
-        "title": "PlanType",
-        "description": "An enumeration."
+        "title": "PlanType"
       },
       "PlayHtVoice": {
         "properties": {
@@ -3947,27 +4436,54 @@
           "type": {
             "type": "string",
             "enum": ["voice_play_ht"],
+            "const": "voice_play_ht",
             "title": "Type"
           },
           "voice_id": { "type": "string", "title": "Voice Id" },
-          "api_user_id": { "type": "string", "title": "Api User Id" },
-          "api_key": { "type": "string", "title": "Api Key" },
+          "api_user_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Api User Id"
+          },
+          "api_key": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Api Key"
+          },
           "version": {
             "type": "string",
             "enum": ["1", "2"],
             "title": "Version",
             "default": "2"
           },
-          "speed": { "type": "number", "title": "Speed" },
+          "speed": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Speed"
+          },
           "quality": {
-            "type": "string",
-            "enum": ["faster", "draft", "low", "medium", "high", "premium"],
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["faster", "draft", "low", "medium", "high", "premium"]
+              },
+              { "type": "null" }
+            ],
             "title": "Quality"
           },
-          "temperature": { "type": "number", "title": "Temperature" },
-          "top_p": { "type": "number", "title": "Top P" },
-          "text_guidance": { "type": "number", "title": "Text Guidance" },
-          "voice_guidance": { "type": "number", "title": "Voice Guidance" },
+          "temperature": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Temperature"
+          },
+          "top_p": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Top P"
+          },
+          "text_guidance": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Text Guidance"
+          },
+          "voice_guidance": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Voice Guidance"
+          },
           "experimental_remove_silence": {
             "type": "boolean",
             "title": "Experimental Remove Silence",
@@ -3983,27 +4499,54 @@
           "type": {
             "type": "string",
             "enum": ["voice_play_ht"],
+            "const": "voice_play_ht",
             "title": "Type"
           },
           "voice_id": { "type": "string", "title": "Voice Id" },
-          "api_user_id": { "type": "string", "title": "Api User Id" },
-          "api_key": { "type": "string", "title": "Api Key" },
+          "api_user_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Api User Id"
+          },
+          "api_key": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Api Key"
+          },
           "version": {
             "type": "string",
             "enum": ["1", "2"],
             "title": "Version",
             "default": "2"
           },
-          "speed": { "type": "number", "title": "Speed" },
+          "speed": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Speed"
+          },
           "quality": {
-            "type": "string",
-            "enum": ["faster", "draft", "low", "medium", "high", "premium"],
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["faster", "draft", "low", "medium", "high", "premium"]
+              },
+              { "type": "null" }
+            ],
             "title": "Quality"
           },
-          "temperature": { "type": "number", "title": "Temperature" },
-          "top_p": { "type": "number", "title": "Top P" },
-          "text_guidance": { "type": "number", "title": "Text Guidance" },
-          "voice_guidance": { "type": "number", "title": "Voice Guidance" },
+          "temperature": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Temperature"
+          },
+          "top_p": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Top P"
+          },
+          "text_guidance": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Text Guidance"
+          },
+          "voice_guidance": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Voice Guidance"
+          },
           "experimental_remove_silence": {
             "type": "boolean",
             "title": "Experimental Remove Silence",
@@ -4019,6 +4562,7 @@
           "type": {
             "type": "string",
             "enum": ["voice_play_ht"],
+            "const": "voice_play_ht",
             "title": "Type"
           },
           "voice_id": {
@@ -4031,14 +4575,16 @@
           "api_user_id": {
             "anyOf": [
               { "type": "string" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Api User Id"
           },
           "api_key": {
             "anyOf": [
               { "type": "string" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Api Key"
           },
@@ -4052,7 +4598,8 @@
           "speed": {
             "anyOf": [
               { "type": "number" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Speed"
           },
@@ -4062,35 +4609,40 @@
                 "type": "string",
                 "enum": ["faster", "draft", "low", "medium", "high", "premium"]
               },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Quality"
           },
           "temperature": {
             "anyOf": [
               { "type": "number" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Temperature"
           },
           "top_p": {
             "anyOf": [
               { "type": "number" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Top P"
           },
           "text_guidance": {
             "anyOf": [
               { "type": "number" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Text Guidance"
           },
           "voice_guidance": {
             "anyOf": [
               { "type": "number" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Voice Guidance"
           },
@@ -4112,12 +4664,25 @@
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
           "content": { "type": "string", "title": "Content", "default": "" },
           "collect_fields": {
-            "items": { "$ref": "#/components/schemas/CollectField" },
-            "type": "array",
+            "anyOf": [
+              {
+                "items": { "$ref": "#/components/schemas/CollectField" },
+                "type": "array"
+              },
+              { "type": "null" }
+            ],
             "title": "Collect Fields"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
-          "prompt_template": { "$ref": "#/components/schemas/PromptTemplate" }
+          "context_endpoint": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Context Endpoint"
+          },
+          "prompt_template": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/PromptTemplate" },
+              { "type": "null" }
+            ]
+          }
         },
         "type": "object",
         "required": ["id", "user_id"],
@@ -4154,15 +4719,24 @@
         "properties": {
           "content": { "type": "string", "title": "Content", "default": "" },
           "collect_fields": {
-            "items": { "$ref": "#/components/schemas/CollectField" },
-            "type": "array",
+            "anyOf": [
+              {
+                "items": { "$ref": "#/components/schemas/CollectField" },
+                "type": "array"
+              },
+              { "type": "null" }
+            ],
             "title": "Collect Fields"
           },
-          "context_endpoint": { "type": "string", "title": "Context Endpoint" },
+          "context_endpoint": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Context Endpoint"
+          },
           "prompt_template": {
             "anyOf": [
               { "type": "string", "format": "uuid" },
-              { "$ref": "#/components/schemas/PromptTemplate" }
+              { "$ref": "#/components/schemas/PromptTemplate" },
+              { "type": "null" }
             ],
             "title": "Prompt Template"
           }
@@ -4200,14 +4774,16 @@
                 "items": { "$ref": "#/components/schemas/CollectField" },
                 "type": "array"
               },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Collect Fields"
           },
           "context_endpoint": {
             "anyOf": [
               { "type": "string" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Context Endpoint"
           },
@@ -4215,7 +4791,8 @@
             "anyOf": [
               { "type": "string", "format": "uuid" },
               { "$ref": "#/components/schemas/PromptTemplate" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Prompt Template"
           }
@@ -4235,13 +4812,22 @@
         "properties": {
           "id": { "type": "string", "format": "uuid", "title": "Id" },
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
-          "type": { "type": "string", "enum": ["voice_rime"], "title": "Type" },
+          "type": {
+            "type": "string",
+            "enum": ["voice_rime"],
+            "const": "voice_rime",
+            "title": "Type"
+          },
           "speaker": { "type": "string", "title": "Speaker" },
-          "speed_alpha": { "type": "number", "title": "Speed Alpha" },
+          "speed_alpha": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Speed Alpha"
+          },
           "model_id": {
             "anyOf": [
               { "type": "string", "enum": ["mist", "v1"] },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Model Id"
           }
@@ -4252,13 +4838,22 @@
       },
       "RimeVoiceParams": {
         "properties": {
-          "type": { "type": "string", "enum": ["voice_rime"], "title": "Type" },
+          "type": {
+            "type": "string",
+            "enum": ["voice_rime"],
+            "const": "voice_rime",
+            "title": "Type"
+          },
           "speaker": { "type": "string", "title": "Speaker" },
-          "speed_alpha": { "type": "number", "title": "Speed Alpha" },
+          "speed_alpha": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }],
+            "title": "Speed Alpha"
+          },
           "model_id": {
             "anyOf": [
               { "type": "string", "enum": ["mist", "v1"] },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Model Id"
           }
@@ -4269,7 +4864,12 @@
       },
       "RimeVoiceUpdateParams": {
         "properties": {
-          "type": { "type": "string", "enum": ["voice_rime"], "title": "Type" },
+          "type": {
+            "type": "string",
+            "enum": ["voice_rime"],
+            "const": "voice_rime",
+            "title": "Type"
+          },
           "speaker": {
             "anyOf": [
               { "type": "string" },
@@ -4280,14 +4880,16 @@
           "speed_alpha": {
             "anyOf": [
               { "type": "number" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Speed Alpha"
           },
           "model_id": {
             "anyOf": [
               { "type": "string", "enum": ["mist", "v1"] },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Model Id"
           }
@@ -4303,13 +4905,14 @@
           "type": {
             "type": "string",
             "enum": ["action_set_hold"],
+            "const": "action_set_hold",
             "title": "Type"
           },
           "config": { "$ref": "#/components/schemas/EmptyActionConfig" },
           "action_trigger": {
             "oneOf": [
               { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger-Output" }
             ],
             "title": "Action Trigger",
             "default": { "type": "action_trigger_function_call", "config": {} },
@@ -4317,7 +4920,7 @@
               "propertyName": "type",
               "mapping": {
                 "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
-                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger-Output"
               }
             }
           }
@@ -4331,13 +4934,14 @@
           "type": {
             "type": "string",
             "enum": ["action_set_hold"],
+            "const": "action_set_hold",
             "title": "Type"
           },
           "config": { "$ref": "#/components/schemas/EmptyActionConfig" },
           "action_trigger": {
             "oneOf": [
               { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger-Input" }
             ],
             "title": "Action Trigger",
             "default": { "type": "action_trigger_function_call", "config": {} },
@@ -4345,7 +4949,7 @@
               "propertyName": "type",
               "mapping": {
                 "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
-                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger-Input"
               }
             }
           }
@@ -4359,6 +4963,7 @@
           "type": {
             "type": "string",
             "enum": ["action_set_hold"],
+            "const": "action_set_hold",
             "title": "Type"
           },
           "config": {
@@ -4373,8 +4978,17 @@
               {
                 "oneOf": [
                   { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-                  { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
-                ]
+                  {
+                    "$ref": "#/components/schemas/PhraseBasedActionTrigger-Input"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                    "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger-Input"
+                  }
+                }
               },
               { "$ref": "#/components/schemas/Undefined" }
             ],
@@ -4393,13 +5007,14 @@
           "type": {
             "type": "string",
             "enum": ["action_transfer_call"],
+            "const": "action_transfer_call",
             "title": "Type"
           },
           "config": { "$ref": "#/components/schemas/TransferCallConfig" },
           "action_trigger": {
             "oneOf": [
               { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger-Output" }
             ],
             "title": "Action Trigger",
             "default": { "type": "action_trigger_function_call", "config": {} },
@@ -4407,7 +5022,7 @@
               "propertyName": "type",
               "mapping": {
                 "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
-                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger-Output"
               }
             }
           }
@@ -4421,13 +5036,14 @@
           "type": {
             "type": "string",
             "enum": ["action_transfer_call"],
+            "const": "action_transfer_call",
             "title": "Type"
           },
           "config": { "$ref": "#/components/schemas/TransferCallConfig" },
           "action_trigger": {
             "oneOf": [
               { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-              { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
+              { "$ref": "#/components/schemas/PhraseBasedActionTrigger-Input" }
             ],
             "title": "Action Trigger",
             "default": { "type": "action_trigger_function_call", "config": {} },
@@ -4435,7 +5051,7 @@
               "propertyName": "type",
               "mapping": {
                 "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
-                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger"
+                "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger-Input"
               }
             }
           }
@@ -4449,6 +5065,7 @@
           "type": {
             "type": "string",
             "enum": ["action_transfer_call"],
+            "const": "action_transfer_call",
             "title": "Type"
           },
           "config": {
@@ -4463,8 +5080,17 @@
               {
                 "oneOf": [
                   { "$ref": "#/components/schemas/FunctionCallActionTrigger" },
-                  { "$ref": "#/components/schemas/PhraseBasedActionTrigger" }
-                ]
+                  {
+                    "$ref": "#/components/schemas/PhraseBasedActionTrigger-Input"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "action_trigger_function_call": "#/components/schemas/FunctionCallActionTrigger",
+                    "action_trigger_phrase_based": "#/components/schemas/PhraseBasedActionTrigger-Input"
+                  }
+                }
               },
               { "$ref": "#/components/schemas/Undefined" }
             ],
@@ -4492,6 +5118,7 @@
           "type": {
             "type": "string",
             "enum": ["account_connection_twilio"],
+            "const": "account_connection_twilio",
             "title": "Type"
           },
           "steering_pool": {
@@ -4515,6 +5142,7 @@
           "type": {
             "type": "string",
             "enum": ["account_connection_twilio"],
+            "const": "account_connection_twilio",
             "title": "Type"
           },
           "steering_pool": {
@@ -4544,6 +5172,7 @@
           "type": {
             "type": "string",
             "enum": ["account_connection_twilio"],
+            "const": "account_connection_twilio",
             "title": "Type"
           }
         },
@@ -4571,20 +5200,30 @@
           "type": {
             "type": "string",
             "enum": ["telephony_metadata_twilio"],
+            "const": "telephony_metadata_twilio",
             "title": "Type",
             "default": "telephony_metadata_twilio"
           },
-          "call_sid": { "type": "string", "title": "Call Sid" },
-          "call_status": { "type": "string", "title": "Call Status" },
+          "call_sid": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Call Sid"
+          },
+          "call_status": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Call Status"
+          },
           "transfer_call_sid": {
-            "type": "string",
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
             "title": "Transfer Call Sid"
           },
           "transfer_call_status": {
-            "type": "string",
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
             "title": "Transfer Call Status"
           },
-          "conference_sid": { "type": "string", "title": "Conference Sid" }
+          "conference_sid": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Conference Sid"
+          }
         },
         "type": "object",
         "title": "TwilioTelephonyMetadata"
@@ -4610,7 +5249,8 @@
                 "additionalProperties": { "type": "string" },
                 "type": "object"
               },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Example Context"
           },
@@ -4623,9 +5263,10 @@
           },
           "inbound_agent": {
             "anyOf": [
-              { "type": "string", "format": "uuid" },
               { "$ref": "#/components/schemas/AgentUpdateParams" },
-              { "$ref": "#/components/schemas/Undefined" }
+              { "type": "string", "format": "uuid" },
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
             ],
             "title": "Inbound Agent"
           }
@@ -4642,7 +5283,7 @@
             "title": "Monthly Usage Minutes"
           },
           "monthly_usage_limit_minutes": {
-            "type": "integer",
+            "anyOf": [{ "type": "integer" }, { "type": "null" }],
             "title": "Monthly Usage Limit Minutes"
           }
         },
@@ -4691,6 +5332,66 @@
         ],
         "title": "VectorDatabasePage"
       },
+      "VocodeVoice": {
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "title": "Id" },
+          "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
+          "type": {
+            "type": "string",
+            "enum": ["voice_vocode"],
+            "const": "voice_vocode",
+            "title": "Type"
+          },
+          "voice_id": {
+            "type": "string",
+            "enum": ["joe"],
+            "const": "joe",
+            "title": "Voice Id"
+          }
+        },
+        "type": "object",
+        "required": ["id", "user_id", "type", "voice_id"],
+        "title": "VocodeVoice"
+      },
+      "VocodeVoiceParams": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["voice_vocode"],
+            "const": "voice_vocode",
+            "title": "Type"
+          },
+          "voice_id": {
+            "type": "string",
+            "enum": ["joe"],
+            "const": "joe",
+            "title": "Voice Id"
+          }
+        },
+        "type": "object",
+        "required": ["type", "voice_id"],
+        "title": "VocodeVoiceParams"
+      },
+      "VocodeVoiceUpdateParams": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["voice_vocode"],
+            "const": "voice_vocode",
+            "title": "Type"
+          },
+          "voice_id": {
+            "anyOf": [
+              { "type": "string", "enum": ["joe"], "const": "joe" },
+              { "$ref": "#/components/schemas/Undefined" }
+            ],
+            "title": "Voice Id"
+          }
+        },
+        "type": "object",
+        "required": ["type"],
+        "title": "VocodeVoiceUpdateParams"
+      },
       "VoicePage": {
         "properties": {
           "items": {
@@ -4699,15 +5400,17 @@
                 { "$ref": "#/components/schemas/AzureVoice" },
                 { "$ref": "#/components/schemas/RimeVoice" },
                 { "$ref": "#/components/schemas/ElevenLabsVoice" },
-                { "$ref": "#/components/schemas/PlayHtVoice" }
+                { "$ref": "#/components/schemas/PlayHtVoice" },
+                { "$ref": "#/components/schemas/VocodeVoice" }
               ],
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
                   "voice_azure": "#/components/schemas/AzureVoice",
-                  "voice_rime": "#/components/schemas/RimeVoice",
                   "voice_eleven_labs": "#/components/schemas/ElevenLabsVoice",
-                  "voice_play_ht": "#/components/schemas/PlayHtVoice"
+                  "voice_play_ht": "#/components/schemas/PlayHtVoice",
+                  "voice_rime": "#/components/schemas/RimeVoice",
+                  "voice_vocode": "#/components/schemas/VocodeVoice"
                 }
               }
             },
@@ -4739,16 +5442,18 @@
           { "$ref": "#/components/schemas/AzureVoiceParams" },
           { "$ref": "#/components/schemas/RimeVoiceParams" },
           { "$ref": "#/components/schemas/ElevenLabsVoiceParams" },
-          { "$ref": "#/components/schemas/PlayHtVoiceParams" }
+          { "$ref": "#/components/schemas/PlayHtVoiceParams" },
+          { "$ref": "#/components/schemas/VocodeVoiceParams" }
         ],
         "title": "VoiceParamsRequest",
         "discriminator": {
           "propertyName": "type",
           "mapping": {
             "voice_azure": "#/components/schemas/AzureVoiceParams",
-            "voice_rime": "#/components/schemas/RimeVoiceParams",
             "voice_eleven_labs": "#/components/schemas/ElevenLabsVoiceParams",
-            "voice_play_ht": "#/components/schemas/PlayHtVoiceParams"
+            "voice_play_ht": "#/components/schemas/PlayHtVoiceParams",
+            "voice_rime": "#/components/schemas/RimeVoiceParams",
+            "voice_vocode": "#/components/schemas/VocodeVoiceParams"
           }
         }
       },
@@ -4757,16 +5462,18 @@
           { "$ref": "#/components/schemas/AzureVoice" },
           { "$ref": "#/components/schemas/RimeVoice" },
           { "$ref": "#/components/schemas/ElevenLabsVoice" },
-          { "$ref": "#/components/schemas/PlayHtVoice" }
+          { "$ref": "#/components/schemas/PlayHtVoice" },
+          { "$ref": "#/components/schemas/VocodeVoice" }
         ],
         "title": "VoiceResponseModel",
         "discriminator": {
           "propertyName": "type",
           "mapping": {
             "voice_azure": "#/components/schemas/AzureVoice",
-            "voice_rime": "#/components/schemas/RimeVoice",
             "voice_eleven_labs": "#/components/schemas/ElevenLabsVoice",
-            "voice_play_ht": "#/components/schemas/PlayHtVoice"
+            "voice_play_ht": "#/components/schemas/PlayHtVoice",
+            "voice_rime": "#/components/schemas/RimeVoice",
+            "voice_vocode": "#/components/schemas/VocodeVoice"
           }
         }
       },
@@ -4775,16 +5482,18 @@
           { "$ref": "#/components/schemas/AzureVoiceUpdateParams" },
           { "$ref": "#/components/schemas/RimeVoiceUpdateParams" },
           { "$ref": "#/components/schemas/ElevenLabsVoiceUpdateParams" },
-          { "$ref": "#/components/schemas/PlayHtVoiceUpdateParams" }
+          { "$ref": "#/components/schemas/PlayHtVoiceUpdateParams" },
+          { "$ref": "#/components/schemas/VocodeVoiceUpdateParams" }
         ],
         "title": "VoiceUpdateParamsRequest",
         "discriminator": {
           "propertyName": "type",
           "mapping": {
             "voice_azure": "#/components/schemas/AzureVoiceUpdateParams",
-            "voice_rime": "#/components/schemas/RimeVoiceUpdateParams",
             "voice_eleven_labs": "#/components/schemas/ElevenLabsVoiceUpdateParams",
-            "voice_play_ht": "#/components/schemas/PlayHtVoiceUpdateParams"
+            "voice_play_ht": "#/components/schemas/PlayHtVoiceUpdateParams",
+            "voice_rime": "#/components/schemas/RimeVoiceUpdateParams",
+            "voice_vocode": "#/components/schemas/VocodeVoiceUpdateParams"
           }
         }
       },
@@ -4793,6 +5502,7 @@
           "type": {
             "type": "string",
             "enum": ["telephony_metadata_vonage"],
+            "const": "telephony_metadata_vonage",
             "title": "Type",
             "default": "telephony_metadata_vonage"
           }
@@ -4806,7 +5516,8 @@
           "user_id": { "type": "string", "format": "uuid", "title": "User Id" },
           "subscriptions": {
             "items": { "$ref": "#/components/schemas/EventType" },
-            "type": "array"
+            "type": "array",
+            "title": "Subscriptions"
           },
           "url": { "type": "string", "title": "Url" },
           "method": {
@@ -4849,7 +5560,8 @@
         "properties": {
           "subscriptions": {
             "items": { "$ref": "#/components/schemas/EventType" },
-            "type": "array"
+            "type": "array",
+            "title": "Subscriptions"
           },
           "url": { "type": "string", "title": "Url" },
           "method": {
