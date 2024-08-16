@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 
 from loguru import logger
@@ -28,7 +29,11 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
 
         self.cartesia_tts = AsyncCartesia
 
-        self._experimental_voice_controls = synthesizer_config._experimental_voice_controls
+        self._experimental_voice_controls = None
+        if synthesizer_config.experimental_voice_controls:
+            self._experimental_voice_controls = (
+                synthesizer_config.experimental_voice_controls.dict()
+            )
 
         if synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
             match synthesizer_config.sampling_rate:
@@ -85,6 +90,8 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
         self.client = self.cartesia_tts(api_key=self.api_key)
         self.ws = None
         self.ctx = None
+        self.no_more_inputs_task = None
+        self.no_more_inputs_lock = asyncio.Lock()
 
     async def initialize_ws(self):
         if self.ws is None:
@@ -96,8 +103,24 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
                 self.ctx = self.ws.context()
         else:
             if is_first_text_chunk:
+                if self.no_more_inputs_task:
+                    self.no_more_inputs_task.cancel()
                 await self.ctx.no_more_inputs()
                 self.ctx = self.ws.context()
+
+    # This workaround is necessary to prevent the last chunk getting delayed.
+    # In the future, `create_speech_uncached` should be modified to handle this properly by adding a flag to the last chunk.
+    def refresh_no_more_inputs_task(self):
+        if self.no_more_inputs_task:
+            self.no_more_inputs_task.cancel()
+
+        async def delayed_no_more_inputs():
+            await asyncio.sleep(1)
+            async with self.no_more_inputs_lock:
+                if self.ctx:
+                    await self.ctx.no_more_inputs()
+
+        self.no_more_inputs_task = asyncio.create_task(delayed_no_more_inputs())
 
     async def create_speech_uncached(
         self,
@@ -123,6 +146,11 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
                 output_format=self.output_format,
                 _experimental_voice_controls=self._experimental_voice_controls,
             )
+            if not is_sole_text_chunk:
+                try:
+                    self.refresh_no_more_inputs_task()
+                except Exception as e:
+                    logger.info(f"Caught error while sending no more inputs: {e}")
 
         async def chunk_generator(context):
             buffer = bytearray()
@@ -143,6 +171,13 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
                 )
                 self.ctx._close()
             if buffer:
+                # pad the leftover buffer with silence
+                if len(buffer) < chunk_size:
+                    padding_size = chunk_size - len(buffer)
+                    if self.output_format["encoding"] == "pcm_mulaw":
+                        buffer.extend(b"\x7f" * padding_size)  # 127 is silence in mu-law
+                    elif self.output_format["encoding"] == "pcm_s16le":
+                        buffer.extend(b"\x00\x00" * padding_size)  # 0 is silence in s16le
                 yield SynthesisResult.ChunkResult(chunk=buffer, is_last_chunk=True)
 
         return SynthesisResult(
@@ -167,6 +202,8 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
 
     async def tear_down(self):
         await super().tear_down()
+        if self.no_more_inputs_task:
+            self.no_more_inputs_task.cancel()
         if self.ctx:
             self.ctx._close()
         await self.ws.close()

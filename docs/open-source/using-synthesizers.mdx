@@ -13,13 +13,14 @@ Vocode currently supports the following synthesizers:
 
 1. Azure (Microsoft)
 2. Google
-3. Eleven Labs
-4. Rime
-5. Play.ht
-6. GTTS (Google Text-to-Speech)
-7. Stream Elements
-8. Bark
-9. Amazon Polly
+3. Cartesia
+4. Eleven Labs
+5. Rime
+6. Play.ht
+7. GTTS (Google Text-to-Speech)
+8. Stream Elements
+9. Bark
+10. Amazon Polly
 
 These synthesizers are defined using their respective configuration classes, which are subclasses of the `SynthesizerConfig` class.
 
@@ -83,7 +84,38 @@ synthesizer_config=PlayHtSynthesizerConfig.from_telephone_output_device(
 ...
 ```
 
-### Example 2: Using Azure in StreamingConversation locally
+### Example 2: Using Cartesia's streaming synthesizer
+
+We support Cartesia's [low-latency streaming API](https://docs.cartesia.ai/api-reference/endpoints/stream-speech-websocket) enabled by WebSockets. You can use the `CartesiaSynthesizer` with the `CartesiaSynthesizerConfig` to enable this feature.
+
+#### Telephony
+
+```python
+synthesizer_config=CartesiaSynthesizerConfig.from_telephone_output_device(
+    api_key=os.getenv("CARTESIA_API_KEY"),
+    voice_id=os.getenv("CARTESIA_VOICE_ID"),
+)
+```
+
+In this example, the `CartesiaSynthesizerConfig.from_output_device()` method is used to create a configuration object for the Cartesia synthesizer.
+The method takes a `speaker_output` object as an argument, and extracts the `sampling_rate` and `audio_encoding` from the output device.
+
+#### Controlling Speed & Emotions
+
+You can set the `speed` and `emotion` parameters in the `CartesiaSynthesizerConfig` object to control the speed and emotions of the agent's voice! See [this page](https://docs.cartesia.ai/user-guides/voice-control) for more details.
+
+```python
+CartesiaSynthesizerConfig(
+    api_key=os.getenv("CARTESIA_API_KEY"),
+    voice_id=os.getenv("CARTESIA_VOICE_ID"),
+    experimental_voice_controls={
+        "speed": "slow",
+        "emotion": "positivity: high"
+    }
+)
+```
+
+### Example 3: Using Azure in StreamingConversation locally
 
 ```python
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
