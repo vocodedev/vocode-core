@@ -4,6 +4,7 @@ from vocode.streaming.models.actions import ActionConfig
 from vocode.streaming.action.hangup_call import HangUpCall, HangUpCallActionConfig
 from vocode.streaming.action.transfer_call import TransferCall, TransferCallActionConfig
 from vocode.streaming.action.search_online import SearchOnline, SearchOnlineActionConfig
+from vocode.streaming.action.zapier import Zapier, ZapierActionConfig
 from vocode.streaming.action.create_agent import CreateAgent, CreateAgentActionConfig
 from vocode.streaming.action.search_documents import (
     SearchDocuments,
@@ -35,7 +36,7 @@ from vocode.streaming.action.forward_call_to_moovs import (
 
 from vocode.streaming.action.create_sunshine_conversation import (
     CreateSunshineConversation,
-    CreateSunshineConversationActionConfig
+    CreateSunshineConversationActionConfig,
 )
 
 # use_instructions
@@ -61,6 +62,8 @@ class ActionFactory:
             return GetTrain(action_config)
         elif isinstance(action_config, SearchOnlineActionConfig):
             return SearchOnline(action_config)
+        elif isinstance(action_config, ZapierActionConfig):
+            return Zapier(action_config)
         elif isinstance(action_config, SendTextActionConfig):
             return SendText(action_config)
         elif isinstance(action_config, CalendlyActionConfig):

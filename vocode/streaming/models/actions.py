@@ -15,6 +15,7 @@ class ActionType(str, Enum):
     TRANSFER_CALL = "transfer_call"
     HANGUP_CALL = "hangup_call"
     SEARCH_ONLINE = "search_online"
+    ZAPIER = "zapier"
     SEND_TEXT = "sms"
     SEND_EMAIL = "send_email"
     GET_TRAIN = "get_train"

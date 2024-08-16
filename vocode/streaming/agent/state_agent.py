@@ -502,47 +502,63 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=to_say_start))
             )
-            # self.json_transcript.entries.append(
-            #     StateAgentTranscriptActionError(
-            #         action_name=action_name,
-            #         message=f"Failed to run action due to lack of config. We're gonna assume this is a demo and hallucinate a response.",
-            #     )
-            # )
             return await saveActionResultAndMoveOn(
                 action_result=f"Action Completed: Demo Action, {action_name}, was simulated successfully."
             )
 
-        # self.block_inputs = True
         action_description = action["description"]
         params = action["params"]
+        finalized_params = {}
 
         if params:
-            dict_to_fill = {
-                param_name: "[insert value]" for param_name in params.keys()
-            }
-            param_descriptions = "\n".join(
-                [
-                    f"'{param_name}': description: {params[param_name]['description']}, type: '{params[param_name]['type']})'"
-                    for param_name in params.keys()
-                ]
-            )
-            response = await self.call_ai(
-                prompt=f"Based on the current conversation and the instructions provided, return a python dictionary with values inserted for these parameters: {param_descriptions}",
-                tool=dict_to_fill,
-            )
-            self.logger.info(f"Filled params: {response}")
-            response = response[response.find("{") : response.find("}") + 1]
-            self.logger.info(f"Filled params: {response}")
-            try:
-                params = parse_llm_dict(response)
-            except Exception as e:
+            dict_to_fill = {}
+            param_descriptions = []
+            for param_name, param_info in params.items():
+                fill_type = param_info.get("fill_type")
+                if fill_type == "exact":
+                    finalized_params[param_name] = param_info["description"]
+                else:
+                    dict_to_fill[param_name] = "[insert value]"
+                    param_descriptions.append(
+                        f"'{param_name}': description: {param_info['description']}, type: '{param_info['type']}'"
+                    )
+
+            if dict_to_fill:
+                param_descriptions_str = "\n".join(param_descriptions)
                 response = await self.call_ai(
-                    prompt=f"You must return a dictionary as described. Provide the values for these parameters based on the current conversation and the instructions provided: {param_descriptions}",
+                    prompt=f"Based on the current conversation and the instructions provided, return a python dictionary with values inserted for these parameters:\n{param_descriptions_str}",
                     tool=dict_to_fill,
                 )
-                self.logger.info(f"Filled params2: {response}")
+                self.logger.info(f"Filled params: {response}")
                 response = response[response.find("{") : response.find("}") + 1]
-                params = parse_llm_dict(response)
+                self.logger.info(f"Filled params: {response}")
+                try:
+                    ai_filled_params = parse_llm_dict(response)
+                except Exception as e:
+                    response = await self.call_ai(
+                        prompt=f"You must return a dictionary as described. Provide the values for these parameters based on the current conversation and the instructions provided: {param_descriptions_str}",
+                        tool=dict_to_fill,
+                    )
+                    self.logger.info(f"Filled params2: {response}")
+                    response = response[response.find("{") : response.find("}") + 1]
+                    ai_filled_params = parse_llm_dict(response)
+
+                finalized_params.update(ai_filled_params)
+
+        if action_name.lower() == "zapier":
+            exposed_app_action_id = finalized_params.pop(
+                "exposed_app_action_id",
+                finalized_params.pop("action_id", finalized_params.pop("id", None)),
+            )
+            if exposed_app_action_id:
+                params = {
+                    "exposed_app_action_id": exposed_app_action_id,
+                    "params": json.dumps(finalized_params),
+                }
+            else:
+                params = {"params": json.dumps(finalized_params)}
+        else:
+            params = finalized_params
         self.logger.info(f"Parsed params: {params}")
 
         try:
