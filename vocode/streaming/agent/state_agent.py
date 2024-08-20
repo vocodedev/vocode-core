@@ -5,35 +5,33 @@ import re
 from enum import Enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
-from vocode.streaming.agent.base_agent import (
-    RespondAgent,
-    AgentInput,
-    AgentResponseMessage,
-)
-from vocode.streaming.models.agent import CommandAgentConfig
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.actions import ActionInput
-from vocode.streaming.models.state_agent_transcript import (
-    StateAgentTranscript,
-    StateAgentTranscriptActionError,
-    StateAgentTranscriptActionInvoke,
-    StateAgentTranscriptEntry,
-    StateAgentTranscriptHandleState,
-    StateAgentTranscriptInvariantViolation,
-)
-from vocode.streaming.transcriber.base_transcriber import Transcription
-from vocode.streaming.models.events import Sender
-from pydantic import BaseModel, Field
 from openai import AsyncOpenAI
+from pydantic import BaseModel, Field
 from vocode import getenv
 from vocode.streaming.action.phone_call_action import (
     TwilioPhoneCallAction,
     VonagePhoneCallAction,
 )
-
-from vocode.streaming.agent.utils import (
-    translate_message,
+from vocode.streaming.agent.base_agent import (
+    AgentInput,
+    AgentResponseMessage,
+    RespondAgent,
 )
+from vocode.streaming.agent.utils import translate_message
+from vocode.streaming.models.actions import ActionInput
+from vocode.streaming.models.agent import CommandAgentConfig
+from vocode.streaming.models.events import Sender
+from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.state_agent_transcript import (
+    StateAgentTranscript,
+    StateAgentTranscriptActionError,
+    StateAgentTranscriptActionInvoke,
+    StateAgentTranscriptHandleState,
+    StateAgentTranscriptInvariantViolation,
+    StateAgentTranscriptMessage,
+)
+from vocode.streaming.transcriber.base_transcriber import Transcription
+from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.find_sparse_subarray import find_last_sparse_subarray
 
 
@@ -133,6 +131,7 @@ async def handle_options(
     last_user_message_index = None
     last_user_message = None
     last_bot_message = state_machine["states"]["start"]["start_message"]["message"]
+    truly_last_bot_message = None
     action_result_after_user_spoke = None
     next_state_history = state_history + [state]
 
@@ -157,6 +156,11 @@ async def handle_options(
             if role == "action-finish" and msg:
                 action_result_after_user_spoke = msg
                 break
+
+    for role, msg in reversed(get_chat_history()):
+        if role == "message.bot" and msg:
+            truly_last_bot_message = msg
+            break
     tool = {"condition": "[insert the number of the condition that applies]"}
 
     default_next_state = get_default_next_state(state)
@@ -242,6 +246,16 @@ async def handle_options(
         f"{ai_options_str}\n\n"
         "Always return a number from the above list. Return the number of the condition that best applies."
     )
+    if truly_last_bot_message:
+        prompt = (
+            f"Bot's last statement: '{last_bot_message}'\n"
+            f"User's response: '{last_user_message}'\n"
+            f"{'Last tool output: ' + action_result_after_user_spoke if action_result_after_user_spoke else ''}\n\n"
+            f"Bot is thinking: '{truly_last_bot_message}'\n"
+            "Identify the number associated with the most fitting condition from the list below:\n"
+            f"{ai_options_str}\n\n"
+            "Always return a number from the above list. Return the number of the condition that best applies."
+        )
     logger.info(f"AI prompt constructed: {prompt}")
     response = await call_ai(
         prompt,
@@ -329,13 +343,63 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         )
         self.label_to_state_id = self.state_machine["labelToStateId"]
 
+    def update_state_from_transcript(self, transcript: StateAgentTranscript):
+        self.json_transcript = transcript
+        self.chat_history = []
+        self.state_history = []
+        self.visited_states = set()
+        self.current_state = None
+
+        for entry in transcript.entries:
+            type_of_entry = type(entry)
+            self.logger.info(f"Type of entry: {type_of_entry}")
+            if isinstance(entry, StateAgentTranscriptHandleState):
+                state_id = entry.state_id
+                state = get_state(state_id, self.state_machine)
+                if state:
+                    self.state_history.append(state)
+                    self.visited_states.add(state_id)
+                    self.current_state = state
+                    self.logger.info(f"Updated state: {state_id}")
+            elif isinstance(entry, StateAgentTranscriptMessage):
+                role = entry.role
+                message = entry.message
+                if role in [
+                    "human",
+                    "message.bot",
+                    "action-finish",
+                ]:
+                    if len(message.strip()) > 0:
+                        self.chat_history.append((role, message))
+                        self.logger.info(
+                            f"Added chat history entry: {role} - {message}"
+                        )
+
+            elif isinstance(entry, StateAgentTranscriptActionInvoke):
+                self.logger.info(f"Action invoked: {entry}")
+            elif isinstance(entry, StateAgentTranscriptActionError):
+                self.logger.error(
+                    f"Action error in transcript: {entry.raw_error_message}"
+                )
+            elif isinstance(entry, StateAgentTranscriptInvariantViolation):
+                self.logger.error(f"Invariant violation in transcript: {entry.message}")
+            else:
+                self.logger.warning(f"Unknown entry type: {type(entry)}")
+
+        # Update the resume function based on the final state
+        self.logger.debug(f"State history: {self.state_history}")
+
+        self.logger.debug(
+            f"Updated state from transcript. Chat history: {self.chat_history}"
+        )
+
     def update_history(self, role, message):
         self.chat_history.append((role, message))
-        self.logger.info(f"json t is {self.json_transcript}")
+        # self.logger.info(f"json t is {self.json_transcript}")
         self.json_transcript.entries.append(
-            StateAgentTranscriptEntry(role=role, message=message)
+            StateAgentTranscriptMessage(role=role, message=message)
         )
-        if role == "message.bot":
+        if role == "message.bot" and len(message.strip()) > 0:
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=message))
             )
@@ -380,6 +444,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         return "", True
 
     async def print_start_message(self, state, start: bool):
+        if "start_message" in state:
+            if state["start_message"]["type"] != "verbatim":
+                start = True  # no need to skip the print if its relative since it wont be repetitive
         if start and "start_message" in state:
             await self.print_message(state["start_message"])
 
@@ -451,7 +518,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 # invariant violation, not action error, because compose_action is supposed to do it's own error handling
                 self.json_transcript.entries.append(
                     StateAgentTranscriptInvariantViolation(
-                        message=f"uncaught exception in compose_action. State is {state}"
+                        message=f"uncaught exception in compose_action. State is {state} and error is {e}"
                     )
                 )
 
@@ -461,15 +528,17 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             f"Draft a single response to the user based on the latest chat history, taking into account the following guidance:\n'{guide}'",
             tool,
         )
+        # replace all single quotes with double quotes
+        message = message.replace("'", '"')
+        # remove "{"response": ""
+        message = message.replace('{"response": "', "")
+        message = message.replace('"}', "")
+        # put the single quotes back
+        message = message.replace('"', "'")
+        message = message.strip()
         self.logger.info(f"Guided response: {message}")
-        message = message[message.find("{") : message.find("}") + 1]
-        self.logger.info(f"Guided response2: {message}")
-        try:
-            message = parse_llm_dict(message)
-            self.update_history("message.bot", message["response"])
-            return message.get("response")
-        except Exception as e:
-            self.logger.error(f"Agent could not respond: {e}")
+        self.update_history("message.bot", message)
+        return message.strip()
 
     async def compose_action(self, state):
         action = state["action"]
@@ -493,9 +562,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             if not action_config.starting_phrase or action_config.starting_phrase == "":
                 action_config.starting_phrase = "One moment please..."
             to_say_start = action_config.starting_phrase
-            self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=to_say_start))
-            )
+            if len(to_say_start.strip()) > 0:
+                self.produce_interruptible_agent_response_event_nonblocking(
+                    AgentResponseMessage(message=BaseMessage(text=to_say_start))
+                )
         except Exception as e:
             self.logger.error(f"Action config not found. Simulating action completion.")
             to_say_start = "One moment please..."
@@ -520,7 +590,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 else:
                     dict_to_fill[param_name] = "[insert value]"
                     param_descriptions.append(
-                        f"'{param_name}': description: {param_info['description']}, type: '{param_info['type']}'"
+                        f"'{param_name}' - Description: {param_info['description']}, Type: '{param_info['type']}'"
                     )
 
             if dict_to_fill:
@@ -529,22 +599,26 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     prompt=f"Based on the current conversation and the instructions provided, return a python dictionary with values inserted for these parameters:\n{param_descriptions_str}",
                     tool=dict_to_fill,
                 )
-                self.logger.info(f"Filled params: {response}")
-                response = response[response.find("{") : response.find("}") + 1]
-                self.logger.info(f"Filled params: {response}")
+                self.logger.info(f"Raw AI response: {response}")
+                response = response[response.find("{") : response.rfind("}") + 1]
+                self.logger.info(f"Extracted dictionary: {response}")
+
                 try:
-                    ai_filled_params = parse_llm_dict(response)
+                    ai_filled_params = eval(response)
                 except Exception as e:
-                    response = await self.call_ai(
-                        prompt=f"You must return a dictionary as described. Provide the values for these parameters based on the current conversation and the instructions provided: {param_descriptions_str}",
-                        tool=dict_to_fill,
+                    self.logger.error(
+                        f"Agent did not respond with a valid dictionary, trying to parse as JSON: {e}."
                     )
-                    self.logger.info(f"Filled params2: {response}")
-                    response = response[response.find("{") : response.find("}") + 1]
+                    # response = await self.call_ai(
+                    #     prompt=f"You must return a valid Python dictionary. Provide the values for these parameters based on the current conversation and the instructions provided: {param_descriptions_str}",
+                    #     tool=dict_to_fill,
+                    # )
+                    # self.logger.info(f"Second attempt raw response: {response}")
+                    # response = response[response.find("{") : response.rfind("}") + 1]
+                    # self.logger.info(f"Second attempt extracted dictionary: {response}")
                     ai_filled_params = parse_llm_dict(response)
 
                 finalized_params.update(ai_filled_params)
-
         if action_name.lower() == "zapier":
             exposed_app_action_id = finalized_params.pop(
                 "exposed_app_action_id",
@@ -553,13 +627,14 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             if exposed_app_action_id:
                 params = {
                     "exposed_app_action_id": exposed_app_action_id,
-                    "params": json.dumps(finalized_params),
+                    "params": finalized_params,
                 }
             else:
-                params = {"params": json.dumps(finalized_params)}
+                params = {"params": finalized_params}
         else:
             params = finalized_params
-        self.logger.info(f"Parsed params: {params}")
+
+        self.logger.info(f"Final params for action {action_name}: {params}")
 
         try:
             action = self.action_factory.create_action(action_config)
@@ -636,7 +711,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
     async def call_ai(self, prompt, tool=None, stop=None):
         stop_tokens = stop if stop is not None else []
-        stop_tokens.append("}")
+        # stop_tokens.append("}")
         response_text = ""
         pretty_chat_history = "\n".join(
             [
@@ -659,7 +734,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 ],
                 stream=True,
                 temperature=0.1,
-                max_tokens=500,
+                max_tokens=4000,
             )
             async for chunk in stream:
                 text_chunk = chunk.choices[0].delta.content
@@ -680,7 +755,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 ],
                 stream=True,
                 temperature=0.1,
-                max_tokens=500,
+                max_tokens=4000,
             )
             async for chunk in stream:
                 text_chunk = chunk.choices[0].delta.content
@@ -694,10 +769,14 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         assert self.agent_config.actions
         if not self.action_factory:
             return None
-        return [
-            self.action_factory.create_action(action_config).get_openai_function()
-            for action_config in self.agent_config.actions
-        ]
+
+        functions = []
+        for action_config in self.agent_config.actions:
+            if action_config is not None:
+                action = self.action_factory.create_action(action_config)
+                if action is not None:
+                    functions.append(action.get_openai_function())
+        return functions
 
     def move_back_state(self):
         # Remove the current state

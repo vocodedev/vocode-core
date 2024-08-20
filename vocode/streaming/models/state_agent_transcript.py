@@ -1,7 +1,9 @@
-from enum import Enum
-from typing import Any, Dict, List, TypedDict
-from pydantic import BaseModel, Field
 import datetime
+import json
+from enum import Enum
+from typing import List, Union
+
+from pydantic import BaseModel, Field, root_validator
 
 
 class StateAgentTranscriptRole(str, Enum):
@@ -35,22 +37,25 @@ class StateAgentTranscriptEntry(BaseModel):
         use_enum_values = True
 
 
-class StateAgentTranscriptDebugEntry(StateAgentTranscriptEntry):
-    role: StateAgentTranscriptRole = StateAgentTranscriptRole.DEBUG
-    type: StateAgentDebugMessageType  # action_invoke, action_error, handle_state, or invariant_violation
+class StateAgentTranscriptMessage(StateAgentTranscriptEntry):
+    role: StateAgentTranscriptRole
+    message: str
+    timestamp: str = Field(default_factory=lambda: datetime.datetime.now().isoformat())
 
     class Config:
         use_enum_values = True
+
+
+class StateAgentTranscriptDebugEntry(StateAgentTranscriptEntry):
+    role: StateAgentTranscriptRole = StateAgentTranscriptRole.DEBUG
+    type: StateAgentDebugMessageType
 
 
 class StateAgentTranscriptActionInvoke(StateAgentTranscriptDebugEntry):
-    type: StateAgentDebugMessageType = "action_invoke"
+    type: StateAgentDebugMessageType = StateAgentDebugMessageType.ACTION_INOKE
     message: str = "action invoked"
     state_id: str
     action_name: str
-
-    class Config:
-        use_enum_values = True
 
 
 class StateAgentTranscriptActionError(StateAgentTranscriptDebugEntry):
@@ -58,29 +63,52 @@ class StateAgentTranscriptActionError(StateAgentTranscriptDebugEntry):
     action_name: str
     raw_error_message: str
 
-    class Config:
-        use_enum_values = True
-
 
 class StateAgentTranscriptHandleState(StateAgentTranscriptDebugEntry):
     type: StateAgentDebugMessageType = StateAgentDebugMessageType.HANDLE_STATE
     message: str = ""
     state_id: str
 
-    class Config:
-        use_enum_values = True
-
 
 class StateAgentTranscriptInvariantViolation(StateAgentTranscriptDebugEntry):
     type: StateAgentDebugMessageType = StateAgentDebugMessageType.INVARIANT_VIOLATION
 
-    class Config:
-        use_enum_values = True
+
+TranscriptEntryType = Union[
+    StateAgentTranscriptEntry,
+    StateAgentTranscriptActionInvoke,
+    StateAgentTranscriptActionError,
+    StateAgentTranscriptHandleState,
+    StateAgentTranscriptInvariantViolation,
+]
 
 
 class StateAgentTranscript(JsonTranscript):
     version: str = "StateAgent_v0"
-    entries: List[StateAgentTranscriptEntry] = []
+    entries: List[TranscriptEntryType] = []
+
+    @root_validator(pre=True)
+    def parse_entries(cls, values):
+        if "entries" in values:
+            parsed_entries = []
+            for entry in values["entries"]:
+                if "type" in entry:
+                    if entry["type"] == StateAgentDebugMessageType.ACTION_INOKE:
+                        parsed_entries.append(StateAgentTranscriptActionInvoke(**entry))
+                    elif entry["type"] == StateAgentDebugMessageType.ACTION_ERROR:
+                        parsed_entries.append(StateAgentTranscriptActionError(**entry))
+                    elif entry["type"] == StateAgentDebugMessageType.HANDLE_STATE:
+                        parsed_entries.append(StateAgentTranscriptHandleState(**entry))
+                    elif (
+                        entry["type"] == StateAgentDebugMessageType.INVARIANT_VIOLATION
+                    ):
+                        parsed_entries.append(
+                            StateAgentTranscriptInvariantViolation(**entry)
+                        )
+                else:
+                    parsed_entries.append(StateAgentTranscriptMessage(**entry))
+            values["entries"] = parsed_entries
+        return values
 
     class Config:
         use_enum_values = True

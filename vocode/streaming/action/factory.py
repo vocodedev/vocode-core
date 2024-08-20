@@ -1,42 +1,26 @@
 from vocode.streaming.action.base_action import BaseAction
-
-from vocode.streaming.models.actions import ActionConfig
-from vocode.streaming.action.hangup_call import HangUpCall, HangUpCallActionConfig
-from vocode.streaming.action.transfer_call import TransferCall, TransferCallActionConfig
-from vocode.streaming.action.search_online import SearchOnline, SearchOnlineActionConfig
-from vocode.streaming.action.zapier import Zapier, ZapierActionConfig
-from vocode.streaming.action.create_agent import CreateAgent, CreateAgentActionConfig
-from vocode.streaming.action.search_documents import (
-    SearchDocuments,
-    SearchDocumentsActionConfig,
-)
-from vocode.streaming.action.send_text import SendText, SendTextActionConfig
-from vocode.streaming.action.get_train import GetTrain, GetTrainActionConfig
-from vocode.streaming.action.use_calendly import UseCalendly, CalendlyActionConfig
-from vocode.streaming.action.send_hello_sugar_directions import (
-    SendHelloSugarDirections,
-    SendHelloSugarDirectionsActionConfig,
-)
-from vocode.streaming.action.send_hello_sugar_booking_instructions import (
-    SendHelloSugarBookingInstructions,
-    SendHelloSugarBookingInstructionsActionConfig,
+from vocode.streaming.action.book_calendar_appointment import (
+    BookCalendarAppointment,
+    BookCalendarAppointmentActionConfig,
 )
 from vocode.streaming.action.check_calendar_availability import (
     CheckCalendarAvailability,
     CheckCalendarAvailabilityActionConfig,
 )
-from vocode.streaming.action.book_calendar_appointment import (
-    BookCalendarAppointment,
-    BookCalendarAppointmentActionConfig,
+from vocode.streaming.action.create_agent import CreateAgent, CreateAgentActionConfig
+from vocode.streaming.action.create_sunshine_conversation import (
+    CreateSunshineConversation,
+    CreateSunshineConversationActionConfig,
 )
 from vocode.streaming.action.forward_call_to_moovs import (
     ForwardCallToMoovs,
     ForwardCallToMoovsActionConfig,
 )
-
-from vocode.streaming.action.create_sunshine_conversation import (
-    CreateSunshineConversation,
-    CreateSunshineConversationActionConfig,
+from vocode.streaming.action.get_train import GetTrain, GetTrainActionConfig
+from vocode.streaming.action.hangup_call import HangUpCall, HangUpCallActionConfig
+from vocode.streaming.action.nylas_send_email import (
+    NylasSendEmailActionConfig,
+    SendEmail,
 )
 
 # use_instructions
@@ -44,10 +28,24 @@ from vocode.streaming.action.retrieve_instructions import (
     RetrieveInstructions,
     RetrieveInstructionsActionConfig,
 )
-from vocode.streaming.action.nylas_send_email import (
-    SendEmail,
-    NylasSendEmailActionConfig,
+from vocode.streaming.action.search_documents import (
+    SearchDocuments,
+    SearchDocumentsActionConfig,
 )
+from vocode.streaming.action.search_online import SearchOnline, SearchOnlineActionConfig
+from vocode.streaming.action.send_hello_sugar_booking_instructions import (
+    SendHelloSugarBookingInstructions,
+    SendHelloSugarBookingInstructionsActionConfig,
+)
+from vocode.streaming.action.send_hello_sugar_directions import (
+    SendHelloSugarDirections,
+    SendHelloSugarDirectionsActionConfig,
+)
+from vocode.streaming.action.send_text import SendText, SendTextActionConfig
+from vocode.streaming.action.transfer_call import TransferCall, TransferCallActionConfig
+from vocode.streaming.action.use_calendly import CalendlyActionConfig, UseCalendly
+from vocode.streaming.action.zapier import Zapier, ZapierActionConfig
+from vocode.streaming.models.actions import ActionConfig
 
 
 class ActionFactory:
@@ -87,4 +85,5 @@ class ActionFactory:
         elif isinstance(action_config, CreateSunshineConversationActionConfig):
             return CreateSunshineConversation(action_config)
         else:
-            raise Exception("Invalid action type")
+            # raise Exception("Invalid action type")
+            return None

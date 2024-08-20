@@ -1,5 +1,8 @@
+import asyncio
+import json
 import logging
 import os
+import traceback
 import httpx
 from typing import Type
 from pydantic import BaseModel, Field
@@ -55,24 +58,50 @@ class SearchOnline(
             "Authorization": "Bearer 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",
         }
         body = {
-            "model": "llama-3-sonar-small-32k-online",
+            "model": "llama-3.1-sonar-large-128k-online",
             "messages": [
                 {
                     "role": "user",
-                    "content": query
-                    + "\nYour answer should be a couple of sentences, max.",
+                    "content": query,
                 }
             ],
             "temperature": 0.7,
         }
-        async with httpx.AsyncClient() as client:
+
+        max_retries = 3
+        retry_delay = 1  # seconds
+
+        for attempt in range(max_retries):
+            logger.info(
+                f"Attempt {attempt + 1} of {max_retries} to execute online search"
+            )
             try:
-                response = await client.post(url, json=body, headers=headers)
-                response.raise_for_status()
-                result = response.json()
-                return result["choices"][0]["message"]["content"]
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.post(url, json=body, headers=headers)
+                    response.raise_for_status()
+                    result = response.json()
+                    return result["choices"][0]["message"]["content"]
+            except httpx.HTTPStatusError as e:
+                error_details = e.response.text
+                try:
+                    error_json = e.response.json()
+                    if isinstance(error_json, dict):
+                        error_details = json.dumps(error_json, indent=2)
+                except ValueError:
+                    pass
+                if attempt == max_retries - 1:
+                    return f"HTTP error executing online search: {e.response.status_code} {e.response.reason_phrase}. Details: {error_details}"
+            except (httpx.RequestError, httpx.ReadTimeout) as e:
+                if attempt == max_retries - 1:
+                    return f"Network error executing online search: {str(e)}. Details: Request failed: {e.__class__.__name__} - {str(e)}"
             except Exception as e:
-                return f"Error searching online: {str(e)}"
+                if attempt == max_retries - 1:
+                    return f"Unexpected error executing online search: {str(e)}. Details: Exception type: {type(e).__name__}, Traceback: {traceback.format_exc()}"
+
+            # Wait before retrying
+            await asyncio.sleep(retry_delay * (2**attempt))  # Exponential backoff
+
+        return "Max retries reached. Failed to execute online search after multiple attempts."
 
     async def run(
         self, action_input: ActionInput[SearchOnlineParameters]
