@@ -551,6 +551,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.state_history.append(state)
         self.logger.info(f"Attempting to call: {action}")
         action_name = action["name"]
+        action_description = action["description"]
+        self.logger.debug(f"Action description: {action_description}")
 
         async def saveActionResultAndMoveOn(action_result: str):
             self.block_inputs = False
@@ -576,7 +578,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 action_result=f"Action Completed: Demo Action, {action_name}, was simulated successfully."
             )
 
-        action_description = action["description"]
         params = action["params"]
         finalized_params = {}
 
@@ -621,14 +622,18 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 finalized_params.update(ai_filled_params)
         if action_name.lower() == "zapier":
             # is the action description
-            zapier_name = action_description
-            if zapier_name:
+            if action_description:
                 params = {
-                    "zapier_name": zapier_name,
+                    "zapier_name": action_description,
                     "params": finalized_params,
                 }
             else:
-                params = {"params": finalized_params}
+                self.logger.error(
+                    f"Action description not found for action {action_name}"
+                )
+                return await saveActionResultAndMoveOn(
+                    action_result=f"action {action_name} failed to run due missing action description"
+                )
         else:
             params = finalized_params
 
