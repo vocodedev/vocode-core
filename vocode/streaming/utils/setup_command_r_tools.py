@@ -116,14 +116,14 @@ all_optional_tools = {
         "name": "zapier",
         "description": "Execute a Zapier action with the given ID and parameters.",
         "parameter_definitions": {
-            "exposed_app_action_id": {
-                "description": "The exposed_app_action_id of the Zapier action to execute",
-                "type": "str",
-                "required": True,
-            },
             "params": {
                 "description": "The parameters for the Zapier action",
                 "type": "dict",
+                "required": True,
+            },
+            "zapier_name": {
+                "description": "The name of the Zapier action to execute",
+                "type": "str",
                 "required": True,
             },
         },
