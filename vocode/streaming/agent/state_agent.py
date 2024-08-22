@@ -523,19 +523,56 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 )
 
     async def guided_response(self, guide):
+        last_user_message = None
+        last_bot_message_before_user = None
+        action_result_after_user = None
+        bot_message_after_user = None
+
+        # Find the last user message and the last bot message before it
+        for role, msg in reversed(self.chat_history):
+            if role == "human" and msg and not last_user_message:
+                last_user_message = msg
+            elif (
+                role == "message.bot"
+                and msg
+                and not last_bot_message_before_user
+                and last_user_message
+            ):
+                last_bot_message_before_user = msg
+                break
+
+        # Find action result and bot message after user message
+        if last_user_message:
+            user_found = False
+            for role, msg in self.chat_history:
+                if user_found:
+                    if role == "action-finish" and msg and not action_result_after_user:
+                        action_result_after_user = msg
+                    elif role == "message.bot" and msg and not bot_message_after_user:
+                        bot_message_after_user = msg
+                        break
+                elif msg == last_user_message:
+                    user_found = True
+
         tool = {"response": "[insert your response]"}
-        message = await self.call_ai(
-            f"Draft a single response to the user based on the latest chat history, taking into account the following guidance:\n'{guide}'",
-            tool,
+        prompt = (
+            f"Draft a single response to the user based on the latest chat history, taking into account the following guidance:\n'{guide}'\n\n"
+            f"Bot's last statement before user: '{last_bot_message_before_user}'\n"
+            f"User's response: '{last_user_message}'\n"
         )
-        # replace all single quotes with double quotes
-        message = message.replace("'", '"')
-        # remove "{"response": ""
-        message = message.replace('{"response": "', "")
-        message = message.replace('"}', "")
-        # put the single quotes back
-        message = message.replace('"', "'")
-        message = message.strip()
+        if action_result_after_user:
+            prompt += f"Last tool output: {action_result_after_user}\n"
+        if bot_message_after_user:
+            prompt += f"Bot's is thinking: '{bot_message_after_user}'\n"
+
+        message = await self.call_ai(prompt, tool)
+        message = (
+            message.replace("'", '"')
+            .replace('{"response": "', "")
+            .replace('"}', "")
+            .replace('"', "'")
+            .strip()
+        )
         self.logger.info(f"Guided response: {message}")
         self.update_history("message.bot", message)
         return message.strip()
@@ -747,7 +784,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     if any(token in text_chunk for token in stop_tokens):
                         break
         else:
-            prompt = f"Given the chat history, follow the instructions.\nChat history:\n{pretty_chat_history}\n\n\nInstructions:\n{prompt}\nYour response must always be dictionary in the following format: {str(tool)}"
+            prompt = f"Given the chat history, follow the instructions.\nChat history:\n{pretty_chat_history}\n\n\nInstructions:\n{prompt}\nYour response must always be dictionary in the following format: {str(tool)}. Return just the dictionary without any additional commentary."
             self.logger.debug(f"prompt is: {prompt}")
 
             stream = await self.client.chat.completions.create(
