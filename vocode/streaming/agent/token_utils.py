@@ -57,6 +57,7 @@ CHAT_GPT_MAX_TOKENS = {
     "gpt-4-turbo": 127940,
     "gpt-4o": 127940,
     "gpt-4o-2024-05-13": 127940,
+    "gpt-4o-mini":127940,
 }
 
 
@@ -83,6 +84,8 @@ TokenizerInfo = NamedTuple(
 def get_tokenizer_info(model: str) -> Optional[TokenizerInfo]:
     if "gpt-35-turbo" in model:
         model = "gpt-3.5-turbo"
+    elif "gpt-4o-mini" in model:
+        model = "gpt-4o-mini"
     elif "gpt-4o" == model:
         model = "gpt-4o"
     elif "gpt4" in model or "gpt-4" in model:
@@ -108,6 +111,18 @@ def get_tokenizer_info(model: str) -> Optional[TokenizerInfo]:
     elif "gpt-3.5-turbo" in model:
         logger.debug(
             "Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613."
+        )
+        tokens_per_message = 3
+        tokens_per_name = 1
+    elif "gpt-4o-mini" in model:
+        logger.debug(
+            "Warning: gpt-4o-mini may update over time. Returning num tokens assuming gpt-4o-mini-2024-07-18."
+        )
+        tokens_per_message = 3
+        tokens_per_name = 1
+    elif "gpt-4o" in model:
+        logger.debug(
+            "Warning: gpt-4o may update over time. Returning num tokens assuming gpt-4o-2024-05-13"
         )
         tokens_per_message = 3
         tokens_per_name = 1
