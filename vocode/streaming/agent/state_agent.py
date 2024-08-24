@@ -33,6 +33,7 @@ from vocode.streaming.models.state_agent_transcript import (
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.find_sparse_subarray import find_last_sparse_subarray
+from vocode.streaming.models.call_type import CallType
 
 
 class StateMachine(BaseModel):
@@ -68,7 +69,7 @@ def parse_llm_dict(s):
 
             if value.isdigit():
                 value = int(value)
-            value = value.replace("<newline>", "\n")
+            # value = value.replace("<newline>", "\n")
             result[key] = value.strip()
 
     return result
@@ -401,9 +402,15 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
     def update_history(self, role, message):
         self.chat_history.append((role, message))
         # self.logger.info(f"json t is {self.json_transcript}")
+        # if its a chat mode
+
         self.json_transcript.entries.append(
             StateAgentTranscriptMessage(role=role, message=message)
         )
+        if self.agent_config.call_type == CallType.CHAT:
+            message = message.replace("<newline>", "\n")
+        else:
+            message = message.replace("<newline>", "")
         if role == "message.bot" and len(message.strip()) > 0:
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=message))
