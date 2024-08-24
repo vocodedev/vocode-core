@@ -69,7 +69,7 @@ def parse_llm_dict(s):
             if value.isdigit():
                 value = int(value)
             value = value.replace("<newline>", "\n")
-            result[key] = value
+            result[key] = value.strip()
 
     return result
 
