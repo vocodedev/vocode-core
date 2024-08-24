@@ -565,7 +565,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 elif msg == last_user_message:
                     user_found = True
 
-        tool = {"response": "[insert your response]"}
         prompt = (
             f"Draft a single response to the user based on the latest chat history, taking into account the following guidance:\n'{guide}'\n\n"
             f"Bot's last statement before user: '{last_bot_message_before_user}'\n"
@@ -575,20 +574,13 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             prompt += f"Last tool output: {action_result_after_user}\n"
         if bot_message_after_user:
             prompt += f"Bot's is thinking: '{bot_message_after_user}'\n"
+        prompt += "\nNow, respond as the BOT directly."
 
-        message = await self.call_ai(prompt, tool)
-        message = (
-            message.replace("' }", "'}")
-            .replace("{ '", "{'")
-            .replace("'", '"')
-            .replace('{"response": "', "")
-            .replace('"}', "")
-            .replace('"', "'")
-            .strip()
-        )
+        message = await self.call_ai(prompt, None)
+        message = message.strip()
         self.logger.info(f"Guided response: {message}")
         self.update_history("message.bot", message)
-        return message.strip()
+        return message
 
     async def compose_action(self, state):
         action = state["action"]
