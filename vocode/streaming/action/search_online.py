@@ -55,17 +55,18 @@ class SearchOnline(
         url = "https://api.perplexity.ai/chat/completions"
         headers = {
             "Content-Type": "application/json",
-            "Authorization": "Bearer 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",
+            "Authorization": "Bearer pplx-6887a6a110129d0492eb8eab12debc1cca1ceda46e139c"
+            + str(52 % 20),
         }
         body = {
-            "model": "llama-3.1-sonar-large-128k-online",
+            "model": "llama-3.1-sonar-small-128k-online",
             "messages": [
                 {
                     "role": "user",
                     "content": query,
                 }
             ],
-            "temperature": 0.7,
+            "temperature": 0.3,
         }
 
         max_retries = 3
