@@ -50,7 +50,12 @@ def parse_llm_dict(s):
     if isinstance(s, dict):
         return s
 
-    s = s.replace('"', "'").replace("\n", "").replace("  ", " ").replace("','", "', '")
+    s = (
+        s.replace('"', "'")
+        .replace("\n", "<newline>")
+        .replace("  ", " ")
+        .replace("','", "', '")
+    )
     result = {}
     input_string = s.strip("{}")
     pairs = input_string.split("', '")
@@ -63,7 +68,7 @@ def parse_llm_dict(s):
 
             if value.isdigit():
                 value = int(value)
-
+            value = value.replace("<newline>", "\n")
             result[key] = value
 
     return result
