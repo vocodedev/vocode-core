@@ -773,7 +773,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 )
                 check_human_present_count += 1
             # wait till the idle time would have passed the threshold if no action occurs
-            await asyncio.sleep(ALLOWED_IDLE_TIME)
+            await asyncio.sleep(self.idle_time_threshold / 2)
 
     async def send_single_message(
         self,
