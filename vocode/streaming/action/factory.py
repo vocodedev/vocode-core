@@ -45,6 +45,7 @@ from vocode.streaming.action.send_text import SendText, SendTextActionConfig
 from vocode.streaming.action.transfer_call import TransferCall, TransferCallActionConfig
 from vocode.streaming.action.use_calendly import CalendlyActionConfig, UseCalendly
 from vocode.streaming.action.zapier import Zapier, ZapierActionConfig
+from vocode.streaming.action.run_python import RunPython, RunPythonActionConfig
 from vocode.streaming.models.actions import ActionConfig
 
 
@@ -62,6 +63,8 @@ class ActionFactory:
             return SearchOnline(action_config)
         elif isinstance(action_config, ZapierActionConfig):
             return Zapier(action_config)
+        elif isinstance(action_config, RunPythonActionConfig):
+            return RunPython(action_config)
         elif isinstance(action_config, SendTextActionConfig):
             return SendText(action_config)
         elif isinstance(action_config, CalendlyActionConfig):

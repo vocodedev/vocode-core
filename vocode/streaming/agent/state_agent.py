@@ -20,6 +20,7 @@ from vocode.streaming.agent.base_agent import (
 from vocode.streaming.agent.utils import translate_message
 from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.agent import CommandAgentConfig
+from vocode.streaming.models.call_type import CallType
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.state_agent_transcript import (
@@ -33,7 +34,6 @@ from vocode.streaming.models.state_agent_transcript import (
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.find_sparse_subarray import find_last_sparse_subarray
-from vocode.streaming.models.call_type import CallType
 
 
 class StateMachine(BaseModel):
@@ -676,6 +676,13 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 return await saveActionResultAndMoveOn(
                     action_result=f"action {action_name} failed to run due missing action description"
                 )
+        elif action_name.lower() == "run_python":
+            # remove the code from the params
+            code = finalized_params.pop("code")
+            params = {
+                "code": code,
+                "params": finalized_params,
+            }
         else:
             params = finalized_params
 

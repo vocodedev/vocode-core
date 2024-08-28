@@ -128,6 +128,22 @@ all_optional_tools = {
             },
         },
     },
+    ActionType.RUN_PYTHON: {
+        "name": "run_python",
+        "description": "Run Python code",
+        "parameter_definitions": {
+            "params": {
+                "description": "The parameters for the Zapier action",
+                "type": "dict",
+                "required": True,
+            },
+            "code": {
+                "description": "The Python code to be executed",
+                "type": "str",
+                "required": True,
+            },
+        },
+    },
     ActionType.SEND_TEXT: {
         "name": "sms",
         "description": "Send an sms to the provided phone number.",
