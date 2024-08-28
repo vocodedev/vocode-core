@@ -261,7 +261,7 @@ async def handle_options(
             f"{ai_options_str}\n\n"
             "Always return a number from the above list. Return the number of the condition that best applies."
         )
-    logger.info(f"AI prompt constructed: {prompt}")
+    # logger.info(f"AI prompt constructed: {prompt}")
     response = await call_ai(
         prompt,
         tool,
@@ -399,17 +399,17 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         )
 
     def update_history(self, role, message):
-        self.chat_history.append((role, message))
-        # self.logger.info(f"json t is {self.json_transcript}")
-        # if its a chat mode
+        if role == "human":
+            # Remove the last human message if it exists
+            while self.chat_history and self.chat_history[-1][0] == "human":
+                self.chat_history.pop()
+                self.json_transcript.entries.pop()
 
+        self.chat_history.append((role, message))
         self.json_transcript.entries.append(
             StateAgentTranscriptMessage(role=role, message=message)
         )
-        if self.agent_config.call_type == CallType.CHAT:
-            message = message.replace("<newline>", "\n")
-        else:
-            message = message.replace("<newline>", "")
+
         if role == "message.bot" and len(message.strip()) > 0:
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=message))
@@ -652,13 +652,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     self.logger.error(
                         f"Agent did not respond with a valid dictionary, trying to parse as JSON: {e}."
                     )
-                    # response = await self.call_ai(
-                    #     prompt=f"You must return a valid Python dictionary. Provide the values for these parameters based on the current conversation and the instructions provided: {param_descriptions_str}",
-                    #     tool=dict_to_fill,
-                    # )
-                    # self.logger.info(f"Second attempt raw response: {response}")
-                    # response = response[response.find("{") : response.rfind("}") + 1]
-                    # self.logger.info(f"Second attempt extracted dictionary: {response}")
                     ai_filled_params = parse_llm_dict(response)
 
                 finalized_params.update(ai_filled_params)

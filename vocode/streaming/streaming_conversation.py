@@ -1,67 +1,25 @@
 from __future__ import annotations
-from copy import deepcopy
 
 import asyncio
-from enum import Enum
 import json
+import logging
 import math
 import queue
 import random
 import threading
-from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, cast
-import logging
 import time
 import typing
-import numpy
-import requests
+from copy import deepcopy
+from enum import Enum
+from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar, cast
+
 import aiohttp
 import httpx
-
-from telephony_app.models.call_type import CallType
-from vocode import getenv
+import numpy
+import requests
 from openai import AsyncOpenAI, OpenAI
-
-
+from vocode import getenv
 from vocode.streaming.action.worker import ActionsWorker
-
-from vocode.streaming.agent.bot_sentiment_analyser import (
-    BotSentimentAnalyser,
-)
-from vocode.streaming.agent.command_agent import CommandAgent
-from vocode.streaming.agent.state_agent import StateAgent
-from vocode.streaming.models.actions import ActionInput
-from vocode.streaming.models.events import Sender
-from vocode.streaming.models.transcript import (
-    Message,
-    Transcript,
-    TranscriptCompleteEvent,
-)
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
-from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
-from vocode.streaming.utils.events_manager import EventsManager
-from vocode.streaming.utils.goodbye_model import GoodbyeModel
-
-from vocode.streaming.models.agent import CommandAgentConfig, FillerAudioConfig
-from vocode.streaming.models.synthesizer import (
-    SentimentConfig,
-)
-
-from vocode.streaming.agent.utils import (
-    format_openai_chat_messages_from_transcript,
-    collate_response_async,
-    openai_get_tokens,
-    translate_message,
-    vector_db_result_to_openai_chat_message,
-)
-from vocode.streaming.constants import (
-    TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
-    PER_CHUNK_ALLOWANCE_SECONDS,
-    ALLOWED_IDLE_TIME,
-    INCOMPLETE_SCALING_FACTOR,
-    MAX_SILENCE_DURATION,
-)
 from vocode.streaming.agent.base_agent import (
     AgentInput,
     AgentResponse,
@@ -72,26 +30,56 @@ from vocode.streaming.agent.base_agent import (
     BaseAgent,
     TranscriptionAgentInput,
 )
+from vocode.streaming.agent.bot_sentiment_analyser import BotSentimentAnalyser
+from vocode.streaming.agent.command_agent import CommandAgent
+from vocode.streaming.agent.state_agent import StateAgent
+from vocode.streaming.agent.utils import (
+    collate_response_async,
+    format_openai_chat_messages_from_transcript,
+    openai_get_tokens,
+    translate_message,
+    vector_db_result_to_openai_chat_message,
+)
+from vocode.streaming.constants import (
+    ALLOWED_IDLE_TIME,
+    INCOMPLETE_SCALING_FACTOR,
+    MAX_SILENCE_DURATION,
+    PER_CHUNK_ALLOWANCE_SECONDS,
+    TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
+)
+from vocode.streaming.models.actions import ActionInput
+from vocode.streaming.models.agent import CommandAgentConfig, FillerAudioConfig
+from vocode.streaming.models.events import Sender
+from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.synthesizer import SentimentConfig
+from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
+from vocode.streaming.models.transcript import (
+    Message,
+    Transcript,
+    TranscriptCompleteEvent,
+)
+from vocode.streaming.output_device.base_output_device import BaseOutputDevice
 from vocode.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
-    SynthesisResult,
     FillerAudio,
+    SynthesisResult,
 )
+from vocode.streaming.transcriber.base_transcriber import BaseTranscriber, Transcription
 from vocode.streaming.utils import create_conversation_id, get_chunk_size_per_second
-from vocode.streaming.transcriber.base_transcriber import (
-    Transcription,
-    BaseTranscriber,
-)
+from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
+from vocode.streaming.utils.events_manager import EventsManager
+from vocode.streaming.utils.goodbye_model import GoodbyeModel
 from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
+    InterruptibleAgentResponseEvent,
     InterruptibleAgentResponseWorker,
     InterruptibleEvent,
     InterruptibleEventFactory,
-    InterruptibleAgentResponseEvent,
     InterruptibleWorker,
 )
 
+from telephony_app.models.call_type import CallType
 from telephony_app.utils.call_information_handler import update_call_transcripts
 
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
@@ -195,6 +183,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.triggered_affirmative = False
             self.chosen_filler_phrase = None
             self.initial_message = None
+            self.vad_detected = False
 
         async def _buffer_check(self, initial_buffer: str):
             try:
@@ -252,7 +241,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         # Parse the response and calculate sleep time
                         if not isinstance(response, str):
                             response = response.text
-                        sleep_time = (float(response) ** 2) * 1.5 - request_duration
+                        # sleep_time = (float(response) ** 2) * 1.5 - request_duration
+                        sleep_time = (
+                            float(response) * float(response)
+                        ) - request_duration
+                        # if self.vad_detected:
+                        #     sleep_time = sleep_time * 2
                         if sleep_time > 0:
                             # TODO: HERE, CONNECT IT TO THE SLIDER
                             self.conversation.logger.info(
@@ -276,6 +270,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
         async def process(self, transcription: Transcription):
             # Ignore the transcription if we are currently in-flight (i.e., the agent is speaking)
             # log the current transcript
+            # if (
+            #     self.initial_message
+            #     and self.conversation.agent.get_agent_config().call_type
+            #     == CallType.INBOUND
+            # ):
+            #     self.conversation.logger.info(f"Waiting for initial message to be sent")
+            #     return
             if (
                 self.conversation.agent.block_inputs
             ):  # the two block inputs are different
@@ -286,7 +287,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             if self.block_inputs and not self.agent.agent_config.allow_interruptions:
                 self.conversation.logger.debug(
-                    "Ignoring transcription since we are in-flight"
+                    "Ignoring transcription since we are in-flight..."
                 )
                 return
 
@@ -295,7 +296,26 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
             # If the message is just "vad", handle it without resetting the buffer check
             if transcription.message.strip() == "vad":
+                self.vad_detected = True
+
+                await self.conversation.broadcast_interrupt()
+                self.conversation.transcriber.VOLUME_THRESHOLD = 700
+                if self.buffer_check_task:
+                    try:
+                        self.conversation.logger.info("Cancelling buffer check task")
+                        cancelled = self.buffer_check_task.cancel()
+                        self.conversation.logger.info(f"BufferCancel? {cancelled}")
+                        self.buffer_check_task = None
+                    except Exception as e:
+                        self.conversation.logger.error(
+                            f"Error cancelling buffer check task: {e}"
+                        )
+                self.buffer_check_task = asyncio.create_task(
+                    self._buffer_check(deepcopy(self.buffer.to_message()))
+                )
                 return
+            else:
+                self.vad_detected = False
             if "words" not in json.loads(transcription.message):
                 self.conversation.logger.info(
                     "Ignoring transcription, no word content."
@@ -906,6 +926,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         if self.agent.get_agent_config().call_type == CallType.INBOUND:
             self.transcriber.mute()
+            initial_message = self.agent.get_agent_config().initial_message
+            self.transcriptions_worker.initial_message = initial_message
         else:
             self.transcriber.unmute()  # take in audio immediately in outbound
         self.agent_responses_worker.start()
@@ -935,7 +957,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if isinstance(self.agent, CommandAgent) or isinstance(self.agent, StateAgent):
             self.agent.conversation_id = self.id
             self.agent.twilio_sid = getattr(self, "twilio_sid", None)
-        initial_message = self.agent.get_agent_config().initial_message
         call_type = self.agent.get_agent_config().call_type
         self.agent.attach_transcript(self.transcript)
 
@@ -944,10 +965,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             asyncio.create_task(
                 self.send_initial_message(initial_message)
             )  # TODO: this seems like its hanging, why not await?
-        elif initial_message and call_type == CallType.OUTBOUND:
-            self.transcriptions_worker.initial_message = initial_message
-        else:
-            self.logger.debug("ERROR: INVALID CALL TYPE")
+            self.transcriptions_worker.initial_message = None
+
         if mark_ready:
             await mark_ready()
         if self.synthesizer.get_synthesizer_config().sentiment_config:
@@ -1139,6 +1158,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
             if len(speech_data) > chunk_size:
                 self.transcriptions_worker.synthesis_done = True
                 started_event.set()
+                self.transcriber.VOLUME_THRESHOLD = 1000
+                # self.logger.info(
+                #     f"VOLUME_THRESHOLD: {self.transcriber.VOLUME_THRESHOLD}"
+                # )
             if stop_event.is_set() and self.agent.agent_config.allow_interruptions:
                 if (
                     time.time() - time_started_speaking < 3
