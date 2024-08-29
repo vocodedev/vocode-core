@@ -394,8 +394,21 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         # Update the resume function based on the final state
         self.logger.debug(f"State history: {self.state_history}")
 
+        if self.state_history:
+            last_state = self.state_history[-1]
+            self.resume = lambda _: self.handle_state(
+                get_default_next_state(last_state)
+            )
+        else:
+            self.resume = lambda _: self.handle_state(
+                self.state_machine["startingStateId"]
+            )
+
         self.logger.debug(
             f"Updated state from transcript. Chat history: {self.chat_history}"
+        )
+        self.logger.info(
+            f"Resume function updated to state: {self.resume.__name__ if hasattr(self.resume, '__name__') else 'lambda'}"
         )
 
     def update_history(self, role, message):
