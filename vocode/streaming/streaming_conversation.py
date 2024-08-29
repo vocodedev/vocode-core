@@ -929,6 +929,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             initial_message = self.agent.get_agent_config().initial_message
             self.transcriptions_worker.initial_message = initial_message
         else:
+            initial_message = self.agent.get_agent_config().initial_message
+            self.transcriptions_worker.initial_message = initial_message
             self.transcriber.unmute()  # take in audio immediately in outbound
         self.agent_responses_worker.start()
         self.synthesis_results_worker.start()
