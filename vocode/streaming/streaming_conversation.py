@@ -365,7 +365,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.logger.error(
                         f"Error cancelling buffer check task: {e}"
                     )
-            if self.initial_message and transcription.is_final:
+            if self.initial_message is not None and transcription.is_final:
                 await self.conversation.send_initial_message(self.initial_message)
                 self.initial_message = None
                 return
@@ -923,7 +923,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         self.transcriber.start()
         self.transcriptions_worker.start()
-
+        initial_message = None
         if self.agent.get_agent_config().call_type == CallType.INBOUND:
             self.transcriber.mute()
             initial_message = self.agent.get_agent_config().initial_message
@@ -960,7 +960,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         call_type = self.agent.get_agent_config().call_type
         self.agent.attach_transcript(self.transcript)
 
-        if initial_message and call_type == CallType.INBOUND:
+        if initial_message is not None and call_type == CallType.INBOUND:
             self.logger.debug(f"Sending initial message: {initial_message}")
             asyncio.create_task(
                 self.send_initial_message(initial_message)
