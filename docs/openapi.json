@@ -2244,6 +2244,10 @@
             ],
             "title": "Deepgram Keywords"
           },
+          "idle_time_seconds": {
+            "anyOf": [{ "type": "integer" }, { "type": "null" }],
+            "title": "Idle Time Seconds"
+          },
           "llm_temperature": {
             "type": "number",
             "title": "Llm Temperature",
@@ -2452,6 +2456,10 @@
               { "type": "null" }
             ],
             "title": "Deepgram Keywords"
+          },
+          "idle_time_seconds": {
+            "anyOf": [{ "type": "integer" }, { "type": "null" }],
+            "title": "Idle Time Seconds"
           },
           "llm_temperature": {
             "type": "number",
@@ -2692,6 +2700,14 @@
               { "type": "null" }
             ],
             "title": "Deepgram Keywords"
+          },
+          "idle_time_seconds": {
+            "anyOf": [
+              { "type": "integer" },
+              { "$ref": "#/components/schemas/Undefined" },
+              { "type": "null" }
+            ],
+            "title": "Idle Time Seconds"
           }
         },
         "type": "object",
@@ -3181,6 +3197,10 @@
               { "type": "null" }
             ],
             "title": "Deepgram Keywords"
+          },
+          "idle_time_seconds": {
+            "anyOf": [{ "type": "integer" }, { "type": "null" }],
+            "title": "Idle Time Seconds"
           },
           "llm_temperature": {
             "type": "number",
@@ -3899,6 +3919,10 @@
               { "type": "null" }
             ],
             "title": "Deepgram Keywords"
+          },
+          "idle_time_seconds": {
+            "anyOf": [{ "type": "integer" }, { "type": "null" }],
+            "title": "Idle Time Seconds"
           },
           "llm_temperature": {
             "type": "number",
