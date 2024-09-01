@@ -51,7 +51,7 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
                 input=synthesis_input,
                 voice=self.voice,
                 audio_config=self.audio_config,
-                enable_time_pointing=[tts.SynthesizeSpeechRequest.TimepointType.SSML_MARK],
+                
             )
         )
 
@@ -68,7 +68,7 @@ class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):
                 self.thread_pool_executor, self.synthesize, message.text
             )
         )
-        output_sample_rate = response.audio_config.sample_rate_hertz
+        output_sample_rate = self.audio_config.sample_rate_hertz
 
         output_bytes_io = io.BytesIO()
         in_memory_wav = wave.open(output_bytes_io, "wb")
