@@ -5,6 +5,7 @@ from pydantic.v1 import validator
 
 from vocode.streaming.models.actions import ActionConfig
 from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.constants import BackgroundNoiseType
 
 from .model import BaseModel, TypedModel
 from .vector_db import VectorDBConfig
@@ -104,6 +105,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):  # type: ignore
     goodbye_phrases: Optional[List[str]] = None
     interrupt_sensitivity: InterruptSensitivity = "low"
     cut_off_response: Optional[CutOffResponse] = None
+    background_noise: Optional[BackgroundNoiseType] = None
 
 
 class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):  # type: ignore

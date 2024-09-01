@@ -19,13 +19,13 @@ from pydub import AudioSegment
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
 from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
 from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
+from vocode.streaming.constants import BackgroundNoiseType
 from vocode.streaming.utils.create_task import asyncio_create_task
 from vocode.streaming.utils.dtmf_utils import DTMFToneGenerator, KeypadEntry
 from vocode.streaming.utils.worker import InterruptibleEvent
 
 
 BACKGROUND_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "background_audio")
-BACKGROUND_NOISE_PATH = "%s/city-sounds-5m.wav" % BACKGROUND_AUDIO_PATH
 
 AUDIO_FRAME_RATE = 8000
 AUDIO_SAMPLE_WIDTH = 1
@@ -46,11 +46,19 @@ class AudioItem:
 
 
 class TwilioOutputDevice(AbstractOutputDevice):
-    def __init__(self, ws: Optional[WebSocket] = None, stream_sid: Optional[str] = None):
-        super().__init__(sampling_rate=DEFAULT_SAMPLING_RATE, audio_encoding=DEFAULT_AUDIO_ENCODING)
+    def __init__(
+        self,
+        ws: Optional[WebSocket] = None,
+        stream_sid: Optional[str] = None,
+        background_noise: Optional[BackgroundNoiseType] = None,
+    ):
+        super().__init__(
+            sampling_rate=DEFAULT_SAMPLING_RATE, audio_encoding=DEFAULT_AUDIO_ENCODING
+        )
         self.ws = ws
         self.stream_sid = stream_sid
         self.active = True
+        self.background_noise = background_noise
 
         self._twilio_events_queue: asyncio.Queue[str] = asyncio.Queue()
         self._mark_message_queue: asyncio.Queue[MarkMessage] = asyncio.Queue()
@@ -163,12 +171,21 @@ class TwilioOutputDevice(AbstractOutputDevice):
         }
         self._twilio_events_queue.put_nowait(json.dumps(clear_message))
 
+    def _get_background_noise_path(self) -> Optional[str]:
+        if self.background_noise is None:
+            return None
+        return f"{BACKGROUND_AUDIO_PATH}/{self.background_noise.value}.wav"
+
     async def _send_background_noise(self):
-        sound = AudioSegment.from_file(BACKGROUND_NOISE_PATH)
+        background_noise_path = self._get_background_noise_path()
+        if not background_noise_path:
+            logger.error("Could not find background noise file")
+            return
+        sound = AudioSegment.from_file(background_noise_path)
         sound = sound.set_channels(AUDIO_CHANNELS)
         sound = sound.set_frame_rate(AUDIO_FRAME_RATE)
         sound = sound.set_sample_width(AUDIO_SAMPLE_WIDTH)
-        sound = sound - 8  # 8dB quieter
+        sound = sound + 4  # 4dB louder
         output_bytes_io = io.BytesIO()
         sound.export(output_bytes_io, format="raw")
         raw_bytes = output_bytes_io.getvalue()
