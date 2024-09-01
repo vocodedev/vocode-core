@@ -62,7 +62,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
             to_phone=to_phone,
             base_url=base_url,
             config_manager=config_manager,
-            output_device=TwilioOutputDevice(),
+            output_device=TwilioOutputDevice(background_noise=agent_config.background_noise),
             agent_config=agent_config,
             transcriber_config=transcriber_config,
             synthesizer_config=synthesizer_config,

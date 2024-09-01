@@ -1,3 +1,5 @@
+from enum import Enum
+
 TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS = 0.1
 PER_CHUNK_ALLOWANCE_SECONDS = 0.01
 ALLOWED_IDLE_TIME = 15
@@ -8,3 +10,11 @@ CHECK_HUMAN_PRESENT_MESSAGE_CHOICES = [
     "Are you still there?",
     "Hi, are you there?",
 ]
+
+class BackgroundNoiseType(Enum):
+    CAFE = "cafe"
+    CITY = "city"
+    OFFICE = "office"
+    RESTAURANT = "restaurant"
+    SUBURB = "suburb"
+    TV = "tv"
