@@ -185,7 +185,7 @@ class TwilioOutputDevice(AbstractOutputDevice):
         sound = sound.set_channels(AUDIO_CHANNELS)
         sound = sound.set_frame_rate(AUDIO_FRAME_RATE)
         sound = sound.set_sample_width(AUDIO_SAMPLE_WIDTH)
-        sound = sound + 4  # 4dB louder
+        # sound = sound + 2  # 2dB louder
         output_bytes_io = io.BytesIO()
         sound.export(output_bytes_io, format="raw")
         raw_bytes = output_bytes_io.getvalue()
