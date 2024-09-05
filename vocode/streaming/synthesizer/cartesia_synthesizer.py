@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 
 from loguru import logger
+from typing import List, Tuple
 
 from vocode import getenv
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
@@ -91,7 +92,7 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
         self.ws = None
         self.ctx = None
         self.ctx_message = BaseMessage(text="")
-        self.ctx_timestamps = []
+        self.ctx_timestamps: List[Tuple[str, float, float]] = []
         self.no_more_inputs_task = None
         self.no_more_inputs_lock = asyncio.Lock()
 
