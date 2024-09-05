@@ -168,9 +168,9 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
                     audio = event.get("audio")
                     word_timestamps = event.get("word_timestamps")
                     if word_timestamps:
-                        words = word_timestamps['words']
-                        start_times = word_timestamps['start']
-                        end_times = word_timestamps['end']
+                        words = word_timestamps["words"]
+                        start_times = word_timestamps["start"]
+                        end_times = word_timestamps["end"]
                         for word, start, end in zip(words, start_times, end_times):
                             self.ctx_timestamps.append((word, start, end))
                     if audio:
@@ -209,9 +209,10 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
                 if closest_index:
                     # Check if they're less than 2 seconds apart, fall back to words per minute otherwise
                     if self.ctx_timestamps[closest_index][2] - seconds < 2:
-                        return " ".join([word for word, *_ in self.ctx_timestamps[:closest_index + 1]])
+                        return " ".join(
+                            [word for word, *_ in self.ctx_timestamps[: closest_index + 1]]
+                        )
             return self.get_message_cutoff_from_voice_speed(message, seconds, words_per_minute)
-
 
         return SynthesisResult(
             chunk_generator=chunk_generator(self.ctx),
