@@ -1,8 +1,8 @@
 import asyncio
 import hashlib
+from typing import List, Tuple
 
 from loguru import logger
-from typing import List, Tuple
 
 from vocode import getenv
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
