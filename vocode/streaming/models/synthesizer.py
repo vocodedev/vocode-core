@@ -245,3 +245,4 @@ class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA
     model_id: str = DEFAULT_CARTESIA_MODEL_ID
     voice_id: str = DEFAULT_CARTESIA_VOICE_ID
     experimental_voice_controls: Optional[CartesiaVoiceControls] = None
+    language: Optional[str] = None 
