@@ -69,12 +69,14 @@ class TwilioOutputDevice(AbstractOutputDevice):
 
     def consume_nonblocking(self, item: InterruptibleEvent[AudioChunk]):
         if not item.is_interrupted():
-            self._audio_queue.put_nowait(
-                AudioItem(chunk=item.payload.data, chunk_id=str(item.payload.chunk_id))
-            )
-            # self._send_audio_chunk_and_mark(
-            #     chunk=item.payload.data, chunk_id=str(item.payload.chunk_id)
-            # )
+            if self.background_noise:
+                self._audio_queue.put_nowait(
+                    AudioItem(chunk=item.payload.data, chunk_id=str(item.payload.chunk_id))
+                )
+            else:
+                self._send_audio_chunk_and_mark(
+                    chunk=item.payload.data, chunk_id=str(item.payload.chunk_id)
+                )
             self._unprocessed_audio_chunks_queue.put_nowait(item)
         else:
             audio_chunk = item.payload
@@ -143,10 +145,18 @@ class TwilioOutputDevice(AbstractOutputDevice):
     async def _run_loop(self):
         send_twilio_messages_task = asyncio_create_task(self._send_twilio_messages())
         process_mark_messages_task = asyncio_create_task(self._process_mark_messages())
-        send_background_noise_task = asyncio_create_task(self._send_background_noise())
-        await asyncio.gather(
-            send_twilio_messages_task, process_mark_messages_task, send_background_noise_task
-        )
+
+        if self.background_noise:
+            logger.info(f"Setting background noise task for {self.background_noise}")
+            send_background_noise_task = asyncio_create_task(self._send_background_noise())
+            await asyncio.gather(
+                send_twilio_messages_task, process_mark_messages_task, send_background_noise_task
+            )
+        else:
+            logger.info("No background noise task")
+            await asyncio.gather(
+                send_twilio_messages_task, process_mark_messages_task
+            )
 
     def _send_audio_chunk_and_mark(self, chunk: bytes, chunk_id: str):
         media_message = {
