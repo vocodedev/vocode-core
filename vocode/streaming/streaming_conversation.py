@@ -229,7 +229,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         start_time = time.time()
                         async with httpx.AsyncClient() as client:
                             response = await client.post(
-                                "http://148.64.105.83:58000/inference/",
+                                "http://endpoint-classifier-endpoint-classifier-svc.default.svc.cluster.local:58000/inference",
                                 headers={
                                     "accept": "application/json",
                                     "Content-Type": "application/json",
