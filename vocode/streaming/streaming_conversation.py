@@ -69,6 +69,12 @@ from vocode.streaming.utils import create_conversation_id, get_chunk_size_per_se
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
+from vocode.streaming.utils.setup_tracer import (
+    end_span,
+    setup_tracer,
+    span_event,
+    start_span_in_ctx,
+)
 from vocode.streaming.utils.state_manager import ConversationStateManager
 from vocode.streaming.utils.worker import (
     AsyncQueueWorker,
@@ -81,6 +87,8 @@ from vocode.streaming.utils.worker import (
 
 from telephony_app.models.call_type import CallType
 from telephony_app.utils.call_information_handler import update_call_transcripts
+
+tracer = setup_tracer()
 
 OutputDeviceType = TypeVar("OutputDeviceType", bound=BaseOutputDevice)
 
