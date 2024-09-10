@@ -21,7 +21,7 @@ def setup_tracer():
         tracer_provider = TracerProvider()
         project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "default_project_id")
         cloud_trace_exporter = CloudTraceSpanExporter(project_id=project_id)
-        if os.getenv("ENV") == "dev":
+        if os.getenv("ENV") == "prod":
             tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))
             trace.set_tracer_provider(tracer_provider)
         return trace.get_tracer(__name__)
