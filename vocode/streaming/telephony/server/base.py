@@ -2,7 +2,9 @@ import abc
 from functools import partial
 from typing import List, Optional
 
-from fastapi import APIRouter, Form, Request, Response
+from fastapi import APIRouter, Form, Request, Response, Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 from loguru import logger
 from pydantic.v1 import BaseModel, Field
 
@@ -37,6 +39,8 @@ class AbstractInboundCallConfig(BaseModel, abc.ABC):
     agent_config: AgentConfig
     transcriber_config: Optional[TranscriberConfig] = None
     synthesizer_config: Optional[SynthesizerConfig] = None
+    auth_token: Optional[str] = None
+    verify_token: Optional[bool] = False
 
 
 class TwilioInboundCallConfig(AbstractInboundCallConfig):
@@ -68,6 +72,7 @@ class TelephonyServer:
         self.router = APIRouter()
         self.config_manager = config_manager
         self.events_manager = events_manager
+        self.security = HTTPBearer(auto_error=False)
         self.router.include_router(
             CallsRouter(
                 base_url=base_url,
@@ -110,11 +115,22 @@ class TelephonyServer:
         self,
         inbound_call_config: AbstractInboundCallConfig,
     ):
+        if inbound_call_config.verify_token and inbound_call_config.auth_token is None:
+            raise ValueError("Auth token is required to verify tokens")
+        
+        async def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(self.security)):
+            if not inbound_call_config.verify_token:
+                return None
+            if not credentials or credentials.credentials != inbound_call_config.auth_token:
+                raise HTTPException(status_code=401, detail="Invalid or missing token")
+            return credentials.credentials
+
         async def twilio_route(
             twilio_config: TwilioConfig,
             twilio_sid: str = Form(alias="CallSid"),
             twilio_from: str = Form(alias="From"),
             twilio_to: str = Form(alias="To"),
+            _: str = Depends(verify_token),
         ) -> Response:
             call_config = TwilioCallConfig(
                 transcriber_config=inbound_call_config.transcriber_config
