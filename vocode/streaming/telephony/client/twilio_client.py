@@ -58,7 +58,7 @@ class TwilioClient(BaseTelephonyClient):
             status_callback=f"{os.getenv('BASE_URL')}/handle_status_callback",
             status_callback_event=['initiated', 'ringing', 'answered', 'completed'],
             status_callback_method="POST",
-            machine_detection="Enable",
+            # machine_detection="Enable",
             **self.get_telephony_config().extra_params,
         )
         return twilio_call.sid
