@@ -897,19 +897,22 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             processed_event: asyncio.Event,
         ):
             def _on_play():
-                if chunk_idx == 0:
-                    if started_event:
-                        started_event.set()
-                    if first_chunk_span:
-                        self._track_first_chunk(first_chunk_span, synthesis_result)
+                try:
+                    if chunk_idx == 0:
+                        if started_event:
+                            started_event.set()
+                        if first_chunk_span:
+                            self._track_first_chunk(first_chunk_span, synthesis_result)
 
-                nonlocal seconds_spoken
+                    nonlocal seconds_spoken
 
-                self.mark_last_action_timestamp()
+                    self.mark_last_action_timestamp()
 
-                seconds_spoken += seconds_per_chunk
-                if transcript_message:
-                    transcript_message.text = synthesis_result.get_message_up_to(seconds_spoken)
+                    seconds_spoken += seconds_per_chunk
+                    if transcript_message:
+                        transcript_message.text = synthesis_result.get_message_up_to(seconds_spoken)
+                except Exception as e:
+                    logger.error(f"Error in _on_play: {e}")
 
                 processed_event.set()
 
