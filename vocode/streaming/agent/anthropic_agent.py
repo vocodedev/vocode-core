@@ -65,7 +65,7 @@ class ChatAnthropicAgent(RespondAgent[ChatAnthropicAgentConfig]):
             max_tokens=1024,
             messages=messages_formatted,
             system=self.agent_config.prompt_preamble,
-            model="claude-3-opus-20240229",
+            model="claude-3-haiku-20240307",
             stream=True,
         )
 
