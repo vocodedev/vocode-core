@@ -837,6 +837,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             logger or logging.getLogger(__name__),
             conversation_id=self.id,
         )
+        self.conversation_span = tracer.start_span(f"conversation::{self.id}")
         self.logger.debug(f"Conversation ID: {self.id}")
         # threadingevent
         self.stop_event = threading.Event()
@@ -993,6 +994,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriptions_worker.block_inputs = False
 
     async def send_initial_message(self, initial_message: BaseMessage):
+        initial_message_span = start_span_in_ctx(
+            name="send_initial_message", parent_span=self.conversation_span
+        )
         # TODO: configure if initial message is interruptible
         initial_message_tracker = asyncio.Event()
         agent_response_event = (
@@ -1005,6 +1009,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent_responses_worker.consume_nonblocking(agent_response_event)
         await initial_message_tracker.wait()
         self.transcriber.unmute()
+        end_span(initial_message_span)
 
     async def check_for_idle(self):
         """Terminates the conversation after 15 seconds if no activity is detected"""
@@ -1439,6 +1444,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     async def terminate(self):
         self.mark_terminated()
+        end_span(self.conversation_span)
         await self.broadcast_interrupt()
         if self.synthesis_results_worker.current_task:
             self.synthesis_results_worker.current_task.cancel()
