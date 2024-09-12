@@ -109,6 +109,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             speech_config=speech_config, audio_config=None
         )
 
+        self.language_code = self.synthesizer_config.language_code
         self.voice_name = self.synthesizer_config.voice_name
         self.pitch = self.synthesizer_config.pitch
         self.rate = self.synthesizer_config.rate
@@ -170,14 +171,20 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self, message: str, bot_sentiment: Optional[BotSentiment] = None
     ) -> str:
         ssml_root = ElementTree.fromstring(
-            '<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="en-US"></speak>'
+            f'<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="{self.language_code or "en-US"}"></speak>'
         )
+            
         voice = ElementTree.SubElement(ssml_root, "voice")
         voice.set("name", self.voice_name)
         voice_root = voice
+        if self.language_code:
+            lang = ElementTree.SubElement(voice, "lang")
+            lang.set("xml:lang", self.language_code)
+            voice_root = lang
+
         if bot_sentiment and bot_sentiment.emotion:
             styled = ElementTree.SubElement(
-                voice, "{%s}express-as" % NAMESPACES.get("mstts")
+                voice_root, "{%s}express-as" % NAMESPACES.get("mstts")
             )
             styled.set("style", bot_sentiment.emotion)
             styled.set(
