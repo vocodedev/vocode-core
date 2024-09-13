@@ -30,7 +30,8 @@ class ActionType(str, Enum):
     SEARCH_DOCUMENTS = "search_documents"
     FORWARD_CALL_TO_MOOVS = "forward_call_to_moovs"
     CREATE_SUNSHINE_CONVERSATION = "create_sunshine_conversation"
-
+    CHECK_BOULEVARD_RESCHEDULE_AVAILABILITY = "check_boulevard_reschedule_availability"
+    RESCHEDULE_BOULEVARD_APPOINTMENT = "reschedule_boulevard_appointment"
 
 class ActionConfig(TypedModel, type=ActionType.BASE):
     pass

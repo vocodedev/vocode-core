@@ -499,7 +499,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         )
 
         self.state_history.append(state)
-        self.logger.info(f"Current State: {state}")
+        # self.logger.info(f"Current State: {state}")
 
         await self.print_start_message(state, start=start)
 
@@ -597,6 +597,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
     async def compose_action(self, state):
         action = state["action"]
+        self.block_inputs = True
         self.json_transcript.entries.append(
             StateAgentTranscriptActionInvoke(
                 state_id=state["id"],
@@ -624,7 +625,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     AgentResponseMessage(message=BaseMessage(text=to_say_start))
                 )
         except Exception as e:
-            self.logger.error(f"Action config not found. Simulating action completion.")
+            self.logger.error(
+                f"Action config not found. Simulating action completion. Error: {e}"
+            )
             to_say_start = "One moment please..."
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=to_say_start))
@@ -632,8 +635,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             return await saveActionResultAndMoveOn(
                 action_result=f"Action Completed: Demo Action, {action_name}, was simulated successfully."
             )
-
-        params = action["params"]
+        params = None
+        if "params" in action:
+            params = action["params"]
         finalized_params = {}
 
         if params:
@@ -781,7 +785,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         )
         if not tool or tool == {}:
             prompt = f"{self.overall_instructions}\n\n Given the chat history, follow the instructions.\nChat history:\n{pretty_chat_history}\n\n\nInstructions:\n{prompt}\n\nReturn a single response."
-            self.logger.debug(f"prompt is: {prompt}")
+            # self.logger.debug(f"prompt is: {prompt}")
             stream = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[

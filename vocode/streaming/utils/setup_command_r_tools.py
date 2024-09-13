@@ -1,11 +1,12 @@
 import logging
-from vocode.streaming.models.agent import CommandAgentConfig
+
 from vocode.streaming.models.actions import (
     ActionInput,
-    FunctionCall,
     ActionType,
+    FunctionCall,
     FunctionFragment,
 )
+from vocode.streaming.models.agent import CommandAgentConfig
 
 standard_tools = [
     {
@@ -318,18 +319,53 @@ all_optional_tools = {
             }
         },
     },
+    ActionType.CHECK_BOULEVARD_RESCHEDULE_AVAILABILITY: {
+        "name": "check_boulevard_reschedule_availability",
+        "description": "Check the availability of appointments on Boulevard for a specific date and time.",
+        "parameter_definitions": {
+            "days_in_advance": {
+                "description": "The number of days in advance to check for availability",
+                "type": "int",
+                "required": True,
+            }
+        },
+    },
+    ActionType.RESCHEDULE_BOULEVARD_APPOINTMENT: {
+        "name": "reschedule_boulevard_appointment",
+        "description": "Reschedule an appointment on Boulevard.",
+        "parameter_definitions": {
+            "selected_time_id": {
+                "description": "The ID of the selected time for rescheduling",
+                "type": "list",
+                "required": True,
+            }
+        },
+    },
 }
 
 
 def setup_command_r_tools(action_config: CommandAgentConfig, logger: logging.Logger):
+    logger.error("Setting up command R tools")
+    logger.error(f"Received action_config: {action_config}")
+
     optional_tools = []
 
     if not action_config.actions:
+        logger.error("No actions in action_config, returning standard tools")
         return standard_tools.copy()
 
     for action_config in action_config.actions:
         action_type: ActionType = action_config.type
-        tool = all_optional_tools[action_type]
-        if tool:
-            optional_tools.append(tool)
+        logger.error(f"Processing action: {action_type}")
+        if action_type in ActionType.__members__:
+            tool = all_optional_tools.get(action_type)
+            if tool:
+                logger.error(f"Found tool for {action_type}")
+                optional_tools.append(tool)
+            else:
+                logger.error(f"Tool not found for {action_type}")
+        else:
+            logger.error(f"Unknown action type: {action_type}")
+
+    logger.error(f"Created {len(optional_tools)} optional tools")
     return optional_tools + standard_tools.copy()

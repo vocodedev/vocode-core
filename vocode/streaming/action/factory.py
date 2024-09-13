@@ -3,6 +3,10 @@ from vocode.streaming.action.book_calendar_appointment import (
     BookCalendarAppointment,
     BookCalendarAppointmentActionConfig,
 )
+from vocode.streaming.action.check_boulevard_reschedule_availability import (
+    CheckBoulevardRescheduleAvailability,
+    CheckBoulevardRescheduleAvailabilityActionConfig,
+)
 from vocode.streaming.action.check_calendar_availability import (
     CheckCalendarAvailability,
     CheckCalendarAvailabilityActionConfig,
@@ -22,12 +26,17 @@ from vocode.streaming.action.nylas_send_email import (
     NylasSendEmailActionConfig,
     SendEmail,
 )
+from vocode.streaming.action.reschedule_boulevard_appointment import (
+    RescheduleBoulevardAppointment,
+    RescheduleBoulevardAppointmentActionConfig,
+)
 
 # use_instructions
 from vocode.streaming.action.retrieve_instructions import (
     RetrieveInstructions,
     RetrieveInstructionsActionConfig,
 )
+from vocode.streaming.action.run_python import RunPython, RunPythonActionConfig
 from vocode.streaming.action.search_documents import (
     SearchDocuments,
     SearchDocumentsActionConfig,
@@ -45,7 +54,6 @@ from vocode.streaming.action.send_text import SendText, SendTextActionConfig
 from vocode.streaming.action.transfer_call import TransferCall, TransferCallActionConfig
 from vocode.streaming.action.use_calendly import CalendlyActionConfig, UseCalendly
 from vocode.streaming.action.zapier import Zapier, ZapierActionConfig
-from vocode.streaming.action.run_python import RunPython, RunPythonActionConfig
 from vocode.streaming.models.actions import ActionConfig
 
 
@@ -87,6 +95,12 @@ class ActionFactory:
             return ForwardCallToMoovs(action_config)
         elif isinstance(action_config, CreateSunshineConversationActionConfig):
             return CreateSunshineConversation(action_config)
+        elif isinstance(
+            action_config, CheckBoulevardRescheduleAvailabilityActionConfig
+        ):
+            return CheckBoulevardRescheduleAvailability(action_config)
+        elif isinstance(action_config, RescheduleBoulevardAppointmentActionConfig):
+            return RescheduleBoulevardAppointment(action_config)
         else:
             # raise Exception("Invalid action type")
             return None
