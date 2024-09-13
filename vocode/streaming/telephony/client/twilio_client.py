@@ -5,6 +5,7 @@ import time
 
 from typing import Optional
 
+import urllib.parse
 from aioify import aioify
 from twilio.rest import Client
 from xml.etree import ElementTree as ET
@@ -55,7 +56,7 @@ class TwilioClient(BaseTelephonyClient):
             send_digits=digits,
             record=record,
             timeout=20,
-            status_callback=f"{os.getenv('BASE_URL')}/handle_status_callback",
+            status_callback=f"https://{os.getenv('BASE_URL')}/handle_status_callback/{urllib.parse.quote_plus(conversation_id)}",
             status_callback_event=['initiated', 'ringing', 'answered', 'completed'],
             status_callback_method="POST",
             # machine_detection="Enable",
