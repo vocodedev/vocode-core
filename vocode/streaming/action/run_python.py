@@ -69,7 +69,7 @@ class RunPython(
             # If parsing fails, return the original string
             return value
 
-    def code_runner(self, func_or_string, input_dict):
+    async def code_runner(self, func_or_string, input_dict):
         output = {"result": None, "error": None, "metadata": {}, "stdout": ""}
 
         old_stdout = sys.stdout
@@ -114,7 +114,7 @@ class RunPython(
                     parsed_value = self.parse_value(value, expected_type)
                     valid_args[param] = parsed_value
 
-            result = func(**valid_args)
+            result = await asyncio.to_thread(func, **valid_args)
             output["result"] = result
 
             output["metadata"]["function_name"] = func.__name__
@@ -141,7 +141,7 @@ class RunPython(
         code = action_input.params.code
         params = action_input.params.params
 
-        response_content = self.code_runner(code, params)
+        response_content = await self.code_runner(code, params)
         logger.debug(f"Response: {response_content}")
 
         status = "success" if response_content["error"] is None else "error"
