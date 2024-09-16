@@ -1,12 +1,12 @@
-from transformers import PreTrainedTokenizerFast
 import asyncio
+import time
 from enum import Enum
 from typing import Generic, List, Optional, TypeVar
-from pydantic import BaseModel
-from vocode.streaming.models.model import TypedModel
-from vocode.streaming.models.events import ActionEvent, Sender, Event, EventType
+
 from pydantic import BaseModel, Field
-import time
+from transformers import PreTrainedTokenizerFast
+from vocode.streaming.models.events import ActionEvent, Event, EventType, Sender
+from vocode.streaming.models.model import TypedModel
 
 
 class ActionType(str, Enum):
@@ -32,6 +32,7 @@ class ActionType(str, Enum):
     CREATE_SUNSHINE_CONVERSATION = "create_sunshine_conversation"
     CHECK_BOULEVARD_RESCHEDULE_AVAILABILITY = "check_boulevard_reschedule_availability"
     RESCHEDULE_BOULEVARD_APPOINTMENT = "reschedule_boulevard_appointment"
+
 
 class ActionConfig(TypedModel, type=ActionType.BASE):
     pass

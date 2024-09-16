@@ -3,6 +3,7 @@ import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Type
 
+import pytz
 from dateutil import parser as date_parser
 from pydantic import BaseModel
 from vocode.streaming.action.base_action import BaseAction
@@ -29,6 +30,7 @@ class CheckBoulevardRescheduleAvailabilityActionConfig(
 ):
     business_id: str
     appointment_to_reschedule: dict
+    timezone: str = "America/Los_Angeles"
     starting_phrase: str
 
 
@@ -69,7 +71,8 @@ class CheckBoulevardRescheduleAvailability(
                 ),
             )
 
-        start_date = datetime.now().date()
+        timezone = pytz.timezone(self.action_config.timezone)
+        start_date = datetime.now(timezone).date()
         end_date = start_date + timedelta(days=action_input.params.days_in_advance)
         availability: Dict[str, Dict[str, str]] = {}
 
@@ -100,17 +103,19 @@ class CheckBoulevardRescheduleAvailability(
                 ),
             )
 
-        message = f"Here are the available times for rescheduling the appointment in the next {action_input.params.days_in_advance} days:\n"
+        message = f"Here are the available times for rescheduling the appointment in the next {action_input.params.days_in_advance} days (all times are in {self.action_config.timezone}):\n"
         for date, times in availability.items():
-            formatted_date = datetime.strptime(date, "%Y-%m-%d").strftime("%A, %B %d")
+            formatted_date = (
+                datetime.strptime(date, "%Y-%m-%d")
+                .replace(tzinfo=timezone)
+                .strftime("%A, %B %d")
+            )
             message += f"\nFor {formatted_date}:\n"
             if times:
                 for time, slot_id in times.items():
                     message += f"  - {time} (Slot ID: {slot_id})\n"
             else:
                 message += "  [Alert] There are no available times on this day.\n"
-
-        # message += "\nThe person on the phone cannot see the above list."
 
         return ActionOutput(
             action_type=action_input.action_config.type,
