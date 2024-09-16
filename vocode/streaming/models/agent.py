@@ -129,6 +129,7 @@ class CommandAgentConfig(AgentConfig, type=AgentType.COMMAND.value):
     allow_interruptions: bool = False
     language: Optional[str] = "en-US"
     ai_profile_id: Optional[str] = None
+    timezone: Optional[str] = "America/Los_Angeles"
 
 
 class MistralAgentConfig(AgentConfig, type=AgentType.MISTRAL.value):
