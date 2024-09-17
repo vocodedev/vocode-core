@@ -64,7 +64,7 @@ class RescheduleBoulevardAppointment(
                 response=RescheduleBoulevardAppointmentResponse(succeeded=False),
             )
 
-        response = reschedule_appointment(
+        response = await reschedule_appointment(
             appointment_id=self.action_config.appointment_to_reschedule["id"],
             bookable_time_id=action_input.params.selected_time_id,
             business_id=CURRENT_BOULEVARD_CREDENTIALS.business_id,

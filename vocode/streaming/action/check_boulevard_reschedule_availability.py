@@ -79,7 +79,7 @@ class CheckBoulevardRescheduleAvailability(
         for i in range(action_input.params.days_in_advance):
             current_date = start_date + timedelta(days=i)
             formatted_date = current_date.strftime("%Y-%m-%d")
-            available_times = get_available_reschedule_times(
+            available_times = await get_available_reschedule_times(
                 appointment_id=self.action_config.appointment_to_reschedule.get(
                     "id", ""
                 ),

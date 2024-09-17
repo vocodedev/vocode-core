@@ -1,5 +1,5 @@
 import logging
-from typing import Type, Dict
+from typing import Dict, Type
 
 import aiohttp
 from aiohttp import BasicAuth
@@ -11,12 +11,12 @@ from vocode.streaming.models.actions import (
     ActionOutput,
     ActionType,
 )
+from vocode.streaming.models.telephony import TwilioConfig
 
 from telephony_app.integrations.boulevard.boulevard_client import (
-    retrieve_next_appointment_by_phone_number,
     get_lost_directions,
+    retrieve_next_appointment_by_phone_number,
 )
-from vocode.streaming.models.telephony import TwilioConfig
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ class SendHelloSugarDirections(
         if len(to_phone) == 9:
             to_phone = "1" + to_phone
 
-        next_appointment = retrieve_next_appointment_by_phone_number(to_phone)
+        next_appointment = await retrieve_next_appointment_by_phone_number(to_phone)
         logger.info(f"The next appointment's details are {next_appointment}")
         if next_appointment:
             try:
