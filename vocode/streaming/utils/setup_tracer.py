@@ -1,5 +1,6 @@
 # vocode/streaming/utils/setup_tracer.py
 
+import logging
 import os
 from typing import Optional
 
@@ -18,15 +19,15 @@ def setup_tracer():
     Environment variable ENV should be set to "prod" for production environment and "dev" for development environment.
     """
     try:
+        logging.info("Setting up tracer")
         tracer_provider = TracerProvider()
         project_id = "autocaller"
         cloud_trace_exporter = CloudTraceSpanExporter(project_id=project_id)
-        if os.getenv("ENV") == "prod":
-            tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))
-            trace.set_tracer_provider(tracer_provider)
+        tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))
+        trace.set_tracer_provider(tracer_provider)
         return trace.get_tracer(__name__)
     except Exception as e:
-        print(f"Failed to setup tracer: {str(e)}")
+        logging.error(f"Failed to setup tracer: {str(e)}")
         return trace.get_tracer(__name__)
 
 
