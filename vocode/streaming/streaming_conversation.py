@@ -300,9 +300,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 return
 
-            # Mark the timestamp of the last action
-            self.conversation.mark_last_action_timestamp()
-
             # If the message is just "vad", handle it without resetting the buffer check
             if transcription.message.strip() == "vad":
                 self.vad_detected = True
@@ -340,6 +337,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.conversation.logger.debug(
                 f"Transcription message: {' '.join(word['word'] for word in json.loads(transcription.message)['words'])}"
             )
+            # Mark the timestamp of the last action
+            self.conversation.mark_last_action_timestamp()
 
             # Strip the transcription message and log the time silent
             transcription.message = transcription.message
@@ -1008,8 +1007,24 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
         )
         self.agent_responses_worker.consume_nonblocking(agent_response_event)
-        await initial_message_tracker.wait()
-        self.transcriber.unmute()
+
+        # Start a timer to track when 2 seconds have passed
+        start_time = time.time()
+        self.transcriber.VOLUME_THRESHOLD = 4000  # make it so high vad wont interrupt it, only a real transcription will
+        previous_allow_interruptions = self.agent.agent_config.allow_interruptions
+        # only run the loop if we're in outbound mode
+        if self.agent.get_agent_config().call_type == CallType.OUTBOUND:
+            while not initial_message_tracker.is_set():
+                await asyncio.sleep(0.1)  # Check every 0.1 seconds
+                if time.time() - start_time >= 1:
+                    self.transcriber.unmute()
+                    self.transcriptions_worker.block_inputs = False
+                    self.agent.agent_config.allow_interruptions = True
+                    break
+        if not initial_message_tracker.is_set():
+            await initial_message_tracker.wait()
+        self.transcriber.VOLUME_THRESHOLD = 700  # turn it back down
+        self.agent.agent_config.allow_interruptions = previous_allow_interruptions
         end_span(initial_message_span)
 
     async def check_for_idle(self):
