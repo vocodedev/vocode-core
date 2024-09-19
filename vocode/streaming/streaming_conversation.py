@@ -18,6 +18,9 @@ import httpx
 import numpy
 import requests
 from openai import AsyncOpenAI, OpenAI
+from telephony_app.models.call_type import CallType
+from telephony_app.utils.call_information_handler import update_call_transcripts
+
 from vocode import getenv
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
@@ -84,9 +87,6 @@ from vocode.streaming.utils.worker import (
     InterruptibleEventFactory,
     InterruptibleWorker,
 )
-
-from telephony_app.models.call_type import CallType
-from telephony_app.utils.call_information_handler import update_call_transcripts
 
 tracer = setup_tracer()
 
@@ -213,6 +213,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         conversation_id=self.conversation.id,
                         vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
                         twilio_sid=getattr(self.conversation, "twilio_sid", None),
+                        ctx=self.conversation.conversation_span,
                     ),
                 )
 

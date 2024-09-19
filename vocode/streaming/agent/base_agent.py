@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-from enum import Enum
 import json
 import logging
 import random
+import typing
+from enum import Enum
 from typing import (
+    TYPE_CHECKING,
     AsyncGenerator,
     Generator,
     Generic,
@@ -13,11 +15,11 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
-    TYPE_CHECKING,
 )
-import typing
+
 from opentelemetry import trace
 from opentelemetry.trace import Span
+
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.action.phone_call_action import (
     TwilioPhoneCallAction,
@@ -30,7 +32,6 @@ from vocode.streaming.models.actions import (
     FunctionCall,
     FunctionFragment,
 )
-
 from vocode.streaming.models.agent import (
     AgentConfig,
     ChatGPTAgentConfig,
@@ -40,10 +41,11 @@ from vocode.streaming.models.agent import (
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.model import BaseModel, TypedModel
 from vocode.streaming.models.state_agent_transcript import JsonTranscript
+from vocode.streaming.models.transcript import Transcript
 from vocode.streaming.transcriber.base_transcriber import Transcription
 from vocode.streaming.utils import remove_non_letters_digits
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
-from vocode.streaming.models.transcript import Transcript
+from vocode.streaming.utils.setup_tracer import end_span, start_span_in_ctx
 from vocode.streaming.utils.worker import (
     InterruptibleAgentResponseEvent,
     InterruptibleEvent,
@@ -70,6 +72,7 @@ class AgentInput(TypedModel, type=AgentInputType.BASE.value):
     conversation_id: str
     vonage_uuid: Optional[str]
     twilio_sid: Optional[str]
+    ctx: Optional[Span] = None
     agent_response_tracker: Optional[asyncio.Event] = None
 
     class Config:
@@ -180,7 +183,7 @@ class BaseAgent(AbstractAgent[AgentConfigType], InterruptibleWorker):
 
     def attach_transcript(self, transcript: Transcript):
         self.transcript = transcript
-    
+
     def get_json_transcript(self) -> Optional[JsonTranscript]:
         return None
 
@@ -217,11 +220,15 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         conversation_id = agent_input.conversation_id
         tracer_name_start = await self.get_tracer_name_start()
 
-        agent_span = tracer.start_span(
-            f"{tracer_name_start}.generate_total"  # type: ignore
+        ctx = agent_input.ctx
+        agent_span = start_span_in_ctx(
+            name=f"{tracer_name_start}.generate_total",
+            parent_span=ctx,
         )
-        agent_span_first = tracer.start_span(
-            f"{tracer_name_start}.generate_first"  # type: ignore
+
+        agent_span_first = start_span_in_ctx(
+            name=f"{tracer_name_start}.generate_first",
+            parent_span=ctx,
         )
         if not transcription:
             self.logger.debug("No transcription, skipping response generation")
@@ -247,15 +254,17 @@ class RespondAgent(BaseAgent[AgentConfigType]):
 
         await asyncio.sleep(0)
         # TODO: implement should_stop for generate_responses
-        agent_span.end()
+
         if function_call and self.agent_config.actions is not None:
             await self.call_function(function_call, agent_input)
+        end_span(agent_span)
         return False
 
     async def handle_respond(
         self, transcription: Transcription, conversation_id: str
     ) -> bool:
         try:
+            # I don't think we use this anywhere
             tracer_name_start = await self.get_tracer_name_start()
             with tracer.start_as_current_span(f"{tracer_name_start}.respond_total"):
                 response, should_stop = await self.respond(
@@ -506,10 +515,10 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             conversation_id=conversation_id,
             is_interrupt=transcription.is_interrupt,
         )
+        end_span(agent_span_first)
 
         if isinstance(response, FunctionCall):
             function_call = response
-            agent_span_first.end()
         if isinstance(response[0], str):
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response[0])),
@@ -522,6 +531,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 response[0],
                 type(response),
             )
+
         return function_call
 
     async def respond_with_functions_streaming(
@@ -546,12 +556,13 @@ class RespondAgent(BaseAgent[AgentConfigType]):
                 function_call = response
                 continue
             if is_first_response:
-                agent_span_first.end()
                 is_first_response = False
+                end_span(agent_span_first)
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=response)),
                 is_interruptible=self.agent_config.allow_agent_to_be_cut_off
                 and is_interruptible,
                 agent_response_tracker=agent_input.agent_response_tracker,
             )
+
         return function_call
