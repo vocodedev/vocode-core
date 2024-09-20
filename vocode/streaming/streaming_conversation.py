@@ -341,6 +341,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             # Mark the timestamp of the last action
             self.conversation.mark_last_action_timestamp()
 
+            # Reset the threshold for the next transcription
+            self.conversation.transcriber.VOLUME_THRESHOLD = 700
+
             # Strip the transcription message and log the time silent
             transcription.message = transcription.message
             self.conversation.logger.info(f"Time silent: {self.time_silent}s")
@@ -1019,7 +1022,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if self.agent.get_agent_config().call_type == CallType.OUTBOUND:
             while not initial_message_tracker.is_set():
                 await asyncio.sleep(0.1)  # Check every 0.1 seconds
-                if time.time() - start_time >= 1:
+                if time.time() - start_time >= 2:
                     self.transcriber.unmute()
                     self.transcriptions_worker.block_inputs = False
                     self.agent.agent_config.allow_interruptions = True
