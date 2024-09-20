@@ -18,9 +18,6 @@ import httpx
 import numpy
 import requests
 from openai import AsyncOpenAI, OpenAI
-from telephony_app.models.call_type import CallType
-from telephony_app.utils.call_information_handler import update_call_transcripts
-
 from vocode import getenv
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
@@ -87,6 +84,9 @@ from vocode.streaming.utils.worker import (
     InterruptibleEventFactory,
     InterruptibleWorker,
 )
+
+from telephony_app.models.call_type import CallType
+from telephony_app.utils.call_information_handler import update_call_transcripts
 
 tracer = setup_tracer()
 
@@ -375,7 +375,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         f"Error cancelling buffer check task: {e}"
                     )
             if self.initial_message is not None and transcription.is_final:
-                await self.conversation.send_initial_message(self.initial_message)
+                asyncio.create_task(
+                    self.conversation.send_initial_message(self.initial_message)
+                )
                 self.initial_message = None
                 return
             if not transcription.is_final:
@@ -680,9 +682,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         )
                         agent_response_message.message.text = current_message
                     else:
-                        self.conversation.logger.info(
-                            f"[{self.conversation.agent.agent_config.call_type}:{self.conversation.agent.agent_config.current_call_id}] Agent: {agent_response_message.message.text}"
-                        )
                         agent_response_message.message.text = (
                             agent_response_message.message.text.strip()
                         )
@@ -697,6 +696,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         (agent_response_message.message, synthesis_result),
                         is_interruptible=item.is_interruptible,
                         agent_response_tracker=item.agent_response_tracker,
+                    )
+                    self.conversation.logger.info(
+                        f"[{self.conversation.agent.agent_config.call_type}:{self.conversation.agent.agent_config.current_call_id}] Agent: {agent_response_message.message.text}"
                     )
                 else:
                     self.conversation.logger.debug(
@@ -1031,6 +1033,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
     async def check_for_idle(self):
         """Terminates the conversation after 15 seconds if no activity is detected"""
         while self.is_active():
+            if (
+                time.time() - self.last_action_timestamp > 4
+                and time.time() - self.last_action_timestamp < 30
+            ):
+                self.transcriber.VOLUME_THRESHOLD = 5000
+            else:
+                self.transcriber.VOLUME_THRESHOLD = 700
             if time.time() - self.last_action_timestamp > 30:
                 self.logger.debug("Conversation idle for too long, terminating")
                 await self.terminate()
