@@ -597,7 +597,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
     async def compose_action(self, state):
         action = state["action"]
-        self.block_inputs = True
         self.json_transcript.entries.append(
             StateAgentTranscriptActionInvoke(
                 state_id=state["id"],
@@ -672,6 +671,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     ai_filled_params = parse_llm_dict(response)
 
                 finalized_params.update(ai_filled_params)
+        self.block_inputs = True  # we make this later, after the params are generated in case the user is still talking
         if action_name.lower() == "zapier":
             # is the action description
             if action_description:
