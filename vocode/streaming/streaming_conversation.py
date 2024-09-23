@@ -765,6 +765,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         await self.initial_message_tracker.wait()
 
     async def handle_ivr(self):
+        self.set_check_for_idle_paused(True)
         ivr_message_tracker = asyncio.Event()
         if self.ivr_config.ivr_message:
             await self.send_single_message(
@@ -788,10 +789,12 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                     message_tracker=hold_message_tracker,
                 )
                 await hold_message_tracker.wait()
+
                 remaining_time = self.ivr_config.hold_duration - (time.time() - hold_start_time)
                 if remaining_time > 0:
                     await asyncio.sleep(min(remaining_time, hold_message_delay))
-        
+
+        self.set_check_for_idle_paused(False)
         self.initial_message_tracker.set()
 
     async def action_on_idle(self):
@@ -802,6 +805,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
     async def check_for_idle(self):
         """Asks if human is still on the line if no activity is detected, and terminates the conversation if not."""
         await self.initial_message_tracker.wait()
+        logger.debug("Started checking for idle")
         check_human_present_count = 0
         check_human_present_threshold = self.agent.get_agent_config().num_check_human_present_times
         while self.is_active():
