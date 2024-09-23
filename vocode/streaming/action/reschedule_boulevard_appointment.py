@@ -68,7 +68,7 @@ class RescheduleBoulevardAppointment(
             appointment_id=action_input.params.appointment_id,
             bookable_time_id=action_input.params.selected_time_id,
             business_id=CURRENT_BOULEVARD_CREDENTIALS.business_id,
-            env=os.getenv("BOULEVARD_ENV", "dev"),
+            env=os.getenv(key="ENV", default="dev"),
             send_notification=True,
         )
 
