@@ -19,7 +19,6 @@ from typing import (
 
 from opentelemetry import trace
 from opentelemetry.trace import Span
-
 from vocode.streaming.action.factory import ActionFactory
 from vocode.streaming.action.phone_call_action import (
     TwilioPhoneCallAction,

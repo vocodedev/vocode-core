@@ -29,13 +29,13 @@ class CheckBoulevardRescheduleAvailabilityActionConfig(
     ActionConfig, type=ActionType.CHECK_BOULEVARD_RESCHEDULE_AVAILABILITY
 ):
     business_id: str
-    appointment_to_reschedule: dict
     timezone: str = "America/Los_Angeles"
     starting_phrase: str
 
 
 class CheckBoulevardRescheduleAvailabilityParameters(BaseModel):
     days_in_advance: int = 7
+    appointment_id: str
 
 
 class CheckBoulevardRescheduleAvailabilityResponse(BaseModel):
@@ -63,7 +63,7 @@ class CheckBoulevardRescheduleAvailability(
         self, action_input: ActionInput[CheckBoulevardRescheduleAvailabilityParameters]
     ) -> ActionOutput[CheckBoulevardRescheduleAvailabilityResponse]:
 
-        if not self.action_config.appointment_to_reschedule:
+        if not action_input.params.appointment_id:
             return ActionOutput(
                 action_type=action_input.action_config.type,
                 response=CheckBoulevardRescheduleAvailabilityResponse(
@@ -74,15 +74,13 @@ class CheckBoulevardRescheduleAvailability(
         timezone = pytz.timezone(self.action_config.timezone)
         start_date = datetime.now(timezone).date()
         end_date = start_date + timedelta(days=action_input.params.days_in_advance)
-        availability: Dict[str, Dict[str, str]] = {}
+        availability: Dict[str, Dict[str, Dict[str, str]]] = {}
 
         for i in range(action_input.params.days_in_advance):
             current_date = start_date + timedelta(days=i)
             formatted_date = current_date.strftime("%Y-%m-%d")
             available_times = await get_available_reschedule_times(
-                appointment_id=self.action_config.appointment_to_reschedule.get(
-                    "id", ""
-                ),
+                appointment_id=action_input.params.appointment_id,
                 business_id=self.action_config.business_id,
                 date=formatted_date,
                 env=os.getenv(key="ENV", default="dev"),

@@ -20,6 +20,10 @@ from vocode.streaming.action.forward_call_to_moovs import (
     ForwardCallToMoovs,
     ForwardCallToMoovsActionConfig,
 )
+from vocode.streaming.action.get_next_boulevard_appointment import (
+    GetNextBoulevardAppointment,
+    GetNextBoulevardAppointmentActionConfig,
+)
 from vocode.streaming.action.get_train import GetTrain, GetTrainActionConfig
 from vocode.streaming.action.hangup_call import HangUpCall, HangUpCallActionConfig
 from vocode.streaming.action.nylas_send_email import (
@@ -101,6 +105,8 @@ class ActionFactory:
             return CheckBoulevardRescheduleAvailability(action_config)
         elif isinstance(action_config, RescheduleBoulevardAppointmentActionConfig):
             return RescheduleBoulevardAppointment(action_config)
+        elif isinstance(action_config, GetNextBoulevardAppointmentActionConfig):
+            return GetNextBoulevardAppointment(action_config)
         else:
             # raise Exception("Invalid action type")
             return None

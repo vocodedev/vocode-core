@@ -28,6 +28,8 @@ class SendHelloSugarDirectionsActionConfig(
 ):
     twilio_config: TwilioConfig
     from_phone: str
+    business_id: str
+    timezone: str
     starting_phrase: str = Field(
         ..., description="What the agent should say when starting the action"
     )
@@ -66,7 +68,9 @@ class SendHelloSugarDirections(
         if len(to_phone) == 9:
             to_phone = "1" + to_phone
 
-        next_appointment = await retrieve_next_appointment_by_phone_number(to_phone)
+        next_appointment = await retrieve_next_appointment_by_phone_number(
+            to_phone, self.action_config.timezone, self.action_config.business_id
+        )
         logger.info(f"The next appointment's details are {next_appointment}")
         if next_appointment:
             try:

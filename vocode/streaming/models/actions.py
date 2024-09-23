@@ -32,6 +32,7 @@ class ActionType(str, Enum):
     CREATE_SUNSHINE_CONVERSATION = "create_sunshine_conversation"
     CHECK_BOULEVARD_RESCHEDULE_AVAILABILITY = "check_boulevard_reschedule_availability"
     RESCHEDULE_BOULEVARD_APPOINTMENT = "reschedule_boulevard_appointment"
+    GET_NEXT_BOULEVARD_APPOINTMENT = "get_next_boulevard_appointment"
 
 
 class ActionConfig(TypedModel, type=ActionType.BASE):

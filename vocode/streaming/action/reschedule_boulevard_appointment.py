@@ -24,13 +24,13 @@ logger.setLevel(logging.DEBUG)
 class RescheduleBoulevardAppointmentActionConfig(
     ActionConfig, type=ActionType.RESCHEDULE_BOULEVARD_APPOINTMENT
 ):
-    appointment_to_reschedule: dict
     business_id: str
     starting_phrase: str
 
 
 class RescheduleBoulevardAppointmentParameters(BaseModel):
     selected_time_id: str
+    appointment_id: str
 
 
 class RescheduleBoulevardAppointmentResponse(BaseModel):
@@ -57,7 +57,7 @@ class RescheduleBoulevardAppointment(
     async def run(
         self, action_input: ActionInput[RescheduleBoulevardAppointmentParameters]
     ) -> ActionOutput[RescheduleBoulevardAppointmentResponse]:
-        if not self.action_config.appointment_to_reschedule:
+        if not action_input.params.appointment_id:
             logger.error("No upcoming appointment found.")
             return ActionOutput(
                 action_type=action_input.action_config.type,
@@ -65,7 +65,7 @@ class RescheduleBoulevardAppointment(
             )
 
         response = await reschedule_appointment(
-            appointment_id=self.action_config.appointment_to_reschedule["id"],
+            appointment_id=action_input.params.appointment_id,
             bookable_time_id=action_input.params.selected_time_id,
             business_id=CURRENT_BOULEVARD_CREDENTIALS.business_id,
             env=os.getenv("BOULEVARD_ENV", "dev"),

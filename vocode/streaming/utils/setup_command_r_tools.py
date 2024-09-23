@@ -327,7 +327,12 @@ all_optional_tools = {
                 "description": "The number of days in advance to check for availability",
                 "type": "int",
                 "required": True,
-            }
+            },
+            "appointment_id": {
+                "description": "The ID of the appointment to reschedule",
+                "type": "str",
+                "required": True,
+            },
         },
     },
     ActionType.RESCHEDULE_BOULEVARD_APPOINTMENT: {
@@ -338,8 +343,18 @@ all_optional_tools = {
                 "description": "The ID of the selected time for rescheduling",
                 "type": "list",
                 "required": True,
-            }
+            },
+            "appointment_id": {
+                "description": "The ID of the appointment to reschedule",
+                "type": "str",
+                "required": True,
+            },
         },
+    },
+    ActionType.GET_NEXT_BOULEVARD_APPOINTMENT: {
+        "name": "get_next_boulevard_appointment",
+        "description": "Get the next Boulevard appointment for a given customer.",
+        "parameter_definitions": {},
     },
 }
 
