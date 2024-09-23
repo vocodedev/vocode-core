@@ -9,7 +9,7 @@ from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import PhoneCallEndedEvent
 from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.models.telephony import PhoneCallDirection
+from vocode.streaming.models.telephony import PhoneCallDirection, IvrConfig
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
 from vocode.streaming.output_device.vonage_output_device import VonageOutputDevice
@@ -49,6 +49,7 @@ class AbstractPhoneConversation(StreamingConversation[TelephonyOutputDeviceType]
         conversation_id: Optional[str] = None,
         events_manager: Optional[EventsManager] = None,
         speed_coefficient: float = 1.0,
+        ivr_config: Optional[IvrConfig] = None,
     ):
         conversation_id = conversation_id or create_conversation_id()
         ctx_conversation_id.set(conversation_id)
@@ -65,6 +66,7 @@ class AbstractPhoneConversation(StreamingConversation[TelephonyOutputDeviceType]
             conversation_id=conversation_id,
             events_manager=events_manager,
             speed_coefficient=speed_coefficient,
+            ivr_config=ivr_config,
         )
         self.config_manager = config_manager
 

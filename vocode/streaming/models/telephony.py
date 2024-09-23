@@ -16,6 +16,9 @@ from vocode.streaming.telephony.constants import (
     VONAGE_AUDIO_ENCODING,
     VONAGE_CHUNK_SIZE,
     VONAGE_SAMPLING_RATE,
+    DEFAULT_HOLD_MESSAGE_DELAY,
+    DEFAULT_HOLD_DURATION,
+    DEFAULT_IVR_HANDOFF_DELAY
 )
 
 
@@ -93,6 +96,13 @@ class CallConfigType(str, Enum):
 
 PhoneCallDirection = Literal["inbound", "outbound"]
 
+class IvrConfig(BaseModel):
+    ivr_message: Optional[str] = None
+    wait_for_keypress: bool = False
+    ivr_handoff_delay: Optional[float] = DEFAULT_IVR_HANDOFF_DELAY
+    hold_message: Optional[str] = None
+    hold_message_delay: Optional[float] = DEFAULT_HOLD_MESSAGE_DELAY
+    hold_duration: Optional[float] = DEFAULT_HOLD_DURATION
 
 class BaseCallConfig(TypedModel, type=CallConfigType.BASE.value):  # type: ignore
     transcriber_config: TranscriberConfig
@@ -104,6 +114,7 @@ class BaseCallConfig(TypedModel, type=CallConfigType.BASE.value):  # type: ignor
     conference: bool = False
     telephony_params: Optional[Dict[str, str]] = None
     direction: PhoneCallDirection
+    ivr_config: Optional[IvrConfig] = None
 
     @staticmethod
     def default_transcriber_config():
