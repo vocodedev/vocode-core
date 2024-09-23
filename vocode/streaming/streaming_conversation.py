@@ -41,10 +41,16 @@ from vocode.streaming.constants import (
     CHECK_HUMAN_PRESENT_MESSAGE_CHOICES,
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
 )
+from vocode.streaming.telephony.constants import (
+    DEFAULT_HOLD_MESSAGE_DELAY,
+    DEFAULT_HOLD_DURATION
+)
+
 from vocode.streaming.models.actions import EndOfTurn
 from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage, BotBackchannel, LLMToken, SilenceMessage
+from vocode.streaming.models.telephony import IvrConfig
 from vocode.streaming.models.transcriber import TranscriberConfig, Transcription
 from vocode.streaming.models.transcript import Message, Transcript, TranscriptCompleteEvent
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
@@ -590,6 +596,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         speed_coefficient: float = 1.0,
         conversation_id: Optional[str] = None,
         events_manager: Optional[EventsManager] = None,
+        ivr_config: Optional[IvrConfig] = None,
     ):
         self.id = conversation_id or create_conversation_id()
         ctx_conversation_id.set(self.id)
@@ -599,6 +606,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         self.agent = agent
         self.synthesizer = synthesizer
         self.synthesis_enabled = True
+        self.ivr_config = ivr_config
 
         self.interruptible_events: queue.Queue[InterruptibleEvent] = queue.Queue()
         self.interruptible_event_factory = self.QueueingInterruptibleEventFactory(conversation=self)
@@ -712,7 +720,12 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
 
         self.agent.start()
         initial_message = self.agent.get_agent_config().initial_message
-        if initial_message:
+        logger.info(f"IVR_CONFIG: {self.ivr_config}")
+        if self.ivr_config:
+            asyncio_create_task(
+                self.handle_ivr()
+            )
+        elif initial_message:
             asyncio_create_task(
                 self.send_initial_message(initial_message),
             )
@@ -750,6 +763,36 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             message_tracker=self.initial_message_tracker,
         )
         await self.initial_message_tracker.wait()
+
+    async def handle_ivr(self):
+        ivr_message_tracker = asyncio.Event()
+        if self.ivr_config.ivr_message:
+            await self.send_single_message(
+                message=BaseMessage(text=self.ivr_config.ivr_message),
+                message_tracker=ivr_message_tracker,
+            )
+            await ivr_message_tracker.wait()
+        
+        if self.ivr_config.ivr_handoff_delay:
+            await asyncio.sleep(self.ivr_config.ivr_handoff_delay)
+        
+        if self.ivr_config.hold_message:
+            hold_start_time = time.time()
+            hold_message_delay = self.ivr_config.hold_message_delay or DEFAULT_HOLD_MESSAGE_DELAY
+            hold_duration = self.ivr_config.hold_duration or DEFAULT_HOLD_DURATION
+
+            while time.time() - hold_start_time < hold_duration:
+                hold_message_tracker = asyncio.Event()
+                await self.send_single_message(
+                    message=BaseMessage(text=self.ivr_config.hold_message),
+                    message_tracker=hold_message_tracker,
+                )
+                await hold_message_tracker.wait()
+                remaining_time = self.ivr_config.hold_duration - (time.time() - hold_start_time)
+                if remaining_time > 0:
+                    await asyncio.sleep(min(remaining_time, hold_message_delay))
+        
+        self.initial_message_tracker.set()
 
     async def action_on_idle(self):
         logger.debug("Conversation idle for too long, terminating")
