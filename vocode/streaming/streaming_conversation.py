@@ -718,7 +718,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
             if not chunk_result or not chunk_result.chunk:
                 self.logger.warning("No chunk to send")
                 break
-            self.output_device.consume_nonblocking(chunk_result.chunk)
+            lipsync_events = []
+            if synthesis_result.get_lipsync_events:
+                lipsync_events = synthesis_result.get_lipsync_events(duration, duration + seconds_per_chunk)
+            self.output_device.consume_nonblocking(chunk_result.chunk, lipsync_events)
+
             end_time = time.time()
             await asyncio.sleep(
                 max(

@@ -1,4 +1,5 @@
 from vocode.streaming.models.audio_encoding import AudioEncoding
+from typing import Optional
 
 
 class BaseOutputDevice:
@@ -9,7 +10,7 @@ class BaseOutputDevice:
     def start(self):
         pass
 
-    def consume_nonblocking(self, chunk: bytes):
+    def consume_nonblocking(self, chunk: bytes, lipsync_events: Optional[list] = None):
         raise NotImplemented
     
     def maybe_send_mark_nonblocking(self, message):

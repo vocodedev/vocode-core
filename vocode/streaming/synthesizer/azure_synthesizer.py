@@ -26,6 +26,7 @@ from vocode.streaming.models.audio_encoding import AudioEncoding
 
 import azure.cognitiveservices.speech as speechsdk
 
+AZURE_TICK_PER_SECOND = 10000000
 
 NAMESPACES = {
     "mstts": "https://www.w3.org/2001/mstts",
@@ -45,7 +46,7 @@ class WordBoundaryEventPool:
             {
                 "text": event.text,
                 "text_offset": event.text_offset,
-                "audio_offset": (event.audio_offset + 5000) / (10000 * 1000),
+                "audio_offset": (event.audio_offset + 5000) / AZURE_TICK_PER_SECOND,
                 "boudary_type": event.boundary_type,
             }
         )
@@ -230,6 +231,10 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 # TODO: this is a little hacky, but it works for now
                 return ssml_fragment.split(">")[-1]
         return message
+    
+    def get_lipsync_events_for(self, from_t, to_t, viseme_events):
+        filtered_events = [{"audio_offset": (evt.audio_offset - from_t * AZURE_TICK_PER_SECOND) / AZURE_TICK_PER_SECOND, "viseme_id": evt.viseme_id} for evt in viseme_events if from_t <= evt.audio_offset / AZURE_TICK_PER_SECOND <= to_t]
+        return filtered_events
 
     async def create_speech(
         self,
@@ -278,9 +283,11 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 yield SynthesisResult.ChunkResult(chunk_transform(audio_buffer), False)
 
         word_boundary_event_pool = WordBoundaryEventPool()
+        viseme_events = []
         self.synthesizer.synthesis_word_boundary.connect(
             lambda event: self.word_boundary_cb(event, word_boundary_event_pool)
         )
+        self.synthesizer.viseme_received.connect(lambda evt: viseme_events.append(evt))
         ssml = (
             message.ssml
             if isinstance(message, SSMLMessage)
@@ -302,4 +309,5 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             lambda seconds: self.get_message_up_to(
                 message.text, ssml, seconds, word_boundary_event_pool
             ),
+            lambda from_t, to_t: self.get_lipsync_events_for(from_t, to_t, viseme_events)
         )

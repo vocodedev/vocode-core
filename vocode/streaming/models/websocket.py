@@ -24,10 +24,15 @@ class WebSocketMessageType(str, Enum):
 
 class WebSocketMessage(TypedModel, type=WebSocketMessageType.BASE):
     pass
+    
 
+class LipsyncEvent(TypedModel):
+    audio_offset: float
+    viseme_id: int
 
 class AudioMessage(WebSocketMessage, type=WebSocketMessageType.AUDIO):
     data: str
+    lipsync_events: Optional[list[LipsyncEvent]] = None
 
     @classmethod
     def from_bytes(cls, chunk: bytes):

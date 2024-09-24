@@ -81,7 +81,7 @@ class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE.value
     voice_name: str = AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME
     pitch: int = AZURE_SYNTHESIZER_DEFAULT_PITCH
     rate: int = AZURE_SYNTHESIZER_DEFAULT_RATE
-    language_code: str = ''
+    language_code: str | None = None
 
 
 DEFAULT_GOOGLE_LANGUAGE_CODE = "en-US"

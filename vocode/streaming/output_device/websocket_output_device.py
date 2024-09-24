@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional
 
 import asyncio
 from fastapi import WebSocket
@@ -33,9 +34,11 @@ class WebsocketOutputDevice(BaseOutputDevice):
             if self.active and self.ws.client_state != WebSocketState.DISCONNECTED:
                 await self.ws.send_text(message)
 
-    def consume_nonblocking(self, chunk: bytes):
+    def consume_nonblocking(self, chunk: bytes, lipsync_events: Optional[list] = None):
         if self.active:
             audio_message = AudioMessage.from_bytes(chunk)
+            if lipsync_events:
+                audio_message.lipsync_events = lipsync_events
             self.queue.put_nowait(audio_message.json())
 
     def consume_transcript(self, event: TranscriptEvent):
