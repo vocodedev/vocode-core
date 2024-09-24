@@ -63,7 +63,7 @@ class SynthesisResult:
         self,
         chunk_generator: AsyncGenerator[ChunkResult, None],
         get_message_up_to: Callable[[int], str],
-        get_lipsync_events: Callable[[int, int], []] = None,
+        get_lipsync_events: Callable[[int, int], list] = None,
     ):
         self.chunk_generator = chunk_generator
         self.get_message_up_to = get_message_up_to
