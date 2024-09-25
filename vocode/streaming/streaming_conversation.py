@@ -237,14 +237,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         # Make the async request
                         start_time = time.time()
                         async with httpx.AsyncClient() as client:
+                            # the trailing slash is required, or we'll get stuck in a redirect loop
                             response = await client.post(
-                                "http://endpoint-classifier-endpoint-classifier-svc.default.svc.cluster.local:58000/inference",
+                                "http://endpoint-classifier-endpoint-classifier-svc.default.svc.cluster.local:58000/inference/",
                                 headers={
                                     "accept": "application/json",
                                     "Content-Type": "application/json",
                                 },
                                 json=request_data,
-                                timeout=1.0,
+                                timeout=0.5,
+                                follow_redirects=True,
                             )
                         request_duration = time.time() - start_time
 
