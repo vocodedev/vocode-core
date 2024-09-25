@@ -109,6 +109,10 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self.synthesizer = speechsdk.SpeechSynthesizer(
             speech_config=speech_config, audio_config=None
         )
+        # Will listen for all events for any messages created by this synthesizer
+        # The function get_events_for will filter the events for a specific message
+        self.synthesizer.synthesis_word_boundary.connect(lambda evt: self.event_pool.append(evt))
+        self.synthesizer.viseme_received.connect(lambda evt: self.event_pool.append(evt))
 
         self.language_code = self.synthesizer_config.language_code
         self.voice_name = self.synthesizer_config.voice_name
@@ -116,6 +120,8 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self.rate = self.synthesizer_config.rate
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
         self.logger = logger or logging.getLogger(__name__)
+        self.event_pool: list[speechsdk.SpeechSynthesisVisemeEventArgs | speechsdk.SpeechSynthesisWordBoundaryEventArgs] = []
+        self.msg_index = 0
 
     async def get_phrase_filler_audios(self) -> List[FillerAudio]:
         filler_phrase_audios = []
@@ -216,25 +222,49 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         connection = speechsdk.Connection.from_speech_synthesizer(self.synthesizer)
         connection.open(True)
 
+    def get_events_for(self, type: type, msg_index: int, from_t: float, to_t: float) -> list[speechsdk.SpeechSynthesisVisemeEventArgs | speechsdk.SpeechSynthesisWordBoundaryEventArgs]:
+        msg_count = 0
+        filtered_events = []
+        last_event = None
+        for evt in self.event_pool:
+            if isinstance(evt, type):
+                if last_event and last_event.audio_offset > evt.audio_offset:
+                    # An event of same type as went from large offset to small offset, which means it's a new message
+                    msg_count += 1
+
+                if msg_count > msg_index:
+                    break
+                elif msg_count == msg_index:
+                    t = evt.audio_offset / AZURE_TICK_PER_SECOND
+                    # Filter all events in this message, within the given time range
+                    if t >= from_t and t <= to_t:
+                        filtered_events.append(evt)
+                last_event = evt
+        return filtered_events
+    
     # given the number of seconds the message was allowed to go until, where did we get in the message?
     def get_message_up_to(
         self,
+        msg_index: int,
         message: str,
         ssml: str,
         seconds: int,
-        word_boundary_event_pool: WordBoundaryEventPool,
     ) -> str:
-        events = word_boundary_event_pool.get_events_sorted()
-        for event in events:
-            if event["audio_offset"] > seconds:
-                ssml_fragment = ssml[: event["text_offset"]]
-                # TODO: this is a little hacky, but it works for now
-                return ssml_fragment.split(">")[-1]
-        return message
+        events = self.get_events_for(speechsdk.SpeechSynthesisWordBoundaryEventArgs, msg_index, seconds, 10000) # some large number)
+        if events:
+            ssml_fragment = ssml[: events[0].text_offset]
+            # TODO: this is a little hacky, but it works for now
+            return ssml_fragment.split(">")[-1]
+        else:
+            return message
     
-    def get_lipsync_events_for(self, from_t, to_t, viseme_events):
-        filtered_events = [{"audio_offset": (evt.audio_offset - from_t * AZURE_TICK_PER_SECOND) / AZURE_TICK_PER_SECOND, "viseme_id": evt.viseme_id} for evt in viseme_events if from_t <= evt.audio_offset / AZURE_TICK_PER_SECOND <= to_t]
-        return filtered_events
+    def get_lipsync_events_for(self, msg_index: int, from_t: float, to_t: float):
+        return [{"audio_offset": evt.audio_offset / AZURE_TICK_PER_SECOND - from_t, "viseme_id": evt.viseme_id } for evt in self.get_events_for(speechsdk.SpeechSynthesisVisemeEventArgs, msg_index, from_t, to_t)]
+    
+    def print_all_events(self):
+        for event in self.event_pool:
+            print(event)
+
 
     async def create_speech(
         self,
@@ -282,17 +312,13 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                     break
                 yield SynthesisResult.ChunkResult(chunk_transform(audio_buffer), False)
 
-        word_boundary_event_pool = WordBoundaryEventPool()
-        viseme_events = []
-        self.synthesizer.synthesis_word_boundary.connect(
-            lambda event: self.word_boundary_cb(event, word_boundary_event_pool)
-        )
-        self.synthesizer.viseme_received.connect(lambda evt: viseme_events.append(evt))
         ssml = (
             message.ssml
             if isinstance(message, SSMLMessage)
             else self.create_ssml(message.text, bot_sentiment=bot_sentiment)
         )
+        msg_index = self.msg_index
+        self.msg_index += 1
         audio_data_stream = await asyncio.get_event_loop().run_in_executor(
             self.thread_pool_executor, self.synthesize_ssml, ssml
         )
@@ -306,8 +332,6 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
 
         return SynthesisResult(
             output_generator,
-            lambda seconds: self.get_message_up_to(
-                message.text, ssml, seconds, word_boundary_event_pool
-            ),
-            lambda from_t, to_t: self.get_lipsync_events_for(from_t, to_t, viseme_events)
+            lambda seconds: self.get_message_up_to(msg_index, message.text, ssml, seconds),
+            lambda from_t, to_t: self.get_lipsync_events_for(msg_index, from_t, to_t),
         )
