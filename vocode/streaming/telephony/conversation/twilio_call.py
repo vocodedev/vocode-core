@@ -134,6 +134,25 @@ class TwilioCall(Call[TwilioOutputDevice]):
                     break
         await self.config_manager.delete_config(self.id)
         await self.tear_down()
+    
+    async def terminate(self):
+        await super().terminate()
+        json_transcript = self.agent.get_json_transcript()
+        status_update_task = asyncio.create_task(
+                execute_status_update_by_telephony_id(
+                    telephony_id=self.twilio_sid,
+                    call_status=CallStatus.ENDED_BEFORE_TRANSFER,
+                    call_type=self.agent.agent_config.call_type,
+                    json_transcript=json_transcript.dict() if json_transcript else None
+                )
+            )
+        send_call_end_notification_task = asyncio.create_task(
+            send_call_end_notification(
+                call_id=self.agent.agent_config.current_call_id,
+                call_type=self.agent.agent_config.call_type,
+            )
+        )
+        await asyncio.gather([status_update_task, send_call_end_notification_task])
 
     async def wait_for_twilio_start(self, ws: WebSocket):
         assert isinstance(self.output_device, TwilioOutputDevice)

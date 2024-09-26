@@ -1477,6 +1477,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.mark_terminated()
         end_span(self.conversation_span)
         await self.broadcast_interrupt()
+        self.output_device.terminate()
+
         if self.synthesis_results_worker.current_task:
             self.synthesis_results_worker.current_task.cancel()
         self.events_manager.publish_event(
@@ -1505,7 +1507,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             await self.agent.vector_db.tear_down()
         self.agent.terminate()
         self.logger.debug("Terminating output device")
-        self.output_device.terminate()
         self.logger.debug("Terminating speech transcriber")
         self.transcriber.terminate()
         self.logger.debug("Terminating transcriptions worker")
