@@ -319,6 +319,17 @@ all_optional_tools = {
             }
         },
     },
+    ActionType.CREATE_SUNSHINE_CONVERSATION_AFTER_CALL: {
+        "name": "create_sunshine_conversation_after_call",
+        "description": "Create a sunshine conversation with a human support agent",
+        "parameter_definitions": {
+            "handoff_information": {
+                "description": "The information passed to a human agent when the support ticket is created",
+                "type": "str",
+                "required": True,
+            }
+        },
+    },
     ActionType.CHECK_BOULEVARD_RESCHEDULE_AVAILABILITY: {
         "name": "check_boulevard_reschedule_availability",
         "description": "Check the availability of appointments on Boulevard for a specific date and time.",

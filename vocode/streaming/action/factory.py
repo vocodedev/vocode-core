@@ -16,6 +16,7 @@ from vocode.streaming.action.create_sunshine_conversation import (
     CreateSunshineConversation,
     CreateSunshineConversationActionConfig,
 )
+from vocode.streaming.action.create_sunshine_conversation_after_call import CreateSunshineConversationAfterCall, CreateSunshineConversationAfterCallActionConfig
 from vocode.streaming.action.forward_call_to_moovs import (
     ForwardCallToMoovs,
     ForwardCallToMoovsActionConfig,
@@ -99,6 +100,8 @@ class ActionFactory:
             return ForwardCallToMoovs(action_config)
         elif isinstance(action_config, CreateSunshineConversationActionConfig):
             return CreateSunshineConversation(action_config)
+        elif isinstance(action_config, CreateSunshineConversationAfterCallActionConfig):
+            return CreateSunshineConversationAfterCall(action_config)
         elif isinstance(
             action_config, CheckBoulevardRescheduleAvailabilityActionConfig
         ):

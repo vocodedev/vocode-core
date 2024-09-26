@@ -30,6 +30,7 @@ class ActionType(str, Enum):
     SEARCH_DOCUMENTS = "search_documents"
     FORWARD_CALL_TO_MOOVS = "forward_call_to_moovs"
     CREATE_SUNSHINE_CONVERSATION = "create_sunshine_conversation"
+    CREATE_SUNSHINE_CONVERSATION_AFTER_CALL = "create_sunshine_conversation_after_call"
     CHECK_BOULEVARD_RESCHEDULE_AVAILABILITY = "check_boulevard_reschedule_availability"
     RESCHEDULE_BOULEVARD_APPOINTMENT = "reschedule_boulevard_appointment"
     GET_NEXT_BOULEVARD_APPOINTMENT = "get_next_boulevard_appointment"
