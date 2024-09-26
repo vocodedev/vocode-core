@@ -230,7 +230,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         msg_count = 0
         filtered_events = []
         last_event = None
-        picked_indices = []
+        #picked_indices = []
         for i, evt in enumerate(self.event_pool):
             if isinstance(evt, type):
                 if last_event and last_event.audio_offset > evt.audio_offset:
@@ -244,9 +244,9 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                     # Filter all events in this message, within the given time range
                     if t >= from_t and t <= to_t:
                         filtered_events.append(evt)
-                        picked_indices.append(i)
+                        #picked_indices.append(i)
                 last_event = evt
-        self.logger.debug(f"Picked events: type={type}, msg_index={msg_index}, from {from_t} to {to_t}, picked: {picked_indices}")
+        #self.logger.debug(f"Picked events: type={type}, msg_index={msg_index}, from {from_t} to {to_t}, picked: {picked_indices}")
         return filtered_events
     
     # given the number of seconds the message was allowed to go until, where did we get in the message?

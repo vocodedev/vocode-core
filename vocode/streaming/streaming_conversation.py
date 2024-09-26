@@ -747,7 +747,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             #         duration
             #     )
         if synthesis_result.get_lipsync_events:
-            self.logger.debug(self.synthesizer.print_all_events())
+            # self.logger.debug(self.synthesizer.print_all_events())
             self.logger.debug(message_sent + ":\n" + print_visemes(synthesis_result.get_lipsync_events(0, 1000), AZURE_TO_OVR))
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
