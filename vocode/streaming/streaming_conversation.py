@@ -27,7 +27,7 @@ from vocode.streaming.models.transcript import (
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.transcriber import EndpointingConfig, TranscriberConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.utils import save_as_wav, trim_audio
+from vocode.streaming.utils import save_as_wav, trim_audio, print_visemes, AZURE_TO_OVR
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.goodbye_model import GoodbyeModel
@@ -735,6 +735,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.debug(
                 "Sent chunk {} with size {}".format(chunk_idx, len(chunk_result.chunk))
             )
+
             self.mark_last_action_timestamp()
             chunk_idx += 1
             duration += seconds_per_chunk
@@ -742,6 +743,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 transcript_message.text = synthesis_result.get_message_up_to(
                     duration
                 )
+        if synthesis_result.get_lipsync_events:
+            self.logger.debug(message_sent + ":\n" + print_visemes(synthesis_result.get_lipsync_events(0, 1000), AZURE_TO_OVR))
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()

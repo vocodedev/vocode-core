@@ -12,6 +12,56 @@ from ..models.audio_encoding import AudioEncoding
 logger = logging.getLogger(__name__)
 custom_alphabet = ascii_letters + digits + ".-_"
 
+AZURE_PHONETIC_SYMBOLS = {
+    0: "silence",
+    1: "æ, ə, ʌ",
+    2: "ɑ",
+    3: "ɔ",
+    4: "ɛ, ʊ",
+    5: "ɝ",
+    6: "j, i, ɪ",
+    7: "w, u",
+    8: "o",
+    9: "aʊ",
+    10: "ɔɪ",
+    11: "aɪ",
+    12: "h",
+    13: "ɹ",
+    14: "l",
+    15: "s, z",
+    16: "ʃ, tʃ, dʒ, ʒ",
+    17: "ð",
+    18: "f, v",
+    19: "d, t, n, θ",
+    20: "k, g, ŋ",
+    21: "p, b, m",
+}
+
+AZURE_TO_OVR = {
+  0: "viseme_sil",
+  1: "viseme_aa",
+  2: "viseme_aa",
+  3: "viseme_aa",
+  4: "viseme_U",
+  5: "viseme_nn",
+  6: "viseme_I",
+  7: "viseme_O",
+  8: "viseme_O",
+  9: "viseme_aa",
+  10: "viseme_O",
+  11: "viseme_aa",
+  12: "viseme_U",
+  13: "viseme_RR",
+  14: "viseme_nn",
+  15: "viseme_SS",
+  16: "viseme_CH",
+  17: "viseme_TH",
+  18: "viseme_FF",
+  19: "viseme_DD",
+  20: "viseme_kk",
+  21: "viseme_PP",
+}
+
 def create_loop_in_thread(loop: asyncio.AbstractEventLoop, long_running_task=None):
     asyncio.set_event_loop(loop)
     if long_running_task:
@@ -69,6 +119,12 @@ def create_conversation_id() -> str:
 
 def remove_non_letters_digits(text):
     return ''.join(i for i in text if i in custom_alphabet)
+
+def print_visemes(lipsync_events, lookup_table):
+    out = ""
+    for event in lipsync_events:
+        out += f'{event["audio_offset"]}\t{event["audio_offset"]}\t{lookup_table[event["viseme_id"]]}\n'
+    return out
 
 def save_as_wav(path, audio_data: bytes, sampling_rate: int):
     if len(audio_data) == 0:
