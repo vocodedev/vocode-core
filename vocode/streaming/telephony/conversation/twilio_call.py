@@ -42,6 +42,8 @@ class PhoneCallWebsocketAction(Enum):
 
 
 class TwilioCall(Call[TwilioOutputDevice]):
+    on_call_ended_status = None
+
     def __init__(
         self,
         from_phone: str,
@@ -134,25 +136,38 @@ class TwilioCall(Call[TwilioOutputDevice]):
                     break
         await self.config_manager.delete_config(self.id)
         await self.tear_down()
-    
-    async def terminate(self):
-        await super().terminate()
+
+    async def on_call_ended(self, callSid: Optional[str]):
+        if self.on_call_ended_status is not None:
+            return
+        
+        self.on_call_ended_status = "loading"
+        
         json_transcript = self.agent.get_json_transcript()
         status_update_task = asyncio.create_task(
-                execute_status_update_by_telephony_id(
-                    telephony_id=self.twilio_sid,
-                    call_status=CallStatus.ENDED_BEFORE_TRANSFER,
-                    call_type=self.agent.agent_config.call_type,
-                    json_transcript=json_transcript.dict() if json_transcript else None
-                )
+            execute_status_update_by_telephony_id(
+                telephony_id=callSid or self.twilio_sid,
+                call_status=CallStatus.ENDED_BEFORE_TRANSFER,
+                call_type=self.agent.agent_config.call_type,
+                json_transcript=json_transcript.dict() if json_transcript else None
             )
+        )
         send_call_end_notification_task = asyncio.create_task(
             send_call_end_notification(
                 call_id=self.agent.agent_config.current_call_id,
                 call_type=self.agent.agent_config.call_type,
             )
         )
-        await asyncio.gather(status_update_task, send_call_end_notification_task)
+
+        await asyncio.gather(
+            status_update_task, send_call_end_notification_task
+        )
+
+        self.on_call_ended_status = "done"
+    
+    async def terminate(self):
+        await super().terminate()
+        await self.on_call_ended()
 
     async def wait_for_twilio_start(self, ws: WebSocket):
         assert isinstance(self.output_device, TwilioOutputDevice)
@@ -188,25 +203,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
         elif data["event"] == "stop":
             self.logger.debug(f"Media WS: Received event 'stop': {message}")
             self.logger.debug("Stopping...")
-            json_transcript = self.agent.get_json_transcript()
-            status_update_task = asyncio.create_task(
-                execute_status_update_by_telephony_id(
-                    telephony_id=data["stop"]["callSid"],
-                    call_status=CallStatus.ENDED_BEFORE_TRANSFER,
-                    call_type=self.agent.agent_config.call_type,
-                    json_transcript=json_transcript.dict() if json_transcript else None
-                )
-            )
-            send_call_end_notification_task = asyncio.create_task(
-                send_call_end_notification(
-                    call_id=self.agent.agent_config.current_call_id,
-                    call_type=self.agent.agent_config.call_type,
-                )
-            )
-
-            await asyncio.gather(
-                status_update_task, send_call_end_notification_task
-            )  # , send_message_to_mirth_task)
+            await self.on_call_ended(callSid=data["stop"]["callSid"])
             self.logger.debug("Updated call status to have ended")
             return PhoneCallWebsocketAction.CLOSE_WEBSOCKET
 
