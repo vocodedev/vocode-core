@@ -694,12 +694,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.synthesizer.get_synthesizer_config().audio_encoding,
             self.synthesizer.get_synthesizer_config().sampling_rate,
         )
+        chunks_header_length = (
+            44 if self.synthesizer.get_synthesizer_config().should_encode_as_wav else 0
+        )
         chunk_idx = 0
         duration = 0
         async for chunk_result in synthesis_result.chunk_generator:
             start_time = time.time()
             speech_length_seconds = seconds_per_chunk * (
-                len(chunk_result.chunk) / chunk_size
+                (len(chunk_result.chunk) - chunks_header_length) / chunk_size
             )
             duration = chunk_idx * seconds_per_chunk
             if stop_event.is_set():
@@ -739,11 +742,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.mark_last_action_timestamp()
             chunk_idx += 1
             duration += seconds_per_chunk
-            if transcript_message:
-                transcript_message.text = synthesis_result.get_message_up_to(
-                    duration
-                )
+            # if transcript_message:
+            #     transcript_message.text = synthesis_result.get_message_up_to(
+            #         duration
+            #     )
         if synthesis_result.get_lipsync_events:
+            self.logger.debug(self.synthesizer.print_all_events())
             self.logger.debug(message_sent + ":\n" + print_visemes(synthesis_result.get_lipsync_events(0, 1000), AZURE_TO_OVR))
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")

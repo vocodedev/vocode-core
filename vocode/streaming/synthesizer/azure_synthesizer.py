@@ -28,6 +28,10 @@ import azure.cognitiveservices.speech as speechsdk
 
 AZURE_TICK_PER_SECOND = 10000000
 
+def ticks2s(ticks: int):
+    return ticks / AZURE_TICK_PER_SECOND
+    # return ((ticks + 5000) / 10000) / 1000
+
 NAMESPACES = {
     "mstts": "https://www.w3.org/2001/mstts",
     "": "https://www.w3.org/2001/10/synthesis",
@@ -202,12 +206,12 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         # for normal sentences, it seems like the gap is > 500ms, so we're able to reduce it to 500ms
         # for very tiny sentences, the API hangs - so we heuristically only update the silence gap
         # if there is more than one word in the sentence
-        if " " in message:
-            silence = ElementTree.SubElement(
-                voice_root, "{%s}silence" % NAMESPACES.get("mstts")
-            )
-            silence.set("value", "500ms")
-            silence.set("type", "Tailing-exact")
+        # if " " in message:
+        #     silence = ElementTree.SubElement(
+        #         voice_root, "{%s}silence" % NAMESPACES.get("mstts")
+        #     )
+        #     silence.set("value", "500ms")
+        #     silence.set("type", "Tailing-exact")
         prosody = ElementTree.SubElement(voice_root, "prosody")
         prosody.set("pitch", f"{self.pitch}%")
         prosody.set("rate", f"{self.rate}%")
@@ -226,7 +230,8 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         msg_count = 0
         filtered_events = []
         last_event = None
-        for evt in self.event_pool:
+        picked_indices = []
+        for i, evt in enumerate(self.event_pool):
             if isinstance(evt, type):
                 if last_event and last_event.audio_offset > evt.audio_offset:
                     # An event of same type as went from large offset to small offset, which means it's a new message
@@ -235,11 +240,13 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 if msg_count > msg_index:
                     break
                 elif msg_count == msg_index:
-                    t = evt.audio_offset / AZURE_TICK_PER_SECOND
+                    t = ticks2s(evt.audio_offset)
                     # Filter all events in this message, within the given time range
                     if t >= from_t and t <= to_t:
                         filtered_events.append(evt)
+                        picked_indices.append(i)
                 last_event = evt
+        self.logger.debug(f"Picked events: type={type}, msg_index={msg_index}, from {from_t} to {to_t}, picked: {picked_indices}")
         return filtered_events
     
     # given the number of seconds the message was allowed to go until, where did we get in the message?
@@ -259,11 +266,13 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             return message
     
     def get_lipsync_events_for(self, msg_index: int, from_t: float, to_t: float):
-        return [{"audio_offset": evt.audio_offset / AZURE_TICK_PER_SECOND - from_t, "viseme_id": evt.viseme_id } for evt in self.get_events_for(speechsdk.SpeechSynthesisVisemeEventArgs, msg_index, from_t, to_t)]
+        return [{"audio_offset": ticks2s(evt.audio_offset) - from_t, "viseme_id": evt.viseme_id } for evt in self.get_events_for(speechsdk.SpeechSynthesisVisemeEventArgs, msg_index, from_t, to_t)]
     
     def print_all_events(self):
-        for event in self.event_pool:
-            print(event)
+        out = ""
+        for i, event in enumerate(self.event_pool):
+            out += f"{i}: {event}"
+        return out
 
 
     async def create_speech(
