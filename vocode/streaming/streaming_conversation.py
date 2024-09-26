@@ -273,6 +273,9 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 )
                 self.has_associated_unignored_utterance = not transcription.is_final
                 if self.conversation.current_transcription_is_interrupt:
+                    logger.debug(
+                        f"Interrupting transcription: {transcription.message}, confidence: {transcription.confidence}"
+                    )
                     logger.debug("sent interrupt")
                 logger.debug("Human started speaking")
                 self.conversation.is_human_still_there = True
