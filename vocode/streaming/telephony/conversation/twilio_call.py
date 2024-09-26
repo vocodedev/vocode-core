@@ -167,7 +167,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
     
     async def terminate(self):
         await super().terminate()
-        await self.on_call_ended()
+        await self.on_call_ended(callSid=None)
 
     async def wait_for_twilio_start(self, ws: WebSocket):
         assert isinstance(self.output_device, TwilioOutputDevice)
