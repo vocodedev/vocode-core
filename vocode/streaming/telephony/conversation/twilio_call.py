@@ -152,7 +152,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
                 call_type=self.agent.agent_config.call_type,
             )
         )
-        await asyncio.gather([status_update_task, send_call_end_notification_task])
+        await asyncio.gather(status_update_task, send_call_end_notification_task)
 
     async def wait_for_twilio_start(self, ws: WebSocket):
         assert isinstance(self.output_device, TwilioOutputDevice)
