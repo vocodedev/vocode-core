@@ -15,6 +15,7 @@ from vocode.streaming.models.events import RecordingEvent
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.models.telephony import (
     IvrConfig,
+    IvrDagConfig,
     TwilioCallConfig,
     TwilioConfig,
     VonageCallConfig,
@@ -43,6 +44,7 @@ class AbstractInboundCallConfig(BaseModel, abc.ABC):
     auth_token: Optional[str] = None
     verify_token: Optional[bool] = False
     ivr_config: Optional[IvrConfig] = None
+    ivr_dag: Optional[IvrDagConfig] = None
 
 
 class TwilioInboundCallConfig(AbstractInboundCallConfig):
@@ -146,6 +148,7 @@ class TelephonyServer:
                 to_phone=twilio_to,
                 direction="inbound",
                 ivr_config=inbound_call_config.ivr_config,
+                ivr_dag=inbound_call_config.ivr_dag,
             )
 
             conversation_id = create_conversation_id()

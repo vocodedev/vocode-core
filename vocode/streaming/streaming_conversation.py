@@ -20,6 +20,7 @@ from typing import (
     Union,
 )
 
+from fuzzywuzzy import fuzz
 import sentry_sdk
 from loguru import logger
 from sentry_sdk.tracing import Span
@@ -41,16 +42,20 @@ from vocode.streaming.constants import (
     CHECK_HUMAN_PRESENT_MESSAGE_CHOICES,
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
 )
-from vocode.streaming.telephony.constants import (
-    DEFAULT_HOLD_MESSAGE_DELAY,
-    DEFAULT_HOLD_DURATION
-)
+from vocode.streaming.telephony.constants import DEFAULT_HOLD_MESSAGE_DELAY, DEFAULT_HOLD_DURATION
 
 from vocode.streaming.models.actions import EndOfTurn
 from vocode.streaming.models.agent import FillerAudioConfig
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage, BotBackchannel, LLMToken, SilenceMessage
-from vocode.streaming.models.telephony import IvrConfig
+from vocode.streaming.models.telephony import (
+    IvrConfig,
+    IvrDagConfig,
+    IvrNode,
+    IvrNodeType,
+    IvrMessageNode,
+    IvrHoldNode,
+)
 from vocode.streaming.models.transcriber import TranscriberConfig, Transcription
 from vocode.streaming.models.transcript import Message, Transcript, TranscriptCompleteEvent
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
@@ -587,6 +592,152 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             except asyncio.CancelledError:
                 pass
 
+    class IvrWorker(InterruptibleWorker[InterruptibleEvent[Transcription]]):
+        def __init__(
+            self,
+            conversation: "StreamingConversation",
+            dag: IvrDagConfig,
+        ):
+            super().__init__()
+            self.conversation = conversation
+            self.dag = dag
+            self._current_node_id: Optional[str] = None
+            self._run_task: Optional[asyncio.Task] = None
+            self._listen_queue: Optional[asyncio.Queue[str]] = None
+            self._listen_queue_lock = asyncio.Lock()
+            self._finished_event = asyncio.Event()
+            self.fuzz_threshold = dag.fuzz_threshold or 80
+
+        def start(self):
+            super().start()
+            self._current_node_id = self.dag.start
+            self._run_task = asyncio_create_task(self._run())
+
+        async def terminate(self) -> bool:
+            await super().terminate()
+            if self._run_task:
+                return await self._run_task.cancel()
+            return False
+
+        async def _get_listen_queue(self) -> Optional[asyncio.Queue[str]]:
+            async with self._listen_queue_lock:
+                if self._listen_queue is None:
+                    return None
+                return self._listen_queue
+
+        async def _set_listen_queue(self, listen_queue: asyncio.Queue[str]):
+            async with self._listen_queue_lock:
+                self._listen_queue = listen_queue
+
+        async def _send_single_message(self, message: str):
+            message_tracker = asyncio.Event()
+            await self.conversation.send_single_message(
+                message=BaseMessage(text=message),
+                message_tracker=message_tracker,
+            )
+            await message_tracker.wait()
+
+        async def _loop_message(self, message: str):
+            try:
+                while True:
+                    await self._send_single_message(message)
+                    await asyncio.sleep(10)
+            except asyncio.CancelledError:
+                logger.debug("IvrWorker _loop_message done")
+                return  
+
+        async def _run(self):
+            while True:
+                try:
+                    current_node = self.dag.nodes[self._current_node_id]
+                    logger.debug(f"IvrWorker current node: {current_node}")
+                    
+                    if current_node.is_final:
+                        logger.debug("IvrWorker is finished")
+                        break
+
+                    if isinstance(current_node, IvrMessageNode):
+                        loop_task = asyncio_create_task(self._loop_message(current_node.message))
+                        available_commands = [link.message for link in current_node.links]
+                        command = await self.wait_for_command(available_commands)
+                        
+                        loop_task.cancel()
+                        await loop_task
+
+                        next_node = [
+                            link.next for link in current_node.links if link.message == command
+                        ]
+                        if not next_node:
+                            raise Exception(f"IvrWorker no next node found for command: {command}")
+                        self._current_node_id = next_node[0]
+
+                    elif isinstance(current_node, IvrHoldNode):
+                        start_time = time.time()
+
+                        def is_done():
+                            return time.time() - start_time >= current_node.duration
+
+                        while not is_done():
+                            for msg in current_node.messages:
+                                message_tracker = asyncio.Event()
+                                await self.conversation.send_single_message(
+                                    message=BaseMessage(text=msg),
+                                    message_tracker=message_tracker,
+                                )
+                                await message_tracker.wait()
+                                await asyncio.sleep(current_node.delay)
+                                if is_done():
+                                    break
+                        if current_node.links:
+                            if len(current_node.links) > 1:
+                                logger.error(
+                                    "IVR DAG has multiple links at the end of hold node, using the first one"
+                                )
+                            self._current_node_id = current_node.links[0].next
+                        else:
+                            raise Exception("IVR DAG has no links at the end of hold node")
+                    else:
+                        raise Exception(f"IVR DAG node {current_node} not supported")
+
+                except asyncio.CancelledError:
+                    return
+
+            self._finished_event.set()
+
+        async def wait_for_finished(self):
+            await self._finished_event.wait()
+
+        async def wait_for_command(self, available_commands: List[str]) -> str:
+            listen_queue = asyncio.Queue()
+            await self._set_listen_queue(listen_queue)
+
+            while True:
+                logger.debug("IvrWorker waiting for commands: {}".format(available_commands))
+                received_message = await self._listen_queue.get()
+                for command in available_commands:
+                    match_score = fuzz.partial_ratio(command.lower(), received_message.lower())
+                    if match_score >= self.fuzz_threshold:
+                        logger.debug(f"IVR received MATCHING command: {command} with score {match_score}")
+                        await self._set_listen_queue(None)
+                        return command
+                else:
+                    logger.debug(
+                        f"IVR received command: {received_message}, but {available_commands} were expected"
+                    )
+
+        async def process(self, item: InterruptibleEvent[TranscriptionAgentInput]):
+            transcription = item.payload.transcription
+            if not transcription.is_final:
+                logger.debug(f"IVR received non-final transcription: {transcription.message}")
+                return
+            logger.debug(f"IVR received transcription: {transcription.message}")
+            listen_queue = await self._get_listen_queue()
+            if not listen_queue:
+                logger.debug(f"IVR not listening, skipping {transcription.message}")
+                return
+
+            listen_queue.put_nowait(transcription.message)
+
     def __init__(
         self,
         output_device: OutputDeviceType,
@@ -597,6 +748,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         conversation_id: Optional[str] = None,
         events_manager: Optional[EventsManager] = None,
         ivr_config: Optional[IvrConfig] = None,
+        ivr_dag: Optional[IvrDagConfig] = None,
     ):
         self.id = conversation_id or create_conversation_id()
         ctx_conversation_id.set(self.id)
@@ -680,6 +832,10 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
 
         self.initial_message_tracker = asyncio.Event()
 
+        if ivr_dag:
+            self.ivr_worker = self.IvrWorker(conversation=self, dag=ivr_dag)
+            self.transcriptions_worker.consumer = self.ivr_worker
+
         # tracing
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
@@ -720,14 +876,16 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
 
         self.agent.start()
         initial_message = self.agent.get_agent_config().initial_message
-        logger.info(f"IVR_CONFIG: {self.ivr_config}")
-        if self.ivr_config:
-            asyncio_create_task(
-                self.handle_ivr()
-            )
+
+        if self.ivr_worker:
+            self.ivr_worker.start()
+            asyncio_create_task(self._ivr_handoff(initial_message))
+            self.initial_message_tracker.set()
+        elif self.ivr_config:
+            asyncio_create_task(self.handle_ivr())
         elif initial_message:
             asyncio_create_task(
-                self.send_initial_message(initial_message),
+                self.send_initial_message(initial_message, self.initial_message_tracker),
             )
         else:
             self.initial_message_tracker.set()
@@ -743,6 +901,20 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 self.events_manager.start(),
             )
 
+    async def _ivr_handoff(self, initial_message: Optional[BaseMessage] = None):
+        logger.debug("Waiting for IVR handoff")
+        await self.ivr_worker.wait_for_finished()
+        
+        logger.debug("IVR handoff complete, restarting transcriptions worker")
+        await self.transcriptions_worker.terminate()
+
+        if initial_message:
+            initial_message_tracker = asyncio.Event()
+            await self.send_initial_message(initial_message, initial_message_tracker)
+
+        self.transcriptions_worker.consumer = self.agent
+        self.transcriptions_worker.start()
+
     def set_check_for_idle_paused(self, paused: bool):
         logger.debug(f"Setting idle check paused to {paused}")
         if not paused:
@@ -752,6 +924,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
     async def send_initial_message(
         self,
         initial_message: BaseMessage,
+        initial_message_tracker: asyncio.Event,
     ):
         # TODO: configure if initial message is interruptible
         delay = self.agent.get_agent_config().initial_message_delay
@@ -760,9 +933,9 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             await asyncio.sleep(delay)
         await self.send_single_message(
             message=initial_message,
-            message_tracker=self.initial_message_tracker,
+            message_tracker=initial_message_tracker,
         )
-        await self.initial_message_tracker.wait()
+        await initial_message_tracker.wait()
 
     async def handle_ivr(self):
         self.set_check_for_idle_paused(True)
@@ -773,10 +946,10 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 message_tracker=ivr_message_tracker,
             )
             await ivr_message_tracker.wait()
-        
+
         if self.ivr_config.ivr_handoff_delay:
             await asyncio.sleep(self.ivr_config.ivr_handoff_delay)
-        
+
         if self.ivr_config.hold_message:
             hold_start_time = time.time()
             hold_message_delay = self.ivr_config.hold_message_delay or DEFAULT_HOLD_MESSAGE_DELAY

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Dict, Literal, Optional, Union, List
 
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.model import BaseModel, TypedModel
@@ -18,7 +18,7 @@ from vocode.streaming.telephony.constants import (
     VONAGE_SAMPLING_RATE,
     DEFAULT_HOLD_MESSAGE_DELAY,
     DEFAULT_HOLD_DURATION,
-    DEFAULT_IVR_HANDOFF_DELAY
+    DEFAULT_IVR_HANDOFF_DELAY,
 )
 
 
@@ -96,6 +96,7 @@ class CallConfigType(str, Enum):
 
 PhoneCallDirection = Literal["inbound", "outbound"]
 
+
 class IvrConfig(BaseModel):
     ivr_message: Optional[str] = None
     wait_for_keypress: bool = False
@@ -103,6 +104,48 @@ class IvrConfig(BaseModel):
     hold_message: Optional[str] = None
     hold_message_delay: Optional[float] = DEFAULT_HOLD_MESSAGE_DELAY
     hold_duration: Optional[float] = DEFAULT_HOLD_DURATION
+
+
+class IvrLink(BaseModel):
+    message: str
+    next: str
+
+
+class IvrNodeType(str, Enum):
+    BASE = "ivr_node_base"
+    MESSAGE = "ivr_node_message"
+    HANDOFF = "ivr_node_handoff"
+    HOLD = "ivr_node_hold"
+    END = "ivr_node_end"
+
+class IvrBaseNode(TypedModel, type=IvrNodeType.BASE.value):  # type: ignore
+    id: str
+    wait_delay: float = 5
+    is_final: bool = False
+    links: List[IvrLink] = []
+
+
+class IvrMessageNode(IvrBaseNode, type=IvrNodeType.MESSAGE.value):  # type: ignore
+    message: str
+
+
+class IvrHoldNode(IvrBaseNode, type=IvrNodeType.HOLD.value):  # type: ignore
+    messages: List[str]
+    delay: float
+    duration: float
+
+class IvrEndNode(IvrBaseNode, type=IvrNodeType.END.value):  # type: ignore
+    is_final: bool = True
+
+
+IvrNode = Union[IvrMessageNode, IvrHoldNode, IvrEndNode]
+
+
+class IvrDagConfig(BaseModel):
+    start: str
+    nodes: Dict[str, IvrNode]
+    fuzz_threshold: Optional[int] = 80
+
 
 class BaseCallConfig(TypedModel, type=CallConfigType.BASE.value):  # type: ignore
     transcriber_config: TranscriberConfig
@@ -115,7 +158,7 @@ class BaseCallConfig(TypedModel, type=CallConfigType.BASE.value):  # type: ignor
     telephony_params: Optional[Dict[str, str]] = None
     direction: PhoneCallDirection
     ivr_config: Optional[IvrConfig] = None
-
+    ivr_dag: Optional[IvrDagConfig] = None
     @staticmethod
     def default_transcriber_config():
         raise NotImplementedError
