@@ -75,6 +75,7 @@ class CallsRouter(BaseRouter):
                 events_manager=events_manager,
                 direction=call_config.direction,
                 ivr_config=call_config.ivr_config,
+                ivr_dag=call_config.ivr_dag,
             )
         elif isinstance(call_config, VonageCallConfig):
             return VonagePhoneConversation(

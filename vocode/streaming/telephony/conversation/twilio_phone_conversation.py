@@ -11,7 +11,7 @@ from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import PhoneCallConnectedEvent
 from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.models.telephony import PhoneCallDirection, TwilioConfig, IvrConfig
+from vocode.streaming.models.telephony import PhoneCallDirection, TwilioConfig, IvrConfig, IvrDagConfig
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.output_device.twilio_output_device import (
     ChunkFinishedMarkMessage,
@@ -56,6 +56,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
         speed_coefficient: float = 1.0,
         noise_suppression: bool = False,  # is currently a no-op
         ivr_config: Optional[IvrConfig] = None,
+        ivr_dag: Optional[IvrDagConfig] = None,
     ):
         super().__init__(
             direction=direction,
@@ -74,6 +75,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
             synthesizer_factory=synthesizer_factory,
             speed_coefficient=speed_coefficient,
             ivr_config=ivr_config,
+            ivr_dag=ivr_dag,
         )
         self.config_manager = config_manager
         self.twilio_config = twilio_config or TwilioConfig(
