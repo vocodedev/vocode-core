@@ -1,11 +1,10 @@
 import asyncio
 import os
+from typing import Dict, Type
+
 import aiohttp
-
 from aiohttp import BasicAuth
-from typing import Type, Dict
 from pydantic import BaseModel, Field
-
 from vocode.streaming.action.phone_call_action import TwilioPhoneCallAction
 from vocode.streaming.models.actions import (
     ActionConfig,
@@ -13,13 +12,13 @@ from vocode.streaming.models.actions import (
     ActionOutput,
     ActionType,
 )
-
 from vocode.streaming.models.telephony import TwilioConfig
 
 
 class TransferCallActionConfig(ActionConfig, type=ActionType.TRANSFER_CALL):
     twilio_config: TwilioConfig
     starting_phrase: str
+    from_phone: str
 
 
 class TransferCallParameters(BaseModel):
@@ -44,16 +43,14 @@ class TransferCall(
     parameters_type: Type[TransferCallParameters] = TransferCallParameters
     response_type: Type[TransferCallResponse] = TransferCallResponse
 
-    async def transfer_call(self, twilio_call_sid, to_phone):
+    async def transfer_call(self, twilio_call_sid, to_phone, from_phone):
         twilio_account_sid = self.action_config.twilio_config.account_sid
         twilio_auth_token = self.action_config.twilio_config.auth_token
 
-        url = "https://api.twilio.com/2010-04-01/Accounts/{twilio_account_sid}/Calls/{twilio_auth_token}.json".format(
-            twilio_account_sid=twilio_account_sid, twilio_auth_token=twilio_call_sid
-        )
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_account_sid}/Calls/{twilio_call_sid}.json"
 
-        twiml_data = "<Response><Dial>{to_phone}</Dial></Response>".format(
-            to_phone=to_phone
+        twiml_data = (
+            f"<Response><Dial callerId='{from_phone}'>{to_phone}</Dial></Response>"
         )
 
         payload = {"Twiml": twiml_data}
@@ -76,9 +73,14 @@ class TransferCall(
         await asyncio.sleep(
             3.5
         )  # to provide small gap between speaking and transfer ring
+
+        if not hasattr(self.action_config, "from_phone"):
+            raise ValueError("'from_phone' is not set in the action_config")
+
         await self.transfer_call(
             twilio_call_sid=twilio_call_sid,
             to_phone=action_input.params.phone_number_to_transfer_to,
+            from_phone=self.action_config.from_phone,
         )
 
         return ActionOutput(
