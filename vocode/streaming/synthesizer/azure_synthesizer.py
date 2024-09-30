@@ -1,36 +1,34 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 import re
-from typing import Any, List, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Optional
 from xml.etree import ElementTree
+
 import aiohttp
-from vocode import getenv
-from opentelemetry.context.context import Context
-
-from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
-from vocode.streaming.models.message import BaseMessage, SSMLMessage
-
-from vocode.streaming.synthesizer.base_synthesizer import (
-    BaseSynthesizer,
-    SynthesisResult,
-    FILLER_PHRASES,
-    FILLER_AUDIO_PATH,
-    FillerAudio,
-    encode_as_wav,
-    tracer,
-)
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig, SynthesizerType
-from vocode.streaming.models.audio_encoding import AudioEncoding
-
 import azure.cognitiveservices.speech as speechsdk
+from vocode import getenv
+from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
+from vocode.streaming.models.audio_encoding import AudioEncoding
+from vocode.streaming.models.message import BaseMessage, SSMLMessage
+from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode.streaming.synthesizer.base_synthesizer import (
+    FILLER_AUDIO_PATH,
+    FILLER_PHRASES,
+    BaseSynthesizer,
+    FillerAudio,
+    SynthesisResult,
+    encode_as_wav,
+)
 
 AZURE_TICK_PER_SECOND = 10000000
+
 
 def ticks2s(ticks: int):
     return ticks / AZURE_TICK_PER_SECOND
     # return ((ticks + 5000) / 10000) / 1000
+
 
 NAMESPACES = {
     "mstts": "https://www.w3.org/2001/mstts",
@@ -115,8 +113,12 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         )
         # Will listen for all events for any messages created by this synthesizer
         # The function get_events_for will filter the events for a specific message
-        self.synthesizer.synthesis_word_boundary.connect(lambda evt: self.event_pool.append(evt))
-        self.synthesizer.viseme_received.connect(lambda evt: self.event_pool.append(evt))
+        self.synthesizer.synthesis_word_boundary.connect(
+            lambda evt: self.event_pool.append(evt)
+        )
+        self.synthesizer.viseme_received.connect(
+            lambda evt: self.event_pool.append(evt)
+        )
 
         self.language_code = self.synthesizer_config.language_code
         self.voice_name = self.synthesizer_config.voice_name
@@ -124,7 +126,10 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self.rate = self.synthesizer_config.rate
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
         self.logger = logger or logging.getLogger(__name__)
-        self.event_pool: list[speechsdk.SpeechSynthesisVisemeEventArgs | speechsdk.SpeechSynthesisWordBoundaryEventArgs] = []
+        self.event_pool: list[
+            speechsdk.SpeechSynthesisVisemeEventArgs
+            | speechsdk.SpeechSynthesisWordBoundaryEventArgs
+        ] = []
         self.msg_index = 0
 
     async def get_phrase_filler_audios(self) -> List[FillerAudio]:
@@ -184,7 +189,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         ssml_root = ElementTree.fromstring(
             f'<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="{self.language_code or "en-US"}"></speak>'
         )
-            
+
         voice = ElementTree.SubElement(ssml_root, "voice")
         voice.set("name", self.voice_name)
         voice_root = voice
@@ -226,11 +231,16 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         connection = speechsdk.Connection.from_speech_synthesizer(self.synthesizer)
         connection.open(True)
 
-    def get_events_for(self, type: type, msg_index: int, from_t: float, to_t: float) -> list[speechsdk.SpeechSynthesisVisemeEventArgs | speechsdk.SpeechSynthesisWordBoundaryEventArgs]:
+    def get_events_for(
+        self, type: type, msg_index: int, from_t: float, to_t: float
+    ) -> list[
+        speechsdk.SpeechSynthesisVisemeEventArgs
+        | speechsdk.SpeechSynthesisWordBoundaryEventArgs
+    ]:
         msg_count = 0
         filtered_events = []
         last_event = None
-        #picked_indices = []
+        # picked_indices = []
         for i, evt in enumerate(self.event_pool):
             if isinstance(evt, type):
                 if last_event and last_event.audio_offset > evt.audio_offset:
@@ -244,11 +254,11 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                     # Filter all events in this message, within the given time range
                     if t >= from_t and t <= to_t:
                         filtered_events.append(evt)
-                        #picked_indices.append(i)
+                        # picked_indices.append(i)
                 last_event = evt
-        #self.logger.debug(f"Picked events: type={type}, msg_index={msg_index}, from {from_t} to {to_t}, picked: {picked_indices}")
+        # self.logger.debug(f"Picked events: type={type}, msg_index={msg_index}, from {from_t} to {to_t}, picked: {picked_indices}")
         return filtered_events
-    
+
     # given the number of seconds the message was allowed to go until, where did we get in the message?
     def get_message_up_to(
         self,
@@ -257,23 +267,32 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         ssml: str,
         seconds: int,
     ) -> str:
-        events = self.get_events_for(speechsdk.SpeechSynthesisWordBoundaryEventArgs, msg_index, seconds, 10000) # some large number)
+        events = self.get_events_for(
+            speechsdk.SpeechSynthesisWordBoundaryEventArgs, msg_index, seconds, 10000
+        )  # some large number)
         if events:
             ssml_fragment = ssml[: events[0].text_offset]
             # TODO: this is a little hacky, but it works for now
             return ssml_fragment.split(">")[-1]
         else:
             return message
-    
+
     def get_lipsync_events_for(self, msg_index: int, from_t: float, to_t: float):
-        return [{"audio_offset": ticks2s(evt.audio_offset) - from_t, "viseme_id": evt.viseme_id } for evt in self.get_events_for(speechsdk.SpeechSynthesisVisemeEventArgs, msg_index, from_t, to_t)]
-    
+        return [
+            {
+                "audio_offset": ticks2s(evt.audio_offset) - from_t,
+                "viseme_id": evt.viseme_id,
+            }
+            for evt in self.get_events_for(
+                speechsdk.SpeechSynthesisVisemeEventArgs, msg_index, from_t, to_t
+            )
+        ]
+
     def print_all_events(self):
         out = ""
         for i, event in enumerate(self.event_pool):
             out += f"{i}: {event}"
         return out
-
 
     async def create_speech(
         self,
@@ -298,9 +317,11 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
         ):
             audio_buffer = bytes(chunk_size)
-            while (not audio_data_stream.can_read_data(chunk_size) 
-                and audio_data_stream.status != speechsdk.StreamStatus.AllData 
-                and audio_data_stream.status != speechsdk.StreamStatus.Canceled):
+            while (
+                not audio_data_stream.can_read_data(chunk_size)
+                and audio_data_stream.status != speechsdk.StreamStatus.AllData
+                and audio_data_stream.status != speechsdk.StreamStatus.Canceled
+            ):
                 await asyncio.sleep(0)
             filled_size = audio_data_stream.read_data(audio_buffer)
             if filled_size != chunk_size:
@@ -341,6 +362,8 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
 
         return SynthesisResult(
             output_generator,
-            lambda seconds: self.get_message_up_to(msg_index, message.text, ssml, seconds),
+            lambda seconds: self.get_message_up_to(
+                msg_index, message.text, ssml, seconds
+            ),
             lambda from_t, to_t: self.get_lipsync_events_for(msg_index, from_t, to_t),
         )

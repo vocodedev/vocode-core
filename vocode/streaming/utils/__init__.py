@@ -3,9 +3,9 @@ import audioop
 import logging
 import os
 import secrets
-from typing import Any
 import wave
 from string import ascii_letters, digits
+from typing import Any
 
 from ..models.audio_encoding import AudioEncoding
 
@@ -38,29 +38,30 @@ AZURE_PHONETIC_SYMBOLS = {
 }
 
 AZURE_TO_OVR = {
-  0: "viseme_sil",
-  1: "viseme_aa",
-  2: "viseme_aa",
-  3: "viseme_aa",
-  4: "viseme_U",
-  5: "viseme_nn",
-  6: "viseme_I",
-  7: "viseme_O",
-  8: "viseme_O",
-  9: "viseme_aa",
-  10: "viseme_O",
-  11: "viseme_aa",
-  12: "viseme_U",
-  13: "viseme_RR",
-  14: "viseme_nn",
-  15: "viseme_SS",
-  16: "viseme_CH",
-  17: "viseme_TH",
-  18: "viseme_FF",
-  19: "viseme_DD",
-  20: "viseme_kk",
-  21: "viseme_PP",
+    0: "viseme_sil",
+    1: "viseme_aa",
+    2: "viseme_aa",
+    3: "viseme_aa",
+    4: "viseme_U",
+    5: "viseme_nn",
+    6: "viseme_I",
+    7: "viseme_O",
+    8: "viseme_O",
+    9: "viseme_aa",
+    10: "viseme_O",
+    11: "viseme_aa",
+    12: "viseme_U",
+    13: "viseme_RR",
+    14: "viseme_nn",
+    15: "viseme_SS",
+    16: "viseme_CH",
+    17: "viseme_TH",
+    18: "viseme_FF",
+    19: "viseme_DD",
+    20: "viseme_kk",
+    21: "viseme_PP",
 }
+
 
 def create_loop_in_thread(loop: asyncio.AbstractEventLoop, long_running_task=None):
     asyncio.set_event_loop(loop)
@@ -117,14 +118,17 @@ def get_chunk_size_per_second(audio_encoding: AudioEncoding, sampling_rate: int)
 def create_conversation_id() -> str:
     return secrets.token_urlsafe(16)
 
+
 def remove_non_letters_digits(text):
-    return ''.join(i for i in text if i in custom_alphabet)
+    return "".join(i for i in text if i in custom_alphabet)
+
 
 def print_visemes(lipsync_events, lookup_table):
     out = ""
     for event in lipsync_events:
         out += f'{event["audio_offset"]}\t{event["audio_offset"]}\t{lookup_table[event["viseme_id"]]}\n'
     return out
+
 
 def save_as_wav(path, audio_data: bytes, sampling_rate: int):
     if len(audio_data) == 0:
@@ -141,13 +145,14 @@ def save_as_wav(path, audio_data: bytes, sampling_rate: int):
         wav_file.close()
     logger.debug(f"Saved {len(audio_data)} audio bytes to {path}")
 
+
 def trim_audio(
-        sampling_rate: int,
-        audio_buffer: bytearray,
-        total_bytes: int,
-        offset_s: float,
-        duration_s: float,
-    ):
+    sampling_rate: int,
+    audio_buffer: bytearray,
+    total_bytes: int,
+    offset_s: float,
+    duration_s: float,
+):
     """
     Extracts / trims an audio buffer to match the given offset and duration.
 
@@ -163,10 +168,10 @@ def trim_audio(
     offset_bytes = int(max(0, offset_s) * bytes_per_sample * sampling_rate)
     duration_bytes = int(max(0, duration_s) * bytes_per_sample * sampling_rate)
 
-    # Because audio_buffer only represents last x seconds (bytes may have been discarded since stream started), 
+    # Because audio_buffer only represents last x seconds (bytes may have been discarded since stream started),
     # we need to shift the offset bytes to fit inside it
     if offset_bytes + duration_bytes > total_bytes:
-            duration_bytes = total_bytes - offset_bytes
+        duration_bytes = total_bytes - offset_bytes
     # We may have discarded earlier audio so we need to adjust the offset
     offset_bytes -= total_bytes
     offset_bytes += len(audio_buffer)
