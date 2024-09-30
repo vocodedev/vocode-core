@@ -414,7 +414,7 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
 
         # offset = int(self.OFFSET_MS * (self.synthesizer_config.sampling_rate / 1000))
         offset = 0
-        self.logger.debug(f"Synthesizing message: {message}")
+        # self.logger.debug(f"Synthesizing message: {message}")
 
         # Azure will return no audio for certain strings like "-", "[-", and "!"
         # which causes the `chunk_generator` below to hang. Return an empty
@@ -425,45 +425,31 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 lambda _: message.text,
             )
 
+            # Start of Selection
+
         async def chunk_generator(
             audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
         ):
-            yielded = False
             while True:
-                audio_buffer = bytes(chunk_size)
-                filled_size = await asyncio.get_event_loop().run_in_executor(
-                    self.thread_pool_executor,
-                    lambda: audio_data_stream.read_data(audio_buffer),
-                )
-                self.logger.debug(f"Filled size: {filled_size}")
-                if filled_size == 0 and not yielded:
-                    self.logger.debug(
-                        "No audio data returned, attempting to resume speech"
-                    )
-                    # Recreate the speech and get a new audio data stream
-                    ssml = (
-                        message.ssml
-                        if isinstance(message, SSMLMessage)
-                        else await self.create_ssml(
-                            modified_message, bot_sentiment=bot_sentiment
+                if audio_data_stream.can_read_data(chunk_size):
+                    try:
+                        audio_buffer = bytes(chunk_size)
+                        bytes_read = audio_data_stream.read_data(audio_buffer)
+                        data = audio_buffer[:bytes_read]
+                        yield SynthesisResult.ChunkResult(
+                            chunk_transform(data),
+                            True,
                         )
-                    )
-                    audio_data_stream = await asyncio.get_event_loop().run_in_executor(
-                        self.thread_pool_executor, self.synthesize_ssml, ssml
-                    )
-                    await asyncio.sleep(0.5)
-                    continue  # Continue the loop to try reading from the new stream
-                if filled_size != chunk_size:
-                    yield SynthesisResult.ChunkResult(
-                        chunk_transform(audio_buffer[offset:filled_size]), True
-                    )
-                    yielded = True
-                    break
+                    except Exception as e:
+                        self.logger.error(f"Error reading data: {e}")
+                        await asyncio.sleep(0.1)
                 else:
-                    yield SynthesisResult.ChunkResult(
-                        chunk_transform(audio_buffer[offset:]), False
-                    )
-                    yielded = True
+                    # Check if the stream is finished
+                    if audio_data_stream.status == speechsdk.StreamStatus.AllData:
+                        # self.logger.debug("Stream status is FINISHED")
+                        break
+                    # self.logger.debug("Waiting for more audio data")
+                    await asyncio.sleep(0.1)
 
         word_boundary_event_pool = WordBoundaryEventPool()
         self.synthesizer.synthesis_word_boundary.connect(

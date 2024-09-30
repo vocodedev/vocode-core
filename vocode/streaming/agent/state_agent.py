@@ -395,6 +395,13 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     self.visited_states.add(state_id)
                     self.current_state = state
                     self.logger.info(f"Updated state: {state_id}")
+                    # Set resume immediately after updating the state
+                    if state["type"] == "question":
+                        self.resume = lambda _: self.handle_state(
+                            get_default_next_state(state)
+                        )
+                    else:
+                        self.resume = lambda _: self.handle_state(state["id"])
             elif isinstance(entry, StateAgentTranscriptMessage):
                 role = entry.role
                 message = entry.message
@@ -420,15 +427,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             else:
                 self.logger.warning(f"Unknown entry type: {type(entry)}")
 
-        # Update the resume function based on the final state
-        self.logger.debug(f"State history: {self.state_history}")
-
-        if self.state_history:
-            last_state = self.state_history[-1]
-            self.resume = lambda _: self.handle_state(
-                get_default_next_state(last_state)
-            )
-        else:
+        # If no states were processed, set resume to the starting state
+        if not self.state_history:
             self.resume = lambda _: self.handle_state(
                 self.state_machine["startingStateId"]
             )
@@ -532,7 +532,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         speak_message = lambda message: self.print_message(message)
         call_ai = lambda prompt, tool=None, stop=None: self.call_ai(prompt, tool, stop)
 
-        self.logger.info(f"{state['id']} memory deps: {state.get('memory_dependencies')}")
+        self.logger.info(
+            f"{state['id']} memory deps: {state.get('memory_dependencies')}"
+        )
         for memory_dep in state.get("memory_dependencies", []):
             cached_memory = memories.get(memory_dep["key"])
             self.logger.info(f"cached memory is {cached_memory}")
@@ -550,7 +552,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     speak=speak_message,
                     call_ai=call_ai,
                     retry=retry,
-                    logger=self.logger
+                    logger=self.logger,
                 )
 
         await self.print_start_message(state, start=start)
@@ -851,7 +853,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             async for chunk in stream:
                 text_chunk = chunk.choices[0].delta.content
                 if text_chunk:
-                    self.logger.info(f"Chunk: {chunk}")
                     response_text += text_chunk
                     if any(token in text_chunk for token in stop_tokens):
                         break

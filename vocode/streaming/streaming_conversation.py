@@ -332,9 +332,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             elif len(json.loads(transcription.message)["words"]) == 0:
                 # when we wait more, they were silent so we want to push out a filler audio
-                self.conversation.logger.info(
-                    "Ignoring transcription, zero words in words."
-                )
+                # self.conversation.logger.info(
+                #     "Ignoring transcription, zero words in words."
+                # )
                 return
 
             self.conversation.logger.debug(
@@ -1167,307 +1167,110 @@ class StreamingConversation(Generic[OutputDeviceType]):
         seconds_per_chunk: int,
         transcript_message: Optional[Message] = None,
     ):
-        # Check if both the synthesis result and message are available, if not, return empty message and False flag
         if not (synthesis_result and message):
             return "", False
-        # reset the stop event
         stop_event.clear()
 
-        """
-        - Sends the speech chunk by chunk to the output device
-        - update the transcript message as chunks come in (transcript_message is always provided for non filler audio utterances)
-        - If the stop_event is set, the output is stopped
-        - Sets started_event when the first chunk is sent
-        """
-        # Set the flag indicating that synthesis is not yet complete
         self.transcriptions_worker.synthesis_done = False
-
-        # Initialize variables to hold the message sent and the cutoff status
         message_sent = message
         cut_off = False
 
-        # Calculate the size of each speech chunk based on the seconds per chunk and the audio configuration
         chunk_size = seconds_per_chunk * get_chunk_size_per_second(
             self.synthesizer.get_synthesizer_config().audio_encoding,
             self.synthesizer.get_synthesizer_config().sampling_rate,
         )
 
-        # Initialize a bytearray to accumulate the speech data
         speech_data = bytearray()
         held_buffer = self.transcriptions_worker.buffer.to_message()
-        # Asynchronously generate speech data from the synthesis result
-        time_started_speaking = 0
+        time_started_speaking = time.time()
         buffer_cleared = False
+        total_time_sent = 0
         moved_back = False
-        resumed = False
         async for chunk_result in synthesis_result.chunk_generator:
-            if len(speech_data) > chunk_size:
-                self.transcriptions_worker.synthesis_done = True
-                started_event.set()
-                self.transcriber.VOLUME_THRESHOLD = 1000
-                # self.logger.info(
-                #     f"VOLUME_THRESHOLD: {self.transcriber.VOLUME_THRESHOLD}"
-                # )
+
             if stop_event.is_set() and self.agent.agent_config.allow_interruptions:
-                if (
-                    time.time() - time_started_speaking < 3
-                    and isinstance(self.agent, StateAgent)
-                    and not moved_back
-                ):
-                    self.agent.move_back_state()
-                    moved_back = True
-                    return "", False
-                elif (
-                    time.time() - time_started_speaking >= 3
-                    and not resumed
-                    and not moved_back
-                ):
-                    self.agent.restore_resume_state()
-                    resumed = True
-                    return "", False
+                return "", False
+
+            speech_data.extend(chunk_result.chunk)
+
             if len(speech_data) > chunk_size:
                 self.transcriptions_worker.block_inputs = True
                 self.transcriptions_worker.time_silent = 0.0
                 self.transcriptions_worker.triggered_affirmative = False
-                self.logger.debug(
-                    f"Sending in synth buffer early, len {len(speech_data)}"
-                )
+                # self.logger.debug(f"Sending chunk, len {len(speech_data)}")
+
                 if self.agent.agent_config.allow_interruptions:
                     self.mark_last_action_timestamp()
-                    for _ in range(1):
-                        # Check if the stop event is set before sending each piece
-                        if stop_event.is_set():
-                            self.interrupt_count += 1
 
-                            if (
-                                time.time() - time_started_speaking < 3
-                                and isinstance(self.agent, StateAgent)
-                                and not moved_back
-                                and self.interrupt_count == 1
-                            ):
-                                if not resumed:
-                                    self.logger.debug(
-                                        "moving back because agent hasn't been talking long and had already moved forward"
-                                    )
-                                    moved_back = True
-                                    self.agent.move_back_state()
-                                elif time.time() - time_started_speaking < 2.9:
-                                    self.logger.debug(
-                                        "moving back because a resume somehow occured even though we've barely been talking"
-                                    )
-                                    moved_back = True
-                                    self.agent.move_back_state()
-                            if (
-                                time.time() - time_started_speaking >= 3
-                                and not resumed
-                                and not moved_back
-                                and self.interrupt_count == 1
-                            ):
-                                # dont move back but set flag so we dont too
-                                self.agent.restore_resume_state()
-                                resumed = True
-                                self.interrupt_count = 0
-                            return "", False
-                        # Calculate the size of each piece
-                        piece_size = len(speech_data) // 1
-                        # Send the piece to the output device
-                        if time_started_speaking == 0:
-                            time_started_speaking = time.time()
-                        await self.output_device.consume_nonblocking(
-                            speech_data[:piece_size]
-                        )
-                        # Remove the sent piece from the speech data
-                        speech_data = speech_data[piece_size:]
-                        # TODO: [GRE-903] Verify if sleeping here is correct and implement necessary changes.
-                        # See https://linear.app/greymatter/issue/GRE-903/test-sleeping for more details.
-                        self.logger.debug(
-                            f"Sleeping for {piece_size / chunk_size} seconds"
-                        )
-                        await asyncio.sleep(
-                            ((piece_size / chunk_size) - PER_CHUNK_ALLOWANCE_SECONDS)
-                            * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
-                        )
-
-                    if (
-                        not buffer_cleared
-                        and not stop_event.is_set()
-                        and time.time() - time_started_speaking > 3
-                    ):
-                        buffer_cleared = True
-                        self.transcriptions_worker.buffer.clear()
-                    elif stop_event.is_set():
-                        self.interrupt_count += 1
-
-                        if (
-                            time.time() - time_started_speaking < 3
-                            and isinstance(self.agent, StateAgent)
-                            and not moved_back
-                            and self.interrupt_count == 1
-                            and not resumed
-                        ):
-                            self.logger.debug(
-                                "moving back because agent hasn't been talking long and had already moved forward"
-                            )
-                            moved_back = True
-                            self.agent.move_back_state()
-                        if (
-                            time.time() - time_started_speaking >= 3
-                            and not resumed
-                            and not moved_back
-                            and self.interrupt_count == 1
-                        ):
-                            # dont move back but set flag so we dont too
-                            self.agent.restore_resume_state()
-                            resumed = True
-                            self.interrupt_count = 0
+                    if stop_event.is_set():
+                        self.agent.move_back_state()
+                        moved_back = True
                         return "", False
-                else:
-                    self.mark_last_action_timestamp()
-                    await self.output_device.consume_nonblocking(speech_data)
-                    # Sleep is implemented here to synchronize the timeline between the audio data sent and the time muted.
-                    # Sleep Time [s] = (Data Sent [bytes] / Chunk Size [bytes]) - Buffer Time [s]
-                    # Where:
-                    # - Chunk Size [bytes]: seconds_per_chunk [s/chunk] * (sampling_rate [samples/s] * bytes_per_sample [bytes/sample])
-                    # - Buffer Time [s]: Time to process the chunk, prevents blips in the audio output
 
-                    await asyncio.sleep(
-                        ((len(speech_data) / chunk_size) - PER_CHUNK_ALLOWANCE_SECONDS)
-                        * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS
-                    )
-                    speech_data = bytearray()
-                    if not buffer_cleared:
-                        buffer_cleared = True
-                        self.transcriptions_worker.buffer.clear()
+                await self.output_device.consume_nonblocking(speech_data)
+                chunk_time = len(speech_data) / (chunk_size / seconds_per_chunk)
+                total_time_sent += chunk_time
 
-            speech_data.extend(chunk_result.chunk)
+                speech_data = bytearray()
+
         if not stop_event.is_set():
-            self.logger.debug(f"Sending in final synth buffer, len {len(speech_data)}")
-            self.interrupt_count = (
-                0  # reset the interrupt count since we made it through the speech
-            )
+            self.logger.debug(f"Sending final chunk, len {len(speech_data)}")
             await self.output_device.consume_nonblocking(speech_data)
             self.transcriptions_worker.time_silent = 0.0
-            # Calculate the remaining time to sleep based on a 16k chunk size
-            remaining_time_to_sleep = (chunk_size - len(speech_data)) / 16000.0
+            total_time_sent += len(speech_data) / (chunk_size / seconds_per_chunk)
         else:
-            self.interrupt_count += 1
-
-            if (
-                time.time() - time_started_speaking < 3
-                and isinstance(self.agent, StateAgent)
-                and not moved_back
-                and self.interrupt_count == 1
-                and not resumed
-            ):
-                self.logger.debug(
-                    "moving back because agent hasn't been talking long and had already moved forward"
-                )
-                moved_back = True
-                self.agent.move_back_state()
-                return "", False
             self.logger.debug("Interrupted speech output on the last chunk")
+            if not moved_back:
+                self.agent.move_back_state()
             return "", False
-        if (
-            time.time() - time_started_speaking >= 3
-            and not resumed
-            and not moved_back
-            and self.interrupt_count == 1
-        ):
-            self.agent.restore_resume_state()
-            resumed = True
-            return "", False
-        self.interrupt_count = 0
 
         self.transcriptions_worker.synthesis_done = True
 
-        # If a buffer check task exists, wait for it to complete before proceeding
         if self.transcriptions_worker.buffer_check_task:
-
             return "", False
         else:
-            # Proceed if no buffer check task is found
             self.logger.debug("No buffer check task found, proceeding.")
 
-        # Clear the transcription worker's buffer and related attributes before sending
         self.transcriptions_worker.block_inputs = True
         self.transcriptions_worker.time_silent = 0.0
         self.transcriptions_worker.triggered_affirmative = False
-        start_time = time.time()
-        end_time = time.time()
 
-        # Calculate the length of the speech in seconds
-        speech_length_seconds = len(speech_data) / chunk_size
-        # if held_buffer and len(held_buffer.strip()) > 0:
-        #     self.logger.info(
-        #         f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Lead:{held_buffer}"
-        #     )
-        last_agent_message = next(
-            (
-                message["content"]
-                for message in reversed(
-                    format_openai_chat_messages_from_transcript(self.transcript)
-                )
-                if message["role"] == "assistant" and len(message["content"]) > 0
-            ),
-            None,
-        )
-        # Sleep for the duration of the speech minus the time already spent sending the data
-        sleep_time = max(
-            speech_length_seconds
-            - (end_time - start_time)
-            - self.per_chunk_allowance_seconds,
-            0,
-        )
-        self.logger.info(f"Sleeping for {speech_length_seconds} seconds")
-        await asyncio.sleep(speech_length_seconds * TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS)
+        self.logger.info(f"Total speech time: {total_time_sent} seconds")
 
-        # Update the last action timestamp after sending speech
         self.mark_last_action_timestamp()
+        await asyncio.sleep(
+            total_time_sent
+        )  # added sleeps so that we can do volume thresholding
+        message_sent = synthesis_result.get_message_up_to(total_time_sent)
 
-        # Update the message sent with the actual content spoken
-        message_sent = synthesis_result.get_message_up_to(len(speech_data) / chunk_size)
-
-        # If a transcript message is provided, update its text with the message sent
         if transcript_message:
             transcript_message.text = message_sent
         cut_off = False
 
-        # Reset the synthesis done flag and prepare for the next synthesis
         self.transcriptions_worker.synthesis_done = False
-        # if stop_event.is_set() and not moved_back and self.interrupt_count == 1:
-        #     moved_back = True
-        #     self.agent.move_back_state() #maybe dont do this because it would have finished talking lol
+
         if not stop_event.is_set() and not buffer_cleared:
             self.transcriptions_worker.buffer.clear()
             buffer_cleared = True
-        if stop_event.is_set() and time.time() - time_started_speaking < 3:
-            moved_back = True
-            self.agent.move_back_state()
-            return "", False
-        if not moved_back and not resumed:
+            self.transcriptions_worker.synthesis_done = True
+            started_event.set()
+            self.transcriber.VOLUME_THRESHOLD = 1000
             self.agent.restore_resume_state()
-            resumed = True
-        self.interrupt_count = 0
-        # Reset the transcription worker's flags and buffer status
-        # check if there is more in the queue making this one be called again, if so, dont unblock
+
         if (
             self.agent_responses_worker.input_queue.qsize() == 0
             and self.agent_responses_worker.output_queue.qsize() == 0
             and self.agent.get_input_queue().qsize() == 0
             and self.agent.get_output_queue().qsize() == 0
-            # it must also end in punctuation
         ):
             if message_sent and message_sent.strip()[-1] not in [","]:
-
                 self.logger.info(f"Responding to {held_buffer}")
                 self.transcriptions_worker.block_inputs = False
-                # Unmute the transcriber after speech synthesis if it was muted
                 if self.transcriber.get_transcriber_config().mute_during_speech:
                     self.logger.debug("Unmuting transcriber")
                     self.transcriber.unmute()
         self.transcriptions_worker.ready_to_send = BufferStatus.DISCARD
 
-        # Return the message sent and the cutoff status
         return message_sent, cut_off
 
     def mark_terminated(self):

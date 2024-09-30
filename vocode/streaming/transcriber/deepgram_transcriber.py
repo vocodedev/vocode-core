@@ -116,10 +116,6 @@ class VADWorker(AsyncWorker):
                 rolling_avg = sum(self.voiced_confidences) / len(
                     self.voiced_confidences
                 )
-                if new_confidence > self.transcriber.VAD_THRESHOLD:
-                    self.logger.debug(
-                        f"VAD: Speaking detected (confidence={new_confidence:.2f}, rolling_avg={rolling_avg:.2f})"
-                    )
 
                 current_time = time.time()
                 if (
