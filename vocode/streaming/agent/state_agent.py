@@ -126,6 +126,7 @@ async def handle_question(
 class MemoryDependency(BaseModel):
     key: str
     question: dict  # {type: 'verbatim', message: str} | {type: 'description', description: str}
+    description: Optional[str]
 
 
 async def handle_memory_dep(
@@ -137,7 +138,7 @@ async def handle_memory_dep(
 ):
     logger.info(f"handling memory dep {memory_dep}")
     memory = await call_ai(
-        f"try to extract the {memory_dep['key']}. If it's not in the conversation, return MISSING"
+        f"Try to extract the following information:\n\nname:\n{memory_dep['key']}\n\ndescription:\n{memory_dep['description'] or 'none provided'}\n\nIf it's not in the conversation, return MISSING"
     )
     logger.info(f"memory directly from AI: {memory}")
     if memory != "MISSING":
