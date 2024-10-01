@@ -50,7 +50,13 @@ class BranchDecision(Enum):
 def parse_llm_dict(s):
     if isinstance(s, dict):
         return s
-
+    # Extract everything between and including the first and last curly braces
+    if "{" in s and "}" in s:
+        s = s[s.find("{") : s.rfind("}") + 1]
+    s = s.replace("\n{", "{")
+    s = s.replace("{\n", "{")
+    s = s.replace("\n}", "}")
+    s = s.replace("}\n", "}")
     s = (
         s.replace('"', "'")
         .replace("\n", "<newline>")
@@ -69,6 +75,23 @@ def parse_llm_dict(s):
 
             if value.isdigit():
                 value = int(value)
+            elif value.lower() == "true":
+                value = True
+            elif value.lower() == "false":
+                value = False
+            result[key] = value
+
+    # If the result is empty, try parsing as a single key-value pair
+    if not result:
+        match = re.match(r"\s*{\s*'?(\w+)'?\s*:\s*'?([^']+)'?\s*}\s*", s)
+        if match:
+            key, value = match.groups()
+            if value.isdigit():
+                value = int(value)
+            elif value.lower() == "true":
+                value = True
+            elif value.lower() == "false":
+                value = False
             result[key] = value
 
     return result
@@ -234,7 +257,9 @@ async def handle_options(
                 "aiDescription": f"user no longer needs help with '{state['id'].split('::')[0]}'",
             }
         )
-        if len(edges) == 1:
+        if (
+            len(edges) == 1
+        ):  # this gets added if there is only one condition so we can gracefully handle moving forward
             edges.append(
                 {
                     "destStateId": default_next_state,
@@ -303,7 +328,10 @@ async def handle_options(
         if condition is None:
             raise ValueError("No condition was provided in the response.")
         condition = int(condition)
-        next_state_id = response_to_edge[condition]["destStateId"]
+        next_state_id = response_to_edge[condition][
+            "destStateId"
+        ]  # this gets set as start if user is confused and the default next is start
+        # the issue is that start has no start message
         if response_to_edge[condition].get("speak"):
             tool = {"response": "insert your response to the user"}
             prompt = (
@@ -311,9 +339,10 @@ async def handle_options(
                 f"You are already engaged in the following process: {state['id'].split('::')[0]}\n"
                 "Right now, you are pausing the process to assist the confused user.\n"
                 "Respond as follows: If the user didn't answer, politely restate the question and ask for a clear answer.\n"
-                "- If the user asked a question, provide a concise answer and then pause.\n"
+                "- If the user asked a question, provide a concise answer and then ask for a clear answer if you are waiting for one.\n"
                 "- Ensure not to suggest any actions or offer alternatives.\n"
             )
+            # todo, if current state is an options state which it is shouldnt we repeat it instead of moving forward
             output = await call_ai(prompt, tool)
             output = output[output.find("{") : output.find("}") + 1]
             parsed_output = parse_llm_dict(output)
