@@ -55,8 +55,6 @@ class VADWorker(AsyncWorker):
         self.voiced_confidences = deque([0.0] * WINDOWS, maxlen=WINDOWS)
         self.last_vad_output_time = 0
         self.logger = logger or logging.getLogger(__name__)
-        self.inference_times = []
-        self.transmission_times = []
         self.transcriber = transcriber
 
     def int2float(self, sound):
@@ -81,7 +79,6 @@ class VADWorker(AsyncWorker):
                 if ignore:
                     continue
                 delta = time_ns() - timestamp
-                self.transmission_times.append(delta)
                 new_confidence = 0.0
                 if not is_silence:
                     self.vad_buffer += chunk
@@ -98,12 +95,9 @@ class VADWorker(AsyncWorker):
                         audio_float32 = self.int2float(
                             np.frombuffer(audio_chunk, DTYPE)
                         )
-
-                        inference_start = time.time()
                         new_confidence = model(
                             torch.from_numpy(audio_float32), SAMPLE_RATE
                         ).item()
-                        self.inference_times.append(time.time() - inference_start)
                 else:
                     # Ensure the deque only keeps the last 3 confidences
                     while len(self.voiced_confidences) > 3:
@@ -230,7 +224,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 }
             )
         if not is_silence:
-            # self.logger.debug("sound ------------ detected")
             self.vad_worker.send_audio(
                 {
                     "chunk": chunk,
@@ -248,20 +241,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self._ended = True
         if self.vad_worker_task:
             self.vad_worker_task.cancel()
-        self.log_vad_stats()
         super().terminate()
-
-    def log_vad_stats(self):
-        vad_inference_times = self.vad_worker.inference_times
-        vad_transmission_times = self.vad_worker.transmission_times
-
-        self.logger.info(
-            "VAD stats summary - "
-            f"Avg inference: {sum(vad_inference_times) / len(vad_inference_times) / 1e6:.3f}ms, "
-            f"Max inference: {max(vad_inference_times) / 1e6:.3f}ms, "
-            f"Avg transmission: {sum(vad_transmission_times) / len(vad_transmission_times) / 1e6:.3f}ms, "
-            f"Max transmission: {max(vad_transmission_times) / 1e6:.3f}ms"
-        )
 
     def get_deepgram_url(self):
         encoding = (
