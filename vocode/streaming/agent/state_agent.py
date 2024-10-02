@@ -160,13 +160,18 @@ async def handle_memory_dep(
     logger: logging.Logger,
 ):
     logger.info(f"handling memory dep {memory_dep}")
-    tool = {"value": "the extracted information, or MISSING if it's not available"}
+    tool = {
+        memory_dep[
+            "key"
+        ]: "the value provided by the human, or MISSING if it's not available"
+    }
     output = await call_ai(
-        f"Try to extract the following information:\n\nname:\n{memory_dep['key']}\n\ndescription:\n{memory_dep['description'] or 'none provided'}\n\nIf it's not in the conversation, return MISSING",
-        tool
+        f"Try to extract the following information:\n{memory_dep['key']}\n\nDescription provided:\n{memory_dep['description'] or 'none'}\n\nIf it's not provided by the human in the conversation, return MISSING",
+        tool,
     )
     output_dict = parse_llm_dict(output[output.find("{") : output.find("}") + 1])
-    memory = output_dict['value']
+    logger.error(f"mem output_dict: {output_dict}")
+    memory = output_dict[memory_dep["key"]]
     logger.info(f"memory directly from AI: {memory}")
     if memory != "MISSING":
         return await retry(memory)
