@@ -711,7 +711,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         chunk_idx
                     )
                 )
-                await synthesis_result.chunk_generator.aclose()
                 message_sent = f"{synthesis_result.get_message_up_to(duration)}-"
                 cut_off = True
                 break
@@ -746,9 +745,12 @@ class StreamingConversation(Generic[OutputDeviceType]):
             #     transcript_message.text = synthesis_result.get_message_up_to(
             #         duration
             #     )
+        # Always signal closing to the chunk generator
+        await synthesis_result.chunk_generator.aclose()
         if synthesis_result.get_lipsync_events:
             # self.logger.debug(self.synthesizer.print_all_events())
-            self.logger.debug(message_sent + ":\n" + print_visemes(synthesis_result.get_lipsync_events(0, 1000), AZURE_TO_OVR))
+            lipsync_events = synthesis_result.get_lipsync_events(0, 1000)
+            self.logger.debug(message_sent + ":\n" + print_visemes(lipsync_events, AZURE_TO_OVR))
         if self.transcriber.get_transcriber_config().mute_during_speech:
             self.logger.debug("Unmuting transcriber")
             self.transcriber.unmute()

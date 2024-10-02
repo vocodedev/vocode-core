@@ -2,32 +2,32 @@ import asyncio
 import logging
 import os
 import re
-from concurrent.futures import ThreadPoolExecutor
-from typing import List, Optional
-from xml.etree import ElementTree
+import xml.etree.ElementTree as ET
+from typing import Optional
 
 import aiohttp
-import azure.cognitiveservices.speech as speechsdk
-from vocode import getenv
+from azure.cognitiveservices.speech import (
+    AudioDataStream,
+    SpeechConfig,
+    SpeechSynthesisOutputFormat,
+    SpeechSynthesisResult,
+    SpeechSynthesisVisemeEventArgs,
+    SpeechSynthesisWordBoundaryEventArgs,
+    SpeechSynthesizer,
+    StreamStatus,
+)
 from vocode.streaming.agent.bot_sentiment_analyser import BotSentiment
 from vocode.streaming.models.audio_encoding import AudioEncoding
 from vocode.streaming.models.message import BaseMessage, SSMLMessage
 from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
 from vocode.streaming.synthesizer.base_synthesizer import (
-    FILLER_AUDIO_PATH,
-    FILLER_PHRASES,
     BaseSynthesizer,
-    FillerAudio,
     SynthesisResult,
     encode_as_wav,
 )
-
-AZURE_TICK_PER_SECOND = 10000000
-
-
-def ticks2s(ticks: int):
-    return ticks / AZURE_TICK_PER_SECOND
-    # return ((ticks + 5000) / 10000) / 1000
+from vocode.streaming.utils import (
+    AZURE_PHONETIC_SYMBOLS,
+)
 
 
 NAMESPACES = {
@@ -35,30 +35,130 @@ NAMESPACES = {
     "": "https://www.w3.org/2001/10/synthesis",
 }
 
-ElementTree.register_namespace("", NAMESPACES[""])
-ElementTree.register_namespace("mstts", NAMESPACES["mstts"])
+ET.register_namespace("", NAMESPACES[""])
+ET.register_namespace("mstts", NAMESPACES["mstts"])
+
+SLEEP_TIME = 0.1  # how long we sleep between checking for new data in the stream
+AZURE_TICK_PER_SECOND = 10000000
 
 
-class WordBoundaryEventPool:
-    def __init__(self):
-        self.events = []
+def viseme_events_to_str(events: list[SpeechSynthesisVisemeEventArgs]):
+    out = ""
+    for evt in events:
+        out += f"{ticks2s(evt.audio_offset):.2f}: {AZURE_PHONETIC_SYMBOLS[evt.viseme_id]}\n"
+    return out
 
-    def add(self, event):
-        self.events.append(
-            {
-                "text": event.text,
-                "text_offset": event.text_offset,
-                "audio_offset": (event.audio_offset + 5000) / AZURE_TICK_PER_SECOND,
-                "boudary_type": event.boundary_type,
-            }
-        )
 
-    def get_events_sorted(self):
-        return sorted(self.events, key=lambda event: event["audio_offset"])
+def word_events_to_str(events: list[SpeechSynthesisWordBoundaryEventArgs]):
+    out = ""
+    for evt in events:
+        out += f"{ticks2s(evt.audio_offset):.2f}: '{evt.text}'\n"
+    return out
+
+
+def ticks2s(ticks: int):
+    return ticks / AZURE_TICK_PER_SECOND
+
+
+def get_events_for(
+    events: list[SpeechSynthesisVisemeEventArgs | SpeechSynthesisWordBoundaryEventArgs],
+    from_s: float,
+    to_s: float,
+    result_id: str = None
+):
+    # NOTE we sometimes get 0 as audio_offset, so we need to filter those out
+    out = [event for event in events if event.audio_offset and from_s <= ticks2s(event.audio_offset) < to_s]
+    # NOTE, for debug, we can provide a result_id and ensure we get only events for that result_id
+    # but this is not on by default
+    if result_id:
+        right = []
+        wrong = []
+        for event in out:
+            if event.result_id == result_id:
+                right.append(event)
+            else:
+                wrong.append(event)
+        out = right
+    return out
+
+
+def get_lipsync_events(
+    viseme_events: list[SpeechSynthesisVisemeEventArgs],
+    from_s: float, 
+    to_s: float, 
+    result_id: str = None):
+    out = [
+        {
+            "audio_offset": ticks2s(evt.audio_offset) - from_s,
+            "viseme_id": evt.viseme_id,
+        }
+        for evt in get_events_for(viseme_events, from_s, to_s, result_id)
+    ]
+    return out
+
+
+def get_message_up_to(
+    ssml: str, 
+    word_events: list[SpeechSynthesisWordBoundaryEventArgs], 
+    to_s: float,
+    result_id: str = None):
+    events = get_events_for(word_events, to_s, 10000, result_id)
+    if events:
+        ssml_fragment = ssml[: events[0].text_offset]
+        # TODO: this is a little hacky, but it works for now
+        return ssml_fragment.split(">")[-1]
+    else:
+        return None
+
+
+def speech_config_hash(config: SpeechConfig):
+    # NOTE, if more variables of speech config are used, the hash need to update
+    return config.region + config.subscription_key + config.speech_synthesis_output_format_string
+
+
+class SynthesizerPool:
+    def __init__(
+        self,
+        maximum_synthesizers: int = 20,
+    ):
+        self._synthesizer_stacks: dict[str, list[SpeechSynthesizer]] = {}
+        self._maximum_synthesizers = maximum_synthesizers
+
+    def get(self, speech_config: SpeechConfig) -> SpeechSynthesizer:
+        key = speech_config_hash(speech_config)
+        if key not in self._synthesizer_stacks:
+            self._synthesizer_stacks[key] = []
+
+        stack = self._synthesizer_stacks[key]
+        if stack:
+            return stack.pop()
+        else:
+            synth = SpeechSynthesizer(speech_config=speech_config, audio_config=None)
+            return synth
+
+    def put(self, synth: SpeechSynthesizer, speech_config: SpeechConfig, logger: Optional[logging.Logger] = None):
+        key = speech_config_hash(speech_config)
+        if key not in self._synthesizer_stacks:
+            self._synthesizer_stacks[key] = []
+        stack = self._synthesizer_stacks[key]
+
+        if len(stack) < self._maximum_synthesizers:
+            stack.append(synth)
+            if logger:
+                logger.debug(f"Putting back a synthesizer, now have {len(stack)} in stack")
+        else:
+            if logger:
+                logger.warning(f"Disposing of a synthesizer as above max number of {self._maximum_synthesizers}.")
+            synth.stop_speaking_async()
+
+
+synthesizer_pool = SynthesizerPool()
 
 
 class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
-    OFFSET_MS = 100
+    """Objects of this class keeps track of the specific configuration that's needed to synthesize speech using Azure
+    within one specific vocode conversation. The actual work will be done by `SpeechSynthesizer` instances that are
+    fetched from a global pool which ensures quick synthesis times."""
 
     def __init__(
         self,
@@ -69,144 +169,61 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         aiohttp_session: Optional[aiohttp.ClientSession] = None,
     ):
         super().__init__(synthesizer_config, aiohttp_session)
-        # Instantiates a client
-        azure_speech_key = azure_speech_key or getenv("AZURE_SPEECH_KEY")
-        azure_speech_region = azure_speech_region or getenv("AZURE_SPEECH_REGION")
+
+        azure_speech_key = azure_speech_key or os.getenv("AZURE_SPEECH_KEY")
+        azure_speech_region = azure_speech_region or os.getenv("AZURE_SPEECH_REGION")
         if not azure_speech_key:
-            raise ValueError(
-                "Please set AZURE_SPEECH_KEY environment variable or pass it as a parameter"
-            )
+            raise ValueError("Please set AZURE_SPEECH_KEY environment variable or pass it as a parameter")
         if not azure_speech_region:
-            raise ValueError(
-                "Please set AZURE_SPEECH_REGION environment variable or pass it as a parameter"
-            )
-        speech_config = speechsdk.SpeechConfig(
-            subscription=azure_speech_key, region=azure_speech_region
-        )
+            raise ValueError("Please set AZURE_SPEECH_REGION environment variable or pass it as a parameter")
+        speech_config = SpeechConfig(subscription=azure_speech_key, region=azure_speech_region)
         if self.synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
             if self.synthesizer_config.sampling_rate == 44100:
-                speech_config.set_speech_synthesis_output_format(
-                    speechsdk.SpeechSynthesisOutputFormat.Raw44100Hz16BitMonoPcm
-                )
+                speech_config.set_speech_synthesis_output_format(SpeechSynthesisOutputFormat.Raw44100Hz16BitMonoPcm)
             if self.synthesizer_config.sampling_rate == 48000:
-                speech_config.set_speech_synthesis_output_format(
-                    speechsdk.SpeechSynthesisOutputFormat.Raw48Khz16BitMonoPcm
-                )
+                speech_config.set_speech_synthesis_output_format(SpeechSynthesisOutputFormat.Raw48Khz16BitMonoPcm)
             if self.synthesizer_config.sampling_rate == 24000:
-                speech_config.set_speech_synthesis_output_format(
-                    speechsdk.SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm
-                )
+                speech_config.set_speech_synthesis_output_format(SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm)
             elif self.synthesizer_config.sampling_rate == 16000:
-                speech_config.set_speech_synthesis_output_format(
-                    speechsdk.SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm
-                )
+                speech_config.set_speech_synthesis_output_format(SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm)
             elif self.synthesizer_config.sampling_rate == 8000:
-                speech_config.set_speech_synthesis_output_format(
-                    speechsdk.SpeechSynthesisOutputFormat.Raw8Khz16BitMonoPcm
-                )
-        elif self.synthesizer_config.audio_encoding == AudioEncoding.MULAW:
-            speech_config.set_speech_synthesis_output_format(
-                speechsdk.SpeechSynthesisOutputFormat.Raw8Khz8BitMonoMULaw
-            )
-        self.synthesizer = speechsdk.SpeechSynthesizer(
-            speech_config=speech_config, audio_config=None
-        )
-        # Will listen for all events for any messages created by this synthesizer
-        # The function get_events_for will filter the events for a specific message
-        self.synthesizer.synthesis_word_boundary.connect(
-            lambda evt: self.event_pool.append(evt)
-        )
-        self.synthesizer.viseme_received.connect(
-            lambda evt: self.event_pool.append(evt)
-        )
+                speech_config.set_speech_synthesis_output_format(SpeechSynthesisOutputFormat.Raw8Khz16BitMonoPcm)
+            else:
+                raise ValueError(f"Invalid sample rate {self.synthesizer_config.sampling_rate} used")
 
+        elif self.synthesizer_config.audio_encoding == AudioEncoding.MULAW:
+            speech_config.set_speech_synthesis_output_format(SpeechSynthesisOutputFormat.Raw8Khz8BitMonoMULaw)
+
+        # Note, Azure will synthesize as best it can even if language_code, sample rate, pitch, rate etc are not valid
+        self.speech_config = speech_config
         self.language_code = self.synthesizer_config.language_code
         self.voice_name = self.synthesizer_config.voice_name
         self.pitch = self.synthesizer_config.pitch
         self.rate = self.synthesizer_config.rate
-        self.thread_pool_executor = ThreadPoolExecutor(max_workers=1)
+        self.as_wav = self.synthesizer_config.should_encode_as_wav
         self.logger = logger or logging.getLogger(__name__)
-        self.event_pool: list[
-            speechsdk.SpeechSynthesisVisemeEventArgs
-            | speechsdk.SpeechSynthesisWordBoundaryEventArgs
-        ] = []
-        self.msg_index = 0
+        self.pool = synthesizer_pool
 
-    async def get_phrase_filler_audios(self) -> List[FillerAudio]:
-        filler_phrase_audios = []
-        for filler_phrase in FILLER_PHRASES:
-            cache_key = "-".join(
-                (
-                    str(filler_phrase.text),
-                    str(self.synthesizer_config.type),
-                    str(self.synthesizer_config.audio_encoding),
-                    str(self.synthesizer_config.sampling_rate),
-                    str(self.voice_name),
-                    str(self.pitch),
-                    str(self.rate),
-                )
-            )
-            filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.bytes")
-            if os.path.exists(filler_audio_path):
-                audio_data = open(filler_audio_path, "rb").read()
-            else:
-                self.logger.debug(f"Generating filler audio for {filler_phrase.text}")
-                ssml = self.create_ssml(filler_phrase.text)
-                result = await asyncio.get_event_loop().run_in_executor(
-                    self.thread_pool_executor, self.synthesizer.speak_ssml, ssml
-                )
-                offset = self.synthesizer_config.sampling_rate * self.OFFSET_MS // 1000
-                audio_data = result.audio_data[offset:]
-                with open(filler_audio_path, "wb") as f:
-                    f.write(audio_data)
-            filler_phrase_audios.append(
-                FillerAudio(
-                    filler_phrase,
-                    audio_data,
-                    self.synthesizer_config,
-                )
-            )
-        return filler_phrase_audios
-
-    def add_marks(self, message: str, index=0) -> str:
-        search_result = re.search(r"([\.\,\:\;\-\—]+)", message)
-        if search_result is None:
-            return message
-        start, end = search_result.span()
-        with_mark = message[:start] + f'<mark name="{index}" />' + message[start:end]
-        rest = message[end:]
-        rest_stripped = re.sub(r"^(.+)([\.\,\:\;\-\—]+)$", r"\1", rest)
-        if len(rest_stripped) == 0:
-            return with_mark
-        return with_mark + self.add_marks(rest_stripped, index + 1)
-
-    def word_boundary_cb(self, evt, pool):
-        pool.add(evt)
-
-    def create_ssml(
-        self, message: str, bot_sentiment: Optional[BotSentiment] = None
-    ) -> str:
-        ssml_root = ElementTree.fromstring(
+    def create_ssml(self, message: str, bot_sentiment: Optional[BotSentiment] = None) -> str:
+        ssml_root = ET.fromstring(
             f'<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="{self.language_code or "en-US"}"></speak>'
         )
 
-        voice = ElementTree.SubElement(ssml_root, "voice")
+        voice = ET.SubElement(ssml_root, "voice")
         voice.set("name", self.voice_name)
         voice_root = voice
         if self.language_code:
-            lang = ElementTree.SubElement(voice, "lang")
+            lang = ET.SubElement(voice, "lang")
             lang.set("xml:lang", self.language_code)
             voice_root = lang
 
         if bot_sentiment and bot_sentiment.emotion:
-            styled = ElementTree.SubElement(
-                voice_root, "{%s}express-as" % NAMESPACES.get("mstts")
-            )
+            styled = ET.SubElement(voice_root, "{%s}express-as" % NAMESPACES.get("mstts"))
             styled.set("style", bot_sentiment.emotion)
-            styled.set(
-                "styledegree", str(bot_sentiment.degree * 2)
-            )  # Azure specific, it's a scale of 0-2
+            styled.set("styledegree", str(bot_sentiment.degree * 2))  # Azure specific, it's a scale of 0-2
             voice_root = styled
+
+        # NOTE: Below comment and code from Vocode, but not clear if it's needed anymore?
         # this ugly hack is necessary so we can limit the gap between sentences
         # for normal sentences, it seems like the gap is > 500ms, so we're able to reduce it to 500ms
         # for very tiny sentences, the API hangs - so we heuristically only update the silence gap
@@ -217,82 +234,11 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         #     )
         #     silence.set("value", "500ms")
         #     silence.set("type", "Tailing-exact")
-        prosody = ElementTree.SubElement(voice_root, "prosody")
+        prosody = ET.SubElement(voice_root, "prosody")
         prosody.set("pitch", f"{self.pitch}%")
         prosody.set("rate", f"{self.rate}%")
         prosody.text = message.strip()
-        return ElementTree.tostring(ssml_root, encoding="unicode")
-
-    def synthesize_ssml(self, ssml: str) -> speechsdk.AudioDataStream:
-        result = self.synthesizer.start_speaking_ssml_async(ssml).get()
-        return speechsdk.AudioDataStream(result)
-
-    def ready_synthesizer(self):
-        connection = speechsdk.Connection.from_speech_synthesizer(self.synthesizer)
-        connection.open(True)
-
-    def get_events_for(
-        self, type: type, msg_index: int, from_t: float, to_t: float
-    ) -> list[
-        speechsdk.SpeechSynthesisVisemeEventArgs
-        | speechsdk.SpeechSynthesisWordBoundaryEventArgs
-    ]:
-        msg_count = 0
-        filtered_events = []
-        last_event = None
-        # picked_indices = []
-        for i, evt in enumerate(self.event_pool):
-            if isinstance(evt, type):
-                if last_event and last_event.audio_offset > evt.audio_offset:
-                    # An event of same type as went from large offset to small offset, which means it's a new message
-                    msg_count += 1
-
-                if msg_count > msg_index:
-                    break
-                elif msg_count == msg_index:
-                    t = ticks2s(evt.audio_offset)
-                    # Filter all events in this message, within the given time range
-                    if t >= from_t and t <= to_t:
-                        filtered_events.append(evt)
-                        # picked_indices.append(i)
-                last_event = evt
-        # self.logger.debug(f"Picked events: type={type}, msg_index={msg_index}, from {from_t} to {to_t}, picked: {picked_indices}")
-        return filtered_events
-
-    # given the number of seconds the message was allowed to go until, where did we get in the message?
-    def get_message_up_to(
-        self,
-        msg_index: int,
-        message: str,
-        ssml: str,
-        seconds: int,
-    ) -> str:
-        events = self.get_events_for(
-            speechsdk.SpeechSynthesisWordBoundaryEventArgs, msg_index, seconds, 10000
-        )  # some large number)
-        if events:
-            ssml_fragment = ssml[: events[0].text_offset]
-            # TODO: this is a little hacky, but it works for now
-            return ssml_fragment.split(">")[-1]
-        else:
-            return message
-
-    def get_lipsync_events_for(self, msg_index: int, from_t: float, to_t: float):
-        return [
-            {
-                "audio_offset": ticks2s(evt.audio_offset) - from_t,
-                "viseme_id": evt.viseme_id,
-            }
-            for evt in self.get_events_for(
-                speechsdk.SpeechSynthesisVisemeEventArgs, msg_index, from_t, to_t
-            )
-        ]
-
-    def print_all_events(self):
-        out = ""
-        for i, event in enumerate(self.event_pool):
-            out += f"{i}: {event}"
-        return out
+        return ET.tostring(ssml_root, encoding="unicode")
 
     async def create_speech(
         self,
@@ -300,70 +246,70 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         chunk_size: int,
         bot_sentiment: Optional[BotSentiment] = None,
     ) -> SynthesisResult:
-        # offset = int(self.OFFSET_MS * (self.synthesizer_config.sampling_rate / 1000))
-        offset = 0
         self.logger.debug(f"Synthesizing message: {message}")
 
         # Azure will return no audio for certain strings like "-", "[-", and "!"
         # which causes the `chunk_generator` below to hang. Return an empty
         # generator for these cases.
         if not re.search(r"\w", message.text):
+            self.logger.warning(f"Skipping synthesis for message '{message.text}' as it contains no words")
             return SynthesisResult(
                 self.empty_generator(),
                 lambda _: message.text,
             )
-
-        async def chunk_generator(
-            audio_data_stream: speechsdk.AudioDataStream, chunk_transform=lambda x: x
-        ):
-            audio_buffer = bytes(chunk_size)
-            while (
-                not audio_data_stream.can_read_data(chunk_size)
-                and audio_data_stream.status != speechsdk.StreamStatus.AllData
-                and audio_data_stream.status != speechsdk.StreamStatus.Canceled
-            ):
-                await asyncio.sleep(0)
-            filled_size = audio_data_stream.read_data(audio_buffer)
-            if filled_size != chunk_size:
-                yield SynthesisResult.ChunkResult(
-                    chunk_transform(audio_buffer[offset:]), True
-                )
-                return
-            else:
-                yield SynthesisResult.ChunkResult(
-                    chunk_transform(audio_buffer[offset:]), False
-                )
-            while True:
-                filled_size = audio_data_stream.read_data(audio_buffer)
-                if filled_size != chunk_size:
-                    yield SynthesisResult.ChunkResult(
-                        chunk_transform(audio_buffer[: filled_size - offset]), True
-                    )
-                    break
-                yield SynthesisResult.ChunkResult(chunk_transform(audio_buffer), False)
 
         ssml = (
             message.ssml
             if isinstance(message, SSMLMessage)
             else self.create_ssml(message.text, bot_sentiment=bot_sentiment)
         )
-        msg_index = self.msg_index
-        self.msg_index += 1
-        audio_data_stream = await asyncio.get_event_loop().run_in_executor(
-            self.thread_pool_executor, self.synthesize_ssml, ssml
+        viseme_events: list[SpeechSynthesisVisemeEventArgs] = []
+        word_events: list[SpeechSynthesisWordBoundaryEventArgs] = []
+
+        synthesizer = self.pool.get(self.speech_config)
+        synthesizer.viseme_received.connect(lambda x: viseme_events.append(x))
+        synthesizer.synthesis_word_boundary.connect(lambda x: word_events.append(x))
+
+        result: SpeechSynthesisResult = synthesizer.start_speaking_ssml_async(ssml).get()
+        text = re.sub(r"<.+?>", "", ssml)[0:20]
+        self.logger.debug(
+            f"Started synthesis for message '{text}…', using synth {id(synthesizer)}, Azure result_id: {result.result_id}"
         )
-        if self.synthesizer_config.should_encode_as_wav:
-            output_generator = chunk_generator(
-                audio_data_stream,
-                lambda chunk: encode_as_wav(chunk, self.synthesizer_config),
-            )
-        else:
-            output_generator = chunk_generator(audio_data_stream)
+        chunk_transform = (lambda chunk: encode_as_wav(chunk, self.synthesizer_config)) if self.as_wav else (lambda chunk: chunk)
+
+        # NOTE chunk_generator is responsible for disconnecting events and putting back synth once it has finished running
+        async def chunk_generator():
+            try:
+                stream = AudioDataStream(result)
+                chunk_data = bytes(chunk_size)
+                await asyncio.sleep(SLEEP_TIME)
+                while True:
+                    if stream.status == StreamStatus.PartialData and not stream.can_read_data(chunk_size):
+                        await asyncio.sleep(SLEEP_TIME)
+                        continue
+
+                    filled_size = stream.read_data(chunk_data)
+                    last_chunk = filled_size < chunk_size
+                    yield SynthesisResult.ChunkResult(chunk_transform(chunk_data[:filled_size]), last_chunk)
+                    if last_chunk:
+                        break
+            except Exception:
+                self.logger.exception(f"Error when generating chunks for result_id={result.result_id}")
+            finally:
+                # Finally should be called if we get an exception or if the generator is closed early using aclose()
+                if stream.status != StreamStatus.AllData:
+                    self.logger.warning(
+                        f"Closing stream for result_id={result.result_id} with status {stream.status} and details {stream.cancellation_details.error_details if stream.cancellation_details else None}"
+                    )
+                synthesizer.viseme_received.disconnect_all()
+                synthesizer.synthesis_word_boundary.disconnect_all()
+                self.logger.debug(
+                    f"Ended synthesis for result_id: {result.result_id}, putting back synth {id(synthesizer)}"
+                )
+                self.pool.put(synthesizer, self.speech_config, self.logger)
 
         return SynthesisResult(
-            output_generator,
-            lambda seconds: self.get_message_up_to(
-                msg_index, message.text, ssml, seconds
-            ),
-            lambda from_t, to_t: self.get_lipsync_events_for(msg_index, from_t, to_t),
+            chunk_generator(),
+            lambda to_s: (get_message_up_to(ssml, word_events, to_s) or message.text), 
+            lambda from_s, to_s: get_lipsync_events(viseme_events, from_s, to_s)
         )
