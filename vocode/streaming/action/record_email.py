@@ -1,7 +1,7 @@
 import re
-from typing import Optional, Type
+from typing import Literal, Optional, Type
 
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from vocode.streaming.action.base_action import BaseAction
 from vocode.streaming.models.actions import ActionConfig, ActionInput, ActionOutput
@@ -9,8 +9,8 @@ from vocode.streaming.models.actions import ActionConfig, ActionInput, ActionOut
 EMAIL_REGEX = r"^(?!\.)(?!.*\.\.)[a-zA-Z0-9._%+-]+(?<!\.)@(?![.])[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
 
-class RecordEmailVocodeActionConfig(ActionConfig, type="action_record_email"):  # type: ignore
-    pass
+class RecordEmailVocodeActionConfig(ActionConfig):
+    type: Literal["action_record_email"] = "action_record_email"
 
 
 class RecordEmailParameters(BaseModel):

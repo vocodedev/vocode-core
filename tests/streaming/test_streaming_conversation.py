@@ -4,7 +4,7 @@ from typing import AsyncGenerator, List, Optional
 from unittest.mock import MagicMock
 
 import pytest
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 from pytest_mock import MockerFixture
 
 from tests.fakedata.conversation import (

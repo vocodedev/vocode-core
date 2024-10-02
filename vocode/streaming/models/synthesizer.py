@@ -1,30 +1,16 @@
+from abc import ABC
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Union
 
+from pydantic import BaseModel, field_validator, model_validator
 from pydantic.v1 import validator
 
+from vocode.streaming.models.adaptive_object import AdaptiveObject
 from vocode.streaming.models.client_backend import OutputAudioConfig
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
 from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
 
 from .audio import AudioEncoding, SamplingRate
-from .model import BaseModel, TypedModel
-
-
-class SynthesizerType(str, Enum):
-    BASE = "synthesizer_base"
-    AZURE = "synthesizer_azure"
-    GOOGLE = "synthesizer_google"
-    ELEVEN_LABS = "synthesizer_eleven_labs"
-    RIME = "synthesizer_rime"
-    PLAY_HT = "synthesizer_play_ht"
-    GTTS = "synthesizer_gtts"
-    STREAM_ELEMENTS = "synthesizer_stream_elements"
-    COQUI_TTS = "synthesizer_coqui_tts"
-    COQUI = "synthesizer_coqui"
-    BARK = "synthesizer_bark"
-    POLLY = "synthesizer_polly"
-    CARTESIA = "synthesizer_cartesia"
 
 
 class SentimentConfig(BaseModel):
@@ -37,7 +23,8 @@ class SentimentConfig(BaseModel):
         return v
 
 
-class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):  # type: ignore
+class SynthesizerConfig(AdaptiveObject, ABC):
+    type: Any
     sampling_rate: int
     audio_encoding: AudioEncoding
     should_encode_as_wav: bool = False
@@ -75,7 +62,8 @@ AZURE_SYNTHESIZER_DEFAULT_PITCH = 0
 AZURE_SYNTHESIZER_DEFAULT_RATE = 15
 
 
-class AzureSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.AZURE.value):  # type: ignore
+class AzureSynthesizerConfig(SynthesizerConfig):
+    type: Literal["synthesizer_azure"] = "synthesizer_azure"
     voice_name: str = AZURE_SYNTHESIZER_DEFAULT_VOICE_NAME
     pitch: int = AZURE_SYNTHESIZER_DEFAULT_PITCH
     rate: int = AZURE_SYNTHESIZER_DEFAULT_RATE
@@ -88,7 +76,8 @@ DEFAULT_GOOGLE_PITCH = 0
 DEFAULT_GOOGLE_SPEAKING_RATE = 1.2
 
 
-class GoogleSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GOOGLE.value):  # type: ignore
+class GoogleSynthesizerConfig(SynthesizerConfig):
+    type: Literal["synthesizer_google"] = "synthesizer_google"
     language_code: str = DEFAULT_GOOGLE_LANGUAGE_CODE
     voice_name: str = DEFAULT_GOOGLE_VOICE_NAME
     pitch: float = DEFAULT_GOOGLE_PITCH
@@ -98,9 +87,8 @@ class GoogleSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GOOGLE.val
 ELEVEN_LABS_ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
 
-class ElevenLabsSynthesizerConfig(
-    SynthesizerConfig, type=SynthesizerType.ELEVEN_LABS.value  # type: ignore
-):
+class ElevenLabsSynthesizerConfig(SynthesizerConfig):
+    type: Literal["synthesizer_eleven_labs"] = "synthesizer_eleven_labs"
     api_key: Optional[str] = None
     voice_id: Optional[str] = ELEVEN_LABS_ADAM_VOICE_ID
     optimize_streaming_latency: Optional[int]
@@ -111,24 +99,26 @@ class ElevenLabsSynthesizerConfig(
     experimental_websocket: bool = False
     backchannel_amplitude_factor: float = 0.5
 
-    @validator("voice_id")
+    @field_validator("voice_id", mode="after")
+    @classmethod
     def set_name(cls, voice_id):
         return voice_id or ELEVEN_LABS_ADAM_VOICE_ID
 
-    @validator("similarity_boost", always=True)
-    def stability_and_similarity_boost_check(cls, similarity_boost, values):
-        stability = values.get("stability")
-        if (stability is None) != (similarity_boost is None):
+    @model_validator(mode="after")
+    def stability_and_similarity_boost_check(self):
+        if (self.stability is None) != (self.similarity_boost is None):
             raise ValueError("Both stability and similarity_boost must be set or not set.")
-        return similarity_boost
+        return self
 
-    @validator("optimize_streaming_latency")
+    @field_validator("optimize_streaming_latency", mode="after")
+    @classmethod
     def optimize_streaming_latency_check(cls, optimize_streaming_latency):
         if optimize_streaming_latency is not None and not (0 <= optimize_streaming_latency <= 4):
             raise ValueError("optimize_streaming_latency must be between 0 and 4.")
         return optimize_streaming_latency
 
-    @validator("backchannel_amplitude_factor")
+    @field_validator("backchannel_amplitude_factor", mode="after")
+    @classmethod
     def backchannel_amplitude_factor_check(cls, backchannel_amplitude_factor):
         if backchannel_amplitude_factor is not None and not (0 < backchannel_amplitude_factor <= 1):
             raise ValueError(
@@ -146,7 +136,8 @@ RIME_DEFAULT_REDUCE_LATENCY = False
 RimeModelId = Literal["mist", "v1"]
 
 
-class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME.value):  # type: ignore
+class RimeSynthesizerConfig(SynthesizerConfig):
+    type: Literal["synthesizer_rime"] = "synthesizer_rime"
     base_url: str = RIME_DEFAULT_BASE_URL
     model_id: Optional[Literal[RimeModelId]] = RIME_DEFAULT_MODEL_ID
     speaker: str = RIME_DEFAULT_SPEAKER
@@ -155,26 +146,11 @@ class RimeSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.RIME.value):
     reduce_latency: Optional[bool] = RIME_DEFAULT_REDUCE_LATENCY
 
 
-COQUI_DEFAULT_SPEAKER_ID = "ebe2db86-62a6-49a1-907a-9a1360d4416e"
-
-
-class CoquiSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.COQUI.value):  # type: ignore
-    api_key: Optional[str] = None
-    voice_id: Optional[str] = COQUI_DEFAULT_SPEAKER_ID
-    voice_prompt: Optional[str] = None
-    use_xtts: Optional[bool] = True
-
-    @validator("voice_id", always=True)
-    def override_voice_id_with_prompt(cls, voice_id, values):
-        if values.get("voice_prompt"):
-            return None
-        return voice_id or COQUI_DEFAULT_SPEAKER_ID
-
-
 PlayHtVoiceVersionType = Literal["1", "2"]
 
 
-class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.value):  # type: ignore
+class PlayHtSynthesizerConfig(SynthesizerConfig):
+    type: Literal["synthesizer_play_ht"] = "synthesizer_play_ht"
     voice_id: str
     api_key: Optional[str] = None
     user_id: Optional[str] = None
@@ -192,28 +168,27 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.va
     experimental_remove_silence: bool = False
 
 
-class CoquiTTSSynthesizerConfig(
-    SynthesizerConfig, type=SynthesizerType.COQUI_TTS.value  # type: ignore
-):
+class CoquiTTSSynthesizerConfig(SynthesizerConfig):
+    type: Literal["synthesizer_coqui_tts"] = "synthesizer_coqui_tts"
     tts_kwargs: dict = {}
     speaker: Optional[str] = None
     language: Optional[str] = None
 
 
-class GTTSSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.GTTS.value):  # type: ignore
-    pass
+class GTTSSynthesizerConfig(SynthesizerConfig):
+    type: Literal["synthesizer_gtts"] = "synthesizer_gtts"
 
 
 STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE = "Brian"
 
 
-class StreamElementsSynthesizerConfig(
-    SynthesizerConfig, type=SynthesizerType.STREAM_ELEMENTS.value  # type: ignore
-):
+class StreamElementsSynthesizerConfig(SynthesizerConfig):
+    type: Literal["synthesizer_stream_elements"] = "synthesizer_stream_elements"
     voice: str = STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE
 
 
-class BarkSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.BARK.value):  # type: ignore
+class BarkSynthesizerConfig(SynthesizerConfig):
+    type: Literal["synthesizer_bark"] = "synthesizer_bark"
     preload_kwargs: Dict[str, Any] = {}
     generate_kwargs: Dict[str, Any] = {}
 
@@ -223,7 +198,8 @@ DEFAULT_POLLY_VOICE_ID = "Matthew"
 DEFAULT_POLLY_SAMPLING_RATE = SamplingRate.RATE_16000.value
 
 
-class PollySynthesizerConfig(SynthesizerConfig, type=SynthesizerType.POLLY.value):  # type: ignore
+class PollySynthesizerConfig(SynthesizerConfig):
+    type: Literal["synthesizer_polly"] = "synthesizer_polly"
     language_code: str = DEFAULT_POLLY_LANGUAGE_CODE
     voice_id: str = DEFAULT_POLLY_VOICE_ID
     sampling_rate: int = DEFAULT_POLLY_SAMPLING_RATE
@@ -240,7 +216,8 @@ class CartesiaVoiceControls(BaseModel):
     emotion: Optional[List[str]] = None
 
 
-class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA.value):  # type: ignore
+class CartesiaSynthesizerConfig(SynthesizerConfig):
+    type: Literal["synthesizer_cartesia"] = "synthesizer_cartesia"
     api_key: Optional[str] = None
     model_id: str = DEFAULT_CARTESIA_MODEL_ID
     voice_id: str = DEFAULT_CARTESIA_VOICE_ID

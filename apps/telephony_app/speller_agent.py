@@ -1,13 +1,15 @@
-from typing import Optional, Tuple
+from typing import Literal, Optional, Tuple
 
 from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
 from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
 from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.streaming.models.agent import AgentConfig, AgentType, ChatGPTAgentConfig
+from vocode.streaming.models.agent import AgentConfig, ChatGPTAgentConfig
 
 
-class SpellerAgentConfig(AgentConfig, type="agent_speller"):
+class SpellerAgentConfig(AgentConfig):
     """Configuration for SpellerAgent. Inherits from AgentConfig."""
+
+    type: Literal["agent_speller"] = "agent_speller"
 
     pass
 

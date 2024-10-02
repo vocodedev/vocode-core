@@ -1,7 +1,7 @@
-from typing import Type
+from typing import Literal, Type
 
 from loguru import logger
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from vocode.streaming.action.base_action import BaseAction
 from vocode.streaming.models.actions import ActionConfig as VocodeActionConfig
@@ -24,9 +24,9 @@ class EndConversationResponse(BaseModel):
     success: bool
 
 
-class EndConversationVocodeActionConfig(
-    VocodeActionConfig, type="action_end_conversation"  # type: ignore
-):
+class EndConversationVocodeActionConfig(VocodeActionConfig):
+    type: Literal["action_end_conversation"] = "action_end_conversation"
+
     def action_attempt_to_string(self, input: ActionInput) -> str:
         assert isinstance(input.params, EndConversationParameters)
         return "Attempting to end conversation"

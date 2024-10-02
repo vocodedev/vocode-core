@@ -1,32 +1,28 @@
-from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
-from .model import TypedModel
+from pydantic import BaseModel
 
-
-class MessageType(str, Enum):
-    BASE = "message_base"
-    SSML = "message_ssml"
-    BOT_BACKCHANNEL = "bot_backchannel"
-    LLM_TOKEN = "llm_token"
+MessageType = Literal["message_base", "message_ssml", "bot_backchannel", "llm_token"]
 
 
-class BaseMessage(TypedModel, type=MessageType.BASE):  # type: ignore
+class BaseMessage(BaseModel):
+    type: MessageType = "message_base"
     text: str
     trailing_silence_seconds: float = 0.0
     cache_phrase: Optional[str] = None
 
 
-class SSMLMessage(BaseMessage, type=MessageType.SSML):  # type: ignore
+class SSMLMessage(BaseMessage):
+    type: Literal["message_ssml"] = "message_ssml"
     ssml: str
 
 
-class BotBackchannel(BaseMessage, type=MessageType.BOT_BACKCHANNEL):  # type: ignore
-    pass
+class BotBackchannel(BaseMessage):
+    type: Literal["bot_backchannel"] = "bot_backchannel"
 
 
-class LLMToken(BaseMessage, type=MessageType.LLM_TOKEN):  # type: ignore
-    pass
+class LLMToken(BaseMessage):
+    type: Literal["llm_token"] = "llm_token"
 
 
 class SilenceMessage(BotBackchannel):

@@ -5,7 +5,6 @@ import aiohttp
 
 from vocode import getenv
 from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import CoquiSynthesizerConfig
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
 from vocode.streaming.utils.async_requester import AsyncRequestor
 
@@ -14,8 +13,8 @@ raise DeprecationWarning("This Synthesizer is deprecated and will be removed in 
 COQUI_BASE_URL = "https://app.coqui.ai/api/v2"
 
 
-class CoquiSynthesizer(BaseSynthesizer[CoquiSynthesizerConfig]):
-    def __init__(self, synthesizer_config: CoquiSynthesizerConfig):
+class CoquiSynthesizer(BaseSynthesizer):
+    def __init__(self, synthesizer_config):
         super().__init__(synthesizer_config)
         self.api_key = synthesizer_config.api_key or getenv("COQUI_API_KEY")
         self.voice_id = synthesizer_config.voice_id

@@ -1,23 +1,21 @@
+from abc import ABC
 from enum import Enum
-from typing import Optional
+from typing import Any, Literal, Optional
 
-from vocode.streaming.models.agent import AgentConfig, AgentType
-from vocode.streaming.models.model import BaseModel, TypedModel
+from pydantic import BaseModel
 
-
-class WebSocketAgentMessageType(str, Enum):
-    BASE = "websocket_agent_base"
-    TEXT = "websocket_agent_text"
-    STOP = "websocket_agent_stop"
+from vocode.streaming.models.adaptive_object import AdaptiveObject
+from vocode.streaming.models.agent import AgentConfig
 
 
-class WebSocketAgentMessage(TypedModel, type=WebSocketAgentMessageType.BASE):  # type: ignore
+class WebSocketAgentMessage(AdaptiveObject, ABC):
+    type: Any
     conversation_id: Optional[str] = None
 
 
-class WebSocketAgentTextMessage(
-    WebSocketAgentMessage, type=WebSocketAgentMessageType.TEXT  # type: ignore
-):
+class WebSocketAgentTextMessage(WebSocketAgentMessage):
+    type: Literal["websocket_agent_text"] = "websocket_agent_text"
+
     class Payload(BaseModel):
         text: str
 
@@ -28,16 +26,13 @@ class WebSocketAgentTextMessage(
         return cls(data=cls.Payload(text=text), conversation_id=conversation_id)
 
 
-class WebSocketAgentStopMessage(
-    WebSocketAgentMessage, type=WebSocketAgentMessageType.STOP  # type: ignore
-):
-    pass
+class WebSocketAgentStopMessage(WebSocketAgentMessage):
+    type: Literal["websocket_agent_stop"] = "websocket_agent_stop"
 
 
-class WebSocketUserImplementedAgentConfig(
-    AgentConfig, type=AgentType.WEBSOCKET_USER_IMPLEMENTED.value  # type: ignore
-):
+class WebSocketUserImplementedAgentConfig(AgentConfig):
     class RouteConfig(BaseModel):
         url: str
 
+    type: Literal["agent_websocket_user_implemented"] = "agent_websocket_user_implemented"
     respond: RouteConfig

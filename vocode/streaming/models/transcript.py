@@ -2,10 +2,10 @@ import time
 from datetime import datetime
 from typing import List, Literal, Optional
 
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from vocode.streaming.models.actions import ActionInput, ActionOutput
-from vocode.streaming.models.events import ActionEvent, Event, EventType, Sender
+from vocode.streaming.models.events import ActionEvent, Event, Sender
 from vocode.streaming.utils.events_manager import EventsManager
 
 
@@ -105,7 +105,8 @@ class ConferenceEvent(EventLog):
         return msg_string
 
 
-class TranscriptEvent(Event, type=EventType.TRANSCRIPT):  # type: ignore
+class TranscriptEvent(Event):
+    type: Literal["event_transcript"] = "event_transcript"
     text: str
     sender: Sender
     timestamp: float
@@ -273,5 +274,6 @@ class Transcript(BaseModel):
         return False
 
 
-class TranscriptCompleteEvent(Event, type=EventType.TRANSCRIPT_COMPLETE):  # type: ignore
+class TranscriptCompleteEvent(Event):
+    type: Literal["event_transcript_complete"] = "event_transcript_complete"
     transcript: Transcript

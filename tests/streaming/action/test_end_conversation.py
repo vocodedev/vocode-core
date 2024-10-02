@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 from pytest_mock import MockerFixture
 
 from tests.fakedata.id import generate_uuid

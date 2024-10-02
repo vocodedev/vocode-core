@@ -4,12 +4,21 @@ import asyncio
 import json
 import random
 import typing
-from enum import Enum
-from typing import TYPE_CHECKING, AsyncGenerator, Dict, Generic, Optional, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    AsyncGenerator,
+    Dict,
+    Generic,
+    Literal,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import sentry_sdk
 from loguru import logger
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from vocode import sentry_span_tags
 from vocode.streaming.action.abstract_factory import AbstractActionFactory
@@ -32,7 +41,6 @@ from vocode.streaming.models.actions import (
 from vocode.streaming.models.agent import AgentConfig, ChatGPTAgentConfig, LLMAgentConfig
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage, BotBackchannel, SilenceMessage
-from vocode.streaming.models.model import TypedModel
 from vocode.streaming.models.transcriber import Transcription
 from vocode.streaming.models.transcript import Message, Transcript
 from vocode.streaming.utils import unrepeating_randomizer
@@ -62,44 +70,33 @@ POST_QUESTION_BACKCHANNELS = [
 ]
 
 
-class AgentInputType(str, Enum):
-    BASE = "agent_input_base"
-    TRANSCRIPTION = "agent_input_transcription"
-    ACTION_RESULT = "agent_input_action_result"
-
-
-class AgentInput(TypedModel, type=AgentInputType.BASE.value):  # type: ignore
+class _AgentInput(BaseModel):
     conversation_id: str
-    vonage_uuid: Optional[str]
-    twilio_sid: Optional[str]
+    vonage_uuid: Optional[str] = None
+    twilio_sid: Optional[str] = None
     agent_response_tracker: Optional[asyncio.Event] = None
 
     class Config:
         arbitrary_types_allowed = True
 
 
-class TranscriptionAgentInput(AgentInput, type=AgentInputType.TRANSCRIPTION.value):  # type: ignore
+class TranscriptionAgentInput(_AgentInput):
+    type: Literal["agent_input_transcription"] = "agent_input_transcription"
     transcription: Transcription
 
 
-class ActionResultAgentInput(AgentInput, type=AgentInputType.ACTION_RESULT.value):  # type: ignore
+class ActionResultAgentInput(_AgentInput):
+    type: Literal["agent_input_action_result"] = "agent_input_action_result"
     action_input: ActionInput
     action_output: ActionOutput
     is_quiet: bool = False
 
 
-class AgentResponseType(str, Enum):
-    BASE = "agent_response_base"
-    MESSAGE = "agent_response_message"
-    STOP = "agent_response_stop"
-    FILLER_AUDIO = "agent_response_filler_audio"
+AgentInput = Union[TranscriptionAgentInput, ActionResultAgentInput]
 
 
-class AgentResponse(TypedModel, type=AgentResponseType.BASE.value):  # type: ignore
-    pass
-
-
-class AgentResponseMessage(AgentResponse, type=AgentResponseType.MESSAGE.value):  # type: ignore
+class AgentResponseMessage(BaseModel):
+    type: Literal["agent_response_message"] = "agent_response_message"
     message: Union[BaseMessage, EndOfTurn]
     is_interruptible: bool = True
     # Whether the message is the first message in the response; has metrics implications
@@ -108,15 +105,15 @@ class AgentResponseMessage(AgentResponse, type=AgentResponseType.MESSAGE.value):
     is_sole_text_chunk: bool = False
 
 
-class AgentResponseStop(AgentResponse, type=AgentResponseType.STOP.value):  # type: ignore
-    pass
+class AgentResponseStop(BaseModel):
+    type: Literal["agent_response_stop"] = "agent_response_stop"
 
 
-class AgentResponseFillerAudio(
-    AgentResponse,
-    type=AgentResponseType.FILLER_AUDIO.value,  # type: ignore
-):
-    pass
+class AgentResponseFillerAudio(BaseModel):
+    type: Literal["agent_response_filler_audio"] = "agent_response_filler_audio"
+
+
+AgentResponse = Union[AgentResponseMessage, AgentResponseStop, AgentResponseFillerAudio]
 
 
 class GeneratedResponse(BaseModel):
