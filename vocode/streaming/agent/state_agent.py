@@ -166,7 +166,7 @@ async def handle_memory_dep(
         ]: "the value provided by the human, or MISSING if it's not available"
     }
     output = await call_ai(
-        f"Try to extract the following information:\n{memory_dep['key']}\n\nDescription provided:\n{memory_dep['description'] or 'none'}\n\nIf it's not provided by the human in the conversation, return MISSING",
+        f"Based solely on the provided chat history between a human and a bot, extract the following information:\n{memory_dep['key']}\n\nInformation Description:\n{memory_dep['description'] or 'No further description provided.'}\n\nIf it's not provided by the human in the conversation, return MISSING",
         tool,
     )
     output_dict = parse_llm_dict(output[output.find("{") : output.find("}") + 1])
@@ -541,12 +541,18 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             if state["start_message"]["type"] != "verbatim":
                 start = True  # no need to skip the print if its relative since it wont be repetitive
         if start and "start_message" in state:
-            await self.print_message(state["start_message"], state["id"])
+            await self.print_message(
+                state["start_message"], state["id"], is_start=True
+            )  # doesn't print the start message if it's a repeat
 
-    async def print_message(self, message, current_state_id):
+    async def print_message(self, message, current_state_id, is_start=False):
+        if is_start:
+            current_state_id = (
+                current_state_id + "_start"
+            )  # so that we separately keep track of the start message
         if current_state_id in self.spoken_states and message["type"] == "verbatim":
             original_message = message["message"]
-            constructed_guide = f"You had previously asked the user: '{original_message}'. You did not get a clear answer. Respond appropriately to the user to answer their question(s) (if any) and get the answer you need."
+            constructed_guide = f"You previously communicated to the user: '{original_message}'. If this was a question, the user's response might have been unclear. Address their query (if any) and tactfully seek the information you need. If it was a statement, rephrase it using different words while maintaining its core meaning, tone and approximate length."
             await self.guided_response(constructed_guide)
         else:
             if message["type"] == "verbatim":
