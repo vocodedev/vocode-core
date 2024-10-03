@@ -835,6 +835,8 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         if ivr_dag:
             self.ivr_worker = self.IvrWorker(conversation=self, dag=ivr_dag)
             self.transcriptions_worker.consumer = self.ivr_worker
+        else:
+            self.ivr_worker = None
 
         # tracing
         self.start_time: Optional[float] = None
