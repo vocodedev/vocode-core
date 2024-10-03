@@ -1036,19 +1036,52 @@ class StreamingConversation(Generic[OutputDeviceType]):
         end_span(initial_message_span)
 
     async def check_for_idle(self):
-        """Terminates the conversation after 15 seconds if no activity is detected"""
+        """Terminates the conversation after 30 seconds if no activity is detected"""
+        no_response_sent = False
         while self.is_active():
-            if (
-                time.time() - self.last_action_timestamp > 4
-                and time.time() - self.last_action_timestamp < 30
-            ):
+            current_time = time.time()
+            idle_time = current_time - self.last_action_timestamp
+
+            if 4 < idle_time < 30:
                 self.transcriber.VOLUME_THRESHOLD = 5000
+                if not self.is_agent_speaking() and not no_response_sent:
+                    try:
+                        transcription = Transcription(
+                            message=json.dumps(
+                                {"words": [{"word": "[no further response detected]"}]}
+                            ),
+                            confidence=1.0,
+                            is_final=True,
+                            time_silent=4,
+                        )
+                        event = self.transcriptions_worker.interruptible_event_factory.create_interruptible_event(
+                            payload=TranscriptionAgentInput(
+                                transcription=transcription,
+                                affirmative_phrase=None,
+                                conversation_id=self.id,
+                                vonage_uuid=getattr(self, "vonage_uuid", None),
+                                twilio_sid=getattr(self, "twilio_sid", None),
+                                ctx=self.conversation_span,
+                            ),
+                        )
+                        self.transcriptions_worker.output_queue.put_nowait(event)
+                        no_response_sent = True
+                        self.logger.debug("Sent [no further response detected] message")
+                    except Exception as e:
+                        self.logger.error(
+                            f"Error sending [no further response detected] message: {e}"
+                        )
             else:
                 self.transcriber.VOLUME_THRESHOLD = 700
-            if time.time() - self.last_action_timestamp > 30:
+                no_response_sent = (
+                    False  # Reset the flag when not idle or after 30 seconds
+                )
+
+            if idle_time > 30:
                 self.logger.debug("Conversation idle for too long, terminating")
                 await self.terminate()
                 return
+
             await asyncio.sleep(1)
 
     async def track_bot_sentiment(self):
@@ -1238,9 +1271,14 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.logger.info(f"Total speech time: {total_time_sent} seconds")
 
         self.mark_last_action_timestamp()
-        await asyncio.sleep(
-            total_time_sent
-        )  # added sleeps so that we can do volume thresholding
+        remaining_time = total_time_sent
+        while remaining_time > 0:
+            sleep_duration = min(2, remaining_time)
+            await asyncio.sleep(sleep_duration)
+            self.mark_last_action_timestamp()
+            remaining_time -= sleep_duration
+        # added sleeps so that we can do volume thresholding
+        # marks last so we dont idle out or send ping after four seconds of speaking
         message_sent = synthesis_result.get_message_up_to(total_time_sent)
 
         if transcript_message:

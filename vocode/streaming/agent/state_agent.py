@@ -263,7 +263,7 @@ async def handle_options(
             {
                 "destStateId": state_machine["startingStateId"],
                 "aiLabel": "switch",
-                "aiDescription": f"user no longer needs help with '{state['id'].split('::')[0]}'",
+                "aiDescription": f"'{state['id'].split('::')[0]}' is no longer relevant to the user's latest response",
             }
         )
         if (
@@ -564,7 +564,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
     async def handle_state(self, state_id_or_label: str):
         start = state_id_or_label not in self.visited_states
-        self.visited_states.add(state_id_or_label)
         state = get_state(state_id_or_label, self.state_machine)
         self.current_state = state
 
@@ -606,6 +605,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 )
 
         await self.print_start_message(state, start=start)
+        self.visited_states.add(state_id_or_label)
 
         if state["type"] == "basic":
             return await self.handle_state(state["edge"])
