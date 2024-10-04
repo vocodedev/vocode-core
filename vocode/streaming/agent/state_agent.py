@@ -245,7 +245,7 @@ async def handle_options(
     )
     if (
         state["id"] != state_machine["startingStateId"]
-        and (prev_state and "question" in prev_state["id"].lower())
+        and (prev_state and "question" in prev_state.get("generated_label", prev_state["id"]).lower())
         and not action_result_after_user_spoke
     ):
         if len(edges) > 0:
@@ -284,7 +284,7 @@ async def handle_options(
                     "aiDescription": f"user still needs help with '{state['id'].split('::')[0]}' but no condition applies",
                 }
             )
-        if "question" in state["id"].split("::")[-2]:
+        if "question" in state.get("generated_label", state["id"]).split("::")[-2]:
             edges.append(
                 {
                     "destStateId": default_next_state,
@@ -434,7 +434,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     self.state_history.append(state)
                     self.visited_states.add(state_id)
                     self.current_state = state
-                    self.logger.info(f"Updated state: {state_id}")
+                    self.logger.info(f"Updated state: {state.get("generated_label", state_id)}")
                     # Set resume immediately after updating the state
                     if state["type"] == "question":
                         self.resume = lambda _: self.handle_state(
@@ -576,7 +576,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             )
             return
         self.json_transcript.entries.append(
-            StateAgentTranscriptHandleState(state_id=state["id"])
+            # use the ID as label if label not available, like if the agent was last updated before labels existed
+            StateAgentTranscriptHandleState(state_id=state["id"], generated_label=state.get("generated_label", state["id"]))
         )
 
         self.state_history.append(state)

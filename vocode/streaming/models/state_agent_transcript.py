@@ -68,6 +68,7 @@ class StateAgentTranscriptHandleState(StateAgentTranscriptDebugEntry):
     type: StateAgentDebugMessageType = StateAgentDebugMessageType.HANDLE_STATE
     message: str = ""
     state_id: str
+    generated_label: str
 
 
 class StateAgentTranscriptInvariantViolation(StateAgentTranscriptDebugEntry):
