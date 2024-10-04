@@ -578,6 +578,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 guide = message["description"]
                 await self.guided_response(guide)
         if not self.agent_config.allow_interruptions:
+            # sleep for 1
+            await asyncio.sleep(0.5)
             self.block_inputs = True
 
     async def handle_state(self, state_id_or_label: str):
