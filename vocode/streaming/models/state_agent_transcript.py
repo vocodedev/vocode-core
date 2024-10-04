@@ -1,9 +1,11 @@
 import datetime
 import json
 from enum import Enum
-from typing import List, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, root_validator
+
+from vocode.streaming.models.memory_dependency import MemoryDependency
 
 
 class StateAgentTranscriptRole(str, Enum):
@@ -69,6 +71,8 @@ class StateAgentTranscriptHandleState(StateAgentTranscriptDebugEntry):
     message: str = ""
     state_id: str
     generated_label: str
+    memory_dependencies: Optional[List[MemoryDependency]]
+    memory_values: dict
 
 
 class StateAgentTranscriptInvariantViolation(StateAgentTranscriptDebugEntry):

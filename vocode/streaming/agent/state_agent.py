@@ -22,6 +22,7 @@ from vocode.streaming.models.actions import ActionInput
 from vocode.streaming.models.agent import CommandAgentConfig
 from vocode.streaming.models.call_type import CallType
 from vocode.streaming.models.events import Sender
+from vocode.streaming.models.memory_dependency import MemoryDependency
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.state_agent_transcript import (
     StateAgentTranscript,
@@ -144,12 +145,6 @@ async def handle_question(
         return await go_to_state(get_default_next_state(state))
 
     return resume
-
-
-class MemoryDependency(BaseModel):
-    key: str
-    question: dict  # {type: 'verbatim', message: str} | {type: 'description', description: str}
-    description: Optional[str]
 
 
 async def handle_memory_dep(
@@ -600,6 +595,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             StateAgentTranscriptHandleState(
                 state_id=state["id"],
                 generated_label=state.get("generated_label", state["id"]),
+                memory_dependencies=state.get("memory_dependencies"),
+                memory_values=self.memories,
             )
         )
 
