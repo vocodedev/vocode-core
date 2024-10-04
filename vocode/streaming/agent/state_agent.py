@@ -594,7 +594,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         )
         for memory_dep in state.get("memory_dependencies", []):
             cached_memory = self.memories.get(memory_dep["key"])
-            self.logger.info(f"cached memory for {memory_dep["key"]} is {cached_memory}")
+            self.logger.info(f"cached memory for {memory_dep['key']} is {cached_memory}")
             if not cached_memory:
 
                 async def retry(memory: Optional[str]):
