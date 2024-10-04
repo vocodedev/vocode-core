@@ -541,7 +541,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 self.logger.info(f"Old resume task cancelled")
         self.logger.info("CREATING NEW self.resume_task in generate_completion")
         self.resume_task = asyncio.create_task(self.resume(human_input))
-        await self.resume_task
+        self.resume = await self.resume_task
         self.logger.info("DONE WITH NEW self.resume_task in generate_completion")
         return "", True
 
@@ -1051,23 +1051,21 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
     # this might not be needed.
     def restore_resume_state(self):
+        self.logger.info("RESTORE RESUME STATE")
         resume_state = None
         if self.state_history:
+            self.logger.info("RESTORE RESUME STATE actually doing something")
             current_state = self.state_history[-1]
             if "edge" in current_state:
                 resume_state = current_state["edge"]
-                self.resume = lambda _: self.handle_state(current_state["edge"])
             elif "edges" in current_state:
                 for state in current_state["edges"]:
                     if "isDefault" in state and state["isDefault"]:
                         resume_state = state["destStateId"]
-                        self.resume = lambda _: self.handle_state(state["destStateId"])
                         return
                 resume_state = current_state[id]
-                self.resume = lambda _: self.handle_state(current_state[id])
             else:
                 resume_state = "start"
-                self.resume = lambda _: self.handle_state("start")
             
             def resume():
                 self.logger.info(f"resuming at {resume_state}")
