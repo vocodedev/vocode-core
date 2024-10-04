@@ -1035,7 +1035,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
         # Set the resume state
         if self.state_history:
-            self.logger.info(f"in move_back_state: setting self.resume to {self.state_history[-1]["id"]}")
+            self.logger.info(f"in move_back_state: setting self.resume to {self.state_history[-1]['id']}")
             self.resume = lambda _: self.handle_state(self.state_history[-1]["id"])
         else:
             self.logger.info(f"in move_back_state: setting self.resume to START")
