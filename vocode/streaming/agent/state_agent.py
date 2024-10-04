@@ -178,7 +178,7 @@ async def handle_memory_dep(
 
     await speak(memory_dep["question"])
 
-    async def resume():
+    async def resume(human_input: str):
         return await retry()
 
     return resume
@@ -532,8 +532,13 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 await self.resume_task
             except asyncio.CancelledError:
                 self.logger.info(f"Old resume task cancelled")
+
         self.resume_task = asyncio.create_task(self.resume(human_input))
-        await self.resume_task
+        resume_output = await self.resume_task
+        if self.resume_task.cancelled():
+            resume_output = self.resume
+        self.resume = resume_output
+        self.block_inputs = False
         return "", True
 
     async def print_start_message(self, state, start: bool):
@@ -545,11 +550,17 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 state["start_message"], state["id"], is_start=True
             )  # doesn't print the start message if it's a repeat
 
-    async def print_message(self, message, current_state_id, is_start=False):
+    async def print_message(
+        self, message, current_state_id, is_start=False, memory_id=None
+    ):
+        if not self.agent_config.allow_interruptions:
+            self.block_inputs = True
         if is_start:
             current_state_id = (
                 current_state_id + "_start"
             )  # so that we separately keep track of the start message
+        if memory_id:
+            current_state_id = current_state_id + "_" + memory_id
         if current_state_id in self.spoken_states and message["type"] == "verbatim":
             original_message = message["message"]
             constructed_guide = f"You previously communicated to the user: '{original_message}'. If this was a question, the user's response might have been unclear. Address their query (if any) and tactfully seek the information you need. If it was a statement, rephrase it using different words while maintaining its core meaning, tone and approximate length."
@@ -593,11 +604,14 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             self.logger.info(f"cached memory is {cached_memory}")
             if not cached_memory:
 
-                async def retry(memory: Optional[str]):
+                async def retry(memory: Optional[str] = None):
                     if memory:
                         self.memories[memory_dep["key"]] = memory
                     return await self.handle_state(state_id_or_label=state_id_or_label)
 
+                speak_message = lambda message: self.print_message(
+                    message, state["id"], memory_id=memory_dep["key"] + "_memory"
+                )
                 return await handle_memory_dep(
                     memory_dep=memory_dep,
                     speak=speak_message,

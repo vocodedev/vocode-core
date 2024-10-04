@@ -681,10 +681,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                                 bot_sentiment=self.conversation.bot_sentiment,
                             )
                         )
-                        replacer = "\n"
-                        self.conversation.logger.info(
-                            f"[{self.conversation.agent.agent_config.call_type}:{self.conversation.agent.agent_config.current_call_id}] Agent: {translated_message.replace(replacer, ' ')}"
-                        )
+
                         agent_response_message.message.text = current_message
                     else:
                         agent_response_message.message.text = (
@@ -1037,7 +1034,27 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
     async def check_for_idle(self):
         """Terminates the conversation after 15 seconds if no activity is detected"""
+        idle_prompt_sent = False
         while self.is_active():
+            if time.time() - self.last_action_timestamp > 8 and not idle_prompt_sent:
+                idle_prompt_sent = True
+                idle_prompt_message_tracker = asyncio.Event()
+                message_options = [
+                    "Just let me know when you're ready.",
+                    "No rush at all, take your time.",
+                    "I'm still here when you're ready to continue.",
+                    "Let me know when you're ready to continue.",
+                    "I'm all ears whenever you're ready.",
+                    "Feel free to take a moment if you need it.",
+                    "Whenever you're ready to proceed, just say the word.",
+                ]
+                to_send = BaseMessage(text=random.choice(message_options))
+                agent_response_event = self.interruptible_event_factory.create_interruptible_agent_response_event(
+                    AgentResponseMessage(message=to_send),
+                    is_interruptible=False,
+                    agent_response_tracker=idle_prompt_message_tracker,
+                )
+                self.agent_responses_worker.consume_nonblocking(agent_response_event)
             if (
                 time.time() - self.last_action_timestamp > 4
                 and time.time() - self.last_action_timestamp < 30
@@ -1045,6 +1062,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.transcriber.VOLUME_THRESHOLD = 5000
             else:
                 self.transcriber.VOLUME_THRESHOLD = 700
+                idle_prompt_sent = False
             if time.time() - self.last_action_timestamp > 30:
                 self.logger.debug("Conversation idle for too long, terminating")
                 await self.terminate()
@@ -1124,6 +1142,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         #         self.agent.set_stop()  # TODO: we want to instead have two types of stopping, moving back and staying still
 
         # this above is done by just calling generate completion
+        self.agent.block_inputs = False
         num_interrupts = 0
         while True:
             try:
@@ -1238,10 +1257,19 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.logger.info(f"Total speech time: {total_time_sent} seconds")
 
         self.mark_last_action_timestamp()
-        await asyncio.sleep(
-            total_time_sent
-        )  # added sleeps so that we can do volume thresholding
+        sleep_interval = 2  # Mark last action every 2 seconds
+        remaining_sleep = total_time_sent
+        while remaining_sleep > 0:
+            await asyncio.sleep(min(sleep_interval, remaining_sleep))
+            self.mark_last_action_timestamp()
+            remaining_sleep -= sleep_interval
+        # This ensures we do volume thresholding and mark last action periodically
         message_sent = synthesis_result.get_message_up_to(total_time_sent)
+        replacer = "\n"
+        if not stop_event.is_set():
+            self.logger.info(
+                f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message_sent.replace(replacer, ' ')}"
+            )
 
         if transcript_message:
             transcript_message.text = message_sent
@@ -1255,7 +1283,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.transcriptions_worker.synthesis_done = True
             started_event.set()
             self.transcriber.VOLUME_THRESHOLD = 1000
-            self.agent.restore_resume_state()
+            # self.agent.restore_resume_state()
 
         if (
             self.agent_responses_worker.input_queue.qsize() == 0
