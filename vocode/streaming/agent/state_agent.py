@@ -565,6 +565,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
     async def handle_state(self, state_id_or_label: str):
         start = state_id_or_label not in self.visited_states
         state = get_state(state_id_or_label, self.state_machine)
+        self.logger.info(f"HANDLESTATE id:{state['id']}")
         self.current_state = state
 
         if not state:
