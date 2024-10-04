@@ -699,9 +699,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         is_interruptible=item.is_interruptible,
                         agent_response_tracker=item.agent_response_tracker,
                     )
-                    self.conversation.logger.info(
-                        f"[{self.conversation.agent.agent_config.call_type}:{self.conversation.agent.agent_config.current_call_id}] Agent: {agent_response_message.message.text}"
-                    )
+                    # self.conversation.logger.info(
+                    #     f"[{self.conversation.agent.agent_config.call_type}:{self.conversation.agent.agent_config.current_call_id}] Agent: {agent_response_message.message.text}"
+                    # )
                 else:
                     self.conversation.logger.debug(
                         f"SYNTH: WAS NOT COMMAND AGENT, {agent_response_message.message.text}"
