@@ -798,7 +798,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     ai_filled_params = parse_llm_dict(response)
 
                 finalized_params.update(ai_filled_params)
-        self.block_inputs = True  # we make this later, after the params are generated in case the user is still talking
         if action_name.lower() == "zapier":
             # is the action description
             if action_description:
@@ -882,6 +881,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
         input = action_input
         output = "Action failed to run"
+        self.block_inputs = True
         try:
             input, output = await run_action_and_return_input(action, action_input)
         except Exception as e:
