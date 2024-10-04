@@ -245,7 +245,11 @@ async def handle_options(
     )
     if (
         state["id"] != state_machine["startingStateId"]
-        and (prev_state and "question" in prev_state.get("generated_label", prev_state["id"]).lower())
+        and (
+            prev_state
+            and "question"
+            in prev_state.get("generated_label", prev_state["id"]).lower()
+        )
         and not action_result_after_user_spoke
     ):
         if len(edges) > 0:
@@ -434,7 +438,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     self.state_history.append(state)
                     self.visited_states.add(state_id)
                     self.current_state = state
-                    self.logger.info(f"Updated state: {state.get('generated_label', state_id)}")
+                    self.logger.info(
+                        f"Updated state: {state.get('generated_label', state_id)}"
+                    )
                     # Set resume immediately after updating the state
                     if state["type"] == "question":
                         self.resume = lambda _: self.handle_state(
@@ -553,8 +559,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
     async def print_message(
         self, message, current_state_id, is_start=False, memory_id=None
     ):
-        if not self.agent_config.allow_interruptions:
-            self.block_inputs = True
+
         if is_start:
             current_state_id = (
                 current_state_id + "_start"
@@ -572,6 +577,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             else:
                 guide = message["description"]
                 await self.guided_response(guide)
+        if not self.agent_config.allow_interruptions:
+            self.block_inputs = True
 
     async def handle_state(self, state_id_or_label: str):
         start = state_id_or_label not in self.visited_states
@@ -588,7 +595,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             return
         self.json_transcript.entries.append(
             # use the ID as label if label not available, like if the agent was last updated before labels existed
-            StateAgentTranscriptHandleState(state_id=state["id"], generated_label=state.get("generated_label", state["id"]))
+            StateAgentTranscriptHandleState(
+                state_id=state["id"],
+                generated_label=state.get("generated_label", state["id"]),
+            )
         )
 
         self.state_history.append(state)
