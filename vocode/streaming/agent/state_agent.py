@@ -434,7 +434,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     self.state_history.append(state)
                     self.visited_states.add(state_id)
                     self.current_state = state
-                    self.logger.info(f"Updated state: {state.get("generated_label", state_id)}")
+                    self.logger.info(f"Updated state: {state.get('generated_label', state_id)}")
                     # Set resume immediately after updating the state
                     if state["type"] == "question":
                         self.resume = lambda _: self.handle_state(
