@@ -534,11 +534,15 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             self.resume_task.cancel()
             # self.move_back_state()
             try:
+                self.logger.info("STARTING self.resume_task in generate_completion")
                 await self.resume_task
+                self.logger.info("DONE self.resume_task in generate_completion")
             except asyncio.CancelledError:
                 self.logger.info(f"Old resume task cancelled")
+        self.logger.info("CREATING NEW self.resume_task in generate_completion")
         self.resume_task = asyncio.create_task(self.resume(human_input))
         await self.resume_task
+        self.logger.info("DONE WITH NEW self.resume_task in generate_completion")
         return "", True
 
     async def print_start_message(self, state, start: bool):
