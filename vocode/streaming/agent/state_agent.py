@@ -174,14 +174,14 @@ async def handle_memory_dep(
     memory = output_dict[memory_dep["key"]]
     logger.info(f"memory directly from AI: {memory}")
     if memory != "MISSING":
-        logger.error(f"UPDATING MEM CACHE: {memory_dep["question"]}")
+        logger.error(f"UPDATING MEM CACHE: {memory_dep['question']}")
         return await retry(memory)
 
-    logger.error(f"ASKING THE MEMORY QUESTION: {memory_dep["question"]}")
+    logger.error(f"ASKING THE MEMORY QUESTION: {memory_dep['question']}")
     await speak(memory_dep["question"])
 
     async def resume():
-        logger.info(f"entering resume from the state that had memory dep {memory_dep["key"]}")
+        logger.info(f"entering resume from the state that had memory dep {memory_dep['key']}")
         return await retry()
 
     return resume
