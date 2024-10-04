@@ -174,11 +174,14 @@ async def handle_memory_dep(
     memory = output_dict[memory_dep["key"]]
     logger.info(f"memory directly from AI: {memory}")
     if memory != "MISSING":
+        logger.error(f"UPDATING MEM CACHE: {memory_dep["question"]}")
         return await retry(memory)
 
+    logger.error(f"ASKING THE MEMORY QUESTION: {memory_dep["question"]}")
     await speak(memory_dep["question"])
 
     async def resume():
+        logger.info(f"entering resume from the state that had memory dep {memory_dep["key"]}")
         return await retry()
 
     return resume
@@ -437,10 +440,12 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     self.logger.info(f"Updated state: {state_id}")
                     # Set resume immediately after updating the state
                     if state["type"] == "question":
+                        self.logger.info(f"FOR QUESTION: setting self.resume to go to {get_default_next_state(state)}")
                         self.resume = lambda _: self.handle_state(
                             get_default_next_state(state)
                         )
                     else:
+                        self.logger.info(f"setting self.resume to go to {state['id']}")
                         self.resume = lambda _: self.handle_state(state["id"])
             elif isinstance(entry, StateAgentTranscriptMessage):
                 role = entry.role
@@ -589,12 +594,13 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         )
         for memory_dep in state.get("memory_dependencies", []):
             cached_memory = self.memories.get(memory_dep["key"])
-            self.logger.info(f"cached memory is {cached_memory}")
+            self.logger.info(f"cached memory for {memory_dep["key"]} is {cached_memory}")
             if not cached_memory:
 
                 async def retry(memory: Optional[str]):
                     if memory:
                         self.memories[memory_dep["key"]] = memory
+                    self.logger.info(f"about to call handle state from retry() on {state_id_or_label}")
                     return await self.handle_state(state_id_or_label=state_id_or_label)
 
                 return await handle_memory_dep(
@@ -1029,8 +1035,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
         # Set the resume state
         if self.state_history:
+            self.logger.info(f"in move_back_state: setting self.resume to {self.state_history[-1]["id"]}")
             self.resume = lambda _: self.handle_state(self.state_history[-1]["id"])
         else:
+            self.logger.info(f"in move_back_state: setting self.resume to START")
             self.resume = lambda _: self.handle_state(
                 self.state_machine["startingStateId"]
             )
