@@ -1037,15 +1037,25 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
     # this might not be needed.
     def restore_resume_state(self):
+        resume_state = None
         if self.state_history:
             current_state = self.state_history[-1]
             if "edge" in current_state:
+                resume_state = current_state["edge"]
                 self.resume = lambda _: self.handle_state(current_state["edge"])
             elif "edges" in current_state:
                 for state in current_state["edges"]:
                     if "isDefault" in state and state["isDefault"]:
+                        resume_state = state["destStateId"]
                         self.resume = lambda _: self.handle_state(state["destStateId"])
                         return
+                resume_state = current_state[id]
                 self.resume = lambda _: self.handle_state(current_state[id])
             else:
+                resume_state = "start"
                 self.resume = lambda _: self.handle_state("start")
+            
+            def resume():
+                self.logger.info(f"resuming at {resume_state}")
+                self.handle_state(resume_state)
+            self.resume = resume
