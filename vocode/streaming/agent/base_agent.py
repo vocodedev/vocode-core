@@ -333,7 +333,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             phrase = typing.cast(
                 TranscriptionAgentInput, agent_input
             ).affirmative_phrase
-            self.logger.debug("Responding to transcription")
+            # self.logger.debug("Responding to transcription")
             should_stop = False
             if not USE_STREAMING and (
                 ("transcription" not in locals()) or (transcription is None)

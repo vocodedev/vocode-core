@@ -571,6 +571,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         start = state_id_or_label not in self.visited_states
         state = get_state(state_id_or_label, self.state_machine)
         self.logger.info(f"HANDLESTATE id:{state['id']} (this was added after resume logging)")
+        if state["id"] == "directly transfer to a representative::action":
+            raise Exception()
         self.current_state = state
 
         if not state:

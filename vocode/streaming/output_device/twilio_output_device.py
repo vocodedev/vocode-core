@@ -44,7 +44,7 @@ class TwilioOutputDevice(BaseOutputDevice):
         }
         while not self.queue.empty():
             await self.queue.get()
-        self.logger.debug(f"Sending clear message: {clear_message}")
+        # self.logger.debug(f"Sending clear message: {clear_message}")
         await self.queue.put(json.dumps(clear_message))
 
     async def consume_nonblocking(self, chunk: bytes):

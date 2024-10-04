@@ -329,9 +329,9 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             prosody.text = message_text_encoded.strip()
             ElementTree.SubElement(prosody, "break", time="100ms")  # fixes the clicking
 
-        self.logger.debug(
-            f"""Created SSML: {ElementTree.tostring(ssml_root, encoding='unicode').replace("ns0:", "").replace(":ns0", "").replace("ns0", "")}"""
-        )
+        # self.logger.debug(
+        #     f"""Created SSML: {ElementTree.tostring(ssml_root, encoding='unicode').replace("ns0:", "").replace(":ns0", "").replace("ns0", "")}"""
+        # )
 
         out = (
             ElementTree.tostring(ssml_root, encoding="unicode")
