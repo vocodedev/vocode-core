@@ -1,13 +1,13 @@
-from typing import List, Optional, Union
 from enum import Enum
-from langchain.prompts import PromptTemplate
+from typing import List, Optional, Union
 
+from langchain.prompts import PromptTemplate
 from pydantic import validator
 from vocode.streaming.models.actions import ActionConfig, FunctionCall
-
 from vocode.streaming.models.call_type import CallType
 from vocode.streaming.models.message import BaseMessage
-from .model import TypedModel, BaseModel
+
+from .model import BaseModel, TypedModel
 from .vector_db import VectorDBConfig
 
 FILLER_AUDIO_DEFAULT_SILENCE_THRESHOLD_SECONDS = 0.5
@@ -114,7 +114,7 @@ class ChatGPTAgentConfig(AgentConfig, type=AgentType.CHAT_GPT.value):
 
 
 class CommandAgentConfig(AgentConfig, type=AgentType.COMMAND.value):
-    prompt_preamble: str
+    prompt_preamble: Optional[str] = None
     user_json_prompt: Optional[dict] = {}
     expected_first_prompt: Optional[str] = None
     model_name: str = CHAT_GPT_AGENT_DEFAULT_MODEL_NAME
