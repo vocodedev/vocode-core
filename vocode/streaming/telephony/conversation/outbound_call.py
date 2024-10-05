@@ -1,21 +1,17 @@
 import logging
 from typing import Optional, Union
-from vocode import getenv
 
+from vocode import getenv
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.audio_encoding import AudioEncoding
-from vocode.streaming.models.synthesizer import (
-    SynthesizerConfig,
-)
+from vocode.streaming.models.synthesizer import SynthesizerConfig
 from vocode.streaming.models.telephony import (
     TwilioCallConfig,
     TwilioConfig,
     VonageCallConfig,
     VonageConfig,
 )
-from vocode.streaming.models.transcriber import (
-    TranscriberConfig,
-)
+from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.telephony.client.base_telephony_client import BaseTelephonyClient
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
 from vocode.streaming.telephony.client.vonage_client import VonageClient
@@ -122,7 +118,7 @@ class OutboundCall:
             conversation_id=self.conversation_id,
             to_phone=self.to_phone,
             from_phone=self.from_phone,
-            record=self.telephony_client.get_telephony_config().record,
+            record=False,
             digits=self.digits,
         )
         if isinstance(self.telephony_client, TwilioClient):
