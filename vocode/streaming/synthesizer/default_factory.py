@@ -4,6 +4,7 @@ from vocode.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
     CartesiaSynthesizerConfig,
     ElevenLabsSynthesizerConfig,
+    GoogleSynthesizerConfig,
     PlayHtSynthesizerConfig,
     RimeSynthesizerConfig,
     StreamElementsSynthesizerConfig,
@@ -14,11 +15,16 @@ from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 from vocode.streaming.synthesizer.cartesia_synthesizer import CartesiaSynthesizer
 from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
-from vocode.streaming.synthesizer.eleven_labs_websocket_synthesizer import ElevenLabsWSSynthesizer
+from vocode.streaming.synthesizer.eleven_labs_websocket_synthesizer import (
+    ElevenLabsWSSynthesizer,
+)
+from vocode.streaming.synthesizer.google_synthesizer import GoogleSynthesizer
 from vocode.streaming.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
 from vocode.streaming.synthesizer.play_ht_synthesizer_v2 import PlayHtSynthesizerV2
 from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
-from vocode.streaming.synthesizer.stream_elements_synthesizer import StreamElementsSynthesizer
+from vocode.streaming.synthesizer.stream_elements_synthesizer import (
+    StreamElementsSynthesizer,
+)
 
 
 class DefaultSynthesizerFactory(AbstractSynthesizerFactory):
@@ -44,5 +50,7 @@ class DefaultSynthesizerFactory(AbstractSynthesizerFactory):
             return RimeSynthesizer(synthesizer_config)
         elif isinstance(synthesizer_config, StreamElementsSynthesizerConfig):
             return StreamElementsSynthesizer(synthesizer_config)
+        elif isinstance(synthesizer_config, GoogleSynthesizerConfig):
+            return GoogleSynthesizer(synthesizer_config)
         else:
             raise Exception("Invalid synthesizer config")
