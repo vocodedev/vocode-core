@@ -83,6 +83,13 @@ from vocode.utils.sentry_utils import (
     synthesizer_base_name_if_should_report_to_sentry,
 )
 
+from custom_guardrails import Guardrails
+from config import config
+
+import nltk
+nltk.download('punkt_tab')
+
+
 BACKCHANNEL_PATTERNS = [
     r"m+-?hm+",
     r"m+",
@@ -542,7 +549,30 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             ],
         ):
             try:
+                # Access configuration values
+                values = config.get_values()
+                agent_task = values["agent_task"]
+                agent_identity = values["agent_identity"]
+                begin_sentence = values["begin_sentence"]
+                agent_style = values["agent_style"]
+                agent_response = values["agent_response"]
+                firstname = values["firstname"]
+                customer_name = values["customer_name"]
+                prohibited_phrases_file = values["prohibited_phrases_file"]
+                
+                # Initialize the Guardrails class
+                guardrails = Guardrails(
+                    agent_task=agent_task,
+                    agent_identity=agent_identity,
+                    begin_sentence=begin_sentence,
+                    agent_style=agent_style,
+                    agent_response=agent_response,
+                    firstname=firstname,
+                    customer_name=customer_name,
+                    prohibited_phrases_file=prohibited_phrases_file
+                )
                 message, synthesis_result = item.payload
+                
                 if isinstance(message, EndOfTurn):
                     if self.last_transcript_message is not None:
                         self.last_transcript_message.is_end_of_turn = True
@@ -565,6 +595,8 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                     logger.debug(f"Sending {message.trailing_silence_seconds} seconds of silence")
                 elif isinstance(message, BotBackchannel):
                     logger.debug(f"Sending backchannel: {message}")
+                
+                # await guardrails.check_response_query(transcript_message.text)
                 message_sent, cut_off = await self.conversation.send_speech_to_output(
                     message.text,
                     synthesis_result,
@@ -572,6 +604,13 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
                     transcript_message=transcript_message,
                 )
+                
+                if message.text is not None:
+                    await guardrails.check_response_query(message.text)
+                else:
+                    logger.debug(f"{message.text} is None")
+                
+                logger.info("Done checking response")
                 # publish the transcript message now that it includes what was said during send_speech_to_output
                 self.conversation.transcript.maybe_publish_transcript_event_from_message(
                     message=transcript_message,
