@@ -163,13 +163,13 @@ async def handle_memory_dep(
         ]: "the value provided by the human, or MISSING along with the reason if it's not available"
     }
     output = await call_ai(
-        f"Based solely on the provided chat history between a human and a bot, extract the following information:\n{memory_dep['key']}\n\nInformation Description:\n{memory_dep['description'] or 'No further description provided.'}\n\nIf it's not provided by the human in the conversation, set the value to 'MISSING: <reason>'.",
+        f"Based solely on the provided chat history between a human and a bot, extract the following information:\n{memory_dep['key']}\n\nInformation Description:\n{memory_dep['description'] or 'No further description provided.'}\n\nIf the question wasn't asked by the bot yet, or it wasn't clearly provided by the human in the conversation, set the value to 'MISSING: <reason>'.",
         tool,
     )
     logger.error(f"memory dep output: {output}")
     output_dict = parse_llm_dict(output)
     logger.info(f"mem output_dict: {output_dict}")
-    memory = output_dict[memory_dep["key"]]
+    memory = str(output_dict[memory_dep["key"]])
     logger.info(f"memory directly from AI: {memory}")
 
     if "MISSING" not in memory:
@@ -593,6 +593,11 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                         self.logger.error(
                             "transfer_block_name not found in state_machine"
                         )
+                    return "", True
+                else:
+                    # wait for the resume task to complete
+                    resume_output = await self.resume_task
+                    self.resume = resume_output
                     return "", True
 
             elif self.resume_task in done:
