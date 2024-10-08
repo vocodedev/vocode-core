@@ -693,7 +693,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
         return response.strip().lower() == "transfer"
 
-    async def handle_state(self, state_id_or_label: str):
+    async def handle_state(self, state_id_or_label: str, retry_count: int = 0):
+        self.logger.info(f"handle state {state_id_or_label} retry count {retry_count}")
         start = state_id_or_label not in self.visited_states
         self.visited_states.add(state_id_or_label)
         state = get_state(state_id_or_label, self.state_machine)
@@ -721,7 +722,23 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         )
 
         self.state_history.append(state)
-        # self.logger.info(f"Current State: {state}")
+
+        if retry_count > 20:
+            self.json_transcript.entries.append(
+                StateAgentTranscriptInvariantViolation(
+                    message=f"retried state {state['id']} too many times ({retry_count})",
+                    original_state=state,
+                )
+            )
+            await self.print_message(
+                message={
+                    "type": "verbatim",
+                    "message": "Sorry, something went seriously wrong on my end. You can hang up, I'll have to call you back",
+                },
+                current_state_id=state["id"] + "_give_up",
+            )
+            return
+
         speak_message = lambda message: self.print_message(message, state["id"])
         call_ai = lambda prompt, tool=None, stop=None: self.call_ai(prompt, tool, stop)
 
@@ -734,9 +751,11 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             if not cached_memory:
 
                 async def retry(memory: Optional[str] = None):
+                    new_retry_count = retry_count + 1
                     if memory:
+                        new_retry_count = 0
                         self.memories[memory_dep["key"]] = memory
-                    return await self.handle_state(state_id_or_label=state_id_or_label)
+                    return await self.handle_state(state_id_or_label=state_id_or_label, retry_count=new_retry_count)
 
                 speak_message = lambda message, reason: self.print_message(
                     message,
@@ -744,13 +763,22 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     memory_id=memory_dep["key"] + "_memory",
                     memory_reason=reason,
                 )
-                return await handle_memory_dep(
-                    memory_dep=memory_dep,
-                    speak=speak_message,
-                    call_ai=call_ai,
-                    retry=retry,
-                    logger=self.logger,
-                )
+                try:
+                    return await handle_memory_dep(
+                        memory_dep=memory_dep,
+                        speak=speak_message,
+                        call_ai=call_ai,
+                        retry=retry,
+                        logger=self.logger,
+                    )
+                except Exception as e:
+                    self.json_transcript.entries.append(
+                        StateAgentTranscriptInvariantViolation(
+                            message=f"error handling memory {memory_dep['key']}: {e}",
+                            original_state=state,
+                        )
+                    )
+                    return await retry()
 
         await self.print_start_message(state, start=start)
 
