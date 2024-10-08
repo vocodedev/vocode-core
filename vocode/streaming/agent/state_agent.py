@@ -160,20 +160,23 @@ async def handle_memory_dep(
     tool = {
         memory_dep[
             "key"
-        ]: "the value provided by the human, or MISSING if it's not available"
+        ]: "the value provided by the human, or MISSING along with the reason if it's not available"
     }
     output = await call_ai(
-        f"Based solely on the provided chat history between a human and a bot, extract the following information:\n{memory_dep['key']}\n\nInformation Description:\n{memory_dep['description'] or 'No further description provided.'}\n\nIf it's not provided by the human in the conversation, set the value to MISSING.",
+        f"Based solely on the provided chat history between a human and a bot, extract the following information:\n{memory_dep['key']}\n\nInformation Description:\n{memory_dep['description'] or 'No further description provided.'}\n\nIf it's not provided by the human in the conversation, set the value to 'MISSING: <reason>'.",
         tool,
     )
-    output_dict = parse_llm_dict(output[output.find("{") : output.find("}") + 1])
-    logger.error(f"mem output_dict: {output_dict}")
+    logger.error(f"memory dep output: {output}")
+    output_dict = parse_llm_dict(output)
+    logger.info(f"mem output_dict: {output_dict}")
     memory = output_dict[memory_dep["key"]]
     logger.info(f"memory directly from AI: {memory}")
-    if memory != "MISSING":
-        return await retry(memory)
 
-    await speak(memory_dep["question"])
+    if "MISSING" not in memory:
+        return await retry(memory)
+    memory_reason = memory.split(":")[1].strip() if ":" in memory else ""
+
+    await speak(memory_dep["question"], memory_reason)
 
     async def resume(human_input: str):
         return await retry()
@@ -392,6 +395,7 @@ async def handle_options(
             )
         )
         logger.error(f"Agent chose no condition: {e}. Response was {response}")
+        logger.exception("Full error trace:")
         return await go_to_state(default_next_state), None
 
 
@@ -420,6 +424,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.twilio_sid = None
         self.block_inputs = False
         self.stop = False
+        self.current_block_name = None
         self.visited_states = {self.state_machine["startingStateId"]}
         self.spoken_states = set()
         self.state_history = []
@@ -544,25 +549,77 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.logger.info(
             f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{human_input}"
         )
+
+        transfer_block_name = self.state_machine.get("transfer_block_name")
         if (
             self.resume_task
             and not self.resume_task.cancelled()
             and not self.resume_task.done()
-        ):  # if something in progress, we want to move back when cancelling
-            self.resume_task.cancel()
-            # self.move_back_state()
+        ):
+            self.resume_task.cancel()  # Start resume_task and should_transfer task concurrently
             try:
                 await self.resume_task
-            except asyncio.CancelledError:
+            except asyncio.CancelledError:  # Wait for the first task to complete
                 self.logger.info(f"Old resume task cancelled")
+        if transfer_block_name and self.current_block_name != transfer_block_name:
+            # Start resume_task and should_transfer task concurrently
 
-        self.resume_task = asyncio.create_task(self.resume(human_input))
-        resume_output = await self.resume_task
-        if self.resume_task.cancelled():
-            resume_output = self.resume
-        self.resume = resume_output
-        self.block_inputs = False
-        return "", True
+            self.resume_task = asyncio.create_task(self.resume(human_input))
+            transfer_task = asyncio.create_task(self.should_transfer())
+
+            # Wait for the first task to complete
+            done, pending = await asyncio.wait(
+                {self.resume_task, transfer_task},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            if transfer_task in done:
+                transfer_result = transfer_task.result()
+                if transfer_result:
+                    self.logger.info("Transfer condition met")
+                    # Transfer task completed first, cancel resume_task
+                    self.resume_task.cancel()
+                    try:
+                        await self.resume_task
+                    except asyncio.CancelledError:
+                        self.logger.info(
+                            "Resume task cancelled because transfer task completed first"
+                        )
+                    if transfer_block_name:
+                        self.resume = lambda _: self.handle_state(transfer_block_name)
+                        self.resume_task = asyncio.create_task(self.resume(human_input))
+                        await self.resume_task
+                    else:
+                        self.logger.error(
+                            "transfer_block_name not found in state_machine"
+                        )
+                    return "", True
+
+            elif self.resume_task in done:
+                # Resume task completed first, cancel transfer_task
+                transfer_task.cancel()
+                try:
+                    await transfer_task
+                except asyncio.CancelledError:
+                    self.logger.info(
+                        "Transfer task cancelled because resume task completed first"
+                    )
+
+                resume_output = self.resume_task.result()
+                self.resume = resume_output
+                return "", True
+
+            # Fallback in case neither task completed as expected
+            self.logger.error(
+                "Neither resume_task nor transfer_task completed successfully."
+            )
+            return "", True
+        else:
+            # Proceed normally without transfer
+            self.resume_task = asyncio.create_task(self.resume(human_input))
+            resume_output = await self.resume_task
+            self.resume = resume_output
+            return "", True
 
     async def print_start_message(self, state, start: bool):
         if "start_message" in state:
@@ -574,7 +631,12 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             )  # doesn't print the start message if it's a repeat
 
     async def print_message(
-        self, message, current_state_id, is_start=False, memory_id=None
+        self,
+        message,
+        current_state_id,
+        is_start=False,
+        memory_id=None,
+        memory_reason=None,
     ):
 
         if is_start:
@@ -586,6 +648,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         if current_state_id in self.spoken_states and message["type"] == "verbatim":
             original_message = message["message"]
             constructed_guide = f"You previously communicated to the user: '{original_message}'. If this was a question, the user's response might have been unclear. Address their query (if any) and tactfully seek the information you need. If it was a statement, rephrase it using different words while maintaining its core meaning, tone and approximate length."
+            if memory_reason and memory_reason != "":
+                constructed_guide += f"\n\nNote from bot about the user's previous response: {memory_reason}"
             await self.guided_response(constructed_guide)
         else:
             if message["type"] == "verbatim":
@@ -593,11 +657,36 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 self.update_history("message.bot", message["message"])
             else:
                 guide = message["description"]
+                if memory_reason and memory_reason != "":
+                    guide += f"\n\nNote from bot about the user's previous response: {memory_reason}"
                 await self.guided_response(guide)
-        if not self.agent_config.allow_interruptions:
-            # sleep for 1
-            await asyncio.sleep(0.5)
-            self.block_inputs = True
+
+    async def should_transfer(self):
+        last_user_message = None
+        last_bot_message = None
+
+        # Get the last user message and bot message
+        for role, msg in reversed(self.chat_history):
+            if role == "human" and not last_user_message:
+                last_user_message = msg
+            elif role == "message.bot" and not last_bot_message:
+                last_bot_message = msg
+            if last_user_message and last_bot_message:
+                break
+
+        if not last_user_message:
+            return False
+
+        prompt = (
+            f"Based on the following conversation, determine if the user has specifically requested to transfer or speak to a human representative:\n\n"
+            f"Bot's last message: '{last_bot_message}'\n"
+            f"User's response: '{last_user_message}'\n\n"
+            f"Your response must be a single word. Respond with either 'transfer' if the user requested to transfer or speak to a human, or 'continue' if they didn't."
+        )
+
+        response = await self.call_ai(prompt)
+
+        return response.strip().lower() == "transfer"
 
     async def handle_state(self, state_id_or_label: str):
         start = state_id_or_label not in self.visited_states
@@ -612,6 +701,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 )
             )
             return
+        start_of_block = state.get("start_of_block")
+        if start_of_block:
+            self.current_block_name = start_of_block
+
         self.json_transcript.entries.append(
             # use the ID as label if label not available, like if the agent was last updated before labels existed
             StateAgentTranscriptHandleState(
@@ -640,8 +733,11 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                         self.memories[memory_dep["key"]] = memory
                     return await self.handle_state(state_id_or_label=state_id_or_label)
 
-                speak_message = lambda message: self.print_message(
-                    message, state["id"], memory_id=memory_dep["key"] + "_memory"
+                speak_message = lambda message, reason: self.print_message(
+                    message,
+                    state["id"],
+                    memory_id=memory_dep["key"] + "_memory",
+                    memory_reason=reason,
                 )
                 return await handle_memory_dep(
                     memory_dep=memory_dep,
@@ -681,7 +777,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 get_chat_history=lambda: self.chat_history,
                 logger=self.logger,
                 state_history=self.state_history,
-                append_json_transcript=append_json_transcript
+                append_json_transcript=append_json_transcript,
             )
             if clarification_state:
                 self.state_history.append(clarification_state)
