@@ -19,6 +19,7 @@ class StateAgentDebugMessageType(str, Enum):
     ACTION_INOKE = "action_invoke"
     ACTION_ERROR = "action_error"
     HANDLE_STATE = "handle_state"
+    BRANCH_DECISION = "branch_decision"
     # for errors that indicate a bug in our code
     INVARIANT_VIOLATION = "invariant_violation"
 
@@ -59,6 +60,14 @@ class StateAgentTranscriptActionInvoke(StateAgentTranscriptDebugEntry):
     state_id: str
     action_name: str
 
+class StateAgentTranscriptBranchDecision(StateAgentTranscriptDebugEntry):
+    type: StateAgentDebugMessageType = StateAgentDebugMessageType.BRANCH_DECISION
+    message: str = "branch decision"
+    ai_prompt: str
+    ai_tool: dict[str, str]
+    ai_response: str
+    internal_edges: List[dict]
+    original_state: dict
 
 class StateAgentTranscriptActionError(StateAgentTranscriptDebugEntry):
     type: StateAgentDebugMessageType = StateAgentDebugMessageType.ACTION_ERROR
@@ -77,6 +86,8 @@ class StateAgentTranscriptHandleState(StateAgentTranscriptDebugEntry):
 
 class StateAgentTranscriptInvariantViolation(StateAgentTranscriptDebugEntry):
     type: StateAgentDebugMessageType = StateAgentDebugMessageType.INVARIANT_VIOLATION
+    original_state: Optional[dict] = None
+    extra_info: Optional[dict] = None
 
 
 TranscriptEntryType = Union[
@@ -104,6 +115,8 @@ class StateAgentTranscript(JsonTranscript):
                         parsed_entries.append(StateAgentTranscriptActionError(**entry))
                     elif entry["type"] == StateAgentDebugMessageType.HANDLE_STATE:
                         parsed_entries.append(StateAgentTranscriptHandleState(**entry))
+                    elif entry["type"] == StateAgentDebugMessageType.BRANCH_DECISION:
+                        parsed_entries.append(StateAgentTranscriptBranchDecision(**entry))
                     elif (
                         entry["type"] == StateAgentDebugMessageType.INVARIANT_VIOLATION
                     ):

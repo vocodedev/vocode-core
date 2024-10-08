@@ -28,6 +28,8 @@ from vocode.streaming.models.state_agent_transcript import (
     StateAgentTranscript,
     StateAgentTranscriptActionError,
     StateAgentTranscriptActionInvoke,
+    StateAgentTranscriptBranchDecision,
+    StateAgentTranscriptDebugEntry,
     StateAgentTranscriptHandleState,
     StateAgentTranscriptInvariantViolation,
     StateAgentTranscriptMessage,
@@ -188,6 +190,7 @@ async def handle_options(
     get_chat_history: Callable[[], List[Tuple[str, str]]],
     logger: logging.Logger,
     state_history: List[Any],
+    append_json_transcript: Callable[[StateAgentTranscriptDebugEntry], None],
 ):
     last_user_message_index = None
     last_user_message = None
@@ -235,9 +238,6 @@ async def handle_options(
         if (edge.get("aiLabel") or edge.get("aiDescription"))
     ]
 
-    logger.info(
-        f"araus = {action_result_after_user_spoke} state id is {state['id']} and startingStateId is {state_machine['startingStateId']}"
-    )
     if (
         state["id"] != state_machine["startingStateId"]
         and (
@@ -339,6 +339,16 @@ async def handle_options(
         next_state_id = response_to_edge[condition][
             "destStateId"
         ]  # this gets set as start if user is confused and the default next is start
+        append_json_transcript(
+            StateAgentTranscriptBranchDecision(
+                message=f"branching to {next_state_id}",
+                ai_prompt=prompt,
+                ai_tool=tool,
+                ai_response=response,
+                internal_edges=edges,
+                original_state=state,
+            )
+        )
         # the issue is that start has no start message
         if response_to_edge[condition].get("speak"):
             tool = {"response": "insert your response to the user"}
@@ -369,6 +379,18 @@ async def handle_options(
             return resume, clarification_state
         return await go_to_state(next_state_id), None
     except Exception as e:
+        append_json_transcript(
+            StateAgentTranscriptInvariantViolation(
+                message="error evaluating ai response",
+                extra_info={
+                    "ai_prompt": prompt,
+                    "ai_tool": tool,
+                    "ai_response": response,
+                    "internal_edges": edges,
+                },
+                original_state=state,
+            )
+        )
         logger.error(f"Agent chose no condition: {e}. Response was {response}")
         return await go_to_state(default_next_state), None
 
@@ -646,6 +668,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 state_history=self.state_history,
             )
 
+        def append_json_transcript(m: StateAgentTranscriptDebugEntry):
+            self.json_transcript.entries.append(m)
+
         if state["type"] == "options":
             out, clarification_state = await handle_options(
                 state=state,
@@ -656,6 +681,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 get_chat_history=lambda: self.chat_history,
                 logger=self.logger,
                 state_history=self.state_history,
+                append_json_transcript=append_json_transcript
             )
             if clarification_state:
                 self.state_history.append(clarification_state)
@@ -668,7 +694,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 # invariant violation, not action error, because compose_action is supposed to do it's own error handling
                 self.json_transcript.entries.append(
                     StateAgentTranscriptInvariantViolation(
-                        message=f"uncaught exception in compose_action. State is {state} and error is {e}"
+                        message=f"uncaught exception in compose_action: {e}",
+                        original_state=state,
                     )
                 )
 
