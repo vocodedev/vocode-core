@@ -1015,7 +1015,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         # Start a timer to track when 2 seconds have passed
         start_time = time.time()
-        self.transcriber.VOLUME_THRESHOLD = 4000  # make it so high vad wont interrupt it, only a real transcription will
+        self.transcriber.VOLUME_THRESHOLD = 8000  # make it so high vad wont interrupt it, only a real transcription will
         previous_allow_interruptions = self.agent.agent_config.allow_interruptions
         # only run the loop if we're in outbound mode
         if self.agent.get_agent_config().call_type == CallType.OUTBOUND:
