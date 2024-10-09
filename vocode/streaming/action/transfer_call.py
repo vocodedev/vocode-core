@@ -104,13 +104,14 @@ class TwilioTransferCall(
 
         payload = {"Twiml": twiml_data}
 
-        async with AsyncRequestor().get_session() as session:
-            async with session.post(url, data=payload, auth=twilio_client.auth) as response:
-                if response.status != 200:
-                    logger.error(f"Failed to transfer call: {response.status} {response.reason}")
-                    raise Exception("failed to update call")
-                else:
-                    return await response.json()
+        async with AsyncRequestor().get_session().post(
+            url, data=payload, auth=twilio_client.auth
+        ) as response:
+            if response.status != 200:
+                logger.error(f"Failed to transfer call: {response.status} {response.reason}")
+                raise Exception("failed to update call")
+            else:
+                return await response.json()
 
     async def run(
         self, action_input: ActionInput[TransferCallParameters]
