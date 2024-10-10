@@ -272,6 +272,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                     # Place the event in the output queue for further processing
                 self.output_queue.put_nowait(event)
+                self.conversation.allow_idle_message = True
                 self.conversation.allow_unmute = False
 
                 self.conversation.logger.info("Transcription event put in output queue")
@@ -942,6 +943,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.start_time: Optional[float] = None
         self.end_time: Optional[float] = None
         self.logger.debug("Conversation created")
+        self.allow_idle_message = False
 
     def create_state_manager(self) -> ConversationStateManager:
         return ConversationStateManager(conversation=self)
@@ -1072,6 +1074,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             if (
                 time.time() - self.last_action_timestamp > 8
                 and not idle_prompt_sent
+                and self.allow_idle_message
                 and self.transcriptions_worker.initial_message is None
             ):
                 idle_prompt_sent = True
@@ -1092,6 +1095,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     agent_response_tracker=idle_prompt_message_tracker,
                 )
                 self.agent_responses_worker.consume_nonblocking(agent_response_event)
+                self.allow_idle_message = False
             if (
                 time.time() - self.last_action_timestamp > 4
                 and time.time() - self.last_action_timestamp < 30
