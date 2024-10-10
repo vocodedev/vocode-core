@@ -11,5 +11,6 @@ class SamplingRate(int, Enum):
     RATE_16000 = 16000
     RATE_22050 = 22050
     RATE_24000 = 24000
+    RATE_32000 = 32000
     RATE_44100 = 44100
     RATE_48000 = 48000

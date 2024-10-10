@@ -25,6 +25,7 @@ class SynthesizerType(str, Enum):
     BARK = "synthesizer_bark"
     POLLY = "synthesizer_polly"
     CARTESIA = "synthesizer_cartesia"
+    DEEPGRAM = "synthesizer_deepgram"
 
 
 class SentimentConfig(BaseModel):
@@ -51,7 +52,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):  # type: i
         return cls(
             sampling_rate=output_device.sampling_rate,
             audio_encoding=output_device.audio_encoding,
-            **kwargs
+            **kwargs,
         )
 
     # TODO(EPD-186): switch to from_twilio_output_device and from_vonage_output_device
@@ -66,7 +67,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):  # type: i
         return cls(
             sampling_rate=output_audio_config.sampling_rate,
             audio_encoding=output_audio_config.audio_encoding,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -244,4 +245,3 @@ class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA
     api_key: Optional[str] = None
     model_id: str = DEFAULT_CARTESIA_MODEL_ID
     voice_id: str = DEFAULT_CARTESIA_VOICE_ID
-    experimental_voice_controls: Optional[CartesiaVoiceControls] = None
