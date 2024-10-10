@@ -24,6 +24,7 @@ from vocode.streaming.agent.base_agent import (
     AgentInput,
     AgentResponse,
     AgentResponseFillerAudio,
+    AgentResponseGenerationComplete,
     AgentResponseMessage,
     AgentResponseStop,
     AgentResponseType,
@@ -192,6 +193,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.chosen_filler_phrase = None
             self.initial_message = None
             self.vad_detected = False
+            self.first_message_lock = False
 
         async def _buffer_check(self, initial_buffer: str):
             try:
@@ -270,6 +272,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                     # Place the event in the output queue for further processing
                 self.output_queue.put_nowait(event)
+                self.conversation.allow_unmute = False
 
                 self.conversation.logger.info("Transcription event put in output queue")
                 # release the action, if there is one
@@ -280,15 +283,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 self.conversation.logger.error(f"Error in _buffer_check: {e}")
 
         async def process(self, transcription: Transcription):
-            # Ignore the transcription if we are currently in-flight (i.e., the agent is speaking)
-            # log the current transcript
-            # if (
-            #     self.initial_message
-            #     and self.conversation.agent.get_agent_config().call_type
-            #     == CallType.INBOUND
-            # ):
-            #     self.conversation.logger.info(f"Waiting for initial message to be sent")
-            #     return
+            if self.first_message_lock:
+                self.conversation.logger.debug(
+                    "Ignoring transcription on initial message"
+                )
+                return
             if (
                 self.conversation.agent.block_inputs
             ):  # the two block inputs are different
@@ -379,13 +378,21 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.conversation.logger.error(
                         f"Error cancelling buffer check task: {e}"
                     )
-            if self.initial_message is not None and transcription.is_final:
+            # if its not final, the rest of this function is skipped.
+            # if not transcription.is_final:
+            #     return
+            if self.initial_message is not None:
+                # Signal to start responding with first message.
+                # Block further transcriptions
+                # Let the first message function handle updating the first message and release lock.
+                # This assumes that send_initial_message is uncancellable during the first 2 seconds of audio.
+                # If there is any senario where first message is cancellable,
+                # we will end up with invalid state and block all transcriptions.
+
+                self.first_message_lock = True  # Lock first
                 asyncio.create_task(
                     self.conversation.send_initial_message(self.initial_message)
-                )
-                self.initial_message = None
-                return
-            if not transcription.is_final:
+                )  # Create task second
                 return
             stashed_buffer = deepcopy(self.buffer)
             # Broadcast an interrupt and set the buffer status to DISCARD
@@ -638,6 +645,10 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     await self.conversation.terminate()
                     return
 
+                if isinstance(agent_response, AgentResponseGenerationComplete):
+                    self.conversation.logger.debug("Agent response generation complete")
+                    self.conversation.allow_unmute = True
+                    return
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
                 )
@@ -923,6 +934,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.track_bot_sentiment_task: Optional[asyncio.Task] = None
 
         self.current_transcription_is_interrupt: bool = False
+        # This is used to track if the generate completion function has returned yet.
+        # If it has not, we do not want send speech to output to unmute.
+        self.allow_unmute: bool = True
 
         # tracing
         self.start_time: Optional[float] = None
@@ -1020,14 +1034,33 @@ class StreamingConversation(Generic[OutputDeviceType]):
         # only run the loop if we're in outbound mode
         if self.agent.get_agent_config().call_type == CallType.OUTBOUND:
             while not initial_message_tracker.is_set():
-                await asyncio.sleep(0.1)  # Check every 0.1 seconds
+                await asyncio.sleep(0.05)  # Check every 0.1 seconds
+                # self.logger.debug(f"Time elapsed: {time.time() - start_time}")
                 if time.time() - start_time >= 2:
+                    self.logger.debug("Releasing lock")
+                    # 1. update initial message to none
+                    # 2. release lock on transcriptions worker
+                    self.transcriptions_worker.initial_message = None
+                    self.transcriptions_worker.first_message_lock = False
                     self.transcriber.unmute()
                     self.transcriptions_worker.block_inputs = False
                     self.agent.agent_config.allow_interruptions = True
+                    # span_event(
+                    #     span=initial_message_span,
+                    #     event_name="release-lock",
+                    #     event_data={"time": time.time() - start_time},
+                    # )
                     break
         if not initial_message_tracker.is_set():
             await initial_message_tracker.wait()
+        # span_event(
+        #     span=initial_message_span,
+        #     event_name="message_sent",
+        #     event_data={"time": time.time() - start_time},
+        # )
+        # The initial message can be sent in under 2 seconds so update again
+        self.transcriptions_worker.initial_message = None
+        self.transcriptions_worker.first_message_lock = False
         self.transcriber.VOLUME_THRESHOLD = 700  # turn it back down
         self.agent.agent_config.allow_interruptions = previous_allow_interruptions
         end_span(initial_message_span)
@@ -1036,7 +1069,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
         """Terminates the conversation after 15 seconds if no activity is detected"""
         idle_prompt_sent = False
         while self.is_active():
-            if time.time() - self.last_action_timestamp > 8 and not idle_prompt_sent:
+            if (
+                time.time() - self.last_action_timestamp > 8
+                and not idle_prompt_sent
+                and self.transcriptions_worker.initial_message is None
+            ):
                 idle_prompt_sent = True
                 idle_prompt_message_tracker = asyncio.Event()
                 message_options = [
@@ -1059,6 +1096,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 time.time() - self.last_action_timestamp > 4
                 and time.time() - self.last_action_timestamp < 30
             ):
+                # if more than 4 seconds of idle time there is possible bg noise
+                # and we want to decrease the sensitivity of vad
                 self.transcriber.VOLUME_THRESHOLD = 5000
             else:
                 self.transcriber.VOLUME_THRESHOLD = 700
@@ -1143,6 +1182,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         # this above is done by just calling generate completion
         self.agent.block_inputs = False
+        self.allow_unmute = True
         num_interrupts = 0
         while True:
             try:
@@ -1257,10 +1297,16 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.logger.info(f"Total speech time: {total_time_sent} seconds")
 
         self.mark_last_action_timestamp()
-        sleep_interval = 2  # Mark last action every 2 seconds
+        # This will be changed when the partial synthesis is added.
+        # Doesn't really matter for now but 2 seconds it too long.
+        # Added stop event check otherwise it will block other synthesis result tasks
+        # even though we meant to cancel this one.
+        sleep_interval = 0.1  # Mark last action every 0.1 seconds
         remaining_sleep = total_time_sent
         while remaining_sleep > 0:
             await asyncio.sleep(min(sleep_interval, remaining_sleep))
+            if stop_event.is_set():
+                return "", False
             self.mark_last_action_timestamp()
             remaining_sleep -= sleep_interval
         # This ensures we do volume thresholding and mark last action periodically
@@ -1285,14 +1331,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.transcriber.VOLUME_THRESHOLD = 1000
             # self.agent.restore_resume_state()
 
-        if (
-            self.agent_responses_worker.input_queue.qsize() == 0
-            and self.agent_responses_worker.output_queue.qsize() == 0
-            and self.agent.get_input_queue().qsize() == 0
-            and self.agent.get_output_queue().qsize() == 0
-        ):
-            if message_sent and message_sent.strip()[-1] not in [","]:
-                self.logger.info(f"Responding to {held_buffer}")
+        if message_sent:
+            self.logger.info(f"Responding to {held_buffer}")
+            if self.allow_unmute:
                 self.transcriptions_worker.block_inputs = False
                 if self.transcriber.get_transcriber_config().mute_during_speech:
                     self.logger.debug("Unmuting transcriber")

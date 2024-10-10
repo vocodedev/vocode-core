@@ -93,11 +93,18 @@ class ActionResultAgentInput(AgentInput, type=AgentInputType.ACTION_RESULT.value
 class AgentResponseType(str, Enum):
     BASE = "agent_response_base"
     MESSAGE = "agent_response_message"
+    GENERATION_COMPLETE = "agent_response_generation_completion"
     STOP = "agent_response_stop"
     FILLER_AUDIO = "agent_response_filler_audio"
 
 
 class AgentResponse(TypedModel, type=AgentResponseType.BASE.value):
+    pass
+
+
+class AgentResponseGenerationComplete(
+    TypedModel, type=AgentResponseType.GENERATION_COMPLETE.value
+):
     pass
 
 
@@ -514,22 +521,29 @@ class RespondAgent(BaseAgent[AgentConfigType]):
             conversation_id=conversation_id,
             is_interrupt=transcription.is_interrupt,
         )
+
+        self.produce_interruptible_agent_response_event_nonblocking(
+            AgentResponseGenerationComplete(),
+            is_interruptible=False,
+            agent_response_tracker=agent_input.agent_response_tracker,
+        )
+
         end_span(agent_span_first)
 
-        if isinstance(response, FunctionCall):
-            function_call = response
-        if isinstance(response[0], str):
-            self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=response[0])),
-                is_interruptible=False,
-                agent_response_tracker=agent_input.agent_response_tracker,
-            )
-        else:
-            self.logger.debug(
-                "No response generated: %s of type %s",
-                response[0],
-                type(response),
-            )
+        # if isinstance(response, FunctionCall):
+        #     function_call = response
+        # if isinstance(response[0], str):
+        #     self.produce_interruptible_agent_response_event_nonblocking(
+        #         AgentResponseMessage(message=BaseMessage(text=response[0])),
+        #         is_interruptible=False,
+        #         agent_response_tracker=agent_input.agent_response_tracker,
+        #     )
+        # else:
+        #     self.logger.debug(
+        #         "No response generated: %s of type %s",
+        #         response[0],
+        #         type(response),
+        #     )
 
         return function_call
 

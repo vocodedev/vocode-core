@@ -254,8 +254,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             "sample_rate": self.transcriber_config.sampling_rate,
             "channels": 1,
             "vad_events": "false",
-            "interim_results": "true",
-            "filler_words": "false",
+            "interim_results": "false",
+            "filler_words": "true",
         }
         extra_params = {
             k: v
@@ -332,16 +332,12 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self.logger.debug("Terminating Deepgram transcriber sender")
 
     async def receiver(self, ws: WebSocketClientProtocol):
-        transcript_cursor = 0.0
         while not self._ended:
             try:
                 msg = await ws.recv()
                 data = json.loads(msg)
                 if "is_final" not in data:
                     break
-
-                transcript_cursor = data["start"] + data["duration"]
-
                 top_choice = data["channel"]["alternatives"][0]
                 self.output_queue.put_nowait(
                     Transcription(
@@ -351,7 +347,6 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                         time_silent=self.calculate_time_silent(data),
                     )
                 )
-
                 try:
                     vad_result = self.vad_output_queue.get_nowait()
                     if vad_result:
