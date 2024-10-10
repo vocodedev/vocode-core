@@ -721,7 +721,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 state_id=state["id"],
                 generated_label=state.get("generated_label", state["id"]),
                 memory_dependencies=state.get("memory_dependencies"),
-                memory_values=self.memories,
+                memory_values=self.memories.copy(),
             )
         )
 
