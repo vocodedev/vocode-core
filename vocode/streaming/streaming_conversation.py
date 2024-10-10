@@ -18,6 +18,9 @@ import httpx
 import numpy
 import requests
 from openai import AsyncOpenAI, OpenAI
+from telephony_app.models.call_type import CallType
+from telephony_app.utils.call_information_handler import update_call_transcripts
+
 from vocode import getenv
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
@@ -85,9 +88,6 @@ from vocode.streaming.utils.worker import (
     InterruptibleEventFactory,
     InterruptibleWorker,
 )
-
-from telephony_app.models.call_type import CallType
-from telephony_app.utils.call_information_handler import update_call_transcripts
 
 tracer = setup_tracer()
 
@@ -1020,15 +1020,15 @@ class StreamingConversation(Generic[OutputDeviceType]):
         )
         # TODO: configure if initial message is interruptible
         initial_message_tracker = asyncio.Event()
-        agent_response_event = (
-            self.interruptible_event_factory.create_interruptible_agent_response_event(
-                AgentResponseMessage(message=initial_message),
-                is_interruptible=False,
-                agent_response_tracker=initial_message_tracker,
+        if self.agent.get_agent_config().call_type == CallType.OUTBOUND:
+            self.agent.update_history(
+                "human", self.transcriptions_worker.buffer.to_message()
             )
+        self.agent.update_history(
+            "message.bot",
+            initial_message.text,
+            agent_response_tracker=initial_message_tracker,
         )
-        self.agent_responses_worker.consume_nonblocking(agent_response_event)
-
         # Start a timer to track when 2 seconds have passed
         start_time = time.time()
         self.transcriber.VOLUME_THRESHOLD = 8000  # make it so high vad wont interrupt it, only a real transcription will
@@ -1170,19 +1170,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.stop_event.set()
         if isinstance(self.agent, CommandAgent):
             self.agent.stop = not self.agent.stop
-        # elif isinstance(self.agent, StateAgent):
-        #     # Only call set_stop if the agent is not currently speaking
-        #     if not self.is_agent_speaking():
-        #         self.logger.debug(
-        #             "AGENT IS NOT TALKING"
-        #         )  # new note: we want to stop in both instances, on this one we stay and the one below we move forward
-        #         self.agent.set_stop()  # TODO: we want to instead have two types of stopping, moving back and staying still
-
-        #     else:
-        #         self.logger.debug(
-        #             "STOPPING BECAUSE THE AGENT IS TALKING"
-        #         )  # we would stay in the same place here instead of notstopping we still want to stop
-        #         self.agent.set_stop()  # TODO: we want to instead have two types of stopping, moving back and staying still
 
         # this above is done by just calling generate completion
         self.agent.block_inputs = False
@@ -1310,6 +1297,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         while remaining_sleep > 0:
             await asyncio.sleep(min(sleep_interval, remaining_sleep))
             if stop_event.is_set():
+                self.agent.move_back_state()
                 return "", False
             self.mark_last_action_timestamp()
             remaining_sleep -= sleep_interval

@@ -7,6 +7,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
+
 from vocode import getenv
 from vocode.streaming.action.phone_call_action import (
     TwilioPhoneCallAction,
@@ -428,7 +429,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.visited_states = {self.state_machine["startingStateId"]}
         self.spoken_states = set()
         self.state_history = []
-        self.chat_history = [("message.bot", self.agent_config.initial_message)]
+        self.chat_history = []
         self.base_url = getenv("AI_API_HUGE_BASE")
         self.model = self.agent_config.model_name
         self.client = AsyncOpenAI(
@@ -508,7 +509,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             f"Resume function updated to state: {self.resume.__name__ if hasattr(self.resume, '__name__') else 'lambda'}"
         )
 
-    def update_history(self, role, message):
+    def update_history(
+        self, role, message, agent_response_tracker: Optional[asyncio.Event] = None
+    ):
         if role == "human":
             # Remove the last human message if it exists
             while self.chat_history and self.chat_history[-1][0] == "human":
@@ -522,7 +525,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
         if role == "message.bot" and len(message.strip()) > 0:
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=message))
+                AgentResponseMessage(message=BaseMessage(text=message)),
+                agent_response_tracker=agent_response_tracker,
             )
 
     def get_json_transcript(self):
@@ -755,7 +759,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     if memory:
                         new_retry_count = 0
                         self.memories[memory_dep["key"]] = memory
-                    return await self.handle_state(state_id_or_label=state_id_or_label, retry_count=new_retry_count)
+                    return await self.handle_state(
+                        state_id_or_label=state_id_or_label, retry_count=new_retry_count
+                    )
 
                 speak_message = lambda message, reason: self.print_message(
                     message,
