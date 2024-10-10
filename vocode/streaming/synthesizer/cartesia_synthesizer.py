@@ -152,6 +152,7 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
                 continue_=not is_sole_text_chunk,
                 output_format=self.output_format,
                 add_timestamps=True,
+                language=self.synthesizer_config.language,
                 _experimental_voice_controls=self._experimental_voice_controls,
             )
             if not is_sole_text_chunk:
