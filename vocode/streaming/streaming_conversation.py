@@ -83,8 +83,10 @@ from vocode.utils.sentry_utils import (
     synthesizer_base_name_if_should_report_to_sentry,
 )
 
-from custom_guardrails import Guardrails
-from config import config
+# from custom_guardrails import Guardrails
+# from config import configfrom config
+from config_guardrails import Guardrails
+from config_guardrails import config
 
 import nltk
 nltk.download('punkt_tab')
