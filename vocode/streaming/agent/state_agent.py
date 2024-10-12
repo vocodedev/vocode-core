@@ -28,6 +28,7 @@ from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.state_agent_transcript import (
     StateAgentTranscript,
     StateAgentTranscriptActionError,
+    StateAgentTranscriptActionFinish,
     StateAgentTranscriptActionInvoke,
     StateAgentTranscriptBranchDecision,
     StateAgentTranscriptDebugEntry,
@@ -510,7 +511,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         )
 
     def update_history(
-        self, role, message, agent_response_tracker: Optional[asyncio.Event] = None
+        self, role, message, agent_response_tracker: Optional[asyncio.Event] = None, action_name: Optional[str] = None, runtime_inputs: Optional[dict] = None
     ):
         if role == "human":
             # Remove the last human message if it exists
@@ -519,9 +520,16 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 self.json_transcript.entries.pop()
 
         self.chat_history.append((role, message))
-        self.json_transcript.entries.append(
-            StateAgentTranscriptMessage(role=role, message=message)
-        )
+        if role == "action-finish":
+            self.json_transcript.entries.append(
+                StateAgentTranscriptActionFinish(
+                    role=role, message=message, action_name=action_name, runtime_inputs=runtime_inputs
+                )
+            )
+        else:
+            self.json_transcript.entries.append(
+                StateAgentTranscriptMessage(role=role, message=message)
+            )
 
         if role == "message.bot" and len(message.strip()) > 0:
             self.produce_interruptible_agent_response_event_nonblocking(
@@ -897,9 +905,14 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         action_description = action["description"]
         self.logger.debug(f"Action description: {action_description}")
 
-        async def saveActionResultAndMoveOn(action_result: str):
+        async def saveActionResultAndMoveOn(action_result: str, runtime_inputs: Optional[dict] = None):
             self.block_inputs = False
-            self.update_history("action-finish", action_result)
+            self.update_history(
+                role="action-finish",
+                message=action_result,
+                action_name=action_name,
+                runtime_inputs=runtime_inputs,
+            )
             return await self.handle_state(state["edge"])
 
         try:
@@ -1055,8 +1068,15 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 )
             )
 
+        runtime_inputs = None
+        try:
+            runtime_inputs = vars(action_input)
+        except:
+            pass
+
         return await saveActionResultAndMoveOn(
-            f"Action Completed: '{action_name}' completed with the following result:\ninput:'{input}'\noutput:\n{output}"
+            action_result=f"Action Completed: '{action_name}' completed with the following result:\ninput:'{input}'\noutput:\n{output}",
+            runtime_inputs=runtime_inputs
         )
 
     async def call_ai(self, prompt, tool=None, stop=None):
