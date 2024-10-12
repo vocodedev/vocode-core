@@ -155,6 +155,7 @@ class BaseCallConfig(TypedModel, type=CallConfigType.BASE.value):  # type: ignor
     to_phone: str
     sentry_tags: Dict[str, str] = {}
     conference: bool = False
+    background_noise_url: Optional[str] = None
     telephony_params: Optional[Dict[str, str]] = None
     direction: PhoneCallDirection
     ivr_config: Optional[IvrConfig] = None
@@ -171,7 +172,7 @@ class BaseCallConfig(TypedModel, type=CallConfigType.BASE.value):  # type: ignor
 class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):  # type: ignore
     twilio_config: TwilioConfig
     twilio_sid: str
-
+    background_noise_url: Optional[str] = None
     @staticmethod
     def default_transcriber_config():
         return DeepgramTranscriberConfig(

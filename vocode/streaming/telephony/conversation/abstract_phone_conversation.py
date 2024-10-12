@@ -46,6 +46,7 @@ class AbstractPhoneConversation(StreamingConversation[TelephonyOutputDeviceType]
         agent_factory: AbstractAgentFactory,
         transcriber_factory: AbstractTranscriberFactory,
         synthesizer_factory: AbstractSynthesizerFactory,
+        background_noise_url: Optional[str] = None,
         conversation_id: Optional[str] = None,
         events_manager: Optional[EventsManager] = None,
         speed_coefficient: float = 1.0,
@@ -59,6 +60,8 @@ class AbstractPhoneConversation(StreamingConversation[TelephonyOutputDeviceType]
         self.from_phone = from_phone
         self.to_phone = to_phone
         self.base_url = base_url
+        self.background_noise_url = background_noise_url
+        output_device.background_noise_url = background_noise_url
         super().__init__(
             output_device,
             transcriber_factory.create_transcriber(transcriber_config),

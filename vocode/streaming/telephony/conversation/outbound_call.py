@@ -29,6 +29,7 @@ class OutboundCall:
         config_manager: BaseConfigManager,
         agent_config: AgentConfig,
         telephony_config: TelephonyConfig,
+        background_noise_url: Optional[str] = None,
         telephony_params: Optional[Dict[str, str]] = None,
         transcriber_config: Optional[TranscriberConfig] = None,
         synthesizer_config: Optional[SynthesizerConfig] = None,
@@ -47,6 +48,7 @@ class OutboundCall:
         self.agent_config = agent_config
         self.conversation_id = conversation_id or create_conversation_id()
         self.telephony_config = telephony_config
+        self.background_noise_url = background_noise_url
         self.telephony_params = telephony_params or {}
         self.telephony_client = self.create_telephony_client()
         self.transcriber_config = self.create_transcriber_config(transcriber_config)
@@ -98,6 +100,7 @@ class OutboundCall:
         )
         if isinstance(self.telephony_client, TwilioClient):
             call_config = TwilioCallConfig(
+                background_noise_url=self.background_noise_url,
                 transcriber_config=self.transcriber_config,
                 agent_config=self.agent_config,
                 synthesizer_config=self.synthesizer_config,
@@ -112,6 +115,7 @@ class OutboundCall:
             )
         elif isinstance(self.telephony_client, VonageClient):
             call_config = VonageCallConfig(
+                background_noise_url=self.background_noise_url,
                 transcriber_config=self.transcriber_config,
                 agent_config=self.agent_config,
                 synthesizer_config=self.synthesizer_config,

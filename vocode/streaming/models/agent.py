@@ -106,6 +106,7 @@ class AgentConfig(TypedModel, type=AgentType.BASE.value):  # type: ignore
     interrupt_sensitivity: InterruptSensitivity = "low"
     cut_off_response: Optional[CutOffResponse] = None
     background_noise: Optional[BackgroundNoiseType] = None
+    s3_url: Optional[str] = None
 
 
 class LLMAgentConfig(AgentConfig, type=AgentType.LLM.value):  # type: ignore

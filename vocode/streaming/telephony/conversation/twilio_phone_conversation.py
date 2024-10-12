@@ -57,14 +57,19 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
         noise_suppression: bool = False,  # is currently a no-op
         ivr_config: Optional[IvrConfig] = None,
         ivr_dag: Optional[IvrDagConfig] = None,
+        background_noise_url: Optional[str] = None,
     ):
+        output_device = TwilioOutputDevice(
+            background_noise=agent_config.background_noise,
+            background_noise_url=background_noise_url
+        )
         super().__init__(
             direction=direction,
             from_phone=from_phone,
             to_phone=to_phone,
             base_url=base_url,
             config_manager=config_manager,
-            output_device=TwilioOutputDevice(background_noise=agent_config.background_noise),
+            output_device=output_device,
             agent_config=agent_config,
             transcriber_config=transcriber_config,
             synthesizer_config=synthesizer_config,
@@ -76,6 +81,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
             speed_coefficient=speed_coefficient,
             ivr_config=ivr_config,
             ivr_dag=ivr_dag,
+            background_noise_url=background_noise_url,
         )
         self.config_manager = config_manager
         self.twilio_config = twilio_config or TwilioConfig(

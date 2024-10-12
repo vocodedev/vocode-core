@@ -18,3 +18,4 @@ class BackgroundNoiseType(Enum):
     RESTAURANT = "restaurant"
     SUBURB = "suburb"
     TV = "tv"
+    CUSTOM = "custom"

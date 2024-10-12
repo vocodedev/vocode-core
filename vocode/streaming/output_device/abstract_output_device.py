@@ -1,5 +1,6 @@
 import asyncio
 from abc import abstractmethod
+from typing import Optional
 
 from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.output_device.audio_chunk import AudioChunk
@@ -15,10 +16,11 @@ class AbstractOutputDevice(AsyncWorker[InterruptibleEvent[AudioChunk]]):
     - if the interruptible event marker is set, then it must also mark the chunk as interrupted
     """
 
-    def __init__(self, sampling_rate: int, audio_encoding: AudioEncoding):
+    def __init__(self, sampling_rate: int, audio_encoding: AudioEncoding, background_noise_url: Optional[str] = None):
         super().__init__()
         self.sampling_rate = sampling_rate
         self.audio_encoding = audio_encoding
+        self.background_noise_url = background_noise_url
 
     @abstractmethod
     def interrupt(self):
