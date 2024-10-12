@@ -10,6 +10,8 @@ import io
 import time
 from dataclasses import dataclass
 import urllib.request
+from urllib.parse import urlparse
+import requests
 
 from fastapi import WebSocket
 from fastapi.websockets import WebSocketState
@@ -24,7 +26,6 @@ from vocode.streaming.constants import BackgroundNoiseType
 from vocode.streaming.utils.create_task import asyncio_create_task
 from vocode.streaming.utils.dtmf_utils import DTMFToneGenerator, KeypadEntry
 from vocode.streaming.utils.worker import InterruptibleEvent
-
 
 BACKGROUND_AUDIO_PATH = os.path.join(os.path.dirname(__file__), "background_audio")
 
@@ -52,19 +53,21 @@ class TwilioOutputDevice(AbstractOutputDevice):
         ws: Optional[WebSocket] = None,
         stream_sid: Optional[str] = None,
         background_noise: Optional[Union[BackgroundNoiseType, str]] = None,
-        # background_noise_url: Optional[str] = None,
+        background_noise_url: Optional[str] = None,
     ):
         super().__init__(
             sampling_rate=DEFAULT_SAMPLING_RATE, 
             audio_encoding=DEFAULT_AUDIO_ENCODING,
-            # background_noise_url=background_noise_url
+            background_noise_url=background_noise_url
         )
         self.ws = ws
         self.stream_sid = stream_sid
         self.active = True
         self.background_noise = background_noise
-        # self.background_noise_url = background_noise_url
+        self.background_noise_url = background_noise_url
         self.background_noise_file = None
+
+        logger.info(f"TwilioOutputDevice initialized with background_noise: {background_noise}, background_noise_url: {background_noise_url}")
 
         self._twilio_events_queue: asyncio.Queue[str] = asyncio.Queue()
         self._mark_message_queue: asyncio.Queue[MarkMessage] = asyncio.Queue()
@@ -73,21 +76,25 @@ class TwilioOutputDevice(AbstractOutputDevice):
         )
         self._audio_queue: asyncio.Queue[AudioItem] = asyncio.Queue()
 
-    async def initialize(self):
         if self.background_noise == BackgroundNoiseType.CUSTOM and self.background_noise_url:
-            # await self._prefetch_background_noise()
-            pass
+            logger.info("Calling _prefetch_background_noise()")
+            self._prefetch_background_noise()
 
     async def _prefetch_background_noise(self):
-        # if not self.background_noise_url:
-            # return
-        
         try:
-            with urllib.request.urlopen(self.background_noise_url) as response:
-                self.background_noise_file = response.read()
-            logger.info(f"Successfully prefetched background noise from {self.background_noise_url}")
+            response = requests.get(self.background_noise_url)
+            if response.status_code == 200:
+                self.background_noise_file = response.content
+                logger.info(f"Successfully prefetched background noise from URL: {self.background_noise_url}")
+                logger.info(f"Background noise file size: {len(self.background_noise_file)} bytes")
+            else:
+                logger.error(f"Failed to fetch background noise. Status code: {response.status_code}")
+                logger.error(f"Response text: {response.text}")
+        except requests.RequestException as e:
+            logger.error(f"Error fetching background noise: {str(e)}")
         except Exception as e:
-            logger.error(f"Failed to prefetch background noise: {str(e)}")
+            logger.info(f"Unexpected error while prefetching background noise: {str(e)}")
+            logger.info(e)
 
     def consume_nonblocking(self, item: InterruptibleEvent[AudioChunk]):
         if not item.is_interrupted():
@@ -207,18 +214,28 @@ class TwilioOutputDevice(AbstractOutputDevice):
         if self.background_noise is None:
             return None
         if self.background_noise == BackgroundNoiseType.CUSTOM:
-            return None  # We'll use the prefetched file instead
+            return None
         return f"{BACKGROUND_AUDIO_PATH}/{self.background_noise.value}.wav"
 
     async def _send_background_noise(self):
         background_noise_path = self._get_background_noise_path()
-        if not background_noise_path and not self.background_noise_file:
-            logger.error("Could not find background noise file")
+        
+        if not background_noise_path and self.background_noise_url:
+            await self._prefetch_background_noise()
+        elif not background_noise_path and not self.background_noise_file:
+            logger.error("Could not find background noise file. Falling back to silence.")
+            # Generate 1 second of silence
+            silent_chunk = b'\x7f' * 8000  # 8000 samples of silence for 1 second
+            while True:
+                await asyncio.sleep(1)
+                self._send_noise_message(silent_chunk)
             return
         
         if background_noise_path:
+            logger.info(f"Loading background noise from file: {background_noise_path}")
             sound = AudioSegment.from_file(background_noise_path)
         else:
+            logger.info(f"Loading background noise from memory (size: {len(self.background_noise_file)} bytes)")
             sound = AudioSegment.from_wav(io.BytesIO(self.background_noise_file))
 
         sound = sound.set_channels(AUDIO_CHANNELS)

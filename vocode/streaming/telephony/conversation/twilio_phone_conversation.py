@@ -81,7 +81,6 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
             speed_coefficient=speed_coefficient,
             ivr_config=ivr_config,
             ivr_dag=ivr_dag,
-            background_noise_url=background_noise_url,
         )
         self.config_manager = config_manager
         self.twilio_config = twilio_config or TwilioConfig(
