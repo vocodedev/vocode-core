@@ -25,7 +25,7 @@ class SynthesizerType(str, Enum):
     BARK = "synthesizer_bark"
     POLLY = "synthesizer_polly"
     CARTESIA = "synthesizer_cartesia"
-    LIGHTNING  = "synthesizer_lightning"
+    SMALLEST = "synthesizer_smallest"
 
 
 class SentimentConfig(BaseModel):
@@ -247,11 +247,12 @@ class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA
     voice_id: str = DEFAULT_CARTESIA_VOICE_ID
     experimental_voice_controls: Optional[CartesiaVoiceControls] = None
 
-class LightningSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.LIGHTNING.value):
-    api_token: str
+class SmallestSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.SMALLEST.value):
+    api_token: str 
+    model:str = "lightning"
     voice_id: str = "aravind"
     language: str = "hi"
     speed: float = 1
     remove_extra_silence: bool = False
     transliterate: bool = True
-    sample_rate: int = 8000
+    sampling_rate: int 

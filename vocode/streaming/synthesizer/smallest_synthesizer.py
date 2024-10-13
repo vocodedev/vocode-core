@@ -1,18 +1,18 @@
 import asyncio
-from datetime import datetime
-import json
-import websockets
-import requests
-from typing import AsyncGenerator
-from loguru import logger
 
-from vocode.streaming.models.audio import AudioEncoding , SamplingRate
+import requests
+from typing import AsyncGenerator, Optional
+
+from vocode import getenv
+
+
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
 from vocode.streaming.models.synthesizer import SynthesizerConfig
 
-class LightningSynthesizerConfig(SynthesizerConfig, type="synthesizer_lightning"):
-    api_token: str
+class SmallestSynthesizerConfig(SynthesizerConfig, type="synthesizer_smallest"):
+    api_token: str 
+    model:str = "lightning"
     voice_id: str = "aravind"
     language: str = "hi"
     speed: float = 1
@@ -20,12 +20,14 @@ class LightningSynthesizerConfig(SynthesizerConfig, type="synthesizer_lightning"
     transliterate: bool = True
     sampling_rate: int 
     
-class LightningSynthesizer(BaseSynthesizer[LightningSynthesizerConfig]):
+class SmallestSynthesizer(BaseSynthesizer[SmallestSynthesizerConfig]):
     CHUNK_SIZE = 320
     
-    def __init__(self, synthesizer_config: LightningSynthesizerConfig):
+    def __init__(self, synthesizer_config: SmallestSynthesizerConfig):
         super().__init__(synthesizer_config)
-        self.lightning_url = f"http://waves-api.smallest.ai/api/v1/lightning/get_speech"
+        self.lightning_url = f"http://waves-api.smallest.ai/api/v1/{synthesizer_config.model}/get_speech"
+    
+        
         
     async def create_speech(
             self,
@@ -46,7 +48,8 @@ class LightningSynthesizer(BaseSynthesizer[LightningSynthesizerConfig]):
                     yield SynthesisResult.ChunkResult(chunk, i+chunk_size >= len(audio_data))
 
             def get_message_up_to(seconds: float) -> str:
-          
+                # This is a simplified implementation. You might want to improve this
+                # based on the actual audio duration and text alignment.
                 return message.text
             
             return SynthesisResult(chunk_generator(), get_message_up_to)
@@ -64,16 +67,16 @@ class LightningSynthesizer(BaseSynthesizer[LightningSynthesizerConfig]):
             "transliterate": self.synthesizer_config.transliterate,
             "get_end_of_response_token": True,
         }
-      
+       
 
         
         headers = {
             "Authorization": f"Bearer {self.synthesizer_config.api_token}",
             "Content-Type": "application/json"
         }
-      
+ 
         
         response = requests.request("POST", self.lightning_url, json=payload, headers=headers)
-        
+       
        
         return response.content
