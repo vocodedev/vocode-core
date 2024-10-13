@@ -9,8 +9,6 @@ import os
 import io
 import time
 from dataclasses import dataclass
-import urllib.request
-from urllib.parse import urlparse
 import requests
 
 from fastapi import WebSocket
@@ -66,9 +64,6 @@ class TwilioOutputDevice(AbstractOutputDevice):
         self.background_noise = background_noise
         self.background_noise_url = background_noise_url
         self.background_noise_file = None
-
-        logger.info(f"TwilioOutputDevice initialized with background_noise: {background_noise}, background_noise_url: {background_noise_url}")
-
         self._twilio_events_queue: asyncio.Queue[str] = asyncio.Queue()
         self._mark_message_queue: asyncio.Queue[MarkMessage] = asyncio.Queue()
         self._unprocessed_audio_chunks_queue: asyncio.Queue[InterruptibleEvent[AudioChunk]] = (
@@ -77,7 +72,6 @@ class TwilioOutputDevice(AbstractOutputDevice):
         self._audio_queue: asyncio.Queue[AudioItem] = asyncio.Queue()
 
         if self.background_noise == BackgroundNoiseType.CUSTOM and self.background_noise_url:
-            logger.info("Calling _prefetch_background_noise()")
             self._prefetch_background_noise()
 
     async def _prefetch_background_noise(self):
@@ -85,16 +79,13 @@ class TwilioOutputDevice(AbstractOutputDevice):
             response = requests.get(self.background_noise_url)
             if response.status_code == 200:
                 self.background_noise_file = response.content
-                logger.info(f"Successfully prefetched background noise from URL: {self.background_noise_url}")
-                logger.info(f"Background noise file size: {len(self.background_noise_file)} bytes")
             else:
                 logger.error(f"Failed to fetch background noise. Status code: {response.status_code}")
                 logger.error(f"Response text: {response.text}")
         except requests.RequestException as e:
             logger.error(f"Error fetching background noise: {str(e)}")
         except Exception as e:
-            logger.info(f"Unexpected error while prefetching background noise: {str(e)}")
-            logger.info(e)
+            logger.error(f"Unexpected error while prefetching background noise: {str(e)}")
 
     def consume_nonblocking(self, item: InterruptibleEvent[AudioChunk]):
         if not item.is_interrupted():
@@ -176,13 +167,11 @@ class TwilioOutputDevice(AbstractOutputDevice):
         process_mark_messages_task = asyncio_create_task(self._process_mark_messages())
 
         if self.background_noise:
-            logger.info(f"Setting background noise task for {self.background_noise}")
             send_background_noise_task = asyncio_create_task(self._send_background_noise())
             await asyncio.gather(
                 send_twilio_messages_task, process_mark_messages_task, send_background_noise_task
             )
         else:
-            logger.info("No background noise task")
             await asyncio.gather(
                 send_twilio_messages_task, process_mark_messages_task
             )
@@ -232,10 +221,8 @@ class TwilioOutputDevice(AbstractOutputDevice):
             return
         
         if background_noise_path:
-            logger.info(f"Loading background noise from file: {background_noise_path}")
             sound = AudioSegment.from_file(background_noise_path)
         else:
-            logger.info(f"Loading background noise from memory (size: {len(self.background_noise_file)} bytes)")
             sound = AudioSegment.from_wav(io.BytesIO(self.background_noise_file))
 
         sound = sound.set_channels(AUDIO_CHANNELS)
