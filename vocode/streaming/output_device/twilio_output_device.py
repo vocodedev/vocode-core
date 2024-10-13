@@ -72,7 +72,7 @@ class TwilioOutputDevice(AbstractOutputDevice):
         self._audio_queue: asyncio.Queue[AudioItem] = asyncio.Queue()
 
         if self.background_noise == BackgroundNoiseType.CUSTOM and self.background_noise_url:
-            self._prefetch_background_noise()
+            asyncio.create_task(self._prefetch_background_noise())
 
     async def _prefetch_background_noise(self):
         try:
