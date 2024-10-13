@@ -10,6 +10,9 @@ import io
 import time
 from dataclasses import dataclass
 import requests
+import boto3
+from botocore.exceptions import ClientError
+from urllib.parse import urlparse
 
 from fastapi import WebSocket
 from fastapi.websockets import WebSocketState
@@ -71,19 +74,31 @@ class TwilioOutputDevice(AbstractOutputDevice):
         )
         self._audio_queue: asyncio.Queue[AudioItem] = asyncio.Queue()
 
+        # Initialize S3 client
+        self.s3_client = boto3.client(
+            's3',
+            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+            region_name=os.environ.get('AWS_REGION')
+        )
+
         if self.background_noise == BackgroundNoiseType.CUSTOM and self.background_noise_url:
             asyncio.create_task(self._prefetch_background_noise())
 
     async def _prefetch_background_noise(self):
         try:
-            response = requests.get(self.background_noise_url)
-            if response.status_code == 200:
-                self.background_noise_file = response.content
-            else:
-                logger.error(f"Failed to fetch background noise. Status code: {response.status_code}")
-                logger.error(f"Response text: {response.text}")
-        except requests.RequestException as e:
-            logger.error(f"Error fetching background noise: {str(e)}")
+            # Parse the S3 URL
+            parsed_url = urlparse(self.background_noise_url)
+            bucket_name = parsed_url.netloc.split('.')[0]
+            key = parsed_url.path.lstrip('/')
+
+            # Download the file from S3
+            response = self.s3_client.get_object(Bucket=bucket_name, Key=key)
+            self.background_noise_file = response['Body'].read()
+
+            logger.info(f"Successfully fetched background noise from S3: {self.background_noise_url}")
+        except ClientError as e:
+            logger.error(f"Error fetching background noise from S3: {str(e)}")
         except Exception as e:
             logger.error(f"Unexpected error while prefetching background noise: {str(e)}")
 
