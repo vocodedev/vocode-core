@@ -239,6 +239,7 @@ SynthesizerConfigType = TypeVar("SynthesizerConfigType", bound=SynthesizerConfig
 
 class BaseSynthesizer(Generic[SynthesizerConfigType]):
     streaming_conversation: "StreamingConversation"
+    total_chars: int
 
     def __init__(
         self,
@@ -277,8 +278,13 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
             seconds_per_chunk=2,
         )
 
-    def get_cost(self) -> float:
+    @classmethod
+    def get_cost(cls, total_chars) -> float:
         raise NotImplementedError
+
+    @classmethod
+    def compute_total_chars(cls, message: BaseMessage, synthesizer_config: SynthesizerConfigType):
+        return len(message.text)
 
     async def set_filler_audios(self, filler_audio_config: FillerAudioConfig):
         if filler_audio_config.use_phrases:

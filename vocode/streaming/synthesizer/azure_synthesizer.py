@@ -144,7 +144,10 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
                 audio_data = open(filler_audio_path, "rb").read()
             else:
                 logger.debug(f"Generating filler audio for {filler_phrase.text}")
-                ssml = self.create_ssml(filler_phrase.text)
+                ssml = self.create_ssml(
+                    message=filler_phrase.text, synthesizer_config=self.synthesizer_config
+                )
+                self.total_chars += self.get_total_chars_from_ssml(ssml)
                 result = await asyncio.get_event_loop().run_in_executor(
                     self.thread_pool_executor, self.synthesizer.speak_ssml, ssml
                 )
@@ -176,16 +179,35 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
     def word_boundary_cb(self, evt, pool):
         pool.add(evt)
 
-    def create_ssml(self, message: str) -> str:
-        voice_language_code = self.synthesizer_config.voice_name[:5]
+    @classmethod
+    def compute_total_chars(
+        cls, message: BaseMessage, synthesizer_config: AzureSynthesizerConfig
+    ) -> int:
+        ssml = (
+            message.ssml
+            if isinstance(message, SSMLMessage)
+            else cls.create_ssml(message=message.text, synthesizer_config=synthesizer_config)
+        )
+        return cls.get_total_chars_from_ssml(ssml)
+
+    @staticmethod
+    def get_total_chars_from_ssml(ssml: str) -> int:
+        regmatch = re.search(_AZURE_INSIDE_VOICE_REGEX, ssml, re.DOTALL)
+        if regmatch:
+            return len(regmatch.group(1))
+        return 0
+
+    @staticmethod
+    def create_ssml(message: str, synthesizer_config: AzureSynthesizerConfig) -> str:
+        voice_language_code = synthesizer_config.voice_name[:5]
         ssml_root = ElementTree.fromstring(
             f'<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="{voice_language_code}"></speak>'
         )
         voice = ElementTree.SubElement(ssml_root, "voice")
-        voice.set("name", self.voice_name)
-        if self.synthesizer_config.language_code != "en-US":
+        voice.set("name", synthesizer_config.voice_name)
+        if synthesizer_config.language_code != "en-US":
             lang = ElementTree.SubElement(voice, "{%s}lang" % NAMESPACES.get(""))
-            lang.set("xml:lang", self.synthesizer_config.language_code)
+            lang.set("xml:lang", synthesizer_config.language_code)
             voice_root = lang
         else:
             voice_root = voice
@@ -198,13 +220,10 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
             silence.set("value", "500ms")
             silence.set("type", "Tailing-exact")
         prosody = ElementTree.SubElement(voice_root, "prosody")
-        prosody.set("pitch", f"{self.pitch}%")
-        prosody.set("rate", f"{self.rate}%")
+        prosody.set("pitch", f"{synthesizer_config.pitch}%")
+        prosody.set("rate", f"{synthesizer_config.rate}%")
         prosody.text = message.strip()
         ssml = ElementTree.tostring(ssml_root, encoding="unicode")
-        regmatch = re.search(_AZURE_INSIDE_VOICE_REGEX, ssml, re.DOTALL)
-        if regmatch:
-            self.total_chars += len(regmatch.group(1))
         return ssml
 
     def synthesize_ssml(self, ssml: str) -> speechsdk.AudioDataStream:
@@ -293,7 +312,12 @@ class AzureSynthesizer(BaseSynthesizer[AzureSynthesizerConfig]):
         self.synthesizer.synthesis_word_boundary.connect(
             lambda event: self.word_boundary_cb(event, word_boundary_event_pool)
         )
-        ssml = message.ssml if isinstance(message, SSMLMessage) else self.create_ssml(message.text)
+        ssml = (
+            message.ssml
+            if isinstance(message, SSMLMessage)
+            else self.create_ssml(message=message.text, synthesizer_config=self.synthesizer_config)
+        )
+        self.total_chars += self.get_total_chars_from_ssml(ssml)
         audio_data_stream = await asyncio.get_event_loop().run_in_executor(
             self.thread_pool_executor, self.synthesize_ssml, ssml
         )

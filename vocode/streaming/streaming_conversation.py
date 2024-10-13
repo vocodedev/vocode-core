@@ -284,8 +284,12 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 )
                 self.has_associated_unignored_utterance = not transcription.is_final
                 if self.conversation.current_transcription_is_interrupt:
+                    logger.debug(
+                        f"Interrupting transcription: {transcription.message}, confidence: {transcription.confidence}"
+                    )
                     logger.debug("sent interrupt")
                 logger.debug("Human started speaking")
+                self.conversation.is_human_still_there = True
 
             transcription.is_interrupt = self.conversation.current_transcription_is_interrupt
             self.conversation.is_human_speaking = not transcription.is_final
@@ -827,6 +831,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
 
         self.check_for_idle_task: Optional[asyncio.Task] = None
         self.check_for_idle_paused = False
+        self.is_human_still_there = True
 
         self.current_transcription_is_interrupt: bool = False
 
@@ -984,18 +989,22 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         check_human_present_count = 0
         check_human_present_threshold = self.agent.get_agent_config().num_check_human_present_times
         while self.is_active():
+            if check_human_present_count > 0 and self.is_human_still_there == True:
+                # Reset the counter if the human is still there
+                check_human_present_count = 0
             if (
                 not self.check_for_idle_paused
             ) and time.time() - self.last_action_timestamp > self.idle_time_threshold:
                 if check_human_present_count >= check_human_present_threshold:
                     # Stop the phone call after some retries to prevent infinitely long call where human is just silent.
                     await self.action_on_idle()
+                self.is_human_still_there = False
                 await self.send_single_message(
                     message=BaseMessage(text=random.choice(CHECK_HUMAN_PRESENT_MESSAGE_CHOICES)),
                 )
                 check_human_present_count += 1
             # wait till the idle time would have passed the threshold if no action occurs
-            await asyncio.sleep(ALLOWED_IDLE_TIME)
+            await asyncio.sleep(self.idle_time_threshold / 2)
 
     async def send_single_message(
         self,

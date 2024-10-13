@@ -56,13 +56,14 @@ CHAT_GPT_MAX_TOKENS = {
     "gpt-4-0125-preview": 127940,
     "gpt-4-turbo": 127940,
     "gpt-4o": 127940,
-    "gpt-4o-2024-05-13": 127940,
 }
 
 
 def get_chat_gpt_max_tokens(model_name: str):
     if model_name.startswith("ft:"):
         model_name = model_name.split(":")[1]
+    if model_name.startswith("gpt-4o"):
+        model_name = "gpt-4o"
 
     if model_name in CHAT_GPT_MAX_TOKENS:
         return CHAT_GPT_MAX_TOKENS[model_name]
