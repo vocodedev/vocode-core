@@ -23,10 +23,15 @@ class SmallestSynthesizerConfig(SynthesizerConfig, type="synthesizer_smallest"):
 class SmallestSynthesizer(BaseSynthesizer[SmallestSynthesizerConfig]):
     CHUNK_SIZE = 320
     
-    def __init__(self, synthesizer_config: SmallestSynthesizerConfig):
+    def __init__(self, synthesizer_config: SmallestSynthesizerConfig,smallest_api_key: Optional[str] = None):
         super().__init__(synthesizer_config)
         self.lightning_url = f"http://waves-api.smallest.ai/api/v1/{synthesizer_config.model}/get_speech"
-    
+        smallest_api_key = smallest_api_key or getenv("SMALLEST_API_KEY")
+        if not smallest_api_key:
+            raise ValueError(
+                "Please set SMALLEST_API_KEY environment variable or pass it as a parameter"
+            )
+        self.synthesizer_config.api_token = smallest_api_key
         
         
     async def create_speech(
