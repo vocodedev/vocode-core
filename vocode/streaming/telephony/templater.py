@@ -27,3 +27,19 @@ def get_connection_twiml(
         ),
         media_type="application/xml",
     )
+
+def get_connection_plivoxml(
+    base_url: str,
+    template_name: str,
+    call_id: str = None,
+    template_environment: Environment = DEFAULT_TEMPLATE_ENVIRONMENT,
+):
+    return Response(
+        render_template(
+            template_name=template_name,
+            template_environment=template_environment,
+            base_url=base_url,
+            id=call_id,
+        ),
+        media_type="application/xml",
+    )

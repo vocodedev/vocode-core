@@ -16,6 +16,8 @@ from vocode.streaming.models.telephony import (
     TwilioConfig,
     VonageCallConfig,
     VonageConfig,
+    PlivoConfig,
+    PlivoCallConfig
 )
 from vocode.streaming.models.transcriber import TranscriberConfig
 from vocode.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
@@ -23,9 +25,11 @@ from vocode.streaming.synthesizer.default_factory import DefaultSynthesizerFacto
 from vocode.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
 from vocode.streaming.telephony.client.twilio_client import TwilioClient
 from vocode.streaming.telephony.client.vonage_client import VonageClient
+from vocode.streaming.telephony.client.plivo_client import PlivoClient
 from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
 from vocode.streaming.telephony.server.router.calls import CallsRouter
 from vocode.streaming.telephony.templater import get_connection_twiml
+from vocode.streaming.telephony.templater import get_connection_plivoxml
 from vocode.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
 from vocode.streaming.transcriber.default_factory import DefaultTranscriberFactory
 from vocode.streaming.utils import create_conversation_id
@@ -42,6 +46,8 @@ class AbstractInboundCallConfig(BaseModel, abc.ABC):
 class TwilioInboundCallConfig(AbstractInboundCallConfig):
     twilio_config: TwilioConfig
 
+class PlivoInboundCallConfig(AbstractInboundCallConfig):
+    plivo_config: PlivoConfig
 
 class VonageInboundCallConfig(AbstractInboundCallConfig):
     vonage_config: VonageConfig
@@ -132,6 +138,40 @@ class TelephonyServer:
             conversation_id = create_conversation_id()
             await self.config_manager.save_config(conversation_id, call_config)
             return get_connection_twiml(base_url=self.base_url, call_id=conversation_id)
+        
+        async def plivo_route(
+                plivo_config: PlivoConfig,
+                request: Request
+            ) -> Response:
+                form_data = await request.form() 
+
+                
+                conversation_id = create_conversation_id()
+
+                
+                call_config = PlivoCallConfig(
+                    transcriber_config=inbound_call_config.transcriber_config
+                    or PlivoCallConfig.default_transcriber_config(),
+                    agent_config=inbound_call_config.agent_config,
+                    synthesizer_config=inbound_call_config.synthesizer_config
+                    or PlivoCallConfig.default_synthesizer_config(),
+                    plivo_config=plivo_config,
+                    plivo_id=form_data["CallUUID"], 
+                    from_phone=form_data["From"],
+                    to_phone=form_data["To"],
+                    direction="inbound"
+                )
+                
+            
+                await self.config_manager.save_config(conversation_id, call_config)
+
+            
+                return get_connection_plivoxml(
+                    base_url=self.base_url, 
+                    call_id=conversation_id,  
+                    template_name="plivo_connect_ws.xml"
+                )
+
 
         async def vonage_route(vonage_config: VonageConfig, request: Request):
             vonage_answer_request = VonageAnswerRequest.parse_obj(await request.json())
@@ -164,6 +204,11 @@ class TelephonyServer:
                 f"Set up inbound call TwiML at https://{self.base_url}{inbound_call_config.url}"
             )
             return partial(twilio_route, inbound_call_config.twilio_config)
+        elif isinstance(inbound_call_config, PlivoInboundCallConfig):
+            logger.info(
+                f"Set up inbound call PlivoXML at https://{self.base_url}{inbound_call_config.url}"
+            )
+            return partial(plivo_route, inbound_call_config.plivo_config)
         elif isinstance(inbound_call_config, VonageInboundCallConfig):
             logger.info(
                 f"Set up inbound call NCCO at https://{self.base_url}{inbound_call_config.url}"
