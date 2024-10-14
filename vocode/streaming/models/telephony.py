@@ -3,7 +3,7 @@ from typing import Any, Dict, Literal, Optional, Union
 
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.model import BaseModel, TypedModel
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig, SynthesizerConfig
+from vocode.streaming.models.synthesizer import SmallestSynthesizerConfig, SynthesizerConfig
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
@@ -131,7 +131,7 @@ class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):  # typ
 
     @staticmethod
     def default_synthesizer_config():
-        return AzureSynthesizerConfig(
+        return SmallestSynthesizerConfig(
             sampling_rate=DEFAULT_SAMPLING_RATE,
             audio_encoding=DEFAULT_AUDIO_ENCODING,
         )
@@ -155,7 +155,7 @@ class VonageCallConfig(BaseCallConfig, type=CallConfigType.VONAGE.value):  # typ
 
     @staticmethod
     def default_synthesizer_config():
-        return AzureSynthesizerConfig(
+        return SmallestSynthesizerConfig(
             sampling_rate=VONAGE_SAMPLING_RATE,
             audio_encoding=VONAGE_AUDIO_ENCODING,
         )
