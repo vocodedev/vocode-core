@@ -3,7 +3,7 @@ import json
 import logging
 import re
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, TypedDict
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
@@ -50,6 +50,10 @@ class BranchDecision(Enum):
     PAUSE = 1
     SWITCH = 2
     CONTINUE = 3
+
+class MemoryValue(TypedDict):
+    is_ephemeral: bool
+    value: str
 
 
 def parse_llm_dict(s):
@@ -155,7 +159,7 @@ async def handle_memory_dep(
     memory_dep: MemoryDependency,
     speak: Callable[[dict], Awaitable[None]],
     call_ai: Callable[[str, Dict[str, Any], Optional[str]], Awaitable[str]],
-    retry: Callable[[Optional[str]], Awaitable[Any]],
+    retry: Callable[[Optional[MemoryValue]], Awaitable[Any]],
     logger: logging.Logger,
 ):
     logger.info(f"handling memory dep {memory_dep}")
@@ -171,12 +175,15 @@ async def handle_memory_dep(
     logger.error(f"memory dep output: {output}")
     output_dict = parse_llm_dict(output)
     logger.info(f"mem output_dict: {output_dict}")
-    memory = str(output_dict[memory_dep["key"]])
-    logger.info(f"memory directly from AI: {memory}")
+    memory_value = str(output_dict[memory_dep["key"]])
+    logger.info(f"memory directly from AI: {memory_value}")
 
-    if "MISSING" not in memory:
-        return await retry(memory)
-    memory_reason = memory.split(":")[1].strip() if ":" in memory else ""
+    if "MISSING" not in memory_value:
+        return await retry({
+            "is_ephemeral": memory_dep["is_ephemeral"],
+            "value": memory_value
+        })
+    memory_reason = memory_value.split(":")[1].strip() if ":" in memory_value else ""
 
     await speak(memory_dep["question"], memory_reason)
 
@@ -420,7 +427,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.current_state = None
         self.resume_task = None
         self.resume = lambda _: self.handle_state(self.state_machine["startingStateId"])
-        self.memories = {}
+        self.memories: dict[str, MemoryValue] = {}
         self.can_send = False
         self.conversation_id = None
         self.twilio_sid = None
@@ -762,7 +769,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             self.logger.info(f"cached memory is {cached_memory}")
             if not cached_memory:
 
-                async def retry(memory: Optional[str] = None):
+                async def retry(memory: Optional[MemoryValue] = None):
                     new_retry_count = retry_count + 1
                     if memory:
                         new_retry_count = 0
@@ -793,6 +800,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                         )
                     )
                     return await retry()
+            elif cached_memory["is_ephemeral"]:
+                self.memories.pop(memory_dep["key"], None)
 
         await self.print_start_message(state, start=start)
 
