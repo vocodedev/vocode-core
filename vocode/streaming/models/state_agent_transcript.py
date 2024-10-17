@@ -4,7 +4,6 @@ from enum import Enum
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, root_validator
-
 from vocode.streaming.models.memory_dependency import MemoryDependency
 
 
@@ -53,6 +52,7 @@ class StateAgentTranscriptDebugEntry(StateAgentTranscriptEntry):
     role: StateAgentTranscriptRole = StateAgentTranscriptRole.DEBUG
     type: StateAgentDebugMessageType
 
+
 class StateAgentTranscriptActionFinish(StateAgentTranscriptEntry):
     role: StateAgentTranscriptRole = StateAgentTranscriptRole.ACTION_FINISH
     action_name: str
@@ -65,6 +65,7 @@ class StateAgentTranscriptActionInvoke(StateAgentTranscriptDebugEntry):
     state_id: str
     action_name: str
 
+
 class StateAgentTranscriptBranchDecision(StateAgentTranscriptDebugEntry):
     type: StateAgentDebugMessageType = StateAgentDebugMessageType.BRANCH_DECISION
     message: str = "branch decision"
@@ -73,6 +74,7 @@ class StateAgentTranscriptBranchDecision(StateAgentTranscriptDebugEntry):
     ai_response: str
     internal_edges: List[dict]
     original_state: dict
+
 
 class StateAgentTranscriptActionError(StateAgentTranscriptDebugEntry):
     type: StateAgentDebugMessageType = StateAgentDebugMessageType.ACTION_ERROR
@@ -123,7 +125,9 @@ class StateAgentTranscript(JsonTranscript):
                     elif entry["type"] == StateAgentDebugMessageType.HANDLE_STATE:
                         parsed_entries.append(StateAgentTranscriptHandleState(**entry))
                     elif entry["type"] == StateAgentDebugMessageType.BRANCH_DECISION:
-                        parsed_entries.append(StateAgentTranscriptBranchDecision(**entry))
+                        parsed_entries.append(
+                            StateAgentTranscriptBranchDecision(**entry)
+                        )
                     elif (
                         entry["type"] == StateAgentDebugMessageType.INVARIANT_VIOLATION
                     ):
