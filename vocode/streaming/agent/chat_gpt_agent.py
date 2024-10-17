@@ -199,7 +199,7 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfigType]):
                         "Document: "
                         + doc[0].metadata["source"]
                         + f" (Confidence: {doc[1]})\n"
-                        + doc[0].lc_kwargs["page_content"].replace(r"\n", "\n")
+                        + doc[0].page_content.replace(r"\n", "\n")
                         for doc in docs_with_scores
                     ]
                 )
