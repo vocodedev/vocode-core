@@ -57,7 +57,7 @@ class MemoryValue(TypedDict):
     value: str
 
 
-def parse_llm_dict(s):
+def parse_llm_json(s):
     if isinstance(s, dict):
         return s
 
@@ -65,54 +65,16 @@ def parse_llm_dict(s):
     if "{" in s and "}" in s:
         s = s[s.find("{") : s.rfind("}") + 1]
 
-    # Attempt to parse the string using ast.literal_eval
+    # Attempt to parse the JSON string
     try:
-        result = ast.literal_eval(s)
+        result = json.loads(s)
         if isinstance(result, dict):
             return result
-    except (SyntaxError, ValueError):
+    except json.JSONDecodeError:
         pass
 
-    # Fallback to manual parsing
-    result = {}
-    # Remove outer braces and any leading/trailing whitespace
-    s_clean = s.strip("{}").strip()
-
-    # Split the string into key-value pairs using regex
-    # This handles cases where values may contain commas or colons within quotes
-    pattern = re.compile(
-        r"""
-        (\w+)\s*:\s*      # Key
-        (                 # Value
-            '(?:\\'|[^'])*'   # Single-quoted string
-            |"(?:\\"|[^"])*"  # Double-quoted string
-            |[^,'"]+          # Unquoted value
-        )
-        (?=,|$)           # Lookahead for comma or end of string
-    """,
-        re.VERBOSE,
-    )
-    matches = pattern.findall(s_clean)
-
-    for key, value in matches:
-        key = key.strip().strip("'\"")
-        value = value.strip().strip("'\"")
-
-        # Convert value to appropriate type if possible
-        if value.lower() == "true":
-            value = True
-        elif value.lower() == "false":
-            value = False
-        elif value.replace(".", "").isdigit():
-            value = float(value) if "." in value else int(value)
-        elif value.startswith("'") and value.endswith("'"):
-            value = value[1:-1]  # Remove single quotes
-        elif value.startswith('"') and value.endswith('"'):
-            value = value[1:-1]  # Remove double quotes
-
-        result[key] = value
-
-    return result
+    # Return empty dict if parsing fails
+    return {}
 
 
 def get_state(state_id_or_label: str, state_machine):
@@ -197,11 +159,11 @@ async def handle_memory_dep(
        - If the information is 'MISSING', respond to their last message and then ask for the missing information.
            - 'output' instructions for if the information is 'MISSING': '{message_to_say}'
 
-    Your response must always be a dictionary containing the keys 'input', 'meaning', '{memory_dep['key']}', and 'output'.""",
+    Your response must always be a json containing the keys 'input', 'meaning', '{memory_dep['key']}', and 'output'.""",
         tool,
     )
     logger.error(f"memory dep output: {output}")
-    output_dict = parse_llm_dict(output)
+    output_dict = parse_llm_json(output)
     logger.info(f"mem output_dict: {output_dict}")
     memory_value = str(output_dict[memory_dep["key"]])
     message = str(output_dict["output"])
@@ -378,7 +340,7 @@ async def handle_options(
 
     logger.info(f"Chose condition: {response}")
     try:
-        response_dict = parse_llm_dict(response)
+        response_dict = parse_llm_json(response)
         condition = response_dict.get("condition")
         if condition is None:
             raise ValueError("No condition was provided in the response.")
@@ -410,7 +372,7 @@ async def handle_options(
             # todo, if current state is an options state which it is shouldnt we repeat it instead of moving forward
             output = await call_ai(prompt, tool)
             output = output[output.find("{") : output.find("}") + 1]
-            parsed_output = parse_llm_dict(output)
+            parsed_output = parse_llm_json(output)
             to_speak = parsed_output["response"]
             speak(to_speak)
             clarification_state = state_history[
@@ -1039,20 +1001,20 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             if dict_to_fill:
                 param_descriptions_str = "\n".join(param_descriptions)
                 response = await self.call_ai(
-                    prompt=f"Based on the current conversation and the instructions provided, return a python dictionary with values inserted for these parameters:\n{param_descriptions_str}",
+                    prompt=f"Based on the current conversation and the instructions provided, return a valid json with values inserted for these parameters:\n{param_descriptions_str}",
                     tool=dict_to_fill,
                 )
                 self.logger.info(f"Raw AI response: {response}")
                 response = response[response.find("{") : response.rfind("}") + 1]
-                self.logger.info(f"Extracted dictionary: {response}")
+                self.logger.info(f"Extracted json: {response}")
 
                 try:
                     ai_filled_params = eval(response)
                 except Exception as e:
                     self.logger.error(
-                        f"Agent did not respond with a valid dictionary, trying to parse as JSON: {e}."
+                        f"Agent did not respond with a valid json, trying to parse as JSON: {e}."
                     )
-                    ai_filled_params = parse_llm_dict(response)
+                    ai_filled_params = parse_llm_json(response)
 
                 finalized_params.update(ai_filled_params)
         if action_name.lower() == "zapier":
@@ -1198,6 +1160,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     if any(token in text_chunk for token in stop_tokens):
                         break
         else:
+            # get json string of tool
+            tool_json_str = json.dumps(tool)
             # Start of Selection
             prompt = (
                 f"{self.overall_instructions}\n\n"
@@ -1205,8 +1169,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 f"{pretty_chat_history}\n\n"
                 "Please follow the instructions below and generate the required response.\n\n"
                 f"Instructions:\n{prompt}\n\n"
-                f"Your response must always be a dictionary in the following format: {str(tool)}.\n"
-                "Return only the dictionary, without any additional commentary."
+                f"Your response must always be a json in the following format: {tool_json_str}.\n"
+                "Return only the json, without any additional commentary."
             )
             self.logger.debug(f"prompt is: {prompt}")
 
