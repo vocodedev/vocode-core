@@ -99,12 +99,16 @@ def parse_llm_dict(s):
         value = value.strip().strip("'\"")
 
         # Convert value to appropriate type if possible
-        if value.isdigit():
-            value = int(value)
-        elif value.lower() == "true":
+        if value.lower() == "true":
             value = True
         elif value.lower() == "false":
             value = False
+        elif value.replace(".", "").isdigit():
+            value = float(value) if "." in value else int(value)
+        elif value.startswith("'") and value.endswith("'"):
+            value = value[1:-1]  # Remove single quotes
+        elif value.startswith('"') and value.endswith('"'):
+            value = value[1:-1]  # Remove double quotes
 
         result[key] = value
 
@@ -578,16 +582,33 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             )
 
         if role == "message.bot" and len(message.strip()) > 0:
-            # Check if the latest bot message contents are in the active message
-            latest_bot_message = None
-            # Since we've just added the current message, exclude it from the search
+            # Concatenate the last n bot messages
+            bot_messages = []
             for past_role, past_message in reversed(self.chat_history[:-1]):
                 if past_role == "message.bot" and len(past_message.strip()) > 0:
-                    latest_bot_message = past_message
+                    bot_messages.insert(0, past_message.strip())
+                else:
                     break
-            if latest_bot_message and message.startswith(latest_bot_message):
-                # Remove the substring from the active message if it starts with the latest bot message
-                message = message[len(latest_bot_message) :]
+
+            concatenated_bot_message_space = " ".join(bot_messages)
+            concatenated_bot_message_newline = "\n".join(bot_messages)
+
+            if concatenated_bot_message_space and message.startswith(
+                concatenated_bot_message_space
+            ):
+                # Remove the concatenated substring from the active message if it starts with it
+                message = message[len(concatenated_bot_message_space) :].strip()
+            elif concatenated_bot_message_newline and message.startswith(
+                concatenated_bot_message_newline
+            ):
+                # Remove the concatenated substring from the active message if it starts with it (newline separated)
+                message = message[len(concatenated_bot_message_newline) :].strip()
+
+            if not message:
+                message = (
+                    concatenated_bot_message_space or concatenated_bot_message_newline
+                )
+
             self.produce_interruptible_agent_response_event_nonblocking(
                 AgentResponseMessage(message=BaseMessage(text=message)),
                 agent_response_tracker=agent_response_tracker,
