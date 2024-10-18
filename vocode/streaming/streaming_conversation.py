@@ -1200,6 +1200,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
         Returns true if any events were interrupted - which is used as a flag for the agent (is_interrupt)
         """
+        self.agent.cancel_stream()
         self.logger.debug("Broadcasting interrupt")
         self.stop_event.set()
         self.mark_last_action_timestamp()

@@ -428,6 +428,16 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         )
         self.label_to_state_id = self.state_machine["labelToStateId"]
 
+    def cancel_stream(self):
+        self.stop = True
+        if (
+            self.resume_task
+            and not self.resume_task.done()
+            and not self.resume_task.cancelled()
+        ):
+            self.resume_task.cancel()
+            self.logger.info("Stream cancelled")
+
     def update_state_from_transcript(self, transcript: StateAgentTranscript):
         self.json_transcript = transcript
         self.chat_history = []
@@ -1178,6 +1188,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             punctuation = [".", "!", "?", ",", ";", ":"]
             send_final_message = False
             async for chunk in stream:
+                await asyncio.sleep(0)
                 text_chunk = chunk.choices[0].delta.content
                 if text_chunk:
                     response_text += text_chunk
