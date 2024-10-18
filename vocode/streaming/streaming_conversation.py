@@ -18,9 +18,6 @@ import httpx
 import numpy
 import requests
 from openai import AsyncOpenAI, OpenAI
-from telephony_app.models.call_type import CallType
-from telephony_app.utils.call_information_handler import update_call_transcripts
-
 from vocode import getenv
 from vocode.streaming.action.worker import ActionsWorker
 from vocode.streaming.agent.base_agent import (
@@ -88,6 +85,9 @@ from vocode.streaming.utils.worker import (
     InterruptibleEventFactory,
     InterruptibleWorker,
 )
+
+from telephony_app.models.call_type import CallType
+from telephony_app.utils.call_information_handler import update_call_transcripts
 
 tracer = setup_tracer()
 
@@ -272,8 +272,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                     # Place the event in the output queue for further processing
                 self.output_queue.put_nowait(event)
+                self.conversation.mark_last_action_timestamp()
                 self.conversation.allow_idle_message = True
-                self.conversation.allow_unmute = False
 
                 self.conversation.logger.info("Transcription event put in output queue")
                 # release the action, if there is one
@@ -297,14 +297,23 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 self.conversation.mark_last_action_timestamp()
                 return
-            if self.block_inputs and not self.agent.agent_config.allow_interruptions:
+            # if self.block_inputs and not self.agent.agent_config.allow_interruptions:
+            #     self.conversation.logger.debug(
+            #         "Ignoring transcription since we are in-flight..."
+            #     )
+            #     return
+
+            if (
+                not self.agent.agent_config.allow_interruptions
+                and self.conversation.is_agent_speaking()
+            ):
                 self.conversation.logger.debug(
-                    "Ignoring transcription since we are in-flight..."
+                    "Ignoring transcription since we are SPEAKING..."
                 )
                 return
-
             # If the message is just "vad", handle it without resetting the buffer check
             if transcription.message.strip() == "vad":
+
                 self.vad_detected = True
 
                 await self.conversation.broadcast_interrupt()
@@ -648,7 +657,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                 if isinstance(agent_response, AgentResponseGenerationComplete):
                     self.conversation.logger.debug("Agent response generation complete")
-                    self.conversation.allow_unmute = True
+                    await self.conversation.synthesizer.create_speech(
+                        message=BaseMessage(text="<agent_complete>"),
+                        chunk_size=self.chunk_size,
+                        bot_sentiment=self.conversation.bot_sentiment,
+                    )
                     return
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
@@ -1076,6 +1089,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 and not idle_prompt_sent
                 and self.allow_idle_message
                 and self.transcriptions_worker.initial_message is None
+                and not self.is_agent_speaking()
             ):
                 idle_prompt_sent = True
                 idle_prompt_message_tracker = asyncio.Event()
@@ -1096,6 +1110,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 self.agent_responses_worker.consume_nonblocking(agent_response_event)
                 self.allow_idle_message = False
+                self.agent.block_inputs = False
             if (
                 time.time() - self.last_action_timestamp > 4
                 and time.time() - self.last_action_timestamp < 30
@@ -1156,6 +1171,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         """
         Checks if the agent is currently speaking.
         """
+
         return (
             self.synthesis_results_worker.current_task is not None
             and not self.synthesis_results_worker.current_task.done()
@@ -1170,10 +1186,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.stop_event.set()
         if isinstance(self.agent, CommandAgent):
             self.agent.stop = not self.agent.stop
-
-        # this above is done by just calling generate completion
-        self.agent.block_inputs = False
-        self.allow_unmute = True
         num_interrupts = 0
         while True:
             try:
@@ -1200,6 +1212,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         num_interrupts += 1
             except asyncio.QueueEmpty:
                 break
+        self.allow_unmute = True
+        self.agent.block_inputs = False
+        self.transcriptions_worker.block_inputs = False
         await self.output_device.clear()
         return num_interrupts > 0
 
