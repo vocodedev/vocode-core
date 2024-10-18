@@ -42,6 +42,7 @@ class StateAgentTranscriptEntry(BaseModel):
 class StateAgentTranscriptMessage(StateAgentTranscriptEntry):
     role: StateAgentTranscriptRole
     message: str
+    message_sent: Optional[str] = None
     timestamp: str = Field(default_factory=lambda: datetime.datetime.now().isoformat())
 
     class Config:

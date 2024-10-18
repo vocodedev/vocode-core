@@ -839,6 +839,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 item.agent_response_tracker.set()
                 # Log the message that was successfully sent.
                 self.conversation.logger.debug(f"Message sent: {message_sent}")
+                if message.on_message_sent:
+                    message.on_message_sent(message_sent)
 
                 # Check if the conversation should end after the agent says goodbye.
                 if self.conversation.agent.agent_config.end_conversation_on_goodbye:
