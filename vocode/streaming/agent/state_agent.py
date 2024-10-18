@@ -645,7 +645,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             and message.get("improvise", True)
         ):
             original_message = message["message"]
-            constructed_guide = f"You previously communicated to the user: '{original_message}'. Rephrase your previous message. You must maintain its core meaning, tone and approximate length."
+            word_count = len(original_message.split())
+            constructed_guide = f"Rephrase this message in {word_count} words or less, keeping the same meaning and tone: '{original_message}'. Provide only the rephrased message."
             await self.guided_response(constructed_guide)
         else:
             if message["type"] == "verbatim":
