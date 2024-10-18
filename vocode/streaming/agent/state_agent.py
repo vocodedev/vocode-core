@@ -416,6 +416,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.chat_history = []
         self.base_url = getenv("AI_API_HUGE_BASE")
         self.model = self.agent_config.model_name
+        self.mark_start = False
         self.client = AsyncOpenAI(
             base_url=self.base_url,
         )
@@ -636,6 +637,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 start = True
         if start and "start_message" in state:
             await self.print_message(state["start_message"], state["id"], is_start=True)
+            self.mark_start = True
 
     async def print_message(
         self,
@@ -665,6 +667,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             else:
                 guide = message["description"]
                 await self.guided_response(guide)
+        self.mark_start = False  # we know if it says a start message, we will say another one. so we want to prevent interrupting the start message.
 
     async def should_transfer(self):
         last_user_message = None

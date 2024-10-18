@@ -1193,6 +1193,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             )
             or (self.agent_responses_worker.output_queue.qsize() > 0)
             or (self.synthesis_results_queue.qsize() > 0)
+            or (self.output_device.queue.qsize() > 0)
+            or (self.agent.mark_start)
         )
 
     async def broadcast_interrupt(self):
