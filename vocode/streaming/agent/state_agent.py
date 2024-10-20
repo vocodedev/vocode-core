@@ -636,8 +636,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             if state["start_message"]["type"] != "verbatim":
                 start = True
         if start and "start_message" in state:
-            await self.print_message(state["start_message"], state["id"], is_start=True)
             self.mark_start = True
+            await self.print_message(state["start_message"], state["id"], is_start=True)
 
     async def print_message(
         self,
@@ -667,7 +667,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             else:
                 guide = message["description"]
                 await self.guided_response(guide)
-        self.mark_start = False  # we know if it says a start message, we will say another one. so we want to prevent interrupting the start message.
+        if not is_start:
+            self.mark_start = False  # we know if it says a start message, we will say another one. so we want to prevent interrupting the start message.
 
     async def should_transfer(self):
         last_user_message = None
