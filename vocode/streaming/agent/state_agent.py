@@ -139,7 +139,7 @@ async def handle_memory_dep(
         "question"
     ].get("message", "")
     logger.error(f"message_to_say |  {message_to_say}")
-    output = await call_ai(
+    output, streamed = await call_ai(
         f"""You are trying to obtain the following information: '{memory_dep['key']}'.
 
 What it means: '{memory_dep['description'] or 'No extra details given.'}'.
@@ -173,7 +173,7 @@ Your response must be a JSON containing the keys '{memory_dep['key']}' and 'outp
             }
         )
 
-    await speak({"type": "verbatim", "message": message, "improvise": False})
+    await speak({"type": "verbatim", "message": message, "improvise": False}, streamed)
 
     async def resume(human_input: str):
         return await retry()
@@ -321,7 +321,7 @@ async def handle_options(
             f"{ai_options_str}\n\n"
             "Always return a number from the above list. Return the number of the condition that best applies."
         )
-    response = await call_ai(prompt, tool, stream_output=True)
+    response, streamed = await call_ai(prompt, tool, stream_output=True)
 
     logger.info(f"Chose condition: {response}")
     try:
@@ -351,7 +351,7 @@ async def handle_options(
                 "- If the user asked a question, provide a concise answer and then ask for a clear answer if you are waiting for one.\n"
                 "- Ensure not to suggest any actions or offer alternatives.\n"
             )
-            output = await call_ai(prompt, tool, stream_output=True)
+            output, streamed = await call_ai(prompt, tool, stream_output=True)
             output = output[output.find("{") : output.find("}") + 1]
             parsed_output = parse_llm_json(output)
             to_speak = parsed_output["response"]
@@ -663,12 +663,13 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         else:
             if message["type"] == "verbatim":
                 self.spoken_states.add(current_state_id)
+                self.logger.info(
+                    f"Updating history with message: {message['message']} with speak {speak}"
+                )
                 self.update_history("message.bot", message["message"], speak=speak)
             else:
                 guide = message["description"]
                 await self.guided_response(guide)
-        if not is_start:
-            self.mark_start = False  # we know if it says a start message, we will say another one. so we want to prevent interrupting the start message.
 
     async def should_transfer(self):
         last_user_message = None
@@ -692,9 +693,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             f"Your response must be a single word. Respond with either 'transfer' if the user requested to transfer or speak to a human, or 'continue' if they didn't."
         )
 
-        response = await self.call_ai(prompt, stream_output=True)
+        response, streamed = await self.call_ai(prompt, stream_output=True)
 
-        return response.strip().lower() == "transfer"
+        return response.strip().lower() == "transfer", streamed
 
     async def handle_state(self, state_id_or_label: str, retry_count: int = 0):
         self.logger.info(f"handle state {state_id_or_label} retry count {retry_count}")
@@ -765,11 +766,11 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                         state_id_or_label=state_id_or_label, retry_count=new_retry_count
                     )
 
-                speak_message = lambda message: self.print_message(
+                speak_message = lambda message, streamed: self.print_message(
                     message,
                     state["id"],
                     memory_id=memory_dep["key"] + "_memory",
-                    speak=False,  # regulate on if we have streaming on
+                    speak=not streamed,
                 )
                 try:
                     return await handle_memory_dep(
@@ -881,11 +882,11 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             prompt += f"Bot's is thinking: '{bot_message_after_user}'\n"
         prompt += "\nNow, respond as the BOT directly."
 
-        message = await self.call_ai(prompt, stream_output=True)
+        message, streamed = await self.call_ai(prompt, stream_output=True)
         message = message.strip()
         self.logger.info(f"Guided response: {message}")
         self.update_history("message.bot", message)
-        return message
+        return message, streamed
 
     async def compose_action(self, state):
         action = state["action"]
@@ -953,7 +954,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
             if dict_to_fill:
                 param_descriptions_str = "\n".join(param_descriptions)
-                response = await self.call_ai(
+                response, streamed = await self.call_ai(
                     prompt=f"Based on the current conversation and the instructions provided, return a valid json with values inserted for these parameters:\n{param_descriptions_str}",
                     tool=dict_to_fill,
                     stream_output=True,
@@ -1081,6 +1082,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
     async def call_ai(self, prompt, tool=None, stop=None, stream_output=True):
         stop_tokens = stop if stop is not None else []
         response_text = ""
+        streamed = False
 
         # Extract the last sequence of bot, user, bot messages
         last_bot_messages_before = []
@@ -1213,19 +1215,23 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                             content = buffer[: split_index + 1]
                             buffer = buffer[split_index + 1 :]
                             if content.strip():
+                                self.logger.info(f"streaming content: {content}")
                                 self.produce_interruptible_agent_response_event_nonblocking(
                                     AgentResponseMessage(
                                         message=BaseMessage(text=content.strip())
                                     )
                                 )
+                                streamed = True
                                 send_final_message = True
                     if any(token in text_chunk for token in stop_tokens):
                         break
             if buffer.strip() and send_final_message:
+                self.logger.info(f"Streaming final message: {buffer.strip()}")
                 self.produce_interruptible_agent_response_event_nonblocking(
                     AgentResponseMessage(message=BaseMessage(text=buffer.strip()))
                 )
-        return response_text
+                streamed = True
+        return response_text, streamed
 
     def get_functions(self):
         assert self.agent_config.actions

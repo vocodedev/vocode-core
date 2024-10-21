@@ -313,14 +313,40 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 )
                 self.conversation.mark_last_action_timestamp()
                 # clear the buffer
-                self.buffer.clear()
                 return
             # If the message is just "vad", handle it without resetting the buffer check
             if transcription.message.strip() == "vad":
 
                 self.vad_detected = True
-
+                stashed_buffer = deepcopy(self.buffer)
+                self.conversation.logger.info(f"Broadcasting interrupt from VAD")
                 await self.conversation.broadcast_interrupt()
+                if stashed_buffer and self.buffer:
+                    if len(stashed_buffer) > 0 and len(self.buffer) > 0:
+                        if stashed_buffer != self.buffer:
+                            if self.buffer.to_message().startswith(
+                                stashed_buffer.to_message()
+                            ):
+                                self.conversation.logger.info(
+                                    f"Stashed buffer is a prefix of current buffer, using current buffer (vad)"
+                                )
+                            else:
+                                self.conversation.logger.info(
+                                    f"Stashed buffer is not a prefix of current buffer, concatenating (vad)"
+                                )
+                                self.buffer.update_buffer(stashed_buffer, True)
+                    elif len(stashed_buffer) > 0:
+                        self.conversation.logger.info(
+                            f"Only stashed buffer has content, using stashed buffer (vad)"
+                        )
+                        self.buffer = stashed_buffer
+                    elif len(self.buffer) > 0:
+                        self.conversation.logger.info(
+                            f"Only current buffer has content, keeping current buffer (vad)"
+                        )
+                    else:
+                        self.conversation.logger.info(f"Both buffers are empty (vad)")
+                        return
                 self.conversation.transcriber.VOLUME_THRESHOLD = 700
                 if self.buffer_check_task:
                     try:
@@ -661,6 +687,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                 if isinstance(agent_response, AgentResponseGenerationComplete):
                     self.conversation.logger.debug("Agent response generation complete")
+                    self.conversation.agent.mark_start = False
                     return
                 agent_response_message = typing.cast(
                     AgentResponseMessage, agent_response
@@ -1237,7 +1264,11 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.allow_unmute = True
         self.agent.block_inputs = False
         self.transcriptions_worker.block_inputs = False
+        self.agent.mark_start = False
         await self.output_device.clear()
+        self.logger.debug(
+            f"Finished broadcasting interrupt, num_interrupts: {num_interrupts}"
+        )
         return num_interrupts > 0
 
     def is_interrupt(self, transcription: Transcription):
@@ -1291,6 +1322,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                     if stop_event.is_set():
                         self.agent.move_back_state()
+                        self.logger.debug(
+                            "Moved back state from send_speech_to_output in the middle"
+                        )
                         moved_back = True
                         return "", False
 
@@ -1314,6 +1348,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriptions_worker.synthesis_done = True
 
         if self.transcriptions_worker.buffer_check_task:
+            self.logger.debug(
+                "Buffer check task found, interrupting from send_speech_to_output"
+            )
             return "", False
         else:
             self.logger.debug("No buffer check task found, proceeding.")
@@ -1334,6 +1371,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         while remaining_sleep > 0:
             await asyncio.sleep(min(sleep_interval, remaining_sleep))
             if stop_event.is_set():
+                self.logger.debug("Interrupted speech output on the last chunk")
                 self.agent.move_back_state()
                 return "", False
             self.mark_last_action_timestamp()
@@ -1345,7 +1383,6 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.info(
                 f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message_sent.replace(replacer, ' ')}"
             )
-
         if transcript_message:
             transcript_message.text = message_sent
         cut_off = False
@@ -1353,11 +1390,13 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.transcriptions_worker.synthesis_done = False
 
         if not stop_event.is_set() and not buffer_cleared:
-            self.transcriptions_worker.buffer.clear()
             buffer_cleared = True
             self.transcriptions_worker.synthesis_done = True
             started_event.set()
             self.transcriber.VOLUME_THRESHOLD = 1000
+            self.transcriptions_worker.buffer.clear()  # only clear it once sent
+            self.logger.debug("Cleared buffer from send_speech_to_output")
+
             # self.agent.restore_resume_state()
 
         if message_sent:
