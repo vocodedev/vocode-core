@@ -1321,7 +1321,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     self.mark_last_action_timestamp()
 
                     if stop_event.is_set():
-                        self.agent.move_back_state()
+                        # self.agent.move_back_state()
                         self.logger.debug(
                             "Moved back state from send_speech_to_output in the middle"
                         )
@@ -1341,8 +1341,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             total_time_sent += len(speech_data) / (chunk_size / seconds_per_chunk)
         else:
             self.logger.debug("Interrupted speech output on the last chunk")
-            if not moved_back:
-                self.agent.move_back_state()
+            # if not moved_back:
+            #     self.agent.move_back_state()
             return "", False
 
         self.transcriptions_worker.synthesis_done = True
@@ -1372,7 +1372,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             await asyncio.sleep(min(sleep_interval, remaining_sleep))
             if stop_event.is_set():
                 self.logger.debug("Interrupted speech output on the last chunk")
-                self.agent.move_back_state()
+                # self.agent.move_back_state()
                 return "", False
             self.mark_last_action_timestamp()
             remaining_sleep -= sleep_interval
