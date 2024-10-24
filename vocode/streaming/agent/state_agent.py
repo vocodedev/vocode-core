@@ -1136,13 +1136,14 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             "Latest messages:\n" + "\n".join(context_parts) if context_parts else ""
         )
         # construct pretty printed complete history
-        complete_history = []
-        for role, message in self.chat_history:
-            if role == "message.bot":
-                complete_history.append(f"Bot: {message}")
-            elif role == "human":
-                complete_history.append(f"User: {message}")
-        complete_history = "\n".join(complete_history)
+        complete_history = "\n".join(
+            [
+                f"{'Bot' if role == 'message.bot' else 'User'}: {message.text if isinstance(message, BaseMessage) else message}"
+                for role, message in self.chat_history
+                if (isinstance(message, BaseMessage) and len(message.text) > 0)
+                or (not isinstance(message, BaseMessage) and len(str(message)) > 0)
+            ]
+        )
 
         if not tool or tool == {}:
             prompt = f"{self.overall_instructions}\n\nGiven the recent conversation:\n{context}\n\nFollow these instructions:\n{prompt}\n\nReturn a single response."
