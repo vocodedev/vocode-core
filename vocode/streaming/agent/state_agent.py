@@ -867,7 +867,6 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                         action_result_after_user = msg
                     elif role == "message.bot" and msg and not bot_message_after_user:
                         bot_message_after_user = msg
-                        break
                 elif msg == last_user_message:
                     user_found = True
 
