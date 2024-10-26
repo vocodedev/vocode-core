@@ -22,7 +22,7 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
         try:
             from cartesia import AsyncCartesia
         except ImportError as e:
-            raise ImportError("Missing required dependancies for CartesiaSynthesizer") from e
+            raise ImportError("Missing required dependencies for CartesiaSynthesizer") from e
 
         self.api_key = synthesizer_config.api_key or getenv("CARTESIA_API_KEY")
         if not self.api_key:
