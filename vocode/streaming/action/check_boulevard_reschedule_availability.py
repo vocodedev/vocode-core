@@ -109,9 +109,11 @@ class CheckBoulevardRescheduleAvailability(
                 .strftime("%A, %B %d")
             )
             message += f"\nFor {formatted_date}:\n"
+            counter = 0
             if times:
-                for time, slot_id in times.items():
-                    message += f"  - {time} (Slot ID: {slot_id})\n"
+                for time, slot in times.items():
+                    counter += 1
+                    message += f"  - Slot {counter}: {time} (ID: '{slot.get('bookableTimeId')}')\n"
             else:
                 message += "  [Alert] There are no available times on this day.\n"
 
