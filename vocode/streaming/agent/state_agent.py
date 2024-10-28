@@ -1074,7 +1074,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             pass
 
         return await saveActionResultAndMoveOn(
-            action_result=f"Action Completed: '{action_name}' completed with the following result:\ninput:'{input}'\noutput:\n{output}",
+            action_result=f"Action Completed: '{action_name}' completed with the following result:\n{output}",
             runtime_inputs=runtime_inputs,
         )
 
