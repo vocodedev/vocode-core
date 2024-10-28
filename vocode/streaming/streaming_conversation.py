@@ -998,6 +998,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.end_time: Optional[float] = None
         self.logger.debug("Conversation created")
         self.allow_idle_message = False
+        self.mark_start_speech = False
 
     def create_state_manager(self) -> ConversationStateManager:
         return ConversationStateManager(conversation=self)
@@ -1221,7 +1222,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             or (self.agent_responses_worker.output_queue.qsize() > 0)
             or (self.synthesis_results_queue.qsize() > 0)
             or (self.output_device.queue.qsize() > 0)
-            or (self.agent.mark_start)
+            or (self.mark_start_speech)
         )
 
     async def broadcast_interrupt(self):
@@ -1265,6 +1266,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.agent.block_inputs = False
         self.transcriptions_worker.block_inputs = False
         self.agent.mark_start = False
+        self.mark_start_speech = False
         await self.output_device.clear()
         self.logger.debug(
             f"Finished broadcasting interrupt, num_interrupts: {num_interrupts}"
@@ -1297,6 +1299,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.synthesizer.get_synthesizer_config().audio_encoding,
             self.synthesizer.get_synthesizer_config().sampling_rate,
         )
+        if self.agent.mark_start:
+            self.mark_start_speech = True
 
         speech_data = bytearray()
         held_buffer = self.transcriptions_worker.buffer.to_message()
@@ -1386,6 +1390,9 @@ class StreamingConversation(Generic[OutputDeviceType]):
         if transcript_message:
             transcript_message.text = message_sent
         cut_off = False
+        if self.mark_start_speech:
+            self.mark_start_speech = False
+            self.logger.info("Marked start speech")
 
         self.transcriptions_worker.synthesis_done = False
 

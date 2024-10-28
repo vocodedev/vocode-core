@@ -403,6 +403,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.current_state = None
         self.resume_task = None
         self.resume = lambda _: self.handle_state(self.state_machine["startingStateId"])
+        self.previous_resume = self.resume
         self.memories: dict[str, MemoryValue] = {}
         self.can_send = False
         self.conversation_id = None
@@ -575,6 +576,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             except asyncio.CancelledError:
                 self.logger.info(f"Old resume task cancelled")
         if transfer_block_name and self.current_block_name != transfer_block_name:
+            self.previous_resume = self.resume
             self.resume_task = asyncio.create_task(self.resume(human_input))
             transfer_task = asyncio.create_task(self.should_transfer())
 
@@ -596,6 +598,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                         )
                     if transfer_block_name:
                         self.resume = lambda _: self.handle_state(transfer_block_name)
+                        self.previous_resume = self.resume
                         self.resume_task = asyncio.create_task(self.resume(human_input))
                         await self.resume_task
                     else:
@@ -626,6 +629,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             )
             return "", True
         else:
+            self.previous_resume = self.resume
+            if not self.resume:
+                self.resume = self.previous_resume
+                self.logger.info(f"Resuming from previous resume")
             self.resume_task = asyncio.create_task(self.resume(human_input))
             resume_output = await self.resume_task
             self.resume = resume_output
