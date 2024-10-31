@@ -55,7 +55,7 @@ class TwilioClient(BaseTelephonyClient):
             from_=from_phone,
             send_digits=digits,
             record=record,
-            timeout=20,
+            timeout=30,
             status_callback=f"https://{os.getenv('BASE_URL')}/handle_status_callback/{urllib.parse.quote_plus(conversation_id)}",
             status_callback_event=['initiated', 'ringing', 'answered', 'completed'],
             status_callback_method="POST",
