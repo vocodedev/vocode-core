@@ -862,6 +862,23 @@ class StreamingConversation(Generic[OutputDeviceType]):
                         message=transcript_message,
                         conversation_id=self.conversation.id,
                     )
+                # lets do the equivalent for state agent here
+                # first check if the latest message is a bot message
+                if (
+                    len(self.conversation.agent.chat_history) > 0
+                    and self.conversation.agent.chat_history[-1][0] == "message.bot"
+                ):
+                    self.conversation.agent.chat_history[-1] = (
+                        "message.bot",
+                        BaseMessage(
+                            text=self.conversation.agent.chat_history[-1][1].text
+                            + message_sent
+                        ),
+                    )
+                else:
+                    self.conversation.agent.chat_history.append(
+                        ("message.bot", BaseMessage(text=message_sent))
+                    )
                 # Signal that the agent response has been processed.
                 item.agent_response_tracker.set()
                 # Log the message that was successfully sent.

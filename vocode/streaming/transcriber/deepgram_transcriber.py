@@ -40,6 +40,8 @@ DTYPE = np.int16 if USE_INT16 else np.int8
 CHUNK = 512 if USE_INT16 else 256
 WINDOWS = 3
 WINDOW_SIZE = WINDOWS * SAMPLE_RATE // CHUNK
+PREFIX_PADDING_MS = 150  # Minimum speech duration to trigger detection
+GRACE_PERIOD_MS = 300  # Grace period before resetting speech detection
 
 
 class VADWorker(AsyncWorker):
@@ -54,6 +56,8 @@ class VADWorker(AsyncWorker):
         self.vad_buffer = b""
         self.voiced_confidences = deque([0.0] * WINDOWS, maxlen=WINDOWS)
         self.last_vad_output_time = 0
+        self.speech_start_time = 0
+        self.last_speech_time = 0
         self.logger = logger or logging.getLogger(__name__)
         self.transcriber = transcriber
 
@@ -112,22 +116,40 @@ class VADWorker(AsyncWorker):
                 )
 
                 current_time = time.time()
-                if (
-                    current_time - self.last_vad_output_time >= 1
-                    and new_confidence > self.transcriber.VAD_THRESHOLD
-                ):
 
-                    self.voiced_confidences = deque([0.0] * WINDOWS, maxlen=WINDOWS)
-                    # self.vad_buffer = b""  # Clear the buffer when silence is detected
-                    self.output_queue.put_nowait(
-                        Transcription(
-                            message="vad",
-                            confidence=rolling_avg,
-                            is_final=False,
-                            time_silent=time_ns(),
+                if rolling_avg > self.transcriber.VAD_THRESHOLD:
+                    # if self.speech_start_time != 0:
+                    # self.logger.debug(
+                    #     f"VAD: current speech time: {current_time - self.speech_start_time}"
+                    # )
+                    # self.logger.debug(
+                    #     f"VAD: Rolling avg: {rolling_avg}, threshold: {self.transcriber.VAD_THRESHOLD}"
+                    # ) usefull for debugging
+
+                    if self.speech_start_time == 0:
+                        self.speech_start_time = current_time
+                    elif (
+                        current_time - self.speech_start_time
+                        >= PREFIX_PADDING_MS / 1000
+                    ):
+                        self.voiced_confidences = deque([0.0] * WINDOWS, maxlen=WINDOWS)
+                        self.output_queue.put_nowait(
+                            Transcription(
+                                message="vad",
+                                confidence=rolling_avg,
+                                is_final=False,
+                                time_silent=time_ns(),
+                            )
                         )
-                    )
-                    self.last_vad_output_time = current_time
+                        self.last_vad_output_time = current_time
+                    self.last_speech_time = current_time
+                else:
+                    # Only reset speech_start_time if we've exceeded the grace period
+                    if self.last_speech_time > 0 and (
+                        current_time - self.last_speech_time
+                    ) > (GRACE_PERIOD_MS / 1000):
+                        self.speech_start_time = 0
+                        self.last_speech_time = 0
 
             except asyncio.CancelledError:
                 break
@@ -154,7 +176,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         transcriber_config: DeepgramTranscriberConfig,
         api_key: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
-        vad_threshold: float = 0.75,
+        vad_threshold: float = 0.35,
         volume_threshold: int = 700,
     ):
         super().__init__(transcriber_config)
@@ -214,26 +236,15 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
         is_silence = self.is_volume_low(chunk)
 
-        if is_silence:
-            self.vad_worker.send_audio(
-                {
-                    "chunk": b"\xFF" * len(chunk),
-                    "timestamp": time_ns(),
-                    "is_silence": True,
-                    "ignore": True,
-                }
-            )
-        if not is_silence:
-            self.vad_worker.send_audio(
-                {
-                    "chunk": chunk,
-                    "timestamp": time_ns(),
-                    "is_silence": False,
-                    "ignore": False,
-                }
-            )
+        self.vad_worker.send_audio(
+            {
+                "chunk": chunk,
+                "timestamp": time_ns(),
+                "is_silence": is_silence,
+                "ignore": False,
+            }
+        )
 
-        # if not is_silence:
         super().send_audio(chunk)
 
     def terminate(self):

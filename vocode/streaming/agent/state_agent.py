@@ -516,8 +516,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             while self.chat_history and self.chat_history[-1][0] == "human":
                 self.chat_history.pop()
                 self.json_transcript.entries.pop()
-
-        self.chat_history.append((role, message))
+        if (
+            role != "message.bot"
+        ):  # we dont add it here, we add it as its said in streaming convo
+            self.chat_history.append((role, message))
         if role == "action-finish":
             self.json_transcript.entries.append(
                 StateAgentTranscriptActionFinish(
