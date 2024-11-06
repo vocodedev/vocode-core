@@ -133,7 +133,7 @@ async def handle_memory_dep(
     # Start of Selection
     tool = {
         memory_dep["key"]: "the extracted value or 'MISSING'",
-        "output": "If the information is missing, a message to ask for it; else 'N/A'",
+        "output": "If the information is missing, a message that asks for the missing information; else 'N/A'",
     }
     message_to_say = memory_dep["question"].get("description") or memory_dep[
         "question"
@@ -150,7 +150,11 @@ If the information is not provided, unclear, or you cannot find it, write 'MISSI
 
 Then, set 'output' as follows:
 - If the information was extracted, set 'output' to 'N/A'.
-- If the information is 'MISSING', generate a message to ask for '{memory_dep['key']}'.
+- If the information is 'MISSING', generate a message that asks for '{memory_dep['key']}'.
+  - Do not repeat phrases from the chat history.
+  - If the user's last message was a question, answer it first before asking for '{memory_dep['key']}'.
+  - If the user's last message was not a question, do not mention it.
+
 Use the following instruction for the message: '{message_to_say}'.
 
 Your response must be a JSON containing the keys '{memory_dep['key']}' and 'output'.""",
