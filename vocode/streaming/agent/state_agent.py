@@ -15,6 +15,7 @@ from vocode.streaming.action.phone_call_action import (
 )
 from vocode.streaming.agent.base_agent import (
     AgentInput,
+    AgentResponseGenerationComplete,
     AgentResponseMessage,
     RespondAgent,
 )
@@ -445,16 +446,21 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             self.logger.info("Stream cancelled")
 
     def update_state_from_transcript(self, transcript: StateAgentTranscript):
+        # Reset agent's state
         self.json_transcript = transcript
         self.chat_history = []
         self.state_history = []
         self.visited_states = set()
         self.current_state = None
+        self.memories = {}
+        self.block_inputs = False
+        self.stop = False
+        self.resume = lambda _: self.handle_state(self.state_machine["startingStateId"])
 
+        # Process entries
         for entry in transcript.entries:
-            type_of_entry = type(entry)
-            self.logger.info(f"Type of entry: {type_of_entry}")
             if isinstance(entry, StateAgentTranscriptHandleState):
+                # Update state history and current state
                 state_id = entry.state_id
                 state = get_state(state_id, self.state_machine)
                 if state:
@@ -464,44 +470,83 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     self.logger.info(
                         f"Updated state: {state.get('generated_label', state_id)}"
                     )
-                    if state["type"] == "question":
-                        self.resume = lambda _: self.handle_state(
-                            get_default_next_state(state)
-                        )
-                    else:
-                        self.resume = lambda _: self.handle_state(state["id"])
-            elif isinstance(entry, StateAgentTranscriptMessage):
+            elif isinstance(entry, StateAgentTranscriptMessage) and not isinstance(
+                entry, AgentResponseGenerationComplete
+            ):
+                # Update chat history
                 role = entry.role
                 message = entry.message
-                if role in [
-                    "human",
-                    "message.bot",
-                    "action-finish",
-                ]:
+                if role in ["human", "message.bot", "action-finish"]:
                     if len(message.strip()) > 0:
                         self.chat_history.append((role, message))
                         self.logger.info(
                             f"Added chat history entry: {role} - {message}"
                         )
-
             elif isinstance(entry, StateAgentTranscriptActionInvoke):
-                self.logger.info(f"Action invoked: {entry}")
+                # Handle action invocation
+                action_name = entry.action_name
+                self.block_inputs = True
+                self.logger.info(f"Action invoked: {action_name}")
+            elif isinstance(entry, StateAgentTranscriptActionFinish):
+                # Handle action finish
+                action_name = entry.action_name
+                message = entry.message
+                runtime_inputs = entry.runtime_inputs
+                # Unblock inputs if they were blocked
+                self.block_inputs = False
+                # Update memories with runtime inputs if any
+                if runtime_inputs and isinstance(runtime_inputs, dict):
+                    self.memories.update(runtime_inputs)
+                    self.logger.info(
+                        f"Updated memories with runtime inputs: {runtime_inputs}"
+                    )
+                # Update chat history
+                if len(message.strip()) > 0:
+                    self.chat_history.append(("action-finish", message))
+                    self.logger.info(f"Added action-finish to chat history: {message}")
             elif isinstance(entry, StateAgentTranscriptActionError):
+                # Handle action error
+                self.block_inputs = False
                 self.logger.error(
                     f"Action error in transcript: {entry.raw_error_message}"
                 )
             elif isinstance(entry, StateAgentTranscriptInvariantViolation):
+                # Handle invariant violation
                 self.logger.error(f"Invariant violation in transcript: {entry.message}")
+            elif isinstance(entry, StateAgentTranscriptBranchDecision):
+                # Handle branch decisions if needed
+                self.logger.info(f"Branch decision made: {entry.message}")
+            elif isinstance(entry, StateAgentTranscriptDebugEntry):
+                # Handle debug entries if needed
+                self.logger.debug(f"Debug entry: {entry.message}")
             else:
                 self.logger.warning(f"Unknown entry type: {type(entry)}")
 
-        if not self.state_history:
+        # Update resume function based on the last state in the state_history
+        if self.state_history:
+            last_state = self.state_history[-1]
+            # Update resume based on the type of the last state
+            if last_state["type"] == "question":
+                self.resume = lambda _: self.handle_state(
+                    get_default_next_state(last_state)
+                )
+            else:
+                self.resume = lambda _: self.handle_state(last_state["id"])
+            self.current_state = last_state
+        else:
+            # Set resume to start state
             self.resume = lambda _: self.handle_state(
                 self.state_machine["startingStateId"]
+            )
+            self.current_state = get_state(
+                self.state_machine["startingStateId"], self.state_machine
             )
 
         self.logger.debug(
             f"Updated state from transcript. Chat history: {self.chat_history}"
+        )
+        self.logger.info(
+            f"Current state set to: {self.current_state.get('id') if self.current_state else 'None'}"
         )
         self.logger.info(
             f"Resume function updated to state: {self.resume.__name__ if hasattr(self.resume, '__name__') else 'lambda'}"
@@ -1227,7 +1272,12 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                             )
                             content = buffer[: split_index + 1]
                             buffer = buffer[split_index + 1 :]
-                            if content.strip():
+                            if (
+                                content.strip()
+                                and content.strip() != '"}'
+                                and content.strip() != "}"
+                                and content.count('"') % 2 == 0
+                            ):
                                 self.logger.info(f"streaming content: {content}")
                                 self.produce_interruptible_agent_response_event_nonblocking(
                                     AgentResponseMessage(
@@ -1238,7 +1288,15 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                                 send_final_message = True
                     if any(token in text_chunk for token in stop_tokens):
                         break
-            if buffer.strip() and send_final_message:
+            if (
+                buffer.strip()
+                and send_final_message
+                and buffer.strip() != '"}'
+                and buffer.strip() != "}"
+            ):
+                # if there is just one double quote in the whole thing, remove it
+                if buffer.strip().count('"') == 1:
+                    buffer = buffer.replace('"', "")
                 self.logger.info(f"Streaming final message: {buffer.strip()}")
                 self.produce_interruptible_agent_response_event_nonblocking(
                     AgentResponseMessage(message=BaseMessage(text=buffer.strip()))
