@@ -145,7 +145,7 @@ class ChatConversation:
                     )
                     if len(agent_response_message.message.text) > 0:
                         await self.output_queue.put(agent_response_message)
-                        await asyncio.sleep(0.5)
+                        await asyncio.sleep(0.1)
 
             except asyncio.CancelledError:
                 self.conversation.logger.debug("Agent responses worker cancelled")

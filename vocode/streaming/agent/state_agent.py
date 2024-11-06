@@ -1251,6 +1251,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             json_key = '"output": '
             punctuation = [".", "!", "?", ",", ";", ":"]
             send_final_message = False
+            first_chunk = True
             async for chunk in stream:
                 await asyncio.sleep(0)
                 text_chunk = chunk.choices[0].delta.content
@@ -1266,6 +1267,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     elif (
                         stream_output and "MISSING" in response_text
                     ):  # only want to say the output if its missing
+
                         while any(p in buffer for p in punctuation):
                             split_index = max(
                                 buffer.rfind(p) for p in punctuation if p in buffer
@@ -1276,8 +1278,11 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                                 content.strip()
                                 and content.strip() != '"}'
                                 and content.strip() != "}"
-                                and content.count('"') % 2 == 0
                             ):
+                                # if its the first chunk and the first character is a double quote, remove it
+                                if first_chunk and content.strip().startswith('"'):
+                                    first_chunk = False
+                                    content = content.strip()[1:]
                                 self.logger.info(f"streaming content: {content}")
                                 self.produce_interruptible_agent_response_event_nonblocking(
                                     AgentResponseMessage(
