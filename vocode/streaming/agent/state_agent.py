@@ -38,6 +38,7 @@ from vocode.streaming.models.state_agent_transcript import (
     StateAgentTranscriptMessage,
 )
 from vocode.streaming.transcriber.base_transcriber import Transcription
+from vocode.streaming.utils import interpolate_memories
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
 from vocode.streaming.utils.find_sparse_subarray import find_last_sparse_subarray
 
@@ -586,7 +587,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         if role == "message.bot" and len(message.strip()) > 0 and speak:
 
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=message)),
+                AgentResponseMessage(message=BaseMessage(text=interpolate_memories(message, self.memories))),
                 agent_response_tracker=agent_response_tracker,
             )
 
@@ -1283,10 +1284,11 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                                 if first_chunk and content.strip().startswith('"'):
                                     first_chunk = False
                                     content = content.strip()[1:]
-                                self.logger.info(f"streaming content: {content}")
+                                interpolated_content = interpolate_memories(content.strip(), self.memories)
+                                self.logger.info(f"streaming content. Raw: {content}  interpolated: {interpolated_content}")
                                 self.produce_interruptible_agent_response_event_nonblocking(
                                     AgentResponseMessage(
-                                        message=BaseMessage(text=content.strip())
+                                        message=BaseMessage(text=interpolated_content)
                                     )
                                 )
                                 streamed = True
@@ -1302,12 +1304,13 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 # if there is just one double quote in the whole thing, remove it
                 if buffer.strip().count('"') == 1:
                     buffer = buffer.replace('"', "")
-                self.logger.info(f"Streaming final message: {buffer.strip()}")
+                interpolated_content = interpolate_memories(buffer.strip(), self.memories)
+                self.logger.info(f"Streaming final message. Raw: {buffer}  interpolated: {interpolated_content}")
                 self.produce_interruptible_agent_response_event_nonblocking(
-                    AgentResponseMessage(message=BaseMessage(text=buffer.strip()))
+                    AgentResponseMessage(message=BaseMessage(text=interpolated_content))
                 )
                 streamed = True
-        return response_text, streamed
+        return interpolate_memories(response_text, self.memories), streamed
 
     def get_functions(self):
         assert self.agent_config.actions
