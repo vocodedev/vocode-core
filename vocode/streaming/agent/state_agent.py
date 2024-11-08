@@ -745,10 +745,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             return False
 
         prompt = (
-            f"Analyze the conversation below to determine if the user explicitly requested to speak with a human agent instead of continuing with the AI system:\n\n"
+            f"Analyze the conversation below to determine if the user explicitly requested to speak with a different support agent instead of continuing with the current one:\n\n"
             f"Bot's last message: '{last_bot_message}'\n"
             f"User's response: '{last_user_message}'\n\n"
-            f"Respond with exactly one word:\n'transfer' - if the user clearly asked to speak with a human representative\n'continue' - if the user did not specifically request a human agent"
+            f"Respond with exactly one word:\n'transfer' - if the user clearly asked to speak with a *different* human representative\n'continue' - if the user did not specifically request a human agent. If there is no indication either way, respond with 'continue'"
         )
 
         response, streamed = await self.call_ai(prompt, stream_output=True)
