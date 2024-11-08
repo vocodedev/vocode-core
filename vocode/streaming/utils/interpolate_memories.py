@@ -1,5 +1,10 @@
 import re
-from vocode.streaming.agent.state_agent import MemoryValue
+from typing import TypedDict
+
+
+class MemoryValue(TypedDict):
+    is_ephemeral: bool
+    value: str
 
 
 def interpolate_memories(text: str, memories: dict[str, MemoryValue]) -> str:
@@ -11,4 +16,5 @@ def interpolate_memories(text: str, memories: dict[str, MemoryValue]) -> str:
             return default_value
         memory_value = memory["value"]
         return memory_value if memory_value != "MISSING" else default_value
+
     return re.sub(r"\[\[(\w+)\]\]", get_memory_value, text)

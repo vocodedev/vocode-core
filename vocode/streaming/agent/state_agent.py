@@ -456,6 +456,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.memories = {}
         self.block_inputs = False
         self.stop = False
+        current_state_id = self.state_machine["startingStateId"]
         self.resume = lambda _: self.handle_state(self.state_machine["startingStateId"])
 
         # Process entries
@@ -466,7 +467,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 state = get_state(state_id, self.state_machine)
                 if state:
                     self.state_history.append(state)
-                    self.visited_states.add(state_id)
+                    current_state_id = state_id
+                    # self.visited_states.add(state_id)
                     self.current_state = state
                     self.logger.info(
                         f"Updated state: {state.get('generated_label', state_id)}"
@@ -478,6 +480,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 role = entry.role
                 message = entry.message
                 if role in ["human", "message.bot", "action-finish"]:
+                    if role == "message.bot":
+                        state_id = current_state_id
+                        self.visited_states.add(state_id)
                     if len(message.strip()) > 0:
                         self.chat_history.append((role, message))
                         self.logger.info(
@@ -587,7 +592,13 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         if role == "message.bot" and len(message.strip()) > 0 and speak:
 
             self.produce_interruptible_agent_response_event_nonblocking(
-                AgentResponseMessage(message=BaseMessage(text=interpolate_memories(message, self.memories))),
+                AgentResponseMessage(
+                    message=BaseMessage(
+                        text=interpolate_memories.interpolate_memories(
+                            message, self.memories
+                        )
+                    )
+                ),
                 agent_response_tracker=agent_response_tracker,
             )
 
@@ -630,57 +641,75 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         if transfer_block_name and self.current_block_name != transfer_block_name:
             self.previous_resume = self.resume
             self.resume_task = asyncio.create_task(self.resume(human_input))
-            transfer_task = asyncio.create_task(self.should_transfer())
+            intent_task = asyncio.create_task(self.analyze_user_intent())
 
-            done, pending = await asyncio.wait(
-                {self.resume_task, transfer_task},
-                return_when=asyncio.FIRST_COMPLETED,
-            )
+            tasks = {self.resume_task, intent_task}
 
-            if transfer_task in done:
-                transfer_result = transfer_task.result()
-                if transfer_result:
-                    self.logger.info("Transfer condition met")
-                    self.resume_task.cancel()
-                    try:
-                        await self.resume_task
-                    except asyncio.CancelledError:
-                        self.logger.info(
-                            "Resume task cancelled because transfer task completed first"
-                        )
-                    if transfer_block_name:
-                        self.resume = lambda _: self.handle_state(transfer_block_name)
-                        self.previous_resume = self.resume
-                        self.resume_task = asyncio.create_task(self.resume(human_input))
-                        await self.resume_task
-                    else:
-                        self.logger.error(
-                            "transfer_block_name not found in state_machine"
-                        )
-                    return "", True
-                else:
-                    resume_output = await self.resume_task
-                    self.resume = resume_output
-                    return "", True
-
-            elif self.resume_task in done:
-                transfer_task.cancel()
-                try:
-                    await transfer_task
-                except asyncio.CancelledError:
-                    self.logger.info(
-                        "Transfer task cancelled because resume task completed first"
-                    )
-
-                resume_output = self.resume_task.result()
-                self.resume = resume_output
-                return "", True
+            while tasks:
+                done, pending = await asyncio.wait(
+                    tasks, return_when=asyncio.FIRST_COMPLETED
+                )
+                tasks = pending
+                for task in done:
+                    if task == intent_task:
+                        intent_result, streamed = await intent_task
+                        self.logger.error(f"Intent RESULT: {intent_result}")
+                        if intent_result == "transfer":
+                            self.logger.info("Transfer condition met")
+                            self.resume_task.cancel()
+                            try:
+                                await self.resume_task
+                            except asyncio.CancelledError:
+                                self.logger.info(
+                                    "Resume task cancelled because transfer task completed first"
+                                )
+                            if transfer_block_name:
+                                self.resume = lambda _: self.handle_state(
+                                    transfer_block_name
+                                )
+                                self.previous_resume = self.resume
+                                self.resume_task = asyncio.create_task(
+                                    self.resume(human_input)
+                                )
+                                await self.resume_task
+                            else:
+                                self.logger.error(
+                                    "transfer_block_name not found in state_machine"
+                                )
+                            return "", True
+                        elif intent_result == "continue":
+                            # Let the resume_task continue running
+                            pass
+                        elif intent_result == "switch":
+                            self.logger.info(
+                                "Switch condition met, going to start state"
+                            )
+                            self.resume_task.cancel()
+                            try:
+                                await self.resume_task
+                            except asyncio.CancelledError:
+                                self.logger.info(
+                                    "Resume task cancelled because switch task completed first"
+                                )
+                            result = await self.handle_state(
+                                self.state_machine["startingStateId"]
+                            )
+                            return result, True
+                        else:
+                            self.logger.error(
+                                "Unknown intent result, proceeding with resume_task"
+                            )
+                    elif task == self.resume_task:
+                        resume_output = await self.resume_task
+                        self.resume = resume_output
+                        return "", True
 
             self.logger.error(
-                "Neither resume_task nor transfer_task completed successfully."
+                "Neither resume_task nor intent_task completed successfully."
             )
             return "", True
         else:
+            self.logger.error("No intent task")
             self.previous_resume = self.resume
             if not self.resume:
                 self.resume = self.previous_resume
@@ -730,9 +759,13 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 guide = message["description"]
                 await self.guided_response(guide)
 
-    async def should_transfer(self):
+    async def analyze_user_intent(self):
         last_user_message = None
         last_bot_message = None
+
+        if len(self.state_history) <= 1:
+            # We aren't already helping the user
+            return "continue", False
 
         for role, msg in reversed(self.chat_history):
             if role == "human" and not last_user_message:
@@ -743,18 +776,25 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 break
 
         if not last_user_message:
-            return False
+            return "continue", False
 
         prompt = (
-            f"Analyze the conversation below to determine if the user explicitly requested to speak with a different support agent instead of continuing with the current one:\n\n"
+            f"Analyze the conversation below to determine the user's intent:\n\n"
             f"Bot's last message: '{last_bot_message}'\n"
             f"User's response: '{last_user_message}'\n\n"
-            f"Respond with exactly one word:\n'transfer' - if the user clearly asked to speak with a *different* human representative\n'continue' - if the user did not specifically request a human agent. If there is no indication either way, respond with 'continue'"
+            f"Respond with exactly one word:\n"
+            f"'switch' - if the user clearly wants to stop discussing the current topic and get help with a different issue.\n"
+            f"'transfer' - if the user clearly asked to speak with a different human representative.\n"
+            f"'continue' - if the user wants to continue with the current topic or if there is any uncertainty."
         )
 
         response, streamed = await self.call_ai(prompt, stream_output=True)
-
-        return response.strip().lower() == "transfer", streamed
+        self.logger.info(f"Analyze user intent prompt response: {response}")
+        intent = response.strip().lower()
+        if intent not in ["switch", "transfer", "continue"]:
+            intent = "continue"
+        self.logger.info(f"Determined user intent: {intent}")
+        return intent, streamed
 
     async def handle_state(self, state_id_or_label: str, retry_count: int = 0):
         self.logger.info(f"handle state {state_id_or_label} retry count {retry_count}")
@@ -1284,8 +1324,14 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                                 if first_chunk and content.strip().startswith('"'):
                                     first_chunk = False
                                     content = content.strip()[1:]
-                                interpolated_content = interpolate_memories(content.strip(), self.memories)
-                                self.logger.info(f"streaming content. Raw: {content}  interpolated: {interpolated_content}")
+                                interpolated_content = (
+                                    interpolate_memories.interpolate_memories(
+                                        content.strip(), self.memories
+                                    )
+                                )
+                                self.logger.info(
+                                    f"streaming content. Raw: {content}  interpolated: {interpolated_content}"
+                                )
                                 self.produce_interruptible_agent_response_event_nonblocking(
                                     AgentResponseMessage(
                                         message=BaseMessage(text=interpolated_content)
@@ -1304,13 +1350,20 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 # if there is just one double quote in the whole thing, remove it
                 if buffer.strip().count('"') == 1:
                     buffer = buffer.replace('"', "")
-                interpolated_content = interpolate_memories(buffer.strip(), self.memories)
-                self.logger.info(f"Streaming final message. Raw: {buffer}  interpolated: {interpolated_content}")
+                interpolated_content = interpolate_memories.interpolate_memories(
+                    buffer.strip(), self.memories
+                )
+                self.logger.info(
+                    f"Streaming final message. Raw: {buffer}  interpolated: {interpolated_content}"
+                )
                 self.produce_interruptible_agent_response_event_nonblocking(
                     AgentResponseMessage(message=BaseMessage(text=interpolated_content))
                 )
                 streamed = True
-        return interpolate_memories(response_text, self.memories), streamed
+        return (
+            interpolate_memories.interpolate_memories(response_text, self.memories),
+            streamed,
+        )
 
     def get_functions(self):
         assert self.agent_config.actions
