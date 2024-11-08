@@ -101,7 +101,9 @@ class CheckBoulevardRescheduleAvailability(
                 ),
             )
 
-        message = f"Here are the available times for rescheduling the appointment in the next {action_input.params.days_in_advance} days (all times are in {self.action_config.timezone}):\n"
+        num_slots = len(availability)
+        num_slots_label = f"We only found 1 timeslot" if num_slots == 1 else f"We found {num_slots} timeslots"
+        message = f"{num_slots_label}. Here are the available time(s) for rescheduling the appointment in the next {action_input.params.days_in_advance} days (all times are in {self.action_config.timezone}):\n"
         for date, times in availability.items():
             formatted_date = (
                 datetime.strptime(date, "%Y-%m-%d")
