@@ -746,7 +746,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         ):
             original_message = message["message"]
             word_count = len(original_message.split())
-            constructed_guide = f"Rephrase this message in {word_count} words or less, keeping the same meaning and tone: '{original_message}'. Provide only the rephrased message."
+            constructed_guide = f"Rephrase this message in {word_count} words or less, keeping the same meaning and tone. Original message: '{original_message}'. Provide only the rephrased message and do not communicate anything that was not in the original message."
             await self.guided_response(constructed_guide)
         else:
             if message["type"] == "verbatim":
