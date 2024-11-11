@@ -8,13 +8,11 @@ class MemoryValue(TypedDict):
 
 
 def interpolate_memories(text: str, memories: dict[str, MemoryValue]) -> str:
-    def get_memory_value(match: re.Match):
-        key = match.group(1)
-        default_value = match.group(0)
-        memory = memories.get(key)
-        if memory == None:
-            return default_value
-        memory_value = memory["value"]
-        return memory_value if memory_value != "MISSING" else default_value
-
-    return re.sub(r"\[\[(\w+)\]\]", get_memory_value, text)
+    result = text
+    for key in memories:
+        search_pattern = f"[[{key}]]"
+        if search_pattern in result:
+            memory = memories[key]
+            if memory is not None and memory["value"] != "MISSING":
+                result = result.replace(search_pattern, memory["value"])
+    return result

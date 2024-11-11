@@ -892,6 +892,43 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             elif cached_memory["is_ephemeral"]:
                 self.memories.pop(memory_dep["key"], None)
 
+        # Add handling for memory edges
+        memory_edges = state.get("memoryEdges", [])
+        if memory_edges:
+            self.logger.info(f"Processing memory edges for state {state['id']}")
+            memory_edge_matched = False
+
+            for edge in memory_edges:
+                memory_key = edge.get("memoryKey")
+                memory_value = edge.get("memoryValue")
+                dest_state_id = edge.get("destStateId")
+
+                if memory_key and dest_state_id:
+                    memory_stored_value = self.memories.get(memory_key, {}).get("value")
+                    if memory_stored_value:
+                        # First check for an exact match
+                        if memory_stored_value == memory_value:
+                            self.logger.info(
+                                f"Exact match for memory key '{memory_key}'"
+                            )
+                            memory_edge_matched = True
+                            return await self.handle_state(dest_state_id)
+                        # Check if values match when lowercased and stripped
+                        elif (
+                            memory_stored_value.strip().lower()
+                            == memory_value.strip().lower()
+                        ):
+                            self.logger.info(
+                                f"Case-insensitive match for memory key '{memory_key}'"
+                            )
+                            memory_edge_matched = True
+                            return await self.handle_state(dest_state_id)
+
+            if not memory_edge_matched:
+                # No match found; go to start state
+                self.logger.info("No matching memory edge found; going to start state")
+                return await self.handle_state(self.state_machine["startingStateId"])
+
         await self.print_start_message(state, start=start)
 
         if state["type"] == "basic":
