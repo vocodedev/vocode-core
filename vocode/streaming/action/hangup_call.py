@@ -1,10 +1,11 @@
 import asyncio
 import logging
 import os
-
+import threading
 from typing import Type
-from pydantic import BaseModel, Field
 
+from pydantic import BaseModel, Field
+from twilio.rest import Client as TwilioRestClient
 from vocode.streaming.action.phone_call_action import TwilioPhoneCallAction
 from vocode.streaming.models.actions import (
     ActionConfig,
@@ -19,7 +20,6 @@ from telephony_app.models.call_type import CallType
 from telephony_app.utils.call_information_handler import (
     execute_status_update_by_telephony_id,
 )
-from twilio.rest import Client as TwilioRestClient
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -51,8 +51,11 @@ class HangUpCall(
     response_type: Type[HangUpCallResponse] = HangUpCallResponse
 
     async def hangup_twilio_call(
-        self, call_status: CallStatus, call_type: CallType, twilio_call_sid: str,
-            twilio_config: TwilioConfig
+        self,
+        call_status: CallStatus,
+        call_type: CallType,
+        twilio_call_sid: str,
+        twilio_config: TwilioConfig,
     ):
         """
         Hangs up an active Twilio call.
@@ -78,13 +81,22 @@ class HangUpCall(
     ) -> ActionOutput[HangUpCallResponse]:
         twilio_call_sid = self.get_twilio_sid(action_input)
 
-        await asyncio.sleep(3.5)
-        await self.hangup_twilio_call(
-            call_status=self.action_config.call_status,
-            call_type=self.action_config.call_type,
-            twilio_call_sid=twilio_call_sid,
-            twilio_config=self.action_config.twilio_config
-        )
+        def background_task():
+            async def delayed_hangup():
+                await asyncio.sleep(3.5)
+                await self.hangup_twilio_call(
+                    call_status=self.action_config.call_status,
+                    call_type=self.action_config.call_type,
+                    twilio_call_sid=twilio_call_sid,
+                    twilio_config=self.action_config.twilio_config,
+                )
+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(delayed_hangup())
+            loop.close()
+
+        threading.Thread(target=background_task).start()
 
         return ActionOutput(
             action_type=action_input.action_config.type,
