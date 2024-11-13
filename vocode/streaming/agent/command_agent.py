@@ -641,7 +641,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                     "en-US",
                 )
                 self.logger.info(
-                    f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{latest_human_message.text}"
+                    f"CallType.[{self.agent_config.call_type.upper()}:{self.agent_config.current_call_id}] Lead:{latest_human_message.text}"
                 )
                 latest_human_message.text = translated_message
         elif self.agent_config.language == "en-US":
@@ -654,7 +654,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                 None,
             )
             self.logger.info(
-                f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{latest_human_message.text}"
+                f"CallType.[{self.agent_config.call_type.upper()}:{self.agent_config.current_call_id}] Lead:{latest_human_message.text}"
             )
 
         assert self.transcript is not None
@@ -687,7 +687,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                             + ", ".join(param_descriptions)
                         ) + "."
                         self.logger.info(
-                            f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {pretty_function_call}"
+                            f"CallType.[{self.agent_config.call_type.upper()}:{self.agent_config.current_call_id}] Agent: {pretty_function_call}"
                         )
                         self.logger.info(f"Name: {name}, Params: {params}")
                         action_config = self._get_action_config(name)
@@ -742,7 +742,7 @@ class CommandAgent(RespondAgent[CommandAgentConfig]):
                                     # also log the output
                                     pretty_function_call = f"Tool Response: {name}, Output: {action_output}"
                                     self.logger.info(
-                                        f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {pretty_function_call}"
+                                        f"CallType.[{self.agent_config.call_type.upper()}:{self.agent_config.current_call_id}] Agent: {pretty_function_call}"
                                     )
                                     return action_input, action_output
 

@@ -1402,7 +1402,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         replacer = "\n"
         if not stop_event.is_set():
             self.logger.info(
-                f"[{self.agent.agent_config.call_type}:{self.agent.agent_config.current_call_id}] Agent: {message_sent.replace(replacer, ' ')}"
+                f"[CallType.{self.agent.agent_config.call_type.upper()}:{self.agent.agent_config.current_call_id}] Agent: {message_sent.replace(replacer, ' ')}"
             )
         if transcript_message:
             transcript_message.text = message_sent

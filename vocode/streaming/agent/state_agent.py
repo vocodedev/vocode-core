@@ -624,7 +624,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
     ):
         self.update_history("human", human_input)
         self.logger.info(
-            f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Lead:{human_input}"
+            f"[CallType.{self.agent_config.call_type.upper()}:{self.agent_config.current_call_id}] Lead:{human_input}"
         )
 
         transfer_block_name = self.state_machine.get("transfer_block_name")
@@ -1184,7 +1184,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 f"Tool Response: {action_name}, Output: {action_output}"
             )
             self.logger.info(
-                f"[{self.agent_config.call_type}:{self.agent_config.current_call_id}] Agent: {pretty_function_call}"
+                f"[CallType.{self.agent_config.call_type.upper()}:{self.agent_config.current_call_id}] Agent: {pretty_function_call}"
             )
             return action_input, action_output
 
