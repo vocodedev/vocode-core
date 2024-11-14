@@ -89,6 +89,9 @@ class StateAgentTranscriptHandleState(StateAgentTranscriptDebugEntry):
     generated_label: str
     memory_dependencies: Optional[List[MemoryDependency]]
     memory_values: dict
+    trigger: Optional[str] = (
+        None  # call trace: used only for logging switch behavior of the background task, for now
+    )
 
 
 class StateAgentTranscriptInvariantViolation(StateAgentTranscriptDebugEntry):

@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 import re
+import time
 from enum import Enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, TypedDict
 
@@ -235,6 +236,9 @@ async def handle_options(
 
     default_next_state = get_default_next_state(state)
     response_to_edge = {}
+    index_to_label = (
+        {}
+    )  # so we can retrieve the label and pass it out for current intent description
     ai_options = []
     prev_state = state_history[-1] if state_history else None
     logger.info(f"state edges {state}")
@@ -303,6 +307,7 @@ async def handle_options(
             response_to_edge[index] = edge
             if edge.get("aiLabel"):
                 response_to_edge[edge["aiLabel"]] = edge
+                index_to_label[index] = edge["aiLabel"]
 
             ai_options.append(
                 f"{index}: {edge.get('aiDescription', None) or edge.get('aiLabel', None)}"
@@ -330,6 +335,7 @@ async def handle_options(
     response, streamed = await call_ai(prompt, tool, stream_output=True)
 
     logger.info(f"Chose condition: {response}")
+    next_state_label = None
     try:
         response_dict = parse_llm_json(response)
         condition = response_dict.get("condition")
@@ -337,6 +343,7 @@ async def handle_options(
             raise ValueError("No condition was provided in the response.")
         condition = int(condition)
         next_state_id = response_to_edge[condition]["destStateId"]
+        next_state_label = index_to_label[condition]
         append_json_transcript(
             StateAgentTranscriptBranchDecision(
                 message=f"branching to {next_state_id}",
@@ -370,8 +377,8 @@ async def handle_options(
                 )
                 return await go_to_state(state["id"])
 
-            return resume, clarification_state
-        return await go_to_state(next_state_id), None
+            return resume, clarification_state, next_state_label
+        return await go_to_state(next_state_id), None, next_state_label
     except Exception as e:
         logger.exception("Full error trace:")
         append_json_transcript(
@@ -387,7 +394,7 @@ async def handle_options(
             )
         )
         logger.error(f"Agent chose no condition: {e}. Response was {response}")
-        return await go_to_state(default_next_state), None
+        return await go_to_state(default_next_state), None, None
 
 
 def get_default_next_state(state):
@@ -412,6 +419,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.previous_resume = self.resume
         self.memories: dict[str, MemoryValue] = {}
         self.can_send = False
+        self.average_latency = 1
         self.conversation_id = None
         self.twilio_sid = None
         self.block_inputs = False
@@ -420,6 +428,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.visited_states = {self.state_machine["startingStateId"]}
         self.spoken_states = set()
         self.state_history = []
+        self.current_intent_description = None
         self.chat_history = []
         self.base_url = getenv("AI_API_HUGE_BASE")
         self.model = self.agent_config.model_name
@@ -622,6 +631,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         is_interrupt: bool = False,
         stream_output: bool = True,
     ):
+        self.logger.info(
+            f"current intent description: {self.current_intent_description}"
+        )
+        self.logger.info(f"average latency: {self.average_latency}")
         self.update_history("human", human_input)
         self.logger.info(
             f"[CallType.{self.agent_config.call_type.upper()}:{self.agent_config.current_call_id}] Lead:{human_input}"
@@ -692,8 +705,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                                     "Resume task cancelled because switch task completed first"
                                 )
                             result = await self.handle_state(
-                                self.state_machine["startingStateId"]
+                                self.state_machine["startingStateId"],
+                                trigger="switch",
                             )
+                            self.current_intent_description = None
                             return result, True
                         else:
                             self.logger.error(
@@ -777,26 +792,58 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
         if not last_user_message:
             return "continue", False
+        # If no intent description is set:
+        # - We're almost certainly already in the start state, so no need to loop back
+        # - Only allow 'transfer' or 'continue' responses ('unclear' maps to 'continue')
+        # - Intent gets set to the edge's label each time we traverse an edge
+        if (
+            self.current_intent_description is None
+            or self.current_intent_description == ""
+        ):
+            prompt = (
+                f"Analyze the conversation below to determine if the user wants to speak to a human:\n\n"
+                f"Bot's last message: '{last_bot_message}'\n"
+                f"User's response: '{last_user_message}'\n\n"
+                f"Respond with exactly one word:\n"
+                f"'transfer' - if the user clearly asked to speak with a different human representative.\n"
+                f"'unclear' - if it's not clear what the user wants.\n"
+                f"'continue' - if the conversation should continue with the bot."
+            )
+            response, streamed = await self.call_ai(prompt, stream_output=True)
+            self.logger.info(f"Initial intent analysis response: {response}")
+            intent = response.strip().lower()
+            if intent not in ["transfer", "continue", "unclear"]:
+                intent = "continue"
+            if (
+                intent == "unclear"
+            ):  # just mimic continue behavior because memories deftly handle ambiguity already
+                intent = "continue"
+            return intent, streamed
 
         prompt = (
             f"Analyze the conversation below to determine the user's intent:\n\n"
             f"Bot's last message: '{last_bot_message}'\n"
             f"User's response: '{last_user_message}'\n\n"
-            f"Respond with exactly one word:\n"
-            f"'switch' - if the user clearly wants to stop discussing the current topic and get help with a different issue.\n"
+            f"Given the current intent: '{self.current_intent_description}', respond with exactly one word:\n"
+            f"'switch' - if the current intent is no longer applicable.\n"
             f"'transfer' - if the user clearly asked to speak with a different human representative.\n"
-            f"'continue' - if the user wants to continue with the current topic or if there is any uncertainty."
+            f"'unclear' - if it's not clear whether the current intent is still applicable.\n"
+            f"'continue' - if the current intent is likely still applicable."
         )
 
         response, streamed = await self.call_ai(prompt, stream_output=True)
         self.logger.info(f"Analyze user intent prompt response: {response}")
         intent = response.strip().lower()
-        if intent not in ["switch", "transfer", "continue"]:
+        if intent not in ["switch", "transfer", "continue", "unclear"]:
+            intent = "continue"
+        if intent == "unclear":
             intent = "continue"
         self.logger.info(f"Determined user intent: {intent}")
         return intent, streamed
 
-    async def handle_state(self, state_id_or_label: str, retry_count: int = 0):
+    async def handle_state(
+        self, state_id_or_label: str, retry_count: int = 0, trigger=None
+    ):
         self.logger.info(f"handle state {state_id_or_label} retry count {retry_count}")
         start = (
             state_id_or_label != "start"
@@ -822,6 +869,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 generated_label=state.get("generated_label", state["id"]),
                 memory_dependencies=state.get("memory_dependencies"),
                 memory_values=self.memories.copy(),
+                trigger=trigger,
             )
         )
 
@@ -911,6 +959,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                             self.logger.info(
                                 f"Exact match for memory key '{memory_key}'"
                             )
+                            self.current_intent_description = f"Handle {memory_value}"
                             memory_edge_matched = True
                             return await self.handle_state(dest_state_id)
                         # Check if values match when lowercased and stripped
@@ -921,6 +970,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                             self.logger.info(
                                 f"Case-insensitive match for memory key '{memory_key}'"
                             )
+                            self.current_intent_description = f"Handle {memory_value}"
                             memory_edge_matched = True
                             return await self.handle_state(dest_state_id)
 
@@ -953,7 +1003,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             self.json_transcript.entries.append(m)
 
         if state["type"] == "options":
-            out, clarification_state = await handle_options(
+            # we return the next state label so we can update the intent description from inside the class
+            out, clarification_state, next_state_label = await handle_options(
                 state=state,
                 go_to_state=go_to_state,
                 speak=speak,
@@ -964,6 +1015,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 state_history=self.state_history,
                 append_json_transcript=append_json_transcript,
             )
+            self.current_intent_description = next_state_label
             if clarification_state:
                 self.state_history.append(clarification_state)
             return out
@@ -1221,6 +1273,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         stop_tokens = stop if stop is not None else []
         response_text = ""
         streamed = False
+        start_time = time.time()
 
         # Extract the last sequence of bot, user, bot messages
         last_bot_messages_before = []
@@ -1304,6 +1357,14 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     response_text += text_chunk
                     if any(token in text_chunk for token in stop_tokens):
                         break
+            # For non-streaming, update average latency at completion
+            end_time = time.time()
+            if not hasattr(self, "average_latency"):
+                self.average_latency = end_time - start_time
+            else:
+                self.average_latency = (
+                    self.average_latency + (end_time - start_time)
+                ) / 2  # units are in
         else:
             tool_json_str = json.dumps(tool)
             prompt = (
@@ -1333,6 +1394,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             punctuation = [".", "!", "?", ",", ";", ":"]
             send_final_message = False
             first_chunk = True
+            first_response_sent = False
             async for chunk in stream:
                 await asyncio.sleep(0)
                 text_chunk = chunk.choices[0].delta.content
@@ -1377,6 +1439,17 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                                         message=BaseMessage(text=interpolated_content)
                                     )
                                 )
+                                if not first_response_sent:
+                                    # Update average latency on first response for streaming
+                                    end_time = time.time()
+                                    if not hasattr(self, "average_latency"):
+                                        self.average_latency = end_time - start_time
+                                    else:
+                                        self.average_latency = (
+                                            self.average_latency
+                                            + (end_time - start_time)
+                                        ) / 2
+                                    first_response_sent = True
                                 streamed = True
                                 send_final_message = True
                     if any(token in text_chunk for token in stop_tokens):
@@ -1399,6 +1472,15 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 self.produce_interruptible_agent_response_event_nonblocking(
                     AgentResponseMessage(message=BaseMessage(text=interpolated_content))
                 )
+                if not first_response_sent:
+                    # Update average latency if we haven't sent any responses yet
+                    end_time = time.time()
+                    if not hasattr(self, "average_latency"):
+                        self.average_latency = end_time - start_time
+                    else:
+                        self.average_latency = (
+                            self.average_latency + (end_time - start_time)
+                        ) / 2
                 streamed = True
         return (
             interpolate_memories.interpolate_memories(response_text, self.memories),

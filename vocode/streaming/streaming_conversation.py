@@ -238,35 +238,66 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                         # Make the async request
                         start_time = time.time()
-                        async with httpx.AsyncClient() as client:
-                            # the trailing slash is required, or we'll get stuck in a redirect loop
-                            response = await client.post(
-                                "http://endpoint-classifier-endpoint-classifier-svc.default.svc.cluster.local:58000/inference/",
-                                headers={
-                                    "accept": "application/json",
-                                    "Content-Type": "application/json",
-                                },
-                                json=request_data,
-                                timeout=0.5,
-                                follow_redirects=True,
-                            )
-                        request_duration = time.time() - start_time
+                        # async with httpx.AsyncClient() as client:
+                        #     # the trailing slash is required, or we'll get stuck in a redirect loop
+                        #     response = await client.post(
+                        #         "http://endpoint-classifier-endpoint-classifier-svc.default.svc.cluster.local:58000/inference/",
+                        #         headers={
+                        #             "accept": "application/json",
+                        #             "Content-Type": "application/json",
+                        #         },
+                        #         json=request_data,
+                        #         timeout=0.5,
+                        #         follow_redirects=True,
+                        #     )
+                        # request_duration = time.time() - start_time
 
-                        # Parse the response and calculate sleep time
-                        if not isinstance(response, str):
-                            response = response.text
-                        # sleep_time = (float(response) ** 2) * 1.5 - request_duration
+                        # # Parse the response and calculate sleep time
+                        # if not isinstance(response, str):
+                        #     response = response.text
+                        response = "0"
+                        request_duration = 0
+                        # Calculate base sleep time from response
+                        base_sleep = float(response) * float(response)
                         sleep_time = (
-                            float(response) * float(response)
-                        ) - request_duration
-                        # if self.vad_detected:
-                        #     sleep_time = sleep_time * 2
-                        if sleep_time > 0:
-                            # TODO: HERE, CONNECT IT TO THE SLIDER
-                            self.conversation.logger.info(
-                                f"heuristically sleeping for {sleep_time} seconds"
+                            base_sleep - request_duration
+                        )  # account for time it took to get the response from the endpointing model
+
+                        # Add latency adjustment to account for how long it takes to get a response from the ai model on avg
+                        latency_adjustment = 0
+                        should_account_for_latency = (
+                            self.conversation.agent.average_latency < 1
+                        )
+                        if should_account_for_latency:
+                            latency_adjustment = (
+                                1 - self.conversation.agent.average_latency
                             )
-                            await asyncio.sleep(sleep_time)
+                            sleep_time = sleep_time + latency_adjustment
+
+                        # Calculate word-based sleep component
+                        latest_human_message_word_count = len(
+                            latest_human_message.split(" ")
+                        )
+                        word_sleep_time = min(
+                            (
+                                latest_human_message_word_count
+                                * latest_human_message_word_count
+                            )
+                            / 900,  # magic number by gpt, it tests very well
+                            1.0,
+                        )
+
+                        # Calculate total sleep time
+                        total_sleep_time = sleep_time + word_sleep_time
+
+                        if total_sleep_time > 0:
+                            self.conversation.logger.info(
+                                f"Sleep components: base={sleep_time:.2f}s, "
+                                f"latency_adjustment={latency_adjustment:.2f}s, "
+                                f"word_based={word_sleep_time:.2f}s, "
+                                f"total={total_sleep_time:.2f}s"
+                            )  # log the components for now
+                            await asyncio.sleep(total_sleep_time)
                     except Exception as e:
                         self.conversation.logger.error(f"Error making request: {e}")
 
