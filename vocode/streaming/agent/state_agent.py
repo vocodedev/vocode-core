@@ -932,7 +932,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         await self.print_start_message(state, start=start)
 
         if state["type"] == "basic":
-            return await self.handle_state(state["edge"])
+            async def resume():
+                return await self.handle_state(state["edge"])
+            stay_until_next_turn = state.get("stayUntilNextTurn", False)
+            return resume if stay_until_next_turn else (await resume())
 
         go_to_state = lambda s: self.handle_state(s)
         speak = lambda text: self.update_history("message.bot", text)
