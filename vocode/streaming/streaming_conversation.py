@@ -194,11 +194,20 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.initial_message = None
             self.vad_detected = False
             self.first_message_lock = False
+            self.inaudible_fallback_task = None
 
         async def _buffer_check(self, initial_buffer: str):
             try:
                 if len(initial_buffer) == 0:
                     return
+                # Cancel any pending inaudible fallback task
+                if (
+                    self.inaudible_fallback_task
+                    and not self.inaudible_fallback_task.done()
+                ):
+                    self.inaudible_fallback_task.cancel()
+                    self.inaudible_fallback_task = None
+
                 self.conversation.transcript.remove_last_human_message()
                 self.current_sleep_time = 0.0
                 transcription = Transcription(
@@ -238,25 +247,23 @@ class StreamingConversation(Generic[OutputDeviceType]):
 
                         # Make the async request
                         start_time = time.time()
-                        # async with httpx.AsyncClient() as client:
-                        #     # the trailing slash is required, or we'll get stuck in a redirect loop
-                        #     response = await client.post(
-                        #         "http://endpoint-classifier-endpoint-classifier-svc.default.svc.cluster.local:58000/inference/",
-                        #         headers={
-                        #             "accept": "application/json",
-                        #             "Content-Type": "application/json",
-                        #         },
-                        #         json=request_data,
-                        #         timeout=0.5,
-                        #         follow_redirects=True,
-                        #     )
-                        # request_duration = time.time() - start_time
+                        async with httpx.AsyncClient() as client:
+                            # the trailing slash is required, or we'll get stuck in a redirect loop
+                            response = await client.post(
+                                "http://endpoint-classifier-endpoint-classifier-svc.default.svc.cluster.local:58000/inference/",
+                                headers={
+                                    "accept": "application/json",
+                                    "Content-Type": "application/json",
+                                },
+                                json=request_data,
+                                timeout=0.5,
+                                follow_redirects=True,
+                            )
+                        request_duration = time.time() - start_time
 
-                        # # Parse the response and calculate sleep time
-                        # if not isinstance(response, str):
-                        #     response = response.text
-                        response = "0"
-                        request_duration = 0
+                        # Parse the response and calculate sleep time
+                        if not isinstance(response, str):
+                            response = response.text
                         # Calculate base sleep time from response
                         base_sleep = float(response) * float(response)
                         sleep_time = (
@@ -314,6 +321,32 @@ class StreamingConversation(Generic[OutputDeviceType]):
             except Exception as e:
                 self.conversation.logger.error(f"Error in _buffer_check: {e}")
 
+        async def _inaudible_fallback(self):
+            try:
+                await asyncio.sleep(2.0)  # Wait 2 seconds
+                inaudible_transcription = Transcription(
+                    message="[inaudible]",
+                    confidence=1.0,
+                    is_final=True,
+                    time_silent=self.time_silent,
+                )
+                event = self.interruptible_event_factory.create_interruptible_event(
+                    payload=TranscriptionAgentInput(
+                        transcription=inaudible_transcription,
+                        affirmative_phrase=None,
+                        conversation_id=self.conversation.id,
+                        vonage_uuid=getattr(self.conversation, "vonage_uuid", None),
+                        twilio_sid=getattr(self.conversation, "twilio_sid", None),
+                        ctx=self.conversation.conversation_span,
+                    ),
+                )
+                self.output_queue.put_nowait(event)
+                self.conversation.logger.info("Sent [inaudible] fallback transcription")
+            except asyncio.CancelledError:
+                self.conversation.logger.info("Inaudible fallback cancelled")
+            except Exception as e:
+                self.conversation.logger.error(f"Error in _inaudible_fallback: {e}")
+
         async def process(self, transcription: Transcription):
             if self.first_message_lock:
                 self.conversation.logger.debug(
@@ -347,11 +380,21 @@ class StreamingConversation(Generic[OutputDeviceType]):
                 return
             # If the message is just "vad", handle it without resetting the buffer check
             if transcription.message.strip() == "vad":
-
                 self.vad_detected = True
                 stashed_buffer = deepcopy(self.buffer)
                 self.conversation.logger.info(f"Broadcasting interrupt from VAD")
                 await self.conversation.broadcast_interrupt()
+
+                # Start inaudible fallback task that will be cancelled if real transcription comes in
+                if (
+                    self.inaudible_fallback_task
+                    and not self.inaudible_fallback_task.done()
+                ):
+                    self.inaudible_fallback_task.cancel()
+                self.inaudible_fallback_task = asyncio.create_task(
+                    self._inaudible_fallback()
+                )
+
                 if stashed_buffer and self.buffer:
                     if len(stashed_buffer) > 0 and len(self.buffer) > 0:
                         if stashed_buffer != self.buffer:
@@ -378,6 +421,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
                     else:
                         self.conversation.logger.info(f"Both buffers are empty (vad)")
                         return
+
                 self.conversation.transcriber.VOLUME_THRESHOLD = 700
                 if self.buffer_check_task:
                     try:
@@ -1443,19 +1487,35 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.logger.info("Marked start speech")
 
         self.transcriptions_worker.synthesis_done = False
-
-        if not stop_event.is_set() and not buffer_cleared:
-            buffer_cleared = True
+        message_options = [  # don't lose the buffer if it's just a filler message
+            "Just let me know when you're ready.",
+            "No rush at all, take your time.",
+            "I'm still here when you're ready to continue.",
+            "Let me know when you're ready to continue.",
+            "I'm all ears whenever you're ready.",
+            "Feel free to take a moment if you need it.",
+            "Whenever you're ready to proceed, just say the word.",
+        ]
+        if (
+            not stop_event.is_set()
+            and not buffer_cleared
+            and not message_sent in message_options
+        ):
             self.transcriptions_worker.synthesis_done = True
             started_event.set()
             self.transcriber.VOLUME_THRESHOLD = 1000
-            self.transcriptions_worker.buffer.clear()  # only clear it once sent
+            if self.synthesis_results_queue.empty():
+                buffer_cleared = True
+                self.transcriptions_worker.buffer.clear()  # only clear if agent is done and no more audio queued
+            else:
+                self.logger.debug(
+                    "Buffer not cleared from send_speech_to_output because more audio is queued"
+                )
             self.logger.debug("Cleared buffer from send_speech_to_output")
 
             # self.agent.restore_resume_state()
 
         if message_sent:
-            self.logger.info(f"Responding to {held_buffer}")
             if self.allow_unmute:
                 self.transcriptions_worker.block_inputs = False
                 if self.transcriber.get_transcriber_config().mute_during_speech:

@@ -417,6 +417,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self.resume_task = None
         self.resume = lambda _: self.handle_state(self.state_machine["startingStateId"])
         self.previous_resume = self.resume
+        self.previous_visited_states = set()
         self.memories: dict[str, MemoryValue] = {}
         self.can_send = False
         self.average_latency = 1
@@ -651,83 +652,46 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 await self.resume_task
             except asyncio.CancelledError:
                 self.logger.info(f"Old resume task cancelled")
+
         if transfer_block_name and self.current_block_name != transfer_block_name:
-            self.previous_resume = self.resume
-            self.resume_task = asyncio.create_task(self.resume(human_input))
-            intent_task = asyncio.create_task(self.analyze_user_intent())
+            # First analyze intent
+            intent_result, streamed = await self.analyze_user_intent()
+            self.logger.error(f"Intent RESULT: {intent_result}")
 
-            tasks = {self.resume_task, intent_task}
+            if intent_result == "transfer":
+                self.logger.info("Transfer condition met")
+                if transfer_block_name:
+                    self.resume = lambda _: self.handle_state(transfer_block_name)
+                    self.previous_resume = self.resume
+                    self.previous_visited_states = self.visited_states
+                    self.resume_task = asyncio.create_task(self.resume(human_input))
+                    await self.resume_task
+                else:
+                    self.logger.error("transfer_block_name not found in state_machine")
+                return "", True
 
-            while tasks:
-                done, pending = await asyncio.wait(
-                    tasks, return_when=asyncio.FIRST_COMPLETED
+            elif intent_result == "switch":
+                self.logger.info("Switch condition met, going to start state")
+                result = await self.handle_state(
+                    self.state_machine["startingStateId"],
+                    trigger="switch",
                 )
-                tasks = pending
-                for task in done:
-                    if task == intent_task:
-                        intent_result, streamed = await intent_task
-                        self.logger.error(f"Intent RESULT: {intent_result}")
-                        if intent_result == "transfer":
-                            self.logger.info("Transfer condition met")
-                            self.resume_task.cancel()
-                            try:
-                                await self.resume_task
-                            except asyncio.CancelledError:
-                                self.logger.info(
-                                    "Resume task cancelled because transfer task completed first"
-                                )
-                            if transfer_block_name:
-                                self.resume = lambda _: self.handle_state(
-                                    transfer_block_name
-                                )
-                                self.previous_resume = self.resume
-                                self.resume_task = asyncio.create_task(
-                                    self.resume(human_input)
-                                )
-                                await self.resume_task
-                            else:
-                                self.logger.error(
-                                    "transfer_block_name not found in state_machine"
-                                )
-                            return "", True
-                        elif intent_result == "continue":
-                            # Let the resume_task continue running
-                            pass
-                        elif intent_result == "switch":
-                            self.logger.info(
-                                "Switch condition met, going to start state"
-                            )
-                            self.resume_task.cancel()
-                            try:
-                                await self.resume_task
-                            except asyncio.CancelledError:
-                                self.logger.info(
-                                    "Resume task cancelled because switch task completed first"
-                                )
-                            result = await self.handle_state(
-                                self.state_machine["startingStateId"],
-                                trigger="switch",
-                            )
-                            self.current_intent_description = None
-                            return result, True
-                        else:
-                            self.logger.error(
-                                "Unknown intent result, proceeding with resume_task"
-                            )
-                    elif task == self.resume_task:
-                        resume_output = await self.resume_task
-                        self.resume = resume_output
-                        return "", True
+                self.current_intent_description = None
+                return result, True
 
-            self.logger.error(
-                "Neither resume_task nor intent_task completed successfully."
-            )
-            return "", True
+            else:  # continue or unknown intent
+                self.resume_task = asyncio.create_task(self.resume(human_input))
+                resume_output = await self.resume_task
+                self.resume = resume_output
+                return "", True
+
         else:
             self.logger.error("No intent task")
             self.previous_resume = self.resume
+            self.previous_visited_states = self.visited_states
             if not self.resume:
                 self.resume = self.previous_resume
+                self.visited_states = self.previous_visited_states
                 self.logger.info(f"Resuming from previous resume")
             self.resume_task = asyncio.create_task(self.resume(human_input))
             resume_output = await self.resume_task
@@ -754,25 +718,17 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             current_state_id = current_state_id + "_start"
         if memory_id:
             current_state_id = current_state_id + "_" + memory_id
-        if (
-            current_state_id in self.spoken_states
-            and message["type"] == "verbatim"
-            and message.get("improvise", True)
-        ):
-            original_message = message["message"]
-            word_count = len(original_message.split())
-            constructed_guide = f"Rephrase this message in {word_count} words or less, keeping the same meaning and tone. Original message: '{original_message}'. Provide only the rephrased message and do not communicate anything that was not in the original message."
-            await self.guided_response(constructed_guide)
+        # I've removed automatic rephrasing of repeated verbatim messages
+        # Models have trouble rephrasing transitional phrases
+        if message["type"] == "verbatim":
+            self.spoken_states.add(current_state_id)
+            self.logger.info(
+                f"Updating history with message: {message['message']} with speak {speak}"
+            )
+            self.update_history("message.bot", message["message"], speak=speak)
         else:
-            if message["type"] == "verbatim":
-                self.spoken_states.add(current_state_id)
-                self.logger.info(
-                    f"Updating history with message: {message['message']} with speak {speak}"
-                )
-                self.update_history("message.bot", message["message"], speak=speak)
-            else:
-                guide = message["description"]
-                await self.guided_response(guide)
+            guide = message["description"]
+            await self.guided_response(guide)
 
     async def analyze_user_intent(self):
         last_user_message = None
@@ -799,15 +755,17 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         if (
             self.current_intent_description is None
             or self.current_intent_description == ""
+            # if we already have the option of going to start state, this task doesn't need to worry about switching
+            or self.current_block_name == "start"
         ):
             prompt = (
-                f"Analyze the conversation below to determine if the user wants to speak to a human:\n\n"
+                f"Analyze the conversation below to classify the conversation:\n\n"
                 f"Bot's last message: '{last_bot_message}'\n"
                 f"User's response: '{last_user_message}'\n\n"
                 f"Respond with exactly one word:\n"
-                f"'transfer' - if the user clearly asked to speak with a different human representative.\n"
-                f"'unclear' - if it's not clear what the user wants.\n"
-                f"'continue' - if the conversation should continue with the bot."
+                f"'transfer' - if the user asks to speak with someone else.\n"
+                f"'unclear' - if the user's intent is at all unclear or ambiguous.\n"
+                f"'continue' - if the user did NOT ask to transfer."
             )
             response, streamed = await self.call_ai(prompt, stream_output=True)
             self.logger.info(f"Initial intent analysis response: {response}")
@@ -821,14 +779,14 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             return intent, streamed
 
         prompt = (
-            f"Analyze the conversation below to determine the user's intent:\n\n"
+            f"Analyze the conversation below to classify the conversation:\n\n"
             f"Bot's last message: '{last_bot_message}'\n"
             f"User's response: '{last_user_message}'\n\n"
             f"Given the current intent: '{self.current_intent_description}', respond with exactly one word:\n"
-            f"'switch' - if the current intent is no longer applicable.\n"
-            f"'transfer' - if the user clearly asked to speak with a different human representative.\n"
+            f"'switch' - if the user's message is unrelated to fulfillment of the current intent.\n"
+            f"'transfer' - if the user asks to speak with someone else.\n"
             f"'unclear' - if it's not clear whether the current intent is still applicable.\n"
-            f"'continue' - if the current intent is likely still applicable."
+            f"'continue' - if the user did NOT ask to transfer or do something else entirely."
         )
 
         response, streamed = await self.call_ai(prompt, stream_output=True)
@@ -845,11 +803,22 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         self, state_id_or_label: str, retry_count: int = 0, trigger=None
     ):
         self.logger.info(f"handle state {state_id_or_label} retry count {retry_count}")
+        if state_id_or_label == "start":
+            self.current_block_name = (
+                "start"  # set current block name for use in allowing switch
+            )
         start = (
             state_id_or_label != "start"
         )  # todo for arthur: unclear naming this regulates whether to say the starting message which is now the ending message. we dont want to say it again if we are still on the start state.
         self.visited_states.add(state_id_or_label)
         state = get_state(state_id_or_label, self.state_machine)
+        # if it has a start_of_block, we are in a new block
+        # set the current intent
+        if "start_of_block" in state:
+            self.logger.info(
+                f"Starting new block, setting intent to {state.get('start_of_block')}"
+            )
+            self.current_intent_description = state.get("start_of_block")
         self.current_state = state
 
         if not state:
@@ -982,8 +951,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         await self.print_start_message(state, start=start)
 
         if state["type"] == "basic":
-            async def resume():
+
+            async def resume(human_input=None):
                 return await self.handle_state(state["edge"])
+
             stay_until_next_turn = state.get("stayUntilNextTurn", False)
             return resume if stay_until_next_turn else (await resume())
 
@@ -1102,6 +1073,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 action_name=action_name,
                 runtime_inputs=runtime_inputs,
             )
+            # decided not to reset intent description here because it should be reset when we enter a new block
+            # previous was considering resetting it here but new block behavior is more flexible
             return await self.handle_state(state["edge"])
 
         try:
@@ -1328,14 +1301,27 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             "Latest messages:\n" + "\n".join(context_parts) if context_parts else ""
         )
         # construct pretty printed complete history
-        complete_history = "\n".join(
-            [
-                f"{'Bot' if role == 'message.bot' else 'User'}: {message.text if isinstance(message, BaseMessage) else message}"
-                for role, message in self.chat_history
-                if (isinstance(message, BaseMessage) and len(message.text) > 0)
-                or (not isinstance(message, BaseMessage) and len(str(message)) > 0)
-            ]
-        )
+        merged_history = []
+        for role, message in self.chat_history:
+            msg_text = (
+                message.text if isinstance(message, BaseMessage) else str(message)
+            )
+            if not msg_text.strip():
+                continue
+
+            formatted_msg = f"{'Bot' if role == 'message.bot' else 'User'}: {msg_text}"
+
+            if merged_history and merged_history[-1].startswith(
+                "Bot" if role == "message.bot" else "User"
+            ):
+                prev_msg = merged_history[-1].split(": ", 1)[1]
+                if prev_msg in msg_text:
+                    merged_history[-1] = formatted_msg
+                    continue
+
+            merged_history.append(formatted_msg)
+
+        complete_history = "\n".join(merged_history)
 
         if not tool or tool == {}:
             prompt = f"{self.overall_instructions}\n\nGiven the recent conversation:\n{context}\n\nFollow these instructions:\n{prompt}\n\nReturn a single response."
@@ -1499,99 +1485,3 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 if action is not None:
                     functions.append(action.get_openai_function())
         return functions
-
-    def move_back_state(self):
-        if self.state_history:
-            self.state_history.pop()
-
-        while self.state_history:
-            previous_state = self.state_history[-1]
-            if previous_state["type"] == "question":
-                break
-            else:
-                self.state_history.pop()
-
-        merged_messages = []
-        for role, message in self.chat_history:
-            current_message = (
-                message.text if isinstance(message, BaseMessage) else message
-            )
-            if merged_messages and merged_messages[-1][0] == role:
-                last_message = merged_messages[-1][1]
-                if isinstance(last_message, BaseMessage):
-                    merged_messages[-1] = (
-                        role,
-                        BaseMessage(text=f"{last_message.text} {current_message}"),
-                    )
-                else:
-                    merged_messages[-1] = (role, f"{last_message} {current_message}")
-            else:
-                if isinstance(message, BaseMessage):
-                    merged_messages.append((role, BaseMessage(text=current_message)))
-                else:
-                    merged_messages.append((role, current_message))
-
-        self.logger.info(f"Merged messages: {merged_messages}")
-        self.chat_history = merged_messages
-        bot_messages = [
-            i for i, (role, _) in enumerate(merged_messages) if role == "bot"
-        ]
-        if len(bot_messages) >= 2:
-            second_last_user_index = bot_messages[-2]
-            last_user_index = bot_messages[-1]
-            merged_messages[second_last_user_index] = merged_messages[last_user_index]
-            self.chat_history = merged_messages[: second_last_user_index + 1]
-        else:
-            self.chat_history = merged_messages
-        merged_messages = []
-        for role, message in self.chat_history:
-            current_message = (
-                message.text if isinstance(message, BaseMessage) else message
-            )
-            if merged_messages and merged_messages[-1][0] == role:
-                last_message = merged_messages[-1][1]
-                if isinstance(last_message, BaseMessage):
-                    merged_messages[-1] = (
-                        role,
-                        BaseMessage(text=f"{last_message.text} {current_message}"),
-                    )
-                else:
-                    merged_messages[-1] = (role, f"{last_message} {current_message}")
-            else:
-                if isinstance(message, BaseMessage):
-                    merged_messages.append((role, BaseMessage(text=current_message)))
-                else:
-                    merged_messages.append((role, current_message))
-
-        self.chat_history = merged_messages
-        if self.chat_history[-1][0] == "human":
-            for i in range(len(self.chat_history) - 2, -1, -1):
-                if (
-                    self.chat_history[i][0] == "human"
-                    and self.chat_history[i][1].text in self.chat_history[-1][1].text
-                ):
-                    self.chat_history = self.chat_history[: i + 1]
-                    break
-                else:
-                    break
-
-        if self.state_history:
-            self.resume = lambda _: self.handle_state(self.state_history[-1]["id"])
-        else:
-            self.resume = lambda _: self.handle_state(
-                self.state_machine["startingStateId"]
-            )
-
-    def restore_resume_state(self):
-        if self.state_history:
-            current_state = self.state_history[-1]
-            if "edge" in current_state:
-                self.resume = lambda _: self.handle_state(current_state["edge"])
-            elif "edges" in current_state:
-                for state in current_state["edges"]:
-                    if "isDefault" in state and state["isDefault"]:
-                        self.resume = lambda _: self.handle_state(state["destStateId"])
-                        return
-                self.resume = lambda _: self.handle_state(current_state[id])
-            else:
-                self.resume = lambda _: self.handle_state("start")
