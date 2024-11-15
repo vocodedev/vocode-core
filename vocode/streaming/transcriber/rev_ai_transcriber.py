@@ -5,7 +5,7 @@ from typing import Optional
 
 import websockets
 from loguru import logger
-from websockets.client import WebSocketClientProtocol
+from websockets.asyncio.client import ClientConnection
 
 from vocode import getenv
 from vocode.streaming.models.transcriber import (
@@ -71,7 +71,7 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
     async def process(self):
         async with websockets.connect(self.get_rev_ai_url()) as ws:
 
-            async def sender(ws: WebSocketClientProtocol):
+            async def sender(ws: ClientConnection):
                 while not self.closed:
                     try:
                         data = await asyncio.wait_for(self._input_queue.get(), 5)
@@ -81,7 +81,7 @@ class RevAITranscriber(BaseAsyncTranscriber[RevAITranscriberConfig]):
                 await ws.close()
                 logger.debug("Terminating Rev.AI transcriber sender")
 
-            async def receiver(ws: WebSocketClientProtocol):
+            async def receiver(ws: ClientConnection):
                 buffer = ""
 
                 while not self.closed:

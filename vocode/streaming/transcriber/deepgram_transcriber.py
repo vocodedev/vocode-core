@@ -8,7 +8,7 @@ import sentry_sdk
 import websockets
 from loguru import logger
 from pydantic.v1 import BaseModel, Field
-from websockets.client import WebSocketClientProtocol
+from websockets.asyncio.client import ClientConnection
 
 from vocode import getenv
 from vocode.streaming.models.audio import AudioEncoding
@@ -389,16 +389,18 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         self.audio_cursor = 0.0
         self.start_ts = now()
 
-        extra_headers = {"Authorization": f"Token {self.api_key}"}
+        additional_headers = {"Authorization": f"Token {self.api_key}"}
         deepgram_url = self.get_deepgram_url()
         logger.info(f"Connecting to Deepgram at {deepgram_url}")
 
         try:
-            async with websockets.connect(deepgram_url, extra_headers=extra_headers) as ws:
+            async with websockets.connect(
+                deepgram_url, additional_headers=additional_headers
+            ) as ws:
                 self.connected_ts = now()
 
                 async def sender(
-                    ws: WebSocketClientProtocol,
+                    ws: ClientConnection,
                 ):  # sends audio to websocket
                     byte_rate = self.get_byte_rate()
 
@@ -417,7 +419,7 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
 
                     logger.debug("Terminating Deepgram transcriber sender")
 
-                async def receiver(ws: WebSocketClientProtocol):
+                async def receiver(ws: ClientConnection):
                     buffer = ""
                     buffer_avg_confidence = 0.0
                     num_buffer_utterances = 1

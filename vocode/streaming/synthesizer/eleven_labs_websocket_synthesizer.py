@@ -176,7 +176,7 @@ class ElevenLabsWSSynthesizer(
 
         async with websockets.connect(
             url,
-            extra_headers=headers,
+            additional_headers=headers,
         ) as ws:
 
             async def write() -> None:
