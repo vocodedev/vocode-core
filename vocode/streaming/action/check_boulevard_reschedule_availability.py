@@ -63,6 +63,7 @@ class CheckBoulevardRescheduleAvailability(
         self, action_input: ActionInput[CheckBoulevardRescheduleAvailabilityParameters]
     ) -> ActionOutput[CheckBoulevardRescheduleAvailabilityResponse]:
         try:
+            logger.debug(f"Action Input: {action_input}")
             if not action_input.params.appointment_id:
                 return ActionOutput(
                     action_type=action_input.action_config.type,
@@ -72,8 +73,10 @@ class CheckBoulevardRescheduleAvailability(
                 )
 
             timezone = pytz.timezone(self.action_config.timezone)
+            logger.debug(f"Timezone: {timezone}")
             start_date = datetime.now(timezone).date()
             end_date = start_date + timedelta(days=action_input.params.days_in_advance)
+            logger.debug(f"Start Date: {start_date}, End Date: {end_date}")
             availability: Dict[str, Dict[str, Dict[str, str]]] = {}
             memories = []
             slot_counter = 1
@@ -81,20 +84,26 @@ class CheckBoulevardRescheduleAvailability(
             for i in range(action_input.params.days_in_advance):
                 current_date = start_date + timedelta(days=i)
                 formatted_date = current_date.strftime("%Y-%m-%d")
+                logger.debug(f"Checking date: {formatted_date}")
                 available_times = await get_available_reschedule_times(
                     appointment_id=action_input.params.appointment_id,
                     business_id=self.action_config.business_id,
                     date=formatted_date,
                     env=os.getenv(key="ENV", default="dev"),
                 )
+                logger.debug(f"Available times for {formatted_date}: {available_times}")
 
                 if available_times:
                     parsed_times = parse_times(available_times)
+                    logger.debug(f"Parsed times for {formatted_date}: {parsed_times}")
                     time_slots = {
                         time: get_time_slot(available_times, time)
                         for time in parsed_times
                     }
+                    logger.debug(f"Time slots for {formatted_date}: {time_slots}")
                     availability[formatted_date] = time_slots
+
+            logger.debug(f"Availability: {availability}")
 
             if not availability:
                 return ActionOutput(
@@ -113,6 +122,7 @@ class CheckBoulevardRescheduleAvailability(
             message = f"{num_slots_label}. Here are the available time(s) for rescheduling the appointment in the next {action_input.params.days_in_advance} days (all times are in {self.action_config.timezone}):\n"
 
             for date, times in availability.items():
+                logger.debug(f"Processing date: {date} with times: {times}")
                 formatted_date = (
                     datetime.strptime(date, "%Y-%m-%d")
                     .replace(tzinfo=timezone)
@@ -121,13 +131,24 @@ class CheckBoulevardRescheduleAvailability(
                 message += f"\nFor {formatted_date}:\n"
                 if times:
                     for time, slot in times.items():
-                        message += f"  - slot_{slot_counter}: {time} (ID: '{slot.get('bookableTimeId')}')\n"
-                        memories.append(
-                            {f"slot_{slot_counter}": slot.get("bookableTimeId")}
-                        )
+                        logger.debug(f"Processing time: {time} with slot: {slot}")
+                        if not slot:
+                            logger.error(f"Slot for time {time} is None")
+                            continue
+                        bookableTimeId = slot.get("bookableTimeId")
+                        if not bookableTimeId:
+                            logger.error(
+                                f"'bookableTimeId' is missing in slot for time {time}"
+                            )
+                            continue
+                        message += f"  - slot_{slot_counter}: {time} (ID: '{bookableTimeId}')\n"
+                        memories.append({f"slot_{slot_counter}": bookableTimeId})
                         slot_counter += 1
                 else:
                     message += "  [Alert] There are no available times on this day.\n"
+
+            logger.debug(f"Final message: {message}")
+            logger.debug(f"Memories: {memories}")
 
             return ActionOutput(
                 action_type=action_input.action_config.type,
@@ -136,7 +157,7 @@ class CheckBoulevardRescheduleAvailability(
             )
         except Exception as e:
             # log the trace
-            logger.error(
+            logger.exception(
                 f"An error occurred while checking reschedule availability: {str(e)}"
             )
             return ActionOutput(
