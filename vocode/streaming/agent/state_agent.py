@@ -933,7 +933,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                             )
                             self.current_intent_description = f"Handle {memory_value}"
                             memory_edge_matched = True
-                            return await self.handle_state(dest_state_id)
+                            return await self.handle_state(
+                                dest_state_id, trigger="memoryEdge"
+                            )
                         # Check if values match when lowercased and stripped
                         elif (
                             memory_stored_value.strip().lower()
@@ -944,12 +946,20 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                             )
                             self.current_intent_description = f"Handle {memory_value}"
                             memory_edge_matched = True
-                            return await self.handle_state(dest_state_id)
+                            return await self.handle_state(
+                                dest_state_id, trigger="memoryEdge"
+                            )
 
             if not memory_edge_matched:
                 # No match found; go to start state
                 self.logger.info(f"No matching memory edge found for: {memory_key}")
-                return await self.handle_state(self.state_machine["startingStateId"])
+                self.json_transcript.entries.append(
+                    StateAgentTranscriptInvariantViolation(
+                        message=f"no matching memory edge found, going to start state. State is {state}",
+                        original_state=state,
+                    )
+                )
+                return await self.handle_state(self.state_machine["startingStateId"], trigger="memoryEdge-error")
 
         await self.print_start_message(state, start=start)
 
