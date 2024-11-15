@@ -923,6 +923,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 if memory_key and dest_state_id:
                     memory_stored_value = self.memories.get(memory_key, {}).get("value")
                     if memory_stored_value:
+                        self.logger.info(
+                            f"Memory key: {memory_key}, stored value: {memory_stored_value}, expected value: {memory_value}"
+                        )
                         # First check for an exact match
                         if memory_stored_value == memory_value:
                             self.logger.info(
@@ -945,7 +948,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
 
             if not memory_edge_matched:
                 # No match found; go to start state
-                self.logger.info("No matching memory edge found; going to start state")
+                self.logger.info(f"No matching memory edge found for: {memory_key}")
                 return await self.handle_state(self.state_machine["startingStateId"])
 
         await self.print_start_message(state, start=start)
@@ -1236,7 +1239,17 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             runtime_inputs = vars(action_input)
         except:
             pass
-
+        # check if memories is a member of action_output
+        if hasattr(output, "memories"):
+            if output.memories:
+                for memory_dict in output.memories:
+                    key = list(memory_dict.keys())[0]
+                    value = list(memory_dict.values())[0]
+                    new_memory_value = MemoryValue(
+                        is_ephemeral=False,
+                        value=value,
+                    )
+                    self.memories[key] = new_memory_value
         return await saveActionResultAndMoveOn(
             action_result=f"Action Completed: '{action_name}' completed with the following result:\n{output}",
             runtime_inputs=runtime_inputs,

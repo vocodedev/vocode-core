@@ -86,8 +86,10 @@ class GetNextBoulevardAppointment(
                 response=GetNextBoulevardAppointmentResponse(
                     appointment_info=appointment_info
                 ),
+                memories=[{"appointment_id": appointment_info["appointment_id"]}],
             )
         except Exception as e:
+            # log the trace
             logger.error(
                 f"An error occurred while retrieving the next appointment: {str(e)}"
             )
