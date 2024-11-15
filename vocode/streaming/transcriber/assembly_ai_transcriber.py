@@ -94,7 +94,7 @@ class AssemblyAITranscriber(BaseAsyncTranscriber[AssemblyAITranscriberConfig]):
 
         async with websockets.connect(
             URL,
-            extra_headers=(("Authorization", self.api_key),),
+            additional_headers=(("Authorization", self.api_key),),
             ping_interval=5,
             ping_timeout=20,
         ) as ws:
