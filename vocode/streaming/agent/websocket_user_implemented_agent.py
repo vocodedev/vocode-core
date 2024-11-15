@@ -3,7 +3,7 @@ import json
 
 import websockets
 from loguru import logger
-from websockets.asyncio.client import WebSocketClientProtocol
+from websockets.asyncio.client import ClientConnection
 
 from vocode.streaming.agent.base_agent import (
     AgentInput,
@@ -76,7 +76,7 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
         async with websockets.connect(socket_url) as ws:
 
             async def sender(
-                ws: WebSocketClientProtocol,
+                ws: ClientConnection,
             ) -> None:  # sends audio to websocket
                 while not self.has_ended:
                     logger.info("Waiting for data from agent request queue")
@@ -109,7 +109,7 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
 
                 logger.debug("Terminating web socket agent sender")
 
-            async def receiver(ws: WebSocketClientProtocol) -> None:
+            async def receiver(ws: ClientConnection) -> None:
                 while not self.has_ended:
                     try:
                         msg = await ws.recv()
