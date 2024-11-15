@@ -5,7 +5,7 @@ from typing import Optional
 
 import websockets
 from loguru import logger
-from websockets.client import WebSocketClientProtocol
+from websockets.asyncio.client import WebSocketClientProtocol
 
 from vocode import getenv
 from vocode.streaming.models.transcriber import (

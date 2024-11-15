@@ -3,7 +3,7 @@ import json
 
 import websockets
 from loguru import logger
-from websockets.client import WebSocketClientProtocol, connect
+from websockets.asyncio.client import WebSocketClientProtocol
 
 from vocode.streaming.agent.base_agent import (
     AgentInput,
@@ -73,7 +73,7 @@ class WebSocketUserImplementedAgent(BaseAgent[WebSocketUserImplementedAgentConfi
         socket_url = self.get_agent_config().respond.url
         logger.info("Connecting to web socket agent %s", socket_url)
 
-        async with connect(socket_url) as ws:
+        async with websockets.connect(socket_url) as ws:
 
             async def sender(
                 ws: WebSocketClientProtocol,
