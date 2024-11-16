@@ -1,9 +1,8 @@
 from vocode.streaming.models.audio import AudioEncoding, SamplingRate
 
-# TODO(EPD-186): namespace as Twilio
-DEFAULT_SAMPLING_RATE: int = SamplingRate.RATE_8000.value
-DEFAULT_AUDIO_ENCODING = AudioEncoding.MULAW
-DEFAULT_CHUNK_SIZE = 20 * 160
+TWILIO_SAMPLING_RATE: int = SamplingRate.RATE_8000.value
+TWILIO_AUDIO_ENCODING = AudioEncoding.MULAW
+TWILIO_CHUNK_SIZE = 20 * 160
 MULAW_SILENCE_BYTE = b"\xff"
 
 VONAGE_SAMPLING_RATE: int = SamplingRate.RATE_16000.value

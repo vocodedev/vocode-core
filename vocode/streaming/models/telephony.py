@@ -10,9 +10,9 @@ from vocode.streaming.models.transcriber import (
     TranscriberConfig,
 )
 from vocode.streaming.telephony.constants import (
-    DEFAULT_AUDIO_ENCODING,
-    DEFAULT_CHUNK_SIZE,
-    DEFAULT_SAMPLING_RATE,
+    TWILIO_AUDIO_ENCODING,
+    TWILIO_CHUNK_SIZE,
+    TWILIO_SAMPLING_RATE,
     VONAGE_AUDIO_ENCODING,
     VONAGE_CHUNK_SIZE,
     VONAGE_SAMPLING_RATE,
@@ -121,9 +121,9 @@ class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):  # typ
     @staticmethod
     def default_transcriber_config():
         return DeepgramTranscriberConfig(
-            sampling_rate=DEFAULT_SAMPLING_RATE,
-            audio_encoding=DEFAULT_AUDIO_ENCODING,
-            chunk_size=DEFAULT_CHUNK_SIZE,
+            sampling_rate=TWILIO_SAMPLING_RATE,
+            audio_encoding=TWILIO_AUDIO_ENCODING,
+            chunk_size=TWILIO_CHUNK_SIZE,
             model="phonecall",
             tier="nova",
             endpointing_config=PunctuationEndpointingConfig(),
@@ -132,8 +132,8 @@ class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):  # typ
     @staticmethod
     def default_synthesizer_config():
         return AzureSynthesizerConfig(
-            sampling_rate=DEFAULT_SAMPLING_RATE,
-            audio_encoding=DEFAULT_AUDIO_ENCODING,
+            sampling_rate=TWILIO_SAMPLING_RATE,
+            audio_encoding=TWILIO_AUDIO_ENCODING,
         )
 
 
