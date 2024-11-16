@@ -3,7 +3,7 @@ from typing import Any, Dict, Literal, Optional, Union
 
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.model import BaseModel, TypedModel
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig, SynthesizerConfig
+from vocode.streaming.models.synthesizer import SmallestSynthesizerConfig, SynthesizerConfig
 from vocode.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
@@ -29,6 +29,12 @@ class TwilioConfig(TelephonyProviderConfig):
     extra_params: Optional[Dict[str, Any]] = {}
     account_supports_any_caller_id: bool = True
 
+class PlivoConfig(TelephonyProviderConfig):
+    auth_id: str
+    auth_token: str
+    extra_params: Optional[Dict[str, Any]] = {}
+    account_supports_any_caller_id: bool = True
+    dtmf_url: Optional[str]
 
 class VonageConfig(TelephonyProviderConfig):
     api_key: str
@@ -52,12 +58,14 @@ class CreateInboundCall(BaseModel):
     conversation_id: Optional[str] = None
     twilio_config: Optional[TwilioConfig] = None
     vonage_config: Optional[VonageConfig] = None
+    plivo_config: Optional[PlivoConfig] = None
 
 
 class EndOutboundCall(BaseModel):
     call_id: str
     vonage_config: Optional[VonageConfig] = None
     twilio_config: Optional[TwilioConfig] = None
+    plivo_config: Optional[PlivoConfig] = None
 
 
 class CreateOutboundCall(BaseModel):
@@ -69,6 +77,7 @@ class CreateOutboundCall(BaseModel):
     conversation_id: Optional[str] = None
     vonage_config: Optional[VonageConfig] = None
     twilio_config: Optional[TwilioConfig] = None
+    plivo_config: Optional[PlivoConfig] = None
     # TODO add IVR/etc.
 
 
@@ -83,12 +92,14 @@ class DialIntoZoomCall(BaseModel):
     conversation_id: Optional[str] = None
     vonage_config: Optional[VonageConfig] = None
     twilio_config: Optional[TwilioConfig] = None
+    plivo_config: Optional[PlivoConfig] = None
 
 
 class CallConfigType(str, Enum):
     BASE = "call_config_base"
     TWILIO = "call_config_twilio"
     VONAGE = "call_config_vonage"
+    PLIVO = "call_config_plivo"
 
 
 PhoneCallDirection = Literal["inbound", "outbound"]
@@ -131,7 +142,7 @@ class TwilioCallConfig(BaseCallConfig, type=CallConfigType.TWILIO.value):  # typ
 
     @staticmethod
     def default_synthesizer_config():
-        return AzureSynthesizerConfig(
+        return SmallestSynthesizerConfig(
             sampling_rate=DEFAULT_SAMPLING_RATE,
             audio_encoding=DEFAULT_AUDIO_ENCODING,
         )
@@ -155,10 +166,34 @@ class VonageCallConfig(BaseCallConfig, type=CallConfigType.VONAGE.value):  # typ
 
     @staticmethod
     def default_synthesizer_config():
-        return AzureSynthesizerConfig(
+        return SmallestSynthesizerConfig(
             sampling_rate=VONAGE_SAMPLING_RATE,
             audio_encoding=VONAGE_AUDIO_ENCODING,
         )
 
 
-TelephonyConfig = Union[TwilioConfig, VonageConfig]
+class PlivoCallConfig(BaseCallConfig, type=CallConfigType.PLIVO.value):  # type: ignore
+    plivo_config: PlivoConfig
+    plivo_id: str
+
+    @staticmethod
+    def default_transcriber_config():
+        return DeepgramTranscriberConfig(
+            sampling_rate=DEFAULT_SAMPLING_RATE,
+            audio_encoding=DEFAULT_AUDIO_ENCODING,
+            chunk_size=DEFAULT_CHUNK_SIZE,
+            model="nova-2",
+            language="hi",
+            # tier="nova-2",
+            endpointing_config=PunctuationEndpointingConfig(),
+        )
+
+    @staticmethod
+    def default_synthesizer_config():
+        return SmallestSynthesizerConfig(
+            sampling_rate=DEFAULT_SAMPLING_RATE,
+            audio_encoding=DEFAULT_AUDIO_ENCODING,
+        )
+
+
+TelephonyConfig = Union[TwilioConfig, VonageConfig, PlivoConfig]
