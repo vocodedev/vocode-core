@@ -28,5 +28,5 @@ class VectorDBFactory:
             return PineconeDB(vector_db_config, aiohttp_session=aiohttp_session)
         except ImportError as e:
             raise ImportError(
-                f"Missing required dependancies for VectorDB {vector_db_config.type}"
+                f"Missing required dependencies for VectorDB {vector_db_config.type}"
             ) from e
