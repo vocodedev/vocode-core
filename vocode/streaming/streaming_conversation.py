@@ -1008,6 +1008,8 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.started_event = threading.Event()
         self.output_device = output_device
         self.transcriber = transcriber
+        self.turn_speech_time = 0.0
+
         self.agent = agent
         self.synthesizer = synthesizer
         self.synthesis_enabled = True
@@ -1363,6 +1365,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
         self.logger.debug(
             f"Finished broadcasting interrupt, num_interrupts: {num_interrupts}"
         )
+        self.turn_speech_time = 0
         return num_interrupts > 0
 
     def is_interrupt(self, transcription: Transcription):
@@ -1465,13 +1468,19 @@ class StreamingConversation(Generic[OutputDeviceType]):
         sleep_interval = 0.1  # Mark last action every 0.1 seconds
         remaining_sleep = total_time_sent
         while remaining_sleep > 0:
-            await asyncio.sleep(min(sleep_interval, remaining_sleep))
+            next_sleep = min(sleep_interval, remaining_sleep)
+            await asyncio.sleep(next_sleep)
             if stop_event.is_set():
                 self.logger.debug("Interrupted speech output on the last chunk")
                 # self.agent.move_back_state()
                 return "", False
             self.mark_last_action_timestamp()
-            remaining_sleep -= sleep_interval
+            self.turn_speech_time += next_sleep
+            remaining_sleep -= next_sleep
+            if self.turn_speech_time > 3:
+                self.logger.debug(f"Turn speech time: {self.turn_speech_time}")
+                buffer_cleared = True
+                self.transcriptions_worker.buffer.clear()  # only clear if agent is done and no more audio queued
         # This ensures we do volume thresholding and mark last action periodically
         message_sent = synthesis_result.get_message_up_to(total_time_sent)
         replacer = "\n"
@@ -1504,7 +1513,7 @@ class StreamingConversation(Generic[OutputDeviceType]):
             self.transcriptions_worker.synthesis_done = True
             started_event.set()
             self.transcriber.VOLUME_THRESHOLD = 1000
-            if self.synthesis_results_queue.empty():
+            if self.synthesis_results_queue.empty() and not buffer_cleared:
                 buffer_cleared = True
                 self.transcriptions_worker.buffer.clear()  # only clear if agent is done and no more audio queued
             else:
