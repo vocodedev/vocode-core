@@ -126,7 +126,7 @@ BACKCHANNEL_PATTERNS = [
     "okei"
 
 ]
-LOW_INTERRUPT_SENSITIVITY_BACKCHANNEL_UTTERANCE_LENGTH_THRESHOLD = 3
+LOW_INTERRUPT_SENSITIVITY_BACKCHANNEL_UTTERANCE_LENGTH_THRESHOLD = 2
 
 
 class StreamingConversation(AudioPipeline[OutputDeviceType]):
@@ -183,7 +183,9 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             self.human_backchannels_buffer: List[Transcription] = []
             self.ignore_next_message: bool = False
 
+        @observe(as_type="span")
         def should_ignore_utterance(self, transcription: Transcription):
+            logger.info(f"should_ignore_utterance for: {transcription.message}?")
             if self.has_associated_unignored_utterance:
                 return False
             bot_still_speaking = self.is_bot_still_speaking()
@@ -194,6 +196,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 return self.is_transcription_backchannel(transcription)
             return False
 
+        @observe(as_type="span")
         def is_transcription_backchannel(self, transcription: Transcription):
             num_words = len(transcription.message.strip().split())
             if (
@@ -218,6 +221,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         def get_maybe_last_transcript_event_log(self) -> Optional[Message]:
             return next(self._most_recent_transcript_messages(), None)
 
+        @observe(as_type="span")
         def is_bot_in_medias_res(self):
             last_message = self.get_maybe_last_transcript_event_log()
             return (
@@ -228,6 +232,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 and last_message.text.strip() != ""
             )
 
+        @observe(as_type="span")
         def is_bot_still_speaking(self):  # in_medias_res OR bot has more utterances
             transcript_messages_iter = self._most_recent_transcript_messages()
             last_message, second_to_last_message = next(transcript_messages_iter, None), next(
@@ -246,6 +251,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 and not (is_first_bot_message and last_message.text.strip() == "")
             )
 
+        @observe(as_type="span")
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
             if transcription.message.strip() == "":
@@ -309,11 +315,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
 
                 # clear out backchannels and add to the transcript
                 for human_backchannel in self.human_backchannels_buffer:
-                    self.conversation.transcript.add_human_message(
-                        text=human_backchannel.message,
-                        conversation_id=self.conversation.id,
-                        is_backchannel=True,
-                    )
+                    logger.debug(f"Human backchannel: {human_backchannel}")
                 self.human_backchannels_buffer = []
 
                 if transcription.is_interrupt:
@@ -940,6 +942,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 seconds_spoken += seconds_per_chunk
                 if transcript_message:
                     transcript_message.text = synthesis_result.get_message_up_to(seconds_spoken)
+                    logger.debug(f"transcript message: {transcript_message.text}")
 
                 processed_event.set()
 
