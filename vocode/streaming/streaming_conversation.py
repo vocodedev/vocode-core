@@ -21,6 +21,7 @@ from typing import (
 )
 
 import sentry_sdk
+from langfuse.decorators import langfuse_context, observe
 from loguru import logger
 from sentry_sdk.tracing import Span
 
@@ -790,7 +791,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 # Reset the counter if the human is still there
                 check_human_present_count = 0
             if (
-                not self.check_for_idle_paused
+                    not self.check_for_idle_paused
             ) and time.time() - self.last_action_timestamp > self.idle_time_threshold:
                 if check_human_present_count >= check_human_present_threshold:
                     # Stop the phone call after some retries to prevent infinitely long call where human is just silent.
@@ -901,6 +902,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             ),
         )
 
+    @observe(as_type="span")
     async def send_speech_to_output(
         self,
         message: str,
@@ -1023,6 +1025,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         self.is_terminated.set()
 
     async def terminate(self):
+        langfuse_context.flush()
         self.mark_terminated()
         await self.broadcast_interrupt()
         self.events_manager.publish_event(
