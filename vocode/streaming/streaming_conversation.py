@@ -83,6 +83,7 @@ from vocode.utils.sentry_utils import (
     synthesizer_base_name_if_should_report_to_sentry,
 )
 
+
 BACKCHANNEL_PATTERNS = [
     r"m+-?hm+",
     r"m+",
@@ -105,6 +106,24 @@ BACKCHANNEL_PATTERNS = [
     "thats right",
     r"yeah+",
     "makes sense",
+    "jah",
+    "kindlasti",
+    "täitsa",
+    "õige",
+    "tõesti",
+    "jumal hoidku",
+    "saan aru",
+    "muidugi",
+    "oh issand",
+    "oh jumal",
+    "see on kena",
+    "pole paha",
+    "täpselt nii",
+    r"jaa+",
+    "loogiline",
+    r"mhmh+",
+    "okei"
+
 ]
 LOW_INTERRUPT_SENSITIVITY_BACKCHANNEL_UTTERANCE_LENGTH_THRESHOLD = 3
 
