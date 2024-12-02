@@ -639,9 +639,10 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         )
         self.logger.info(f"average latency: {self.average_latency}")
         self.update_history("human", human_input)
-        self.logger.info(
-            f"[CallType.{self.agent_config.call_type.upper()}:{self.agent_config.current_call_id}] Lead:{human_input}"
-        )
+        if self.agent_config.call_type:
+            self.logger.info(
+                f"[CallType.{self.agent_config.call_type.upper()}:{self.agent_config.current_call_id}] Lead:{human_input}"
+            )
 
         transfer_block_name = self.state_machine.get("transfer_block_name")
         if (
