@@ -371,6 +371,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         def interrupt_current_filler_audio(self):
             return self.interruptible_event and self.interruptible_event.interrupt()
 
+        @observe(as_type="span")
         async def process(self, item: InterruptibleAgentResponseEvent[FillerAudio]):
             try:
                 filler_audio = item.payload

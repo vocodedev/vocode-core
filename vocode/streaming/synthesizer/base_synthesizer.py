@@ -18,6 +18,7 @@ from typing import (
 )
 
 import aiohttp
+from langfuse.decorators import observe
 from loguru import logger
 from nltk.tokenize import word_tokenize
 from nltk.tokenize.treebank import TreebankWordDetokenizer
