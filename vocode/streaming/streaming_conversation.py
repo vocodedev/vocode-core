@@ -183,7 +183,6 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             self.human_backchannels_buffer: List[Transcription] = []
             self.ignore_next_message: bool = False
 
-        @observe(as_type="span")
         def should_ignore_utterance(self, transcription: Transcription):
             logger.info(f"should_ignore_utterance for: {transcription.message}?")
             if self.has_associated_unignored_utterance:
@@ -221,7 +220,6 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         def get_maybe_last_transcript_event_log(self) -> Optional[Message]:
             return next(self._most_recent_transcript_messages(), None)
 
-        @observe(as_type="span")
         def is_bot_in_medias_res(self):
             last_message = self.get_maybe_last_transcript_event_log()
             return (
@@ -232,7 +230,6 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 and last_message.text.strip() != ""
             )
 
-        @observe(as_type="span")
         def is_bot_still_speaking(self):  # in_medias_res OR bot has more utterances
             transcript_messages_iter = self._most_recent_transcript_messages()
             last_message, second_to_last_message = next(transcript_messages_iter, None), next(
@@ -251,7 +248,6 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 and not (is_first_bot_message and last_message.text.strip() == "")
             )
 
-        @observe(as_type="span")
         async def process(self, transcription: Transcription):
             self.conversation.mark_last_action_timestamp()
             if transcription.message.strip() == "":
@@ -371,7 +367,6 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         def interrupt_current_filler_audio(self):
             return self.interruptible_event and self.interruptible_event.interrupt()
 
-        @observe(as_type="span")
         async def process(self, item: InterruptibleAgentResponseEvent[FillerAudio]):
             try:
                 filler_audio = item.payload

@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Optional
 
 from fastapi import WebSocket
+from langfuse.decorators import observe
 from loguru import logger
 
 from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
@@ -87,6 +88,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
     def create_state_manager(self) -> TwilioPhoneConversationStateManager:
         return TwilioPhoneConversationStateManager(self)
 
+    @observe(as_type="span")
     async def attach_ws_and_start(self, ws: WebSocket):
         super().attach_ws(ws)
 

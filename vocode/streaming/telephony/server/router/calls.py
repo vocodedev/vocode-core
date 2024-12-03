@@ -2,6 +2,7 @@ from typing import Optional
 
 import sentry_sdk
 from fastapi import APIRouter, HTTPException, WebSocket
+from langfuse.decorators import observe
 from loguru import logger
 
 from vocode import sentry_transaction
@@ -97,6 +98,7 @@ class CallsRouter(BaseRouter):
         else:
             raise ValueError(f"Unknown call config type {call_config.type}")
 
+    @observe(as_type="span")
     async def connect_call(self, websocket: WebSocket, id: str):
         with sentry_sdk.start_transaction(op="connect_call") as sentry_txn:
             sentry_transaction.set(sentry_txn)
