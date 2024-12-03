@@ -766,7 +766,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                 f"Bot's last message: '{last_bot_message}'\n"
                 f"User's response: '{last_user_message}'\n\n"
                 f"Respond with exactly one word:\n"
-                f"'transfer' - if the user asks to speak with someone else.\n"
+                f"'transfer' - if the user asks to speak with someone else like a human, representative or operator.\n"
                 f"'unclear' - if the user's intent is at all unclear or ambiguous.\n"
                 f"'continue' - if the user did NOT ask to transfer."
             )
@@ -787,9 +787,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             f"User's response: '{last_user_message}'\n\n"
             f"Given the current intent: '{self.current_intent_description}', respond with exactly one word:\n"
             f"'switch' - if the user's message is unrelated to fulfillment of the current intent.\n"
-            f"'transfer' - if the user asks to speak with someone else.\n"
+            f"'transfer' - if the user asks to speak with someone else like a human, representative or operator.\n"
             f"'unclear' - if it's not clear whether the current intent is still applicable.\n"
-            f"'continue' - if the user did NOT ask to transfer or do something else entirely."
+            f"'continue' - if the user's message is related to the current intent."
         )
 
         response, streamed = await self.call_ai(prompt, stream_output=True)
