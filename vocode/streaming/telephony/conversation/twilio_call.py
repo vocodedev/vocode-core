@@ -1,3 +1,4 @@
+from __future__ import annotations
 import asyncio
 from fastapi import WebSocket
 import base64
@@ -35,6 +36,7 @@ from telephony_app.utils.call_information_handler import (
 )
 from telephony_app.utils.mirth_connector import send_message_to_mirth
 from telephony_app.utils.twilio_call_helper import send_call_end_notification
+from vocode.turn_based.agent.base_agent import BaseAgent
 
 
 class PhoneCallWebsocketAction(Enum):
@@ -57,7 +59,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
         twilio_config: Optional[TwilioConfig] = None,
         conversation_id: Optional[str] = None,
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
-        agent_factory: AgentFactory = AgentFactory(),
+        agent_or_agent_factory: AgentFactory | BaseAgent = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
@@ -74,7 +76,7 @@ class TwilioCall(Call[TwilioOutputDevice]):
             conversation_id=conversation_id,
             events_manager=events_manager,
             transcriber_factory=transcriber_factory,
-            agent_factory=agent_factory,
+            agent_or_agent_factory=agent_or_agent_factory,
             synthesizer_factory=synthesizer_factory,
             logger=logger,
         )
@@ -140,16 +142,16 @@ class TwilioCall(Call[TwilioOutputDevice]):
     async def on_call_ended(self, callSid: Optional[str]):
         if self.on_call_ended_status is not None:
             return
-        
+
         self.on_call_ended_status = "loading"
-        
+
         json_transcript = self.agent.get_json_transcript()
         status_update_task = asyncio.create_task(
             execute_status_update_by_telephony_id(
                 telephony_id=callSid or self.twilio_sid,
                 call_status=CallStatus.ENDED_BEFORE_TRANSFER,
                 call_type=self.agent.agent_config.call_type,
-                json_transcript=json_transcript.dict() if json_transcript else None
+                json_transcript=json_transcript.dict() if json_transcript else None,
             )
         )
         send_call_end_notification_task = asyncio.create_task(
@@ -159,12 +161,10 @@ class TwilioCall(Call[TwilioOutputDevice]):
             )
         )
 
-        await asyncio.gather(
-            status_update_task, send_call_end_notification_task
-        )
+        await asyncio.gather(status_update_task, send_call_end_notification_task)
 
         self.on_call_ended_status = "done"
-    
+
     async def terminate(self):
         await super().terminate()
         await self.on_call_ended(callSid=None)

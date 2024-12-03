@@ -1,7 +1,10 @@
+from __future__ import annotations
+from asyncio import iscoroutine
 from fastapi import WebSocket
 from enum import Enum
 import logging
 from typing import Optional, TypeVar, Union
+from vocode.streaming.agent.base_agent import BaseAgent
 from vocode.streaming.agent.factory import AgentFactory
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import PhoneCallEndedEvent
@@ -20,7 +23,6 @@ from vocode.streaming.telephony.config_manager.base_config_manager import (
     BaseConfigManager,
 )
 from vocode.streaming.telephony.constants import DEFAULT_SAMPLING_RATE
-from vocode.streaming.streaming_conversation import StreamingConversation
 from vocode.streaming.transcriber.factory import TranscriberFactory
 from vocode.streaming.utils.events_manager import EventsManager
 from vocode.streaming.utils.conversation_logger_adapter import wrap_logger
@@ -44,7 +46,7 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
         synthesizer_config: SynthesizerConfig,
         conversation_id: Optional[str] = None,
         transcriber_factory: TranscriberFactory = TranscriberFactory(),
-        agent_factory: AgentFactory = AgentFactory(),
+        agent_or_agent_factory: AgentFactory | BaseAgent = AgentFactory(),
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
         events_manager: Optional[EventsManager] = None,
         logger: Optional[logging.Logger] = None,
@@ -59,10 +61,15 @@ class Call(StreamingConversation[TelephonyOutputDeviceType]):
         self.to_phone = to_phone
         self.base_url = base_url
         self.config_manager = config_manager
+
         super().__init__(
             output_device,
             transcriber_factory.create_transcriber(transcriber_config, logger=logger),
-            agent_factory.create_agent(agent_config, logger=logger),
+            (
+                agent_or_agent_factory.create_agent(agent_config, logger=logger)
+                if not isinstance(agent_or_agent_factory, BaseAgent)
+                else agent_or_agent_factory
+            ),
             synthesizer_factory.create_synthesizer(synthesizer_config, logger=logger),
             conversation_id=conversation_id,
             per_chunk_allowance_seconds=0.01,

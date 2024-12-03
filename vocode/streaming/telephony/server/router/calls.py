@@ -43,7 +43,7 @@ class CallsRouter(BaseRouter):
         self.router = APIRouter()
         self.router.websocket("/connect_call/{id}")(self.connect_call)
 
-    def _from_call_config(
+    async def _from_call_config(
         self,
         base_url: str,
         call_config: BaseCallConfig,
@@ -55,6 +55,10 @@ class CallsRouter(BaseRouter):
         synthesizer_factory: SynthesizerFactory = SynthesizerFactory(),
         events_manager: Optional[EventsManager] = None,
     ):
+        agent = await agent_factory.get_cached_agent(
+            call_config.agent_config, logger=logger
+        )
+
         if isinstance(call_config, TwilioCallConfig):
             return TwilioCall(
                 to_phone=call_config.to_phone,
@@ -69,7 +73,7 @@ class CallsRouter(BaseRouter):
                 twilio_sid=call_config.twilio_sid,
                 conversation_id=conversation_id,
                 transcriber_factory=transcriber_factory,
-                agent_factory=agent_factory,
+                agent_or_agent_factory=agent or agent_factory,
                 synthesizer_factory=synthesizer_factory,
                 events_manager=events_manager,
             )
@@ -102,7 +106,7 @@ class CallsRouter(BaseRouter):
         if not call_config:
             raise HTTPException(status_code=400, detail="No active phone call")
 
-        call = self._from_call_config(
+        call = await self._from_call_config(
             base_url=self.base_url,
             call_config=call_config,
             config_manager=self.config_manager,

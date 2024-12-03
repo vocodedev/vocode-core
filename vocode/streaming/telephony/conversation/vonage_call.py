@@ -63,7 +63,7 @@ class VonageCall(Call[VonageOutputDevice]):
             conversation_id=conversation_id,
             events_manager=events_manager,
             transcriber_factory=transcriber_factory,
-            agent_factory=agent_factory,
+            agent_or_agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
             logger=logger,
         )

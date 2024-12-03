@@ -5,7 +5,19 @@ import logging
 import re
 import time
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, TypedDict
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    TypedDict,
+    Union,
+    cast,
+)
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
@@ -282,7 +294,7 @@ async def handle_options(
                 {
                     "destStateId": default_next_state,
                     "aiLabel": "continue",
-                    "aiDescription": f"user provided an answer to the question",
+                    "aiDescription": "user provided an answer to the question",
                 }
             )
         else:
@@ -407,13 +419,45 @@ def get_default_next_state(state):
             return edge["destStateId"]
 
 
+from pydantic import BaseModel
+
+
+class StateAgentState(BaseModel):
+    state_machine: dict
+    current_state: Optional[dict] = None
+    previous_visited_states: set = set()
+    memories: dict[str, MemoryValue] = {}
+    can_send: bool = False
+    average_latency: int = 1
+    conversation_id: Optional[str] = None
+    twilio_sid: Optional[str] = None
+    block_inputs: bool = False
+    stop: bool = False
+    current_block_name: Optional[str] = None
+    visited_states: set = set()
+    spoken_states: set = set()
+    state_history: list = []
+    current_intent_description: Optional[str] = None
+    chat_history: list = []
+    base_url: Optional[str] = None  # maybe not important
+    model: Optional[str] = None
+    mark_start: bool = False
+    json_transcript: Optional[StateAgentTranscript] = None
+    overall_instructions: str = ""
+    label_to_state_id: dict = {}
+    agent_config: CommandAgentConfig
+
+
 class StateAgent(RespondAgent[CommandAgentConfig]):
     def __init__(
         self,
         agent_config: CommandAgentConfig,
         logger: Optional[logging.Logger] = None,
     ):
-        super().__init__(agent_config=agent_config, logger=logger)
+        super().__init__(
+            agent_config=agent_config,
+            logger=logger,
+        )
         self.state_machine = self.agent_config.user_json_prompt["converted"]
         self.current_state = None
         self.resume_task = None
@@ -447,6 +491,35 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             + self.state_machine["states"]["start"]["instructions"]
         )
         self.label_to_state_id = self.state_machine["labelToStateId"]
+
+    @classmethod
+    def from_state(
+        cls, state: StateAgentState, *, logger: Optional[logging.Logger] = None
+    ):
+        agent = cls(agent_config=state.agent_config, logger=logger)
+        agent.previous_visited_states = state.previous_visited_states
+        agent.memories = state.memories
+        agent.can_send = state.can_send
+        agent.average_latency = state.average_latency
+        agent.conversation_id = state.conversation_id
+        agent.twilio_sid = state.twilio_sid
+        agent.block_inputs = state.block_inputs
+        agent.stop = state.stop
+        agent.current_block_name = state.current_block_name
+        agent.visited_states = state.visited_states
+        agent.spoken_states = state.spoken_states
+        agent.state_history = state.state_history
+        agent.current_intent_description = state.current_intent_description
+        agent.chat_history = state.chat_history
+        agent.json_transcript = state.json_transcript
+        agent.current_state = state.current_state
+        agent.logger = logger
+        return agent
+
+    def state_dump(self):
+        return StateAgentState(
+            **{attr: getattr(self, attr) for attr in StateAgentState.__fields__.keys()}
+        )
 
     def cancel_stream(self):
         self.stop = True
@@ -654,7 +727,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             try:
                 await self.resume_task
             except asyncio.CancelledError:
-                self.logger.info(f"Old resume task cancelled")
+                self.logger.info("Old resume task cancelled")
 
         if transfer_block_name and self.current_block_name != transfer_block_name:
             # First analyze intent
@@ -695,7 +768,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
             if not self.resume:
                 self.resume = self.previous_resume
                 self.visited_states = self.previous_visited_states
-                self.logger.info(f"Resuming from previous resume")
+                self.logger.info("Resuming from previous resume")
             self.resume_task = asyncio.create_task(self.resume(human_input))
             resume_output = await self.resume_task
             self.resume = resume_output
@@ -907,8 +980,8 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                         logger=self.logger,
                     )
                 except Exception as e:
-                    logging.error(f"Error handling memory")
-                    logging.exception(f"Error handling memory")
+                    logging.error("Error handling memory")
+                    logging.exception("Error handling memory")
                     self.json_transcript.entries.append(
                         StateAgentTranscriptInvariantViolation(
                             message=f"error handling memory {memory_dep['key']}: {e}",
@@ -1197,7 +1270,7 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
                     raw_error_message=str(e),
                 )
             )
-            self.logger.error(f"Internal error in action config or not found.")
+            self.logger.error("Internal error in action config or not found.")
             return await saveActionResultAndMoveOn(
                 action_result=f"action {action_name} failed to run due to an internal error"
             )
