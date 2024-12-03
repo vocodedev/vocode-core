@@ -3250,6 +3250,17 @@ files = [
 cli = ["click (>=5.0)"]
 
 [[package]]
+name = "python-multipart"
+version = "0.0.19"
+description = "A streaming multipart parser for Python"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "python_multipart-0.0.19-py3-none-any.whl", hash = "sha256:f8d5b0b9c618575bf9df01c684ded1d94a338839bdd8223838afacfb4bb2082d"},
+    {file = "python_multipart-0.0.19.tar.gz", hash = "sha256:905502ef39050557b7a6af411f454bc19526529ca46ae6831508438890ce12cc"},
+]
+
+[[package]]
 name = "pytz"
 version = "2024.2"
 description = "World timezone definitions, modern and historical"
@@ -4565,4 +4576,4 @@ transcribers = ["google-cloud-speech"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4.0"
-content-hash = "edacb78aa174761ff3d2065d7ca66e3586e34587138ec81a05e2928894d8609e"
+content-hash = "b91471d95d7e129f9722a0f9be41067eb8d44ded547fc6c1ae26a7f07d0e312b"
