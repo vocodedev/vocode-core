@@ -1,7 +1,11 @@
+import io
 import typing
+import wave
 from typing import Callable
 
 from fastapi import APIRouter, WebSocket
+from langfuse.decorators import langfuse_context, observe
+from langfuse.media import LangfuseMedia
 from loguru import logger
 
 from vocode.streaming.agent.base_agent import BaseAgent
@@ -57,7 +61,9 @@ class ConversationRouter(BaseRouter):
         self.synthesizer_thunk = synthesizer_thunk
         self.router = APIRouter()
         self.router.websocket(conversation_endpoint)(self.conversation)
+        self.recording = b""
 
+    @observe(as_type="span")
     def get_conversation(
         self,
         output_device: WebsocketOutputDevice,
@@ -66,6 +72,16 @@ class ConversationRouter(BaseRouter):
         transcriber = self.transcriber_thunk(start_message.input_audio_config)
         synthesizer = self.synthesizer_thunk(start_message.output_audio_config)
         synthesizer.get_synthesizer_config().should_encode_as_wav = True
+        langfuse_context.update_current_observation(input={"output_device": output_device,
+                                                           "start_message": start_message},
+                                                    output={"output_device": output_device,
+                                                            "transcriber": transcriber,
+                                                            "agent": self.agent_thunk(),
+                                                            "synthesizer": synthesizer,
+                                                            "conversation_id": start_message.conversation_id,
+                                                            "events_manager": (TranscriptEventManager(output_device)
+                                                                               if start_message.subscribe_transcript
+                                                                               else None)})
         return StreamingConversation(
             output_device=output_device,
             transcriber=transcriber,
@@ -79,6 +95,7 @@ class ConversationRouter(BaseRouter):
             ),
         )
 
+    @observe(as_type="span")
     async def conversation(self, websocket: WebSocket):
         await websocket.accept()
         start_message: AudioConfigStartMessage = AudioConfigStartMessage.parse_obj(
@@ -96,10 +113,15 @@ class ConversationRouter(BaseRouter):
             message: WebSocketMessage = WebSocketMessage.parse_obj(await websocket.receive_json())
             if message.type == WebSocketMessageType.STOP:
                 break
-            audio_message = typing.cast(AudioMessage, message)
-            conversation.receive_audio(audio_message.get_bytes())
+            audio_bytes = typing.cast(AudioMessage, message).get_bytes()
+            conversation.receive_audio(audio_bytes)
+            self.recording += audio_bytes
         output_device.mark_closed()
         await conversation.terminate()
+        media = LangfuseMedia(content_type="audio/wav", content_bytes=pcm_to_wav(pcm_data=self.recording,
+                                                                                 sample_rate=48000))
+        langfuse_context.update_current_trace(metadata={"Recording of the User": media})
+
 
     def get_router(self) -> APIRouter:
         return self.router
@@ -121,3 +143,24 @@ class TranscriptEventManager(events_manager.EventsManager):
 
     def restart(self, output_device: WebsocketOutputDevice):
         self.output_device = output_device
+
+def pcm_to_wav(pcm_data, sample_rate=22050, channels=1, sample_width=2):
+    """
+    Args:
+        :param sample_width: Sample width in bytes (e.g., 2 for 16-bit audio).
+        :param channels: Number of audio channels.
+        :param sample_rate: The sample rate of the audio.
+        :param pcm_data: The PCM byte data.
+
+    Returns:
+        .wav byte data
+    """
+
+    with io.BytesIO() as wav_io:
+        with wave.open(wav_io, 'wb') as wav_file:
+            wav_file.setnchannels(channels)
+            wav_file.setsampwidth(sample_width)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(pcm_data)
+        wav_data = wav_io.getvalue()
+    return wav_data

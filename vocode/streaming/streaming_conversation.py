@@ -942,7 +942,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 seconds_spoken += seconds_per_chunk
                 if transcript_message:
                     transcript_message.text = synthesis_result.get_message_up_to(seconds_spoken)
-                    logger.debug(f"transcript message: {transcript_message.text}")
+                    logger.debug(f"Transcript message: {transcript_message.text}")
 
                 processed_event.set()
 
