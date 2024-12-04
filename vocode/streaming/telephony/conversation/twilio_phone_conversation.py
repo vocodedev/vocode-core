@@ -55,6 +55,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
         record_call: bool = False,
         speed_coefficient: float = 1.0,
         noise_suppression: bool = False,  # is currently a no-op
+        ssl: bool = True,
     ):
         super().__init__(
             direction=direction,
@@ -72,6 +73,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
             agent_factory=agent_factory,
             synthesizer_factory=synthesizer_factory,
             speed_coefficient=speed_coefficient,
+            ssl=ssl,
         )
         self.config_manager = config_manager
         self.twilio_config = twilio_config or TwilioConfig(
@@ -79,7 +81,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
             auth_token=os.environ["TWILIO_AUTH_TOKEN"],
         )
         self.telephony_client = TwilioClient(
-            base_url=self.base_url, maybe_twilio_config=self.twilio_config
+            base_url=self.base_url, ssl=self.ssl, maybe_twilio_config=self.twilio_config
         )
         self.twilio_sid = twilio_sid
         self.record_call = record_call

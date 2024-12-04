@@ -37,8 +37,10 @@ class OutboundCall:
             str
         ] = None,  # Keys to press when the call connects, see send_digits https://www.twilio.com/docs/voice/api/call-resource#create-a-call-resource
         output_to_speaker: bool = False,
+        ssl: bool = True,
     ):
         self.base_url = base_url
+        self.ssl = ssl
         self.to_phone = to_phone
         self.from_phone = from_phone
         self.config_manager = config_manager
@@ -55,7 +57,9 @@ class OutboundCall:
 
     def create_telephony_client(self) -> AbstractTelephonyClient:
         if isinstance(self.telephony_config, TwilioConfig):
-            return TwilioClient(base_url=self.base_url, maybe_twilio_config=self.telephony_config)
+            return TwilioClient(
+                base_url=self.base_url, ssl=self.ssl, maybe_twilio_config=self.telephony_config
+            )
         elif isinstance(self.telephony_config, VonageConfig):
             return VonageClient(base_url=self.base_url, maybe_vonage_config=self.telephony_config)
 

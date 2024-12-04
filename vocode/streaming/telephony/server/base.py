@@ -63,8 +63,10 @@ class TelephonyServer:
         agent_factory: AbstractAgentFactory = DefaultAgentFactory(),
         synthesizer_factory: AbstractSynthesizerFactory = DefaultSynthesizerFactory(),
         events_manager: Optional[EventsManager] = None,
+        ssl: bool = True,
     ):
         self.base_url = base_url
+        self.ssl = ssl
         self.router = APIRouter()
         self.config_manager = config_manager
         self.events_manager = events_manager
@@ -180,7 +182,7 @@ class TelephonyServer:
         telephony_client: AbstractTelephonyClient
         if isinstance(call_config, TwilioCallConfig):
             telephony_client = TwilioClient(
-                base_url=self.base_url, maybe_twilio_config=call_config.twilio_config
+                base_url=self.base_url, ssl=self.ssl, maybe_twilio_config=call_config.twilio_config
             )
             await telephony_client.end_call(call_config.twilio_sid)
         elif isinstance(call_config, VonageCallConfig):

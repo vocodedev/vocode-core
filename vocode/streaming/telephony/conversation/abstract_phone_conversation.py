@@ -49,6 +49,7 @@ class AbstractPhoneConversation(StreamingConversation[TelephonyOutputDeviceType]
         conversation_id: Optional[str] = None,
         events_manager: Optional[EventsManager] = None,
         speed_coefficient: float = 1.0,
+        ssl: bool = True,
     ):
         conversation_id = conversation_id or create_conversation_id()
         ctx_conversation_id.set(conversation_id)
@@ -57,6 +58,7 @@ class AbstractPhoneConversation(StreamingConversation[TelephonyOutputDeviceType]
         self.from_phone = from_phone
         self.to_phone = to_phone
         self.base_url = base_url
+        self.ssl = ssl
         super().__init__(
             output_device,
             transcriber_factory.create_transcriber(transcriber_config),
@@ -65,6 +67,7 @@ class AbstractPhoneConversation(StreamingConversation[TelephonyOutputDeviceType]
             conversation_id=conversation_id,
             events_manager=events_manager,
             speed_coefficient=speed_coefficient,
+            ssl=ssl,
         )
         self.config_manager = config_manager
 

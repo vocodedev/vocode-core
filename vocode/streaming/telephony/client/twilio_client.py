@@ -22,6 +22,7 @@ class TwilioClient(AbstractTelephonyClient):
     def __init__(
         self,
         base_url: str,
+        ssl: bool = True,
         maybe_twilio_config: Optional[TwilioConfig] = None,
     ):
         self.twilio_config = maybe_twilio_config or TwilioConfig(
@@ -32,7 +33,7 @@ class TwilioClient(AbstractTelephonyClient):
             login=self.twilio_config.account_sid,
             password=self.twilio_config.auth_token,
         )
-        super().__init__(base_url=base_url)
+        super().__init__(base_url=base_url, ssl=ssl)
 
     def get_telephony_config(self):
         return self.twilio_config
@@ -77,7 +78,7 @@ class TwilioClient(AbstractTelephonyClient):
             return response["sid"]
 
     def get_connection_twiml(self, conversation_id: str):
-        return get_connection_twiml(call_id=conversation_id, base_url=self.base_url)
+        return get_connection_twiml(call_id=conversation_id, base_url=self.base_url, ssl=self.ssl)
 
     async def end_call(self, twilio_sid):
         async with AsyncRequestor().get_session().post(

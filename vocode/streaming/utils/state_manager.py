@@ -167,4 +167,5 @@ class TwilioPhoneConversationStateManager(PhoneConversationStateManager):
         return TwilioClient(
             base_url=self._twilio_phone_conversation.base_url,
             maybe_twilio_config=self.get_twilio_config(),
+            ssl=self._twilio_phone_conversation.ssl,
         )

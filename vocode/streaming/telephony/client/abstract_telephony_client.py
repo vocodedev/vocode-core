@@ -5,8 +5,9 @@ from vocode.streaming.models.telephony import TelephonyProviderConfig
 
 
 class AbstractTelephonyClient(ABC):
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, ssl: bool = True):
         self.base_url = base_url
+        self.ssl = ssl
 
     @abstractmethod
     def get_telephony_config(self) -> TelephonyProviderConfig:
