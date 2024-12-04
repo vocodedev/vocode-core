@@ -20,7 +20,9 @@ from vocode_velocity.streaming.models.telephony import (
 from vocode_velocity.streaming.models.transcriber import TranscriberConfig
 from vocode_velocity.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
 from vocode_velocity.streaming.synthesizer.default_factory import DefaultSynthesizerFactory
-from vocode_velocity.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
+from vocode_velocity.streaming.telephony.client.abstract_telephony_client import (
+    AbstractTelephonyClient,
+)
 from vocode_velocity.streaming.telephony.client.twilio_client import TwilioClient
 from vocode_velocity.streaming.telephony.client.vonage_client import VonageClient
 from vocode_velocity.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
@@ -86,15 +88,16 @@ class TelephonyServer:
                 self.create_inbound_route(inbound_call_config=config),
                 methods=["POST"],
             )
+        http_protocol = "http" if not self.ssl else "https"
         # vonage requires an events endpoint
         self.router.add_api_route("/events", self.events, methods=["GET", "POST"])
-        logger.info(f"Set up events endpoint at https://{self.base_url}/events")
+        logger.info(f"Set up events endpoint at {http_protocol}://{self.base_url}/events")
 
         self.router.add_api_route(
             "/recordings/{conversation_id}", self.recordings, methods=["GET", "POST"]
         )
         logger.info(
-            f"Set up recordings endpoint at https://{self.base_url}/recordings/{{conversation_id}}"
+            f"Set up recordings endpoint at {http_protocol}://{self.base_url}/recordings/{{conversation_id}}"
         )
 
     def events(self, request: Request):
