@@ -514,7 +514,9 @@ class StateAgent(RespondAgent[CommandAgentConfig]):
         agent.json_transcript = state.json_transcript
         agent.current_state = state.current_state
         agent.logger = logger
-        agent.resume = lambda _: agent.handle_state(state.current_state)
+        agent.resume = lambda _: agent.handle_state(
+            state.current_state["id"] if state and state.current_state else "start"
+        )
         return agent
 
     def state_dump(self):
