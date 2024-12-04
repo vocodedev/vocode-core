@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 import janus
+from langfuse.decorators import observe
 from loguru import logger
 
 from vocode.streaming.utils.create_task import asyncio_create_task
@@ -203,6 +204,7 @@ class InterruptibleWorker(AsyncWorker[InterruptibleEventType]):
         self.current_task = None
         self.interruptible_event = None
 
+    @observe(as_type="span")
     async def _run_loop(self):
         # TODO Implement concurrency with max_nb_of_thread
         while True:

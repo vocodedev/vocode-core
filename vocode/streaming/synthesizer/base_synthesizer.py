@@ -330,6 +330,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         tokens = word_tokenize(message.text)
         return TreebankWordDetokenizer().detokenize(tokens[:estimated_words_spoken])
 
+    @observe(as_type="span")
     async def get_cached_audio(
         self,
         message: BaseMessage,
@@ -356,7 +357,7 @@ class BaseSynthesizer(Generic[SynthesizerConfigType]):
         is_sole_text_chunk: bool = False,
     ) -> SynthesisResult:
         raise NotImplementedError
-
+    @observe(as_type="span")
     async def create_speech(
         self,
         message: BaseMessage,

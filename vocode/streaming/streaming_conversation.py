@@ -424,6 +424,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             else:
                 logger.debug("No filler audio available for synthesizer")
 
+        @observe(as_type="span")
         async def process(self, item: InterruptibleAgentResponseEvent[AgentResponse]):
             if not self.conversation.synthesis_enabled:
                 logger.debug("Synthesis disabled, not synthesizing speech")
@@ -553,6 +554,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             self.conversation = conversation
             self.last_transcript_message: Optional[Message] = None
 
+        @observe(as_type="span")
         async def process(
             self,
             item: InterruptibleAgentResponseEvent[
