@@ -5,7 +5,7 @@ import sentry_sdk
 from loguru import logger
 from sentry_sdk.tracing import Span, Transaction, _SpanRecorder
 
-from vocode import get_serialized_ctx_wrappers, sentry_transaction
+from vocode_velocity import get_serialized_ctx_wrappers, sentry_transaction
 
 if TYPE_CHECKING:
     from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer

@@ -8,7 +8,7 @@ import aiohttp
 import requests
 from pydub import AudioSegment
 
-from vocode import getenv
+from vocode_velocity import getenv
 from vocode_velocity.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 raise DeprecationWarning("This Synthesizer is deprecated and will be removed in the future.")

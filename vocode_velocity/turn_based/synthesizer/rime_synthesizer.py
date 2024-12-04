@@ -5,7 +5,7 @@ from typing import Optional
 import requests
 from pydub import AudioSegment
 
-from vocode import getenv
+from vocode_velocity import getenv
 from vocode_velocity.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 RIME_BASE_URL = "https://rjmopratfrdjgmfmaios.functions.supabase.co/rime-tts"

@@ -14,7 +14,7 @@ Let's send a POST request to "https://example.com" every time a call ends.
 <CodeGroup>
 
 ```python Python
-from vocode import AgentUpdateParams, EventType, HttpMethod, WebhookUpdateParams
+from vocode_velocity import AgentUpdateParams, EventType, HttpMethod, WebhookUpdateParams
 
 new_webhook = WebhookUpdateParams(
     subscriptions=[EventType.EVENT_PHONE_CALL_ENDED],

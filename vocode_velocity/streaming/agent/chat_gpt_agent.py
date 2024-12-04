@@ -7,7 +7,7 @@ from loguru import logger
 from openai import DEFAULT_MAX_RETRIES as OPENAI_DEFAULT_MAX_RETRIES
 from openai import AsyncAzureOpenAI, AsyncOpenAI, NotFoundError, RateLimitError
 
-from vocode import sentry_span_tags
+from vocode_velocity import sentry_span_tags
 from vocode_velocity.streaming.action.abstract_factory import AbstractActionFactory
 from vocode_velocity.streaming.action.default_factory import DefaultActionFactory
 from vocode_velocity.streaming.agent.base_agent import GeneratedResponse, RespondAgent, StreamedResponse

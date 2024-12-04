@@ -9,7 +9,7 @@ from azure.cognitiveservices.speech.audio import (
 )
 from loguru import logger
 
-from vocode import getenv
+from vocode_velocity import getenv
 from vocode_velocity.streaming.models.audio import AudioEncoding
 from vocode_velocity.streaming.models.transcriber import AzureTranscriberConfig, Transcription
 from vocode_velocity.streaming.transcriber.base_transcriber import BaseThreadAsyncTranscriber

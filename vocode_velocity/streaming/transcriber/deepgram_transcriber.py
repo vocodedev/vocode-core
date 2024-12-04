@@ -10,7 +10,7 @@ from loguru import logger
 from pydantic.v1 import BaseModel, Field
 from websockets.asyncio.client import ClientConnection
 
-from vocode import getenv
+from vocode_velocity import getenv
 from vocode_velocity.streaming.models.audio import AudioEncoding
 from vocode_velocity.streaming.models.transcriber import (
     DEEPGRAM_API_WS_URL,

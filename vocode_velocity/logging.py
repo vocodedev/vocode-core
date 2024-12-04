@@ -5,7 +5,7 @@ import sys
 from loguru import logger
 from loguru._handler import Handler
 
-from vocode import get_serialized_ctx_wrappers
+from vocode_velocity import get_serialized_ctx_wrappers
 
 
 def _patched_serialize_record(text: str, record: dict) -> str:

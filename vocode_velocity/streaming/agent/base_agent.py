@@ -11,7 +11,7 @@ import sentry_sdk
 from loguru import logger
 from pydantic.v1 import BaseModel
 
-from vocode import sentry_span_tags
+from vocode_velocity import sentry_span_tags
 from vocode_velocity.streaming.action.abstract_factory import AbstractActionFactory
 from vocode_velocity.streaming.action.base_action import BaseAction
 from vocode_velocity.streaming.action.default_factory import DefaultActionFactory

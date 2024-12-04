@@ -2,7 +2,7 @@ from typing import Any, List, Optional
 
 import openai
 
-from vocode import getenv
+from vocode_velocity import getenv
 from vocode_velocity.turn_based.agent.base_agent import BaseAgent
 
 

@@ -11,7 +11,7 @@ We'll use the [Webhooks](/webhooks) feature on the Agent to configure our automa
 webhook that posts to `"https://example.com"` every time a call ends.
 
 ```python Python
-from vocode import AgentUpdateParams, EventType, HttpMethod, WebhookUpdateParams
+from vocode_velocity import AgentUpdateParams, EventType, HttpMethod, WebhookUpdateParams
 
 new_webhook = WebhookUpdateParams(
     subscriptions=[EventType.EVENT_PHONE_CALL_ENDED],

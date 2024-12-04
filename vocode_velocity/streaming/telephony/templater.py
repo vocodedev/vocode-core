@@ -20,14 +20,13 @@ def get_connection_twiml(
     template_environment: Environment = DEFAULT_TEMPLATE_ENVIRONMENT,
 ):
     protocol = "wss" if ssl == True else "ws"
-    logger.info(f"Getting connection twiml for call {call_id} with protocol {protocol}")
+    url = f"{protocol}://{base_url}/connect_call/{call_id}"
+    logger.info(f"Getting connection twiml for call {call_id} with url: {url}")
     return Response(
         render_template(
             template_name="twilio_connect_call.xml",
             template_environment=template_environment,
-            base_url=base_url,
-            protocol=protocol,
-            id=call_id,
+            url=url,
         ),
         media_type="application/xml",
     )

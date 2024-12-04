@@ -24,7 +24,7 @@ import sentry_sdk
 from loguru import logger
 from sentry_sdk.tracing import Span
 
-from vocode import conversation_id as ctx_conversation_id
+from vocode_velocity import conversation_id as ctx_conversation_id
 from vocode_velocity.streaming.action.worker import ActionsWorker
 from vocode_velocity.streaming.agent.base_agent import (
     AgentInput,

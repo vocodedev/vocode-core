@@ -8,7 +8,7 @@ import numpy as np
 import websockets
 from loguru import logger
 
-from vocode import getenv
+from vocode_velocity import getenv
 from vocode_velocity.streaming.models.audio import AudioEncoding
 from vocode_velocity.streaming.models.transcriber import (
     AssemblyAITranscriberConfig,

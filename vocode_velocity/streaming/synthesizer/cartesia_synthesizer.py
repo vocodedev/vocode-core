@@ -4,7 +4,7 @@ from typing import List, Tuple
 
 from loguru import logger
 
-from vocode import getenv
+from vocode_velocity import getenv
 from vocode_velocity.streaming.models.audio import AudioEncoding, SamplingRate
 from vocode_velocity.streaming.models.message import BaseMessage
 from vocode_velocity.streaming.models.synthesizer import CartesiaSynthesizerConfig

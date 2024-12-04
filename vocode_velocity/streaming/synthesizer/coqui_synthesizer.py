@@ -3,7 +3,7 @@ from typing import Dict, Tuple
 
 import aiohttp
 
-from vocode import getenv
+from vocode_velocity import getenv
 from vocode_velocity.streaming.models.message import BaseMessage
 from vocode_velocity.streaming.models.synthesizer import CoquiSynthesizerConfig
 from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult

@@ -4,7 +4,7 @@ from typing import Optional
 import openai
 from pydub import AudioSegment
 
-from vocode import getenv
+from vocode_velocity import getenv
 from vocode_velocity.turn_based.transcriber.base_transcriber import BaseTranscriber
 
 

@@ -4,7 +4,7 @@ from typing import Literal, Optional, TypeVar, Union
 from fastapi import WebSocket
 from loguru import logger
 
-from vocode import conversation_id as ctx_conversation_id
+from vocode_velocity import conversation_id as ctx_conversation_id
 from vocode_velocity.streaming.agent.abstract_factory import AbstractAgentFactory
 from vocode_velocity.streaming.models.agent import AgentConfig
 from vocode_velocity.streaming.models.events import PhoneCallEndedEvent
@@ -67,7 +67,6 @@ class AbstractPhoneConversation(StreamingConversation[TelephonyOutputDeviceType]
             conversation_id=conversation_id,
             events_manager=events_manager,
             speed_coefficient=speed_coefficient,
-            ssl=ssl,
         )
         self.config_manager = config_manager
 

@@ -4,7 +4,7 @@ import sentry_sdk
 from fastapi import APIRouter, HTTPException, WebSocket
 from loguru import logger
 
-from vocode import sentry_transaction
+from vocode_velocity import sentry_transaction
 from vocode_velocity.streaming.agent.abstract_factory import AbstractAgentFactory
 from vocode_velocity.streaming.agent.default_factory import DefaultAgentFactory
 from vocode_velocity.streaming.models.telephony import BaseCallConfig, TwilioCallConfig, VonageCallConfig

@@ -8,7 +8,7 @@ from xml.etree import ElementTree
 import azure.cognitiveservices.speech as speechsdk
 from loguru import logger
 
-from vocode import getenv
+from vocode_velocity import getenv
 from vocode_velocity.streaming.models.audio import AudioEncoding, SamplingRate
 from vocode_velocity.streaming.models.message import BaseMessage, SSMLMessage
 from vocode_velocity.streaming.models.synthesizer import AzureSynthesizerConfig

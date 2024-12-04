@@ -4,7 +4,7 @@ from typing import Optional
 import numpy
 from pydub import AudioSegment
 
-from vocode import getenv
+from vocode_velocity import getenv
 from vocode_velocity.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 

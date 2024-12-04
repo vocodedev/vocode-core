@@ -24,7 +24,7 @@ In order to have your bot use injected variables, the prompt must include templa
 our prompt to accept a user's first name and link it to our context endpoint.
 
 ```python
-from vocode import AgentUpdateParams, PromptUpdateParams
+from vocode_velocity import AgentUpdateParams, PromptUpdateParams
 
 name_prompt = "You are talking to ${name}"
 number = vocode_client.numbers.update_number(

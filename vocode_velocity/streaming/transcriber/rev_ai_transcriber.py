@@ -7,7 +7,7 @@ import websockets
 from loguru import logger
 from websockets.asyncio.client import ClientConnection
 
-from vocode import getenv
+from vocode_velocity import getenv
 from vocode_velocity.streaming.models.transcriber import (
     RevAITranscriberConfig,
     TimeEndpointingConfig,
