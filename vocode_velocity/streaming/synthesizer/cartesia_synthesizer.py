@@ -5,10 +5,10 @@ from typing import List, Tuple
 from loguru import logger
 
 from vocode import getenv
-from vocode.streaming.models.audio import AudioEncoding, SamplingRate
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import CartesiaSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode_velocity.streaming.models.audio import AudioEncoding, SamplingRate
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import CartesiaSynthesizerConfig
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
 
 
 class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):

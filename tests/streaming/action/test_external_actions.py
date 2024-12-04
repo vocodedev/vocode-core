@@ -5,18 +5,18 @@ import os
 import pytest
 
 from tests.fakedata.id import generate_uuid
-from vocode.streaming.action.execute_external_action import (
+from vocode_velocity.streaming.action.execute_external_action import (
     ExecuteExternalAction,
     ExecuteExternalActionParameters,
     ExecuteExternalActionVocodeActionConfig,
 )
-from vocode.streaming.action.external_actions_requester import ExternalActionResponse
-from vocode.streaming.models.actions import (
+from vocode_velocity.streaming.action.external_actions_requester import ExternalActionResponse
+from vocode_velocity.streaming.models.actions import (
     TwilioPhoneConversationActionInput,
     VonagePhoneConversationActionInput,
 )
-from vocode.streaming.utils import create_conversation_id
-from vocode.streaming.utils.state_manager import (
+from vocode_velocity.streaming.utils import create_conversation_id
+from vocode_velocity.streaming.utils.state_manager import (
     TwilioPhoneConversationStateManager,
     VonagePhoneConversationStateManager,
 )

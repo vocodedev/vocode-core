@@ -7,9 +7,9 @@ from typing import Any
 import google.auth
 from google.cloud import texttospeech_v1beta1 as tts  # type: ignore
 
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import GoogleSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import GoogleSynthesizerConfig
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
 
 
 class GoogleSynthesizer(BaseSynthesizer[GoogleSynthesizerConfig]):

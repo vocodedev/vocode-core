@@ -9,10 +9,10 @@ import azure.cognitiveservices.speech as speechsdk
 from loguru import logger
 
 from vocode import getenv
-from vocode.streaming.models.audio import AudioEncoding, SamplingRate
-from vocode.streaming.models.message import BaseMessage, SSMLMessage
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import (
+from vocode_velocity.streaming.models.audio import AudioEncoding, SamplingRate
+from vocode_velocity.streaming.models.message import BaseMessage, SSMLMessage
+from vocode_velocity.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode_velocity.streaming.synthesizer.base_synthesizer import (
     FILLER_AUDIO_PATH,
     FILLER_PHRASES,
     BaseSynthesizer,

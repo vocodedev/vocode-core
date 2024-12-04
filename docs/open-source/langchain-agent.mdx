@@ -32,7 +32,7 @@ This implementation allows users to create a LangChain agent using a variety of 
 by passing in the relevant `model` and `provider` params into the `LangchainAgentConfig`. For example, if I want to use an OpenAI agent, I would pass in an agent config like:
 
 ```python
-from vocode.streaming.models.agent import LangchainAgentConfig
+from vocode_velocity.streaming.models.agent import LangchainAgentConfig
 
 agent_config = LangchainAgentConfig(
     ...
@@ -60,9 +60,9 @@ your chain when initializing the langchain agent.
 For example, we will design a factory which makes a custom chain querying Anthropic Claude Opus to make a poem at each agent turn:
 
 ```python
-from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
-from vocode.streaming.models.agent import LangchainAgentConfig
-from vocode.streaming.agent.langchain_agent import LangchainAgent
+from vocode_velocity.streaming.agent.abstract_factory import AbstractAgentFactory
+from vocode_velocity.streaming.models.agent import LangchainAgentConfig
+from vocode_velocity.streaming.agent.langchain_agent import LangchainAgent
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -93,9 +93,9 @@ The topic and LLM setup (provider and model name) will all be passed in via the 
 As a further example of this customizability, we will confirm the LLM provider is set to Google GenAI and raise an error otherwise.
 
 ```python
-from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
-from vocode.streaming.models.agent import LangchainAgentConfig
-from vocode.streaming.agent.langchain_agent import LangchainAgent
+from vocode_velocity.streaming.agent.abstract_factory import AbstractAgentFactory
+from vocode_velocity.streaming.models.agent import LangchainAgentConfig
+from vocode_velocity.streaming.agent.langchain_agent import LangchainAgent
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -136,7 +136,7 @@ class MyAgentFactory(AbstractAgentFactory):
 Then, we can use the following agent config in conversations to use make poems about Vocode!
 
 ```python
-from vocode.streaming.models.agent import LangchainAgentConfig
+from vocode_velocity.streaming.models.agent import LangchainAgentConfig
 
 agent_config = LangchainAgentConfig(
     ...

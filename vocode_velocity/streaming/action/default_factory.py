@@ -1,18 +1,18 @@
 from typing import Dict, Sequence, Type
 
-from vocode.streaming.action.abstract_factory import AbstractActionFactory
-from vocode.streaming.action.base_action import BaseAction
-from vocode.streaming.action.dtmf import TwilioDTMF, VonageDTMF
-from vocode.streaming.action.end_conversation import EndConversation
-from vocode.streaming.action.execute_external_action import ExecuteExternalAction
-from vocode.streaming.action.phone_call_action import (
+from vocode_velocity.streaming.action.abstract_factory import AbstractActionFactory
+from vocode_velocity.streaming.action.base_action import BaseAction
+from vocode_velocity.streaming.action.dtmf import TwilioDTMF, VonageDTMF
+from vocode_velocity.streaming.action.end_conversation import EndConversation
+from vocode_velocity.streaming.action.execute_external_action import ExecuteExternalAction
+from vocode_velocity.streaming.action.phone_call_action import (
     TwilioPhoneConversationAction,
     VonagePhoneConversationAction,
 )
-from vocode.streaming.action.record_email import RecordEmail
-from vocode.streaming.action.transfer_call import TwilioTransferCall, VonageTransferCall
-from vocode.streaming.action.wait import Wait
-from vocode.streaming.models.actions import ActionConfig, ActionType
+from vocode_velocity.streaming.action.record_email import RecordEmail
+from vocode_velocity.streaming.action.transfer_call import TwilioTransferCall, VonageTransferCall
+from vocode_velocity.streaming.action.wait import Wait
+from vocode_velocity.streaming.models.actions import ActionConfig, ActionType
 
 CONVERSATION_ACTIONS: Dict[ActionType, Type[BaseAction]] = {
     ActionType.END_CONVERSATION: EndConversation,

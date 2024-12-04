@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import sounddevice as sd
 
-from vocode.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.audio import AudioEncoding
 
 from .abstract_output_device import AbstractOutputDevice
 

@@ -10,10 +10,10 @@ from azure.cognitiveservices.speech.audio import (
 from loguru import logger
 
 from vocode import getenv
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.transcriber import AzureTranscriberConfig, Transcription
-from vocode.streaming.transcriber.base_transcriber import BaseThreadAsyncTranscriber
-from vocode.utils.sentry_utils import CustomSentrySpans, sentry_create_span
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.transcriber import AzureTranscriberConfig, Transcription
+from vocode_velocity.streaming.transcriber.base_transcriber import BaseThreadAsyncTranscriber
+from vocode_velocity.utils.sentry_utils import CustomSentrySpans, sentry_create_span
 
 
 class AzureTranscriber(BaseThreadAsyncTranscriber[AzureTranscriberConfig]):

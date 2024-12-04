@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import asyncio
 
-from vocode.streaming.action.abstract_factory import AbstractActionFactory
-from vocode.streaming.action.default_factory import DefaultActionFactory
-from vocode.streaming.agent.base_agent import ActionResultAgentInput, AgentInput
-from vocode.streaming.models.actions import ActionInput
-from vocode.streaming.utils.state_manager import (
+from vocode_velocity.streaming.action.abstract_factory import AbstractActionFactory
+from vocode_velocity.streaming.action.default_factory import DefaultActionFactory
+from vocode_velocity.streaming.agent.base_agent import ActionResultAgentInput, AgentInput
+from vocode_velocity.streaming.models.actions import ActionInput
+from vocode_velocity.streaming.utils.state_manager import (
     AbstractConversationStateManager,
     TwilioPhoneConversationStateManager,
     VonagePhoneConversationStateManager,
 )
-from vocode.streaming.utils.worker import (
+from vocode_velocity.streaming.utils.worker import (
     AbstractWorker,
     InterruptibleEvent,
     InterruptibleEventFactory,

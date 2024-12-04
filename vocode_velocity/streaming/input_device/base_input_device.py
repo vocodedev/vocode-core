@@ -1,7 +1,7 @@
 import queue
 from typing import Optional
 
-from vocode.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.audio import AudioEncoding
 
 
 class BaseInputDevice:

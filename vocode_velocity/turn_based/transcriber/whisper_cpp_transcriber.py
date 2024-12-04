@@ -4,9 +4,9 @@ import pathlib
 import numpy as np
 from pydub import AudioSegment
 
-from vocode.turn_based.transcriber.base_transcriber import BaseTranscriber
-from vocode.utils.whisper_cpp.helpers import transcribe
-from vocode.utils.whisper_cpp.whisper_params import WhisperFullParams
+from vocode_velocity.turn_based.transcriber.base_transcriber import BaseTranscriber
+from vocode_velocity.utils.whisper_cpp.helpers import transcribe
+from vocode_velocity.utils.whisper_cpp.whisper_params import WhisperFullParams
 
 
 class WhisperCPPTranscriber(BaseTranscriber):

@@ -3,15 +3,15 @@ from typing import Literal, Optional, Type, Union, get_args
 from loguru import logger
 from pydantic.v1 import BaseModel, Field
 
-from vocode.streaming.action.phone_call_action import (
+from vocode_velocity.streaming.action.phone_call_action import (
     TwilioPhoneConversationAction,
     VonagePhoneConversationAction,
 )
-from vocode.streaming.models.actions import ActionConfig as VocodeActionConfig
-from vocode.streaming.models.actions import ActionInput, ActionOutput
-from vocode.streaming.utils.async_requester import AsyncRequestor
-from vocode.streaming.utils.phone_numbers import sanitize_phone_number
-from vocode.streaming.utils.state_manager import (
+from vocode_velocity.streaming.models.actions import ActionConfig as VocodeActionConfig
+from vocode_velocity.streaming.models.actions import ActionInput, ActionOutput
+from vocode_velocity.streaming.utils.async_requester import AsyncRequestor
+from vocode_velocity.streaming.utils.phone_numbers import sanitize_phone_number
+from vocode_velocity.streaming.utils.state_manager import (
     TwilioPhoneConversationStateManager,
     VonagePhoneConversationStateManager,
 )

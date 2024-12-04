@@ -6,7 +6,7 @@ import numpy as np
 import sounddevice as sd
 from pydub import AudioSegment
 
-from vocode.turn_based.input_device.base_input_device import BaseInputDevice
+from vocode_velocity.turn_based.input_device.base_input_device import BaseInputDevice
 
 
 class MicrophoneInput(BaseInputDevice):

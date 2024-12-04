@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Optional
 
-from vocode.streaming.models.telephony import TelephonyProviderConfig
+from vocode_velocity.streaming.models.telephony import TelephonyProviderConfig
 
 
 class AbstractTelephonyClient(ABC):

@@ -3,12 +3,12 @@ from typing import TYPE_CHECKING, List
 
 from livekit import rtc
 
-from vocode.streaming.models.events import Event, EventType, Sender
-from vocode.streaming.models.transcript import TranscriptEvent
-from vocode.streaming.utils.events_manager import EventsManager
+from vocode_velocity.streaming.models.events import Event, EventType, Sender
+from vocode_velocity.streaming.models.transcript import TranscriptEvent
+from vocode_velocity.streaming.utils.events_manager import EventsManager
 
 if TYPE_CHECKING:
-    from vocode.streaming.livekit.livekit_conversation import LiveKitConversation
+    from vocode_velocity.streaming.livekit.livekit_conversation import LiveKitConversation
 
 
 class LiveKitEventsManager(EventsManager):

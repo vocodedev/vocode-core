@@ -1,4 +1,4 @@
-from vocode.turn_based.agent.base_agent import BaseAgent
+from vocode_velocity.turn_based.agent.base_agent import BaseAgent
 
 
 class EchoAgent(BaseAgent):

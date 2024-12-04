@@ -3,7 +3,7 @@ from typing import Any, List, Optional
 import openai
 
 from vocode import getenv
-from vocode.turn_based.agent.base_agent import BaseAgent
+from vocode_velocity.turn_based.agent.base_agent import BaseAgent
 
 
 class ChatGPTAgent(BaseAgent):

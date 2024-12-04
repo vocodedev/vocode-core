@@ -3,14 +3,14 @@ from typing import Any, Dict, Optional, Type
 
 from pydantic.v1 import BaseModel
 
-from vocode.streaming.action.base_action import BaseAction
-from vocode.streaming.action.external_actions_requester import (
+from vocode_velocity.streaming.action.base_action import BaseAction
+from vocode_velocity.streaming.action.external_actions_requester import (
     ExternalActionResponse,
     ExternalActionsRequester,
 )
-from vocode.streaming.models.actions import ActionConfig as VocodeActionConfig
-from vocode.streaming.models.actions import ActionInput, ActionOutput, ExternalActionProcessingMode
-from vocode.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.actions import ActionConfig as VocodeActionConfig
+from vocode_velocity.streaming.models.actions import ActionInput, ActionOutput, ExternalActionProcessingMode
+from vocode_velocity.streaming.models.message import BaseMessage
 
 
 class ExecuteExternalActionVocodeActionConfig(

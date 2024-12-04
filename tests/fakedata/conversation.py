@@ -3,20 +3,20 @@ from typing import Optional
 
 from pytest_mock import MockerFixture
 
-from vocode.streaming.agent.base_agent import BaseAgent
-from vocode.streaming.models.agent import AgentConfig, ChatGPTAgentConfig
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import PlayHtSynthesizerConfig, SynthesizerConfig
-from vocode.streaming.models.transcriber import DeepgramTranscriberConfig, TranscriberConfig
-from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
-from vocode.streaming.output_device.audio_chunk import ChunkState
-from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
-from vocode.streaming.telephony.constants import DEFAULT_CHUNK_SIZE, DEFAULT_SAMPLING_RATE
-from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
-from vocode.streaming.transcriber.deepgram_transcriber import DeepgramEndpointingConfig
-from vocode.streaming.utils.events_manager import EventsManager
+from vocode_velocity.streaming.agent.base_agent import BaseAgent
+from vocode_velocity.streaming.models.agent import AgentConfig, ChatGPTAgentConfig
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import PlayHtSynthesizerConfig, SynthesizerConfig
+from vocode_velocity.streaming.models.transcriber import DeepgramTranscriberConfig, TranscriberConfig
+from vocode_velocity.streaming.output_device.abstract_output_device import AbstractOutputDevice
+from vocode_velocity.streaming.output_device.audio_chunk import ChunkState
+from vocode_velocity.streaming.streaming_conversation import StreamingConversation
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode_velocity.streaming.telephony.constants import DEFAULT_CHUNK_SIZE, DEFAULT_SAMPLING_RATE
+from vocode_velocity.streaming.transcriber.base_transcriber import BaseTranscriber
+from vocode_velocity.streaming.transcriber.deepgram_transcriber import DeepgramEndpointingConfig
+from vocode_velocity.streaming.utils.events_manager import EventsManager
 
 DEFAULT_DEEPGRAM_TRANSCRIBER_CONFIG = DeepgramTranscriberConfig(
     chunk_size=DEFAULT_CHUNK_SIZE,

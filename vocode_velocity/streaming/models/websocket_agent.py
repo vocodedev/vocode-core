@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import Optional
 
-from vocode.streaming.models.agent import AgentConfig, AgentType
-from vocode.streaming.models.model import BaseModel, TypedModel
+from vocode_velocity.streaming.models.agent import AgentConfig, AgentType
+from vocode_velocity.streaming.models.model import BaseModel, TypedModel
 
 
 class WebSocketAgentMessageType(str, Enum):

@@ -25,8 +25,8 @@ from loguru import logger
 from sentry_sdk.tracing import Span
 
 from vocode import conversation_id as ctx_conversation_id
-from vocode.streaming.action.worker import ActionsWorker
-from vocode.streaming.agent.base_agent import (
+from vocode_velocity.streaming.action.worker import ActionsWorker
+from vocode_velocity.streaming.agent.base_agent import (
     AgentInput,
     AgentResponse,
     AgentResponseFillerAudio,
@@ -35,39 +35,39 @@ from vocode.streaming.agent.base_agent import (
     BaseAgent,
     TranscriptionAgentInput,
 )
-from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.streaming.constants import (
+from vocode_velocity.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode_velocity.streaming.constants import (
     ALLOWED_IDLE_TIME,
     CHECK_HUMAN_PRESENT_MESSAGE_CHOICES,
     TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
 )
-from vocode.streaming.models.actions import EndOfTurn
-from vocode.streaming.models.agent import FillerAudioConfig
-from vocode.streaming.models.events import Sender
-from vocode.streaming.models.message import BaseMessage, BotBackchannel, LLMToken, SilenceMessage
-from vocode.streaming.models.transcriber import TranscriberConfig, Transcription
-from vocode.streaming.models.transcript import Message, Transcript, TranscriptCompleteEvent
-from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
-from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
-from vocode.streaming.synthesizer.base_synthesizer import (
+from vocode_velocity.streaming.models.actions import EndOfTurn
+from vocode_velocity.streaming.models.agent import FillerAudioConfig
+from vocode_velocity.streaming.models.events import Sender
+from vocode_velocity.streaming.models.message import BaseMessage, BotBackchannel, LLMToken, SilenceMessage
+from vocode_velocity.streaming.models.transcriber import TranscriberConfig, Transcription
+from vocode_velocity.streaming.models.transcript import Message, Transcript, TranscriptCompleteEvent
+from vocode_velocity.streaming.output_device.abstract_output_device import AbstractOutputDevice
+from vocode_velocity.streaming.output_device.audio_chunk import AudioChunk, ChunkState
+from vocode_velocity.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     FillerAudio,
     SynthesisResult,
 )
-from vocode.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
-from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
-from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
-from vocode.streaming.utils import (
+from vocode_velocity.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
+from vocode_velocity.streaming.transcriber.base_transcriber import BaseTranscriber
+from vocode_velocity.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
+from vocode_velocity.streaming.utils import (
     create_conversation_id,
     enumerate_async_iter,
     get_chunk_size_per_second,
 )
-from vocode.streaming.utils.audio_pipeline import AudioPipeline, OutputDeviceType
-from vocode.streaming.utils.create_task import asyncio_create_task
-from vocode.streaming.utils.events_manager import EventsManager
-from vocode.streaming.utils.speed_manager import SpeedManager
-from vocode.streaming.utils.state_manager import ConversationStateManager
-from vocode.streaming.utils.worker import (
+from vocode_velocity.streaming.utils.audio_pipeline import AudioPipeline, OutputDeviceType
+from vocode_velocity.streaming.utils.create_task import asyncio_create_task
+from vocode_velocity.streaming.utils.events_manager import EventsManager
+from vocode_velocity.streaming.utils.speed_manager import SpeedManager
+from vocode_velocity.streaming.utils.state_manager import ConversationStateManager
+from vocode_velocity.streaming.utils.worker import (
     AbstractWorker,
     AsyncQueueWorker,
     InterruptibleAgentResponseEvent,
@@ -76,7 +76,7 @@ from vocode.streaming.utils.worker import (
     InterruptibleEventFactory,
     InterruptibleWorker,
 )
-from vocode.utils.sentry_utils import (
+from vocode_velocity.utils.sentry_utils import (
     CustomSentrySpans,
     complete_span_by_op,
     sentry_create_span,

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
-from vocode.streaming.action.base_action import BaseAction
-from vocode.streaming.models.actions import ActionConfig
+from vocode_velocity.streaming.action.base_action import BaseAction
+from vocode_velocity.streaming.models.actions import ActionConfig
 
 
 class AbstractActionFactory(ABC):

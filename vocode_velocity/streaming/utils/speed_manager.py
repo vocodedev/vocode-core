@@ -1,6 +1,6 @@
 from loguru import logger
 
-from vocode.streaming.models.transcriber import Transcription
+from vocode_velocity.streaming.models.transcriber import Transcription
 
 LEARNING_RATE = 0.1
 LENGTH_THRESHOLD = 5

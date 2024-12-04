@@ -4,8 +4,8 @@ from typing import Dict, Tuple
 
 import numpy as np
 
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.utils.singleton import Singleton
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.utils.singleton import Singleton
 
 DEFAULT_DTMF_TONE_LENGTH_SECONDS = 0.3
 DEFAULT_DTMF_TONE_SILENCE_SECONDS = 0.1

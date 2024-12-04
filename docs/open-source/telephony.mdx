@@ -130,10 +130,10 @@ This example sets up an agent that spells every word that is sent to it - any te
 import typing
 from typing import Optional, Tuple
 
-from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
-from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
-from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.streaming.models.agent import AgentConfig, AgentType, ChatGPTAgentConfig
+from vocode_velocity.streaming.agent.abstract_factory import AbstractAgentFactory
+from vocode_velocity.streaming.agent.base_agent import BaseAgent, RespondAgent
+from vocode_velocity.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode_velocity.streaming.models.agent import AgentConfig, AgentType, ChatGPTAgentConfig
 
 
 class SpellerAgentConfig(AgentConfig, type="agent_speller"):

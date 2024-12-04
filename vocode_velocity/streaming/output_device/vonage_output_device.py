@@ -3,11 +3,11 @@ from typing import Optional
 from fastapi import WebSocket
 from fastapi.websockets import WebSocketState
 
-from vocode.streaming.output_device.blocking_speaker_output import BlockingSpeakerOutput
-from vocode.streaming.output_device.rate_limit_interruptions_output_device import (
+from vocode_velocity.streaming.output_device.blocking_speaker_output import BlockingSpeakerOutput
+from vocode_velocity.streaming.output_device.rate_limit_interruptions_output_device import (
     RateLimitInterruptionsOutputDevice,
 )
-from vocode.streaming.telephony.constants import (
+from vocode_velocity.streaming.telephony.constants import (
     PCM_SILENCE_BYTE,
     VONAGE_AUDIO_ENCODING,
     VONAGE_CHUNK_SIZE,

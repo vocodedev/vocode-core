@@ -58,8 +58,8 @@ If whisper.cpp is downloaded at `/whisper.cpp`, the paths from the previous exam
 Set up your streaming `WhisperCPPTranscriber` in `StreamingConversation` as follows:
 
 ```python
-from vocode.streaming.models.transcriber import WhisperCPPTranscriberConfig
-from vocode.streaming.transcriber.whisper_cpp_transcriber import WhisperCPPTranscriber
+from vocode_velocity.streaming.models.transcriber import WhisperCPPTranscriberConfig
+from vocode_velocity.streaming.transcriber.whisper_cpp_transcriber import WhisperCPPTranscriber
 
 StreamingConversation(
     ...
@@ -89,8 +89,8 @@ As of today (2023/05/01), you can download it by visiting: https://gpt4all.io/mo
 Set up your agent in `StreamingConversation` as follows:
 
 ```python
-from vocode.streaming.models.agent import GPT4AllAgentConfig
-from vocode.streaming.agent.gpt4all_agent import GPT4AllAgent
+from vocode_velocity.streaming.models.agent import GPT4AllAgentConfig
+from vocode_velocity.streaming.agent.gpt4all_agent import GPT4AllAgent
 
 StreamingConversation(
     ...
@@ -128,8 +128,8 @@ CMAKE_ARGS="-DLLAMA_CUBLAS=on" FORCE_CMAKE=1 pip install llama-cpp-python
 Set up your agent in `StreamingConversation` as follows:
 
 ```python
-from vocode.streaming.models.agent import LlamacppAgentConfig
-from vocode.streaming.agent.llamacpp_agent import LlamacppAgent
+from vocode_velocity.streaming.models.agent import LlamacppAgentConfig
+from vocode_velocity.streaming.agent.llamacpp_agent import LlamacppAgent
 
 StreamingConversation(
     ...
@@ -168,8 +168,8 @@ For this example, we'll use [Tacotron2](https://ai.googleblog.com/2017/12/tacotr
 Set up your synthesizer in `StreamingConversation` as follows:
 
 ```python
-from vocode.streaming.models.synthesizer import CoquiTTSSynthesizerConfig,
-from vocode.streaming.synthesizer.coqui_tts_synthesizer import CoquiTTSSynthesizer
+from vocode_velocity.streaming.models.synthesizer import CoquiTTSSynthesizerConfig,
+from vocode_velocity.streaming.synthesizer.coqui_tts_synthesizer import CoquiTTSSynthesizer
 
 StreamingConversation(
     ...

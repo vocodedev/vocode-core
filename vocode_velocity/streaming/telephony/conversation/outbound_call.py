@@ -2,21 +2,21 @@ from typing import Dict, Optional
 
 from loguru import logger
 
-from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.models.telephony import (
+from vocode_velocity.streaming.models.agent import AgentConfig
+from vocode_velocity.streaming.models.synthesizer import SynthesizerConfig
+from vocode_velocity.streaming.models.telephony import (
     TelephonyConfig,
     TwilioCallConfig,
     TwilioConfig,
     VonageCallConfig,
     VonageConfig,
 )
-from vocode.streaming.models.transcriber import TranscriberConfig
-from vocode.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
-from vocode.streaming.telephony.client.twilio_client import TwilioClient
-from vocode.streaming.telephony.client.vonage_client import VonageClient
-from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
-from vocode.streaming.utils import create_conversation_id
+from vocode_velocity.streaming.models.transcriber import TranscriberConfig
+from vocode_velocity.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
+from vocode_velocity.streaming.telephony.client.twilio_client import TwilioClient
+from vocode_velocity.streaming.telephony.client.vonage_client import VonageClient
+from vocode_velocity.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
+from vocode_velocity.streaming.utils import create_conversation_id
 
 
 class OutboundCall:

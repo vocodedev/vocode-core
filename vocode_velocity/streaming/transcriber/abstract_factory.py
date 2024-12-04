@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
-from vocode.streaming.models.transcriber import TranscriberConfig
-from vocode.streaming.transcriber.base_transcriber import (
+from vocode_velocity.streaming.models.transcriber import TranscriberConfig
+from vocode_velocity.streaming.transcriber.base_transcriber import (
     BaseAsyncTranscriber,
     BaseThreadAsyncTranscriber,
 )

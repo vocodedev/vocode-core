@@ -5,7 +5,7 @@ from typing import Optional
 
 from loguru import logger
 
-from vocode.turn_based.agent.base_agent import BaseAgent
+from vocode_velocity.turn_based.agent.base_agent import BaseAgent
 
 raise DeprecationWarning("This Agent is deprecated and will be removed in the future.")
 

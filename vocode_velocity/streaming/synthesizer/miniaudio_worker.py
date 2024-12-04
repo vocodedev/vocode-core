@@ -7,10 +7,10 @@ from typing import Tuple, Union
 import miniaudio
 from loguru import logger
 
-from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.utils import convert_wav
-from vocode.streaming.utils.mp3_helper import decode_mp3
-from vocode.streaming.utils.worker import AbstractWorker, ThreadAsyncWorker
+from vocode_velocity.streaming.models.synthesizer import SynthesizerConfig
+from vocode_velocity.streaming.utils import convert_wav
+from vocode_velocity.streaming.utils.mp3_helper import decode_mp3
+from vocode_velocity.streaming.utils.worker import AbstractWorker, ThreadAsyncWorker
 
 
 class MiniaudioWorker(ThreadAsyncWorker[Union[bytes, None]]):

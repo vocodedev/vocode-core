@@ -1,10 +1,10 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from vocode.helpers import create_turn_based_microphone_input_and_speaker_output
-from vocode.turn_based.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode.turn_based.transcriber.whisper_transcriber import WhisperTranscriber
-from vocode.turn_based.turn_based_conversation import TurnBasedConversation
+from vocode_velocity.helpers import create_turn_based_microphone_input_and_speaker_output
+from vocode_velocity.turn_based.agent.chat_gpt_agent import ChatGPTAgent
+from vocode_velocity.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
+from vocode_velocity.turn_based.transcriber.whisper_transcriber import WhisperTranscriber
+from vocode_velocity.turn_based.turn_based_conversation import TurnBasedConversation
 
 
 class Settings(BaseSettings):

@@ -5,8 +5,8 @@ from langchain.docstore.document import Document
 from loguru import logger
 
 from vocode import getenv
-from vocode.streaming.models.vector_db import PineconeConfig
-from vocode.streaming.vector_db.base_vector_db import VectorDB
+from vocode_velocity.streaming.models.vector_db import PineconeConfig
+from vocode_velocity.streaming.vector_db.base_vector_db import VectorDB
 
 
 def is_non_empty_string(value: Any) -> TypeGuard[str]:

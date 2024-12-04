@@ -4,7 +4,7 @@ import numpy as np
 import sounddevice as sd
 from pydub import AudioSegment
 
-from vocode.turn_based.output_device.abstract_output_device import AbstractOutputDevice
+from vocode_velocity.turn_based.output_device.abstract_output_device import AbstractOutputDevice
 
 
 class SpeakerOutput(AbstractOutputDevice):

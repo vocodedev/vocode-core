@@ -6,7 +6,7 @@ from elevenlabs.client import ElevenLabs
 from pydub import AudioSegment
 
 from vocode import getenv
-from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode_velocity.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 
 class ElevenLabsSynthesizer(BaseSynthesizer):

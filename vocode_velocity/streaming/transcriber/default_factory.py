@@ -1,4 +1,4 @@
-from vocode.streaming.models.transcriber import (
+from vocode_velocity.streaming.models.transcriber import (
     AssemblyAITranscriberConfig,
     AzureTranscriberConfig,
     DeepgramTranscriberConfig,
@@ -7,13 +7,13 @@ from vocode.streaming.models.transcriber import (
     RevAITranscriberConfig,
     TranscriberConfig,
 )
-from vocode.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
-from vocode.streaming.transcriber.assembly_ai_transcriber import AssemblyAITranscriber
-from vocode.streaming.transcriber.azure_transcriber import AzureTranscriber
-from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
-from vocode.streaming.transcriber.gladia_transcriber import GladiaTranscriber
-from vocode.streaming.transcriber.google_transcriber import GoogleTranscriber
-from vocode.streaming.transcriber.rev_ai_transcriber import RevAITranscriber
+from vocode_velocity.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
+from vocode_velocity.streaming.transcriber.assembly_ai_transcriber import AssemblyAITranscriber
+from vocode_velocity.streaming.transcriber.azure_transcriber import AzureTranscriber
+from vocode_velocity.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
+from vocode_velocity.streaming.transcriber.gladia_transcriber import GladiaTranscriber
+from vocode_velocity.streaming.transcriber.google_transcriber import GoogleTranscriber
+from vocode_velocity.streaming.transcriber.rev_ai_transcriber import RevAITranscriber
 
 
 class DefaultTranscriberFactory(AbstractTranscriberFactory):

@@ -8,12 +8,12 @@ from loguru import logger
 from websockets.asyncio.client import ClientConnection
 
 from vocode import getenv
-from vocode.streaming.models.transcriber import (
+from vocode_velocity.streaming.models.transcriber import (
     RevAITranscriberConfig,
     TimeEndpointingConfig,
     Transcription,
 )
-from vocode.streaming.transcriber.base_transcriber import BaseAsyncTranscriber
+from vocode_velocity.streaming.transcriber.base_transcriber import BaseAsyncTranscriber
 
 NUM_RESTARTS = 5
 

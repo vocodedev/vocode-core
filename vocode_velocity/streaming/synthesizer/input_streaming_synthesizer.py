@@ -1,4 +1,4 @@
-from vocode.streaming.models.message import LLMToken
+from vocode_velocity.streaming.models.message import LLMToken
 
 
 class InputStreamingSynthesizer:

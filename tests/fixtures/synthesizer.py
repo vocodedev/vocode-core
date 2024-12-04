@@ -1,9 +1,9 @@
 import wave
 from io import BytesIO
 
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import SynthesizerConfig
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
 
 
 def create_fake_audio(message: str, synthesizer_config: SynthesizerConfig):

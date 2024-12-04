@@ -3,7 +3,7 @@ import io
 import requests
 from pydub import AudioSegment
 
-from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode_velocity.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 
 class StreamElementsSynthesizer(BaseSynthesizer):

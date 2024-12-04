@@ -4,16 +4,16 @@ from typing import List, Optional, Tuple, Union
 import sounddevice as sd
 from loguru import logger
 
-from vocode.streaming.input_device.microphone_input import (
+from vocode_velocity.streaming.input_device.microphone_input import (
     MicrophoneInput as StreamingMicrophoneInput,
 )
-from vocode.streaming.output_device.blocking_speaker_output import (
+from vocode_velocity.streaming.output_device.blocking_speaker_output import (
     BlockingSpeakerOutput as BlockingStreamingSpeakerOutput,
 )
-from vocode.turn_based.input_device.microphone_input import (
+from vocode_velocity.turn_based.input_device.microphone_input import (
     MicrophoneInput as TurnBasedMicrophoneInput,
 )
-from vocode.turn_based.output_device.speaker_output import SpeakerOutput as TurnBasedSpeakerOutput
+from vocode_velocity.turn_based.output_device.speaker_output import SpeakerOutput as TurnBasedSpeakerOutput
 
 
 def _get_device_prompt(device_infos: List[dict]) -> str:

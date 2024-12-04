@@ -4,8 +4,8 @@ from typing import Annotated, Generic, List, Literal, Optional, TypeVar, Union
 
 from pydantic.v1 import BaseModel, Field
 
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.model import TypedModel
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.model import TypedModel
 
 TriggerType = Literal["action_trigger_function_call", "action_trigger_phrase_based"]
 

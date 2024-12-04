@@ -4,9 +4,9 @@ from typing import List, Literal, Optional
 
 from pydantic.v1 import BaseModel, Field
 
-from vocode.streaming.models.actions import ActionInput, ActionOutput
-from vocode.streaming.models.events import ActionEvent, Event, EventType, Sender
-from vocode.streaming.utils.events_manager import EventsManager
+from vocode_velocity.streaming.models.actions import ActionInput, ActionOutput
+from vocode_velocity.streaming.models.events import ActionEvent, Event, EventType, Sender
+from vocode_velocity.streaming.utils.events_manager import EventsManager
 
 
 class EventLog(BaseModel):

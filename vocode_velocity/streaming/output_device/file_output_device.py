@@ -3,8 +3,8 @@ import wave
 
 import numpy as np
 
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.output_device.rate_limit_interruptions_output_device import (
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.output_device.rate_limit_interruptions_output_device import (
     RateLimitInterruptionsOutputDevice,
 )
 

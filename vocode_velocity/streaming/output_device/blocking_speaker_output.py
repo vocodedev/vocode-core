@@ -5,11 +5,11 @@ from typing import Optional
 import numpy as np
 import sounddevice as sd
 
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.output_device.rate_limit_interruptions_output_device import (
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.output_device.rate_limit_interruptions_output_device import (
     RateLimitInterruptionsOutputDevice,
 )
-from vocode.streaming.utils.worker import ThreadAsyncWorker
+from vocode_velocity.streaming.utils.worker import ThreadAsyncWorker
 
 DEFAULT_SAMPLING_RATE = 44100
 

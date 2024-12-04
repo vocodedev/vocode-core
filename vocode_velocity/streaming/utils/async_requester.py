@@ -5,7 +5,7 @@ import httpx
 from aiohttp import BaseConnector
 from pydantic import BaseModel
 
-from vocode.streaming.utils.singleton import Singleton
+from vocode_velocity.streaming.utils.singleton import Singleton
 
 
 class AsyncRequestor(Singleton):

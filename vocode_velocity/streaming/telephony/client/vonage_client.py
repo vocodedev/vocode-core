@@ -1,10 +1,10 @@
 import os
 from typing import Any, Dict, List, Optional
 
-from vocode.streaming.models.telephony import VonageConfig
-from vocode.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
-from vocode.streaming.telephony.constants import VONAGE_CONTENT_TYPE
-from vocode.streaming.utils.async_requester import AsyncRequestor
+from vocode_velocity.streaming.models.telephony import VonageConfig
+from vocode_velocity.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
+from vocode_velocity.streaming.telephony.constants import VONAGE_CONTENT_TYPE
+from vocode_velocity.streaming.utils.async_requester import AsyncRequestor
 
 
 class VonageBadRequestException(ValueError):

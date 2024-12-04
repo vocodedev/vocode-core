@@ -19,8 +19,8 @@ Each vocode action config contains an `action_trigger` field  to specify how the
 
 **Function calls:**
 ```python
-from vocode.streaming.action.end_conversation import EndConversationVocodeActionConfig
-from vocode.streaming.models.actions import FunctionCallActionTrigger
+from vocode_velocity.streaming.action.end_conversation import EndConversationVocodeActionConfig
+from vocode_velocity.streaming.models.actions import FunctionCallActionTrigger
 
 EndConversationVocodeActionConfig(
     type="action_end_conversation",
@@ -34,8 +34,8 @@ EndConversationVocodeActionConfig(
 **Phrase triggers:**
 
 ```python
-from vocode.streaming.action.end_conversation import EndConversationVocodeActionConfig
-from vocode.streaming.models.actions import PhraseBasedActionTrigger, PhraseBasedActionTriggerConfig, PhraseTrigger
+from vocode_velocity.streaming.action.end_conversation import EndConversationVocodeActionConfig
+from vocode_velocity.streaming.models.actions import PhraseBasedActionTrigger, PhraseBasedActionTriggerConfig, PhraseTrigger
 
 EndConversationVocodeActionConfig(
     type="action_end_conversation",

@@ -12,12 +12,12 @@ from pyngrok import ngrok
 # Local application/library specific imports
 from speller_agent import SpellerAgentFactory
 
-from vocode.logging import configure_pretty_logging
-from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.telephony import TwilioConfig
-from vocode.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
-from vocode.streaming.telephony.server.base import TelephonyServer, TwilioInboundCallConfig
+from vocode_velocity.logging import configure_pretty_logging
+from vocode_velocity.streaming.models.agent import ChatGPTAgentConfig
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.telephony import TwilioConfig
+from vocode_velocity.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
+from vocode_velocity.streaming.telephony.server.base import TelephonyServer, TwilioInboundCallConfig
 
 # if running from python, this will load the local .env
 # docker-compose will load the .env file by itself

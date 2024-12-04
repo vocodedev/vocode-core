@@ -9,15 +9,15 @@ import websockets
 from loguru import logger
 
 from vocode import getenv
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.transcriber import (
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.transcriber import (
     AssemblyAITranscriberConfig,
     PunctuationEndpointingConfig,
     TimeEndpointingConfig,
     Transcription,
 )
-from vocode.streaming.models.websocket import AudioMessage
-from vocode.streaming.transcriber.base_transcriber import BaseAsyncTranscriber
+from vocode_velocity.streaming.models.websocket import AudioMessage
+from vocode_velocity.streaming.transcriber.base_transcriber import BaseAsyncTranscriber
 
 ASSEMBLY_AI_URL = "wss://api.assemblyai.com/v2/realtime/ws"
 

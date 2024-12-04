@@ -5,20 +5,20 @@ from fastapi import WebSocket
 from loguru import logger
 
 from vocode import conversation_id as ctx_conversation_id
-from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
-from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.events import PhoneCallEndedEvent
-from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.models.telephony import PhoneCallDirection
-from vocode.streaming.models.transcriber import TranscriberConfig
-from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
-from vocode.streaming.output_device.vonage_output_device import VonageOutputDevice
-from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
-from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
-from vocode.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
-from vocode.streaming.utils import create_conversation_id
-from vocode.streaming.utils.events_manager import EventsManager
+from vocode_velocity.streaming.agent.abstract_factory import AbstractAgentFactory
+from vocode_velocity.streaming.models.agent import AgentConfig
+from vocode_velocity.streaming.models.events import PhoneCallEndedEvent
+from vocode_velocity.streaming.models.synthesizer import SynthesizerConfig
+from vocode_velocity.streaming.models.telephony import PhoneCallDirection
+from vocode_velocity.streaming.models.transcriber import TranscriberConfig
+from vocode_velocity.streaming.output_device.twilio_output_device import TwilioOutputDevice
+from vocode_velocity.streaming.output_device.vonage_output_device import VonageOutputDevice
+from vocode_velocity.streaming.streaming_conversation import StreamingConversation
+from vocode_velocity.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
+from vocode_velocity.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
+from vocode_velocity.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
+from vocode_velocity.streaming.utils import create_conversation_id
+from vocode_velocity.streaming.utils.events_manager import EventsManager
 
 TelephonyOutputDeviceType = TypeVar(
     "TelephonyOutputDeviceType", bound=Union[TwilioOutputDevice, VonageOutputDevice]

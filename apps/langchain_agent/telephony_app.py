@@ -6,11 +6,11 @@ from call_transcript_utils import add_transcript
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
-from vocode.streaming.models.events import Event, EventType
-from vocode.streaming.models.transcript import TranscriptCompleteEvent
-from vocode.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
-from vocode.streaming.telephony.server.base import TelephonyServer
-from vocode.streaming.utils import events_manager
+from vocode_velocity.streaming.models.events import Event, EventType
+from vocode_velocity.streaming.models.transcript import TranscriptCompleteEvent
+from vocode_velocity.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
+from vocode_velocity.streaming.telephony.server.base import TelephonyServer
+from vocode_velocity.streaming.utils import events_manager
 
 load_dotenv()
 

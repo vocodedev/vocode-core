@@ -1,5 +1,5 @@
-from vocode.streaming.agent.openai_utils import merge_event_logs
-from vocode.streaming.models.transcript import ActionStart, EventLog, Transcript
+from vocode_velocity.streaming.agent.openai_utils import merge_event_logs
+from vocode_velocity.streaming.models.transcript import ActionStart, EventLog, Transcript
 
 
 def format_anthropic_chat_messages_from_transcript(

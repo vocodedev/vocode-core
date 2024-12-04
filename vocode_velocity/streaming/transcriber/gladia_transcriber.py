@@ -8,10 +8,10 @@ import websockets
 from loguru import logger
 
 from vocode import getenv
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.transcriber import GladiaTranscriberConfig, Transcription
-from vocode.streaming.models.websocket import AudioMessage
-from vocode.streaming.transcriber.base_transcriber import BaseAsyncTranscriber
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.transcriber import GladiaTranscriberConfig, Transcription
+from vocode_velocity.streaming.models.websocket import AudioMessage
+from vocode_velocity.streaming.transcriber.base_transcriber import BaseAsyncTranscriber
 
 GLADIA_URL = "wss://api.gladia.io/audio/text/audio-transcription"
 

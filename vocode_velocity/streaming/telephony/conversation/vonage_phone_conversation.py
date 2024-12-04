@@ -5,22 +5,22 @@ import numpy as np
 from fastapi import WebSocket, WebSocketDisconnect
 from loguru import logger
 
-from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
-from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.events import PhoneCallConnectedEvent
-from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.models.telephony import PhoneCallDirection, VonageConfig
-from vocode.streaming.models.transcriber import TranscriberConfig
-from vocode.streaming.output_device.vonage_output_device import VonageOutputDevice
-from vocode.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
-from vocode.streaming.telephony.client.vonage_client import VonageClient
-from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
-from vocode.streaming.telephony.conversation.abstract_phone_conversation import (
+from vocode_velocity.streaming.agent.abstract_factory import AbstractAgentFactory
+from vocode_velocity.streaming.models.agent import AgentConfig
+from vocode_velocity.streaming.models.events import PhoneCallConnectedEvent
+from vocode_velocity.streaming.models.synthesizer import SynthesizerConfig
+from vocode_velocity.streaming.models.telephony import PhoneCallDirection, VonageConfig
+from vocode_velocity.streaming.models.transcriber import TranscriberConfig
+from vocode_velocity.streaming.output_device.vonage_output_device import VonageOutputDevice
+from vocode_velocity.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
+from vocode_velocity.streaming.telephony.client.vonage_client import VonageClient
+from vocode_velocity.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
+from vocode_velocity.streaming.telephony.conversation.abstract_phone_conversation import (
     AbstractPhoneConversation,
 )
-from vocode.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
-from vocode.streaming.utils.events_manager import EventsManager
-from vocode.streaming.utils.state_manager import VonagePhoneConversationStateManager
+from vocode_velocity.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
+from vocode_velocity.streaming.utils.events_manager import EventsManager
+from vocode_velocity.streaming.utils.state_manager import VonagePhoneConversationStateManager
 
 KOALA_CHUNK_SIZE = 512  # 16 bit samples, size 256
 

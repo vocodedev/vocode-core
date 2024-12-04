@@ -1,8 +1,8 @@
 from typing import AsyncGenerator, Tuple
 
-from vocode.streaming.agent.base_agent import GeneratedResponse, RespondAgent
-from vocode.streaming.models.agent import EchoAgentConfig
-from vocode.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.agent.base_agent import GeneratedResponse, RespondAgent
+from vocode_velocity.streaming.models.agent import EchoAgentConfig
+from vocode_velocity.streaming.models.message import BaseMessage
 
 
 class EchoAgent(RespondAgent[EchoAgentConfig]):

@@ -4,10 +4,10 @@ from typing import Dict, Optional
 import aiohttp
 from loguru import logger
 
-from vocode.streaming.models.telephony import TwilioConfig
-from vocode.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
-from vocode.streaming.telephony.templater import get_connection_twiml
-from vocode.streaming.utils.async_requester import AsyncRequestor
+from vocode_velocity.streaming.models.telephony import TwilioConfig
+from vocode_velocity.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
+from vocode_velocity.streaming.telephony.templater import get_connection_twiml
+from vocode_velocity.streaming.utils.async_requester import AsyncRequestor
 
 
 class TwilioBadRequestException(ValueError):

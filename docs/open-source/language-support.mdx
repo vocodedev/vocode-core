@@ -14,7 +14,7 @@ The speech synthesizer used in vocode is configurable. By default, the `AzureSyn
 To configure a different language, modify the `SynthesizerConfig` when initializing the conversation:
 
 ```python
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode_velocity.streaming.models.synthesizer import AzureSynthesizerConfig
 
 synthesizer_config = AzureSynthesizerConfig(
     voice_name="de-DE-KatjaNeural" # German voice
@@ -29,7 +29,7 @@ The transcriber used in vocode is also configurable. By default, `DeepgramTransc
 To configure a different language model, modify the language code passed to `TranscriberConfig` when initializing the config object (`en-US` is the default):
 
 ```python
-from vocode.streaming.models.transcriber import DeepgramTranscriberConfig
+from vocode_velocity.streaming.models.transcriber import DeepgramTranscriberConfig
 
 transcriber_config = DeepgramTranscriberConfig(
     language="es" # Spanish
@@ -47,8 +47,8 @@ It is recommended to load the speech synthesizer voice and transcription model f
 
 ```python
 import os
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode.streaming.models.transcriber import DeepgramTranscriberConfig
+from vocode_velocity.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode_velocity.streaming.models.transcriber import DeepgramTranscriberConfig
 
 SYNTHESIZER_VOICE = os.getenv("SYNTHESIZER_VOICE", default="en-US-AriaNeural")
 ASR_MODEL = os.getenv("DEEPGRAM_MODEL", default="en-US")

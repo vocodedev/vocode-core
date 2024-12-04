@@ -1,10 +1,10 @@
-from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
-from vocode.streaming.agent.anthropic_agent import AnthropicAgent
-from vocode.streaming.agent.base_agent import BaseAgent
-from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.streaming.agent.echo_agent import EchoAgent
-from vocode.streaming.agent.restful_user_implemented_agent import RESTfulUserImplementedAgent
-from vocode.streaming.models.agent import (
+from vocode_velocity.streaming.agent.abstract_factory import AbstractAgentFactory
+from vocode_velocity.streaming.agent.anthropic_agent import AnthropicAgent
+from vocode_velocity.streaming.agent.base_agent import BaseAgent
+from vocode_velocity.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode_velocity.streaming.agent.echo_agent import EchoAgent
+from vocode_velocity.streaming.agent.restful_user_implemented_agent import RESTfulUserImplementedAgent
+from vocode_velocity.streaming.models.agent import (
     AgentConfig,
     AnthropicAgentConfig,
     ChatGPTAgentConfig,

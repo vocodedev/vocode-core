@@ -3,9 +3,9 @@ from typing import Optional
 from loguru import logger
 from redis import Redis
 
-from vocode.streaming.models.telephony import BaseCallConfig
-from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
-from vocode.streaming.utils.redis import initialize_redis
+from vocode_velocity.streaming.models.telephony import BaseCallConfig
+from vocode_velocity.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
+from vocode_velocity.streaming.utils.redis import initialize_redis
 
 
 class RedisConfigManager(BaseConfigManager):

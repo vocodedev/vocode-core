@@ -11,8 +11,8 @@ from pydantic.v1 import BaseModel, Field
 from websockets.asyncio.client import ClientConnection
 
 from vocode import getenv
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.transcriber import (
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.transcriber import (
     DEEPGRAM_API_WS_URL,
     DeepgramTranscriberConfig,
     EndpointingConfig,
@@ -20,8 +20,8 @@ from vocode.streaming.models.transcriber import (
     TimeEndpointingConfig,
     Transcription,
 )
-from vocode.streaming.transcriber.base_transcriber import BaseAsyncTranscriber
-from vocode.utils.sentry_utils import CustomSentrySpans, sentry_configured, sentry_create_span
+from vocode_velocity.streaming.transcriber.base_transcriber import BaseAsyncTranscriber
+from vocode_velocity.utils.sentry_utils import CustomSentrySpans, sentry_configured, sentry_create_span
 
 PUNCTUATION_TERMINATORS = [".", "!", "?"]
 NUM_RESTARTS = 5

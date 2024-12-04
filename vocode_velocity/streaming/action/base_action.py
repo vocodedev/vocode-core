@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, Any, Dict, Generic, List, Literal, Optional, T
 import jsonschema
 from jsonschema import Draft202012Validator as SchemaValidator
 
-from vocode.streaming.action.action_utils import exclude_keys_recursive
-from vocode.streaming.models.actions import (
+from vocode_velocity.streaming.action.action_utils import exclude_keys_recursive
+from vocode_velocity.streaming.models.actions import (
     ActionConfig,
     ActionInput,
     ActionOutput,
@@ -14,7 +14,7 @@ from vocode.streaming.models.actions import (
 )
 
 if TYPE_CHECKING:
-    from vocode.streaming.utils.state_manager import AbstractConversationStateManager
+    from vocode_velocity.streaming.utils.state_manager import AbstractConversationStateManager
 
 ActionConfigType = TypeVar("ActionConfigType", bound=ActionConfig)
 

@@ -5,7 +5,7 @@ from google.cloud import texttospeech_v1beta1 as tts  # type: ignore
 from pydub import AudioSegment
 
 from vocode import getenv
-from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode_velocity.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 DEFAULT_LANGUAGE_CODE = "en-US"
 DEFAULT_VOICE_NAME = "en-US-Neural2-I"

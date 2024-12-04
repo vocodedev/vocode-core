@@ -1,8 +1,8 @@
 import queue
 
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.transcriber import GoogleTranscriberConfig, Transcription
-from vocode.streaming.transcriber.base_transcriber import BaseThreadAsyncTranscriber
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.transcriber import GoogleTranscriberConfig, Transcription
+from vocode_velocity.streaming.transcriber.base_transcriber import BaseThreadAsyncTranscriber
 
 
 # TODO: make this nonblocking so it can run in the main thread, see speech.async_client.SpeechAsyncClient

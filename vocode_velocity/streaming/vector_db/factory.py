@@ -2,11 +2,11 @@ from typing import TYPE_CHECKING, Optional
 
 import aiohttp
 
-from vocode.streaming.models.vector_db import PineconeConfig, VectorDBConfig
-from vocode.streaming.vector_db.base_vector_db import VectorDB
+from vocode_velocity.streaming.models.vector_db import PineconeConfig, VectorDBConfig
+from vocode_velocity.streaming.vector_db.base_vector_db import VectorDB
 
 if TYPE_CHECKING:
-    from vocode.streaming.vector_db.pinecone import PineconeDB
+    from vocode_velocity.streaming.vector_db.pinecone import PineconeDB
 
 
 class VectorDBFactory:
@@ -23,7 +23,7 @@ class VectorDBFactory:
         self, vector_db_config: PineconeConfig, aiohttp_session: Optional[aiohttp.ClientSession]
     ) -> "PineconeDB":
         try:
-            from vocode.streaming.vector_db.pinecone import PineconeDB
+            from vocode_velocity.streaming.vector_db.pinecone import PineconeDB
 
             return PineconeDB(vector_db_config, aiohttp_session=aiohttp_session)
         except ImportError as e:

@@ -3,7 +3,7 @@ from typing import AsyncGenerator, AsyncIterable, List, Literal, Optional, Union
 
 from sentry_sdk.tracing import Span
 
-from vocode.streaming.models.actions import FunctionCall, FunctionFragment
+from vocode_velocity.streaming.models.actions import FunctionCall, FunctionFragment
 
 TOKENS_TO_GENERATE_PAST_PERIOD = 3
 SENTENCE_ENDINGS_EXCEPT_PERIOD_PATTERN = r"[?!\n\t\r]"

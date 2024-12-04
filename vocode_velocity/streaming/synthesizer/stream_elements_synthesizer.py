@@ -3,9 +3,9 @@ import io
 import aiohttp
 from pydub import AudioSegment
 
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import StreamElementsSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import StreamElementsSynthesizerConfig
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
 
 
 class StreamElementsSynthesizer(BaseSynthesizer[StreamElementsSynthesizerConfig]):

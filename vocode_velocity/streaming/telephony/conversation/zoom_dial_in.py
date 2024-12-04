@@ -1,11 +1,11 @@
 from typing import Optional
 
-from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.models.telephony import TwilioConfig
-from vocode.streaming.models.transcriber import TranscriberConfig
-from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
-from vocode.streaming.telephony.conversation.outbound_call import OutboundCall
+from vocode_velocity.streaming.models.agent import AgentConfig
+from vocode_velocity.streaming.models.synthesizer import SynthesizerConfig
+from vocode_velocity.streaming.models.telephony import TwilioConfig
+from vocode_velocity.streaming.models.transcriber import TranscriberConfig
+from vocode_velocity.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
+from vocode_velocity.streaming.telephony.conversation.outbound_call import OutboundCall
 
 
 class ZoomDialIn(OutboundCall):

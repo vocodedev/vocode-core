@@ -2,7 +2,7 @@ import asyncio
 
 from websockets.asyncio.server import serve
 
-from vocode.streaming.models.websocket_agent import (
+from vocode_velocity.streaming.models.websocket_agent import (
     WebSocketAgentMessage,
     WebSocketAgentStopMessage,
     WebSocketAgentTextMessage,

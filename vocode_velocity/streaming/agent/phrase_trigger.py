@@ -1,7 +1,7 @@
 import re
 from typing import List, Optional
 
-from vocode.streaming.models.actions import ActionConfig, PhraseBasedActionTrigger
+from vocode_velocity.streaming.models.actions import ActionConfig, PhraseBasedActionTrigger
 
 
 def matches_phrase_trigger(

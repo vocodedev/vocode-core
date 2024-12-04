@@ -6,7 +6,7 @@ import wave
 from string import ascii_letters, digits
 from typing import Any, AsyncGenerator, AsyncIterator, Callable, List, Tuple, TypeVar
 
-from vocode.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.audio import AudioEncoding
 
 custom_alphabet = ascii_letters + digits + ".-_"
 

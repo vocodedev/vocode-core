@@ -3,19 +3,19 @@ import signal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from vocode.helpers import create_streaming_microphone_input_and_speaker_output
-from vocode.logging import configure_pretty_logging
-from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode.streaming.models.transcriber import (
+from vocode_velocity.helpers import create_streaming_microphone_input_and_speaker_output
+from vocode_velocity.logging import configure_pretty_logging
+from vocode_velocity.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode_velocity.streaming.models.agent import ChatGPTAgentConfig
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode_velocity.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
 )
-from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
+from vocode_velocity.streaming.streaming_conversation import StreamingConversation
+from vocode_velocity.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
+from vocode_velocity.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 
 configure_pretty_logging()
 

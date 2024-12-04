@@ -17,7 +17,7 @@ The agent config should only contain the information you need to deterministical
 
 For our `BrokenRecordAgent`, we create a config like:
 ```python
-from vocode.streaming.models.agent import AgentConfig
+from vocode_velocity.streaming.models.agent import AgentConfig
 
 class BrokenRecordAgentConfig(AgentConfig, type="agent_broken_record"):
     message: str # The message we will always return

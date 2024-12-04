@@ -12,42 +12,42 @@ from loguru import logger
 from pydantic.v1 import BaseModel
 
 from vocode import sentry_span_tags
-from vocode.streaming.action.abstract_factory import AbstractActionFactory
-from vocode.streaming.action.base_action import BaseAction
-from vocode.streaming.action.default_factory import DefaultActionFactory
-from vocode.streaming.action.execute_external_action import ExecuteExternalActionVocodeActionConfig
-from vocode.streaming.action.phone_call_action import (
+from vocode_velocity.streaming.action.abstract_factory import AbstractActionFactory
+from vocode_velocity.streaming.action.base_action import BaseAction
+from vocode_velocity.streaming.action.default_factory import DefaultActionFactory
+from vocode_velocity.streaming.action.execute_external_action import ExecuteExternalActionVocodeActionConfig
+from vocode_velocity.streaming.action.phone_call_action import (
     TwilioPhoneConversationAction,
     VonagePhoneConversationAction,
 )
-from vocode.streaming.agent.goodbye import is_goodbye_simple
-from vocode.streaming.agent.phrase_trigger import matches_phrase_trigger
-from vocode.streaming.models.actions import (
+from vocode_velocity.streaming.agent.goodbye import is_goodbye_simple
+from vocode_velocity.streaming.agent.phrase_trigger import matches_phrase_trigger
+from vocode_velocity.streaming.models.actions import (
     ActionConfig,
     ActionInput,
     ActionOutput,
     EndOfTurn,
     FunctionCall,
 )
-from vocode.streaming.models.agent import AgentConfig, ChatGPTAgentConfig, LLMAgentConfig
-from vocode.streaming.models.events import Sender
-from vocode.streaming.models.message import BaseMessage, BotBackchannel, SilenceMessage
-from vocode.streaming.models.model import TypedModel
-from vocode.streaming.models.transcriber import Transcription
-from vocode.streaming.models.transcript import Message, Transcript
-from vocode.streaming.utils import unrepeating_randomizer
-from vocode.streaming.utils.speed_manager import SpeedManager
-from vocode.streaming.utils.worker import (
+from vocode_velocity.streaming.models.agent import AgentConfig, ChatGPTAgentConfig, LLMAgentConfig
+from vocode_velocity.streaming.models.events import Sender
+from vocode_velocity.streaming.models.message import BaseMessage, BotBackchannel, SilenceMessage
+from vocode_velocity.streaming.models.model import TypedModel
+from vocode_velocity.streaming.models.transcriber import Transcription
+from vocode_velocity.streaming.models.transcript import Message, Transcript
+from vocode_velocity.streaming.utils import unrepeating_randomizer
+from vocode_velocity.streaming.utils.speed_manager import SpeedManager
+from vocode_velocity.streaming.utils.worker import (
     AbstractWorker,
     InterruptibleAgentResponseEvent,
     InterruptibleEvent,
     InterruptibleEventFactory,
     InterruptibleWorker,
 )
-from vocode.utils.sentry_utils import CustomSentrySpans, sentry_create_span
+from vocode_velocity.utils.sentry_utils import CustomSentrySpans, sentry_create_span
 
 if TYPE_CHECKING:
-    from vocode.streaming.utils.state_manager import AbstractConversationStateManager
+    from vocode_velocity.streaming.utils.state_manager import AbstractConversationStateManager
 
 AGENT_TRACE_NAME = "agent"
 POST_QUESTION_BACKCHANNELS = [

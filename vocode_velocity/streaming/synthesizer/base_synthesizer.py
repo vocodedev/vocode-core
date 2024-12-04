@@ -23,20 +23,20 @@ from nltk.tokenize import word_tokenize
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 from sentry_sdk.tracing import Span as SentrySpan
 
-from vocode.streaming.models.agent import FillerAudioConfig
-from vocode.streaming.models.audio import AudioEncoding, SamplingRate
-from vocode.streaming.models.message import BaseMessage, BotBackchannel, SilenceMessage
-from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.synthesizer.audio_cache import AudioCache
-from vocode.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
-from vocode.streaming.telephony.constants import MULAW_SILENCE_BYTE, PCM_SILENCE_BYTE
-from vocode.streaming.utils import convert_wav, get_chunk_size_per_second
-from vocode.streaming.utils.async_requester import AsyncRequestor
-from vocode.streaming.utils.create_task import asyncio_create_task
-from vocode.streaming.utils.worker import QueueConsumer
+from vocode_velocity.streaming.models.agent import FillerAudioConfig
+from vocode_velocity.streaming.models.audio import AudioEncoding, SamplingRate
+from vocode_velocity.streaming.models.message import BaseMessage, BotBackchannel, SilenceMessage
+from vocode_velocity.streaming.models.synthesizer import SynthesizerConfig
+from vocode_velocity.streaming.synthesizer.audio_cache import AudioCache
+from vocode_velocity.streaming.synthesizer.miniaudio_worker import MiniaudioWorker
+from vocode_velocity.streaming.telephony.constants import MULAW_SILENCE_BYTE, PCM_SILENCE_BYTE
+from vocode_velocity.streaming.utils import convert_wav, get_chunk_size_per_second
+from vocode_velocity.streaming.utils.async_requester import AsyncRequestor
+from vocode_velocity.streaming.utils.create_task import asyncio_create_task
+from vocode_velocity.streaming.utils.worker import QueueConsumer
 
 if TYPE_CHECKING:
-    from vocode.streaming.streaming_conversation import StreamingConversation
+    from vocode_velocity.streaming.streaming_conversation import StreamingConversation
 
 FILLER_PHRASES = [
     BaseMessage(text="Um..."),

@@ -2,8 +2,8 @@ from typing import Optional
 
 from loguru import logger
 
-from vocode.streaming.utils.redis import initialize_redis_bytes
-from vocode.streaming.utils.singleton import Singleton
+from vocode_velocity.streaming.utils.redis import initialize_redis_bytes
+from vocode_velocity.streaming.utils.singleton import Singleton
 
 
 class AudioCache(Singleton):

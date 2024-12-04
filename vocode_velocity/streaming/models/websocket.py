@@ -2,7 +2,7 @@ import base64
 from enum import Enum
 from typing import Optional
 
-from vocode.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
+from vocode_velocity.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
 
 from .agent import AgentConfig
 from .events import Sender

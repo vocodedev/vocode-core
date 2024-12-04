@@ -1,6 +1,6 @@
 from typing import Type
 
-from vocode.streaming.models.synthesizer import (
+from vocode_velocity.streaming.models.synthesizer import (
     AzureSynthesizerConfig,
     CartesiaSynthesizerConfig,
     ElevenLabsSynthesizerConfig,
@@ -9,16 +9,16 @@ from vocode.streaming.models.synthesizer import (
     StreamElementsSynthesizerConfig,
     SynthesizerConfig,
 )
-from vocode.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
-from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
-from vocode.streaming.synthesizer.cartesia_synthesizer import CartesiaSynthesizer
-from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
-from vocode.streaming.synthesizer.eleven_labs_websocket_synthesizer import ElevenLabsWSSynthesizer
-from vocode.streaming.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
-from vocode.streaming.synthesizer.play_ht_synthesizer_v2 import PlayHtSynthesizerV2
-from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
-from vocode.streaming.synthesizer.stream_elements_synthesizer import StreamElementsSynthesizer
+from vocode_velocity.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
+from vocode_velocity.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode_velocity.streaming.synthesizer.cartesia_synthesizer import CartesiaSynthesizer
+from vocode_velocity.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
+from vocode_velocity.streaming.synthesizer.eleven_labs_websocket_synthesizer import ElevenLabsWSSynthesizer
+from vocode_velocity.streaming.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
+from vocode_velocity.streaming.synthesizer.play_ht_synthesizer_v2 import PlayHtSynthesizerV2
+from vocode_velocity.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
+from vocode_velocity.streaming.synthesizer.stream_elements_synthesizer import StreamElementsSynthesizer
 
 
 class DefaultSynthesizerFactory(AbstractSynthesizerFactory):

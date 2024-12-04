@@ -7,22 +7,22 @@ from aioresponses import aioresponses
 from pytest_mock import MockerFixture
 
 from tests.fakedata.id import generate_uuid
-from vocode.streaming.action.dtmf import (
+from vocode_velocity.streaming.action.dtmf import (
     DTMFParameters,
     DTMFVocodeActionConfig,
     TwilioDTMF,
     VonageDTMF,
 )
-from vocode.streaming.models.actions import (
+from vocode_velocity.streaming.models.actions import (
     TwilioPhoneConversationActionInput,
     VonagePhoneConversationActionInput,
 )
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.telephony import VonageConfig
-from vocode.streaming.output_device.twilio_output_device import TwilioOutputDevice
-from vocode.streaming.utils import create_conversation_id
-from vocode.streaming.utils.dtmf_utils import DTMFToneGenerator
-from vocode.streaming.utils.state_manager import (
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.telephony import VonageConfig
+from vocode_velocity.streaming.output_device.twilio_output_device import TwilioOutputDevice
+from vocode_velocity.streaming.utils import create_conversation_id
+from vocode_velocity.streaming.utils.dtmf_utils import DTMFToneGenerator
+from vocode_velocity.streaming.utils.state_manager import (
     TwilioPhoneConversationStateManager,
     VonagePhoneConversationStateManager,
 )

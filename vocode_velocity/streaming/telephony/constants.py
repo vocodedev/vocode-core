@@ -1,4 +1,4 @@
-from vocode.streaming.models.audio import AudioEncoding, SamplingRate
+from vocode_velocity.streaming.models.audio import AudioEncoding, SamplingRate
 
 # TODO(EPD-186): namespace as Twilio
 DEFAULT_SAMPLING_RATE: int = SamplingRate.RATE_8000.value

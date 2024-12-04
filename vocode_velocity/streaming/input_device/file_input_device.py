@@ -4,8 +4,8 @@ import wave
 import janus
 import numpy as np
 
-from vocode.streaming.input_device.base_input_device import BaseInputDevice
-from vocode.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.input_device.base_input_device import BaseInputDevice
+from vocode_velocity.streaming.models.audio import AudioEncoding
 
 
 class FileInputDevice(BaseInputDevice):

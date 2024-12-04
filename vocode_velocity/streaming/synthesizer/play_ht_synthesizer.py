@@ -4,10 +4,10 @@ from typing import Literal
 import aiohttp
 from aiohttp import ClientTimeout
 
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import PlayHtSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import PlayHtSynthesizerConfig
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
 
 TTS_ENDPOINT = "https://play.ht/api/v2/tts/stream"
 

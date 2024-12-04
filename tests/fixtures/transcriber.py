@@ -1,7 +1,7 @@
 import asyncio
 
-from vocode.streaming.models.transcriber import TranscriberConfig
-from vocode.streaming.transcriber.base_transcriber import BaseAsyncTranscriber, Transcription
+from vocode_velocity.streaming.models.transcriber import TranscriberConfig
+from vocode_velocity.streaming.transcriber.base_transcriber import BaseAsyncTranscriber, Transcription
 
 
 class TestTranscriberConfig(TranscriberConfig, type="transcriber_test"):

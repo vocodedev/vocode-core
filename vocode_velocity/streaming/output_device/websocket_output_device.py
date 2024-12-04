@@ -4,10 +4,10 @@ import asyncio
 
 from fastapi import WebSocket
 
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.transcript import TranscriptEvent
-from vocode.streaming.models.websocket import AudioMessage, TranscriptMessage
-from vocode.streaming.output_device.rate_limit_interruptions_output_device import (
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.transcript import TranscriptEvent
+from vocode_velocity.streaming.models.websocket import AudioMessage, TranscriptMessage
+from vocode_velocity.streaming.output_device.rate_limit_interruptions_output_device import (
     RateLimitInterruptionsOutputDevice,
 )
 

@@ -5,8 +5,8 @@ import requests
 from pydub import AudioSegment
 
 from vocode import getenv
-from vocode.streaming.models.audio import SamplingRate
-from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode_velocity.streaming.models.audio import SamplingRate
+from vocode_velocity.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 DEFAULT_SAMPLING_RATE = SamplingRate.RATE_24000
 TTS_ENDPOINT = "https://play.ht/api/v2/tts/stream"

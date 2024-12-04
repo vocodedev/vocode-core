@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union
 import aiohttp
 from openai import AsyncAzureOpenAI, AsyncOpenAI
 
-from vocode.streaming.models.agent import AZURE_OPENAI_DEFAULT_API_VERSION
+from vocode_velocity.streaming.models.agent import AZURE_OPENAI_DEFAULT_API_VERSION
 
 if TYPE_CHECKING:
     from langchain.docstore.document import Document

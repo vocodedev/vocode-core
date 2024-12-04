@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
-from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
-from vocode.streaming.utils.async_requester import AsyncRequestor
+from vocode_velocity.streaming.models.synthesizer import SynthesizerConfig
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode_velocity.streaming.utils.async_requester import AsyncRequestor
 
 
 class AbstractSynthesizerFactory(ABC):

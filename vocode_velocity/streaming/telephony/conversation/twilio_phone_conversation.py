@@ -7,25 +7,25 @@ from typing import Optional
 from fastapi import WebSocket
 from loguru import logger
 
-from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
-from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.events import PhoneCallConnectedEvent
-from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.models.telephony import PhoneCallDirection, TwilioConfig
-from vocode.streaming.models.transcriber import TranscriberConfig
-from vocode.streaming.output_device.twilio_output_device import (
+from vocode_velocity.streaming.agent.abstract_factory import AbstractAgentFactory
+from vocode_velocity.streaming.models.agent import AgentConfig
+from vocode_velocity.streaming.models.events import PhoneCallConnectedEvent
+from vocode_velocity.streaming.models.synthesizer import SynthesizerConfig
+from vocode_velocity.streaming.models.telephony import PhoneCallDirection, TwilioConfig
+from vocode_velocity.streaming.models.transcriber import TranscriberConfig
+from vocode_velocity.streaming.output_device.twilio_output_device import (
     ChunkFinishedMarkMessage,
     TwilioOutputDevice,
 )
-from vocode.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
-from vocode.streaming.telephony.client.twilio_client import TwilioClient
-from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
-from vocode.streaming.telephony.conversation.abstract_phone_conversation import (
+from vocode_velocity.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
+from vocode_velocity.streaming.telephony.client.twilio_client import TwilioClient
+from vocode_velocity.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
+from vocode_velocity.streaming.telephony.conversation.abstract_phone_conversation import (
     AbstractPhoneConversation,
 )
-from vocode.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
-from vocode.streaming.utils.events_manager import EventsManager
-from vocode.streaming.utils.state_manager import TwilioPhoneConversationStateManager
+from vocode_velocity.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
+from vocode_velocity.streaming.utils.events_manager import EventsManager
+from vocode_velocity.streaming.utils.state_manager import TwilioPhoneConversationStateManager
 
 
 class TwilioPhoneConversationWebsocketAction(Enum):

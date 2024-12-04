@@ -15,17 +15,17 @@ from tests.fakedata.conversation import (
 )
 from tests.fixtures.synthesizer import TestSynthesizer, TestSynthesizerConfig
 from tests.fixtures.transcriber import TestAsyncTranscriber, TestTranscriberConfig
-from vocode.streaming.agent.echo_agent import EchoAgent
-from vocode.streaming.models.actions import ActionInput
-from vocode.streaming.models.agent import EchoAgentConfig, InterruptSensitivity
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.events import Sender
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.transcriber import Transcription
-from vocode.streaming.models.transcript import ActionStart, Message, Transcript
-from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.streaming.synthesizer.base_synthesizer import SynthesisResult
-from vocode.streaming.utils.worker import QueueConsumer
+from vocode_velocity.streaming.agent.echo_agent import EchoAgent
+from vocode_velocity.streaming.models.actions import ActionInput
+from vocode_velocity.streaming.models.agent import EchoAgentConfig, InterruptSensitivity
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.events import Sender
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.transcriber import Transcription
+from vocode_velocity.streaming.models.transcript import ActionStart, Message, Transcript
+from vocode_velocity.streaming.streaming_conversation import StreamingConversation
+from vocode_velocity.streaming.synthesizer.base_synthesizer import SynthesisResult
+from vocode_velocity.streaming.utils.worker import QueueConsumer
 
 
 class ShouldIgnoreUtteranceTestCase(BaseModel):
@@ -42,7 +42,7 @@ async def _get_from_consumer_queue_if_exists(queue_consumer: QueueConsumer, time
 
 
 def test_interrupt_sensitivity(mocker: MockerFixture):
-    from vocode.streaming.streaming_conversation import StreamingConversation
+    from vocode_velocity.streaming.streaming_conversation import StreamingConversation
 
     mock_instance = mocker.MagicMock(spec=StreamingConversation.TranscriptionsWorker)
     mocker.patch.object(
@@ -177,7 +177,7 @@ def test_should_ignore_utterance(
     mocker: MockerFixture,
     test_case: ShouldIgnoreUtteranceTestCase,
 ):
-    from vocode.streaming.streaming_conversation import StreamingConversation
+    from vocode_velocity.streaming.streaming_conversation import StreamingConversation
 
     conversation = mocker.MagicMock()
     transcriptions_worker = StreamingConversation.TranscriptionsWorker(

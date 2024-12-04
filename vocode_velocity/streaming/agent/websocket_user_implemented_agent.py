@@ -5,7 +5,7 @@ import websockets
 from loguru import logger
 from websockets.asyncio.client import ClientConnection
 
-from vocode.streaming.agent.base_agent import (
+from vocode_velocity.streaming.agent.base_agent import (
     AgentInput,
     AgentResponse,
     AgentResponseMessage,
@@ -13,14 +13,14 @@ from vocode.streaming.agent.base_agent import (
     BaseAgent,
     TranscriptionAgentInput,
 )
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.websocket_agent import (
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.websocket_agent import (
     WebSocketAgentMessage,
     WebSocketAgentStopMessage,
     WebSocketAgentTextMessage,
     WebSocketUserImplementedAgentConfig,
 )
-from vocode.streaming.utils.worker import InterruptibleAgentResponseEvent, InterruptibleEvent
+from vocode_velocity.streaming.utils.worker import InterruptibleAgentResponseEvent, InterruptibleEvent
 
 NUM_RESTARTS = 5
 

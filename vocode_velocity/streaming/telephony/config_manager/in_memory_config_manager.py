@@ -1,7 +1,7 @@
 from typing import Optional
 
-from vocode.streaming.models.telephony import BaseCallConfig
-from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
+from vocode_velocity.streaming.models.telephony import BaseCallConfig
+from vocode_velocity.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
 
 
 class InMemoryConfigManager(BaseConfigManager):

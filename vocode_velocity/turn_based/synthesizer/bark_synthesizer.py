@@ -6,7 +6,7 @@ from loguru import logger
 from pydub import AudioSegment
 from scipy.io.wavfile import write as write_wav
 
-from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode_velocity.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 
 class BarkSynthesizer(BaseSynthesizer):

@@ -1,7 +1,7 @@
 from typing import Optional
 
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.model import BaseModel
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.model import BaseModel
 
 
 class InputAudioConfig(BaseModel):

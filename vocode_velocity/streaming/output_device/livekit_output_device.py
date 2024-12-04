@@ -2,10 +2,10 @@ import asyncio
 
 from livekit import rtc
 
-from vocode.streaming.livekit.constants import AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
-from vocode.streaming.output_device.audio_chunk import ChunkState
+from vocode_velocity.streaming.livekit.constants import AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.output_device.abstract_output_device import AbstractOutputDevice
+from vocode_velocity.streaming.output_device.audio_chunk import ChunkState
 
 NUM_CHANNELS = 1
 

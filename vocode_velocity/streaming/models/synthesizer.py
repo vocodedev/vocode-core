@@ -3,9 +3,9 @@ from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic.v1 import validator
 
-from vocode.streaming.models.client_backend import OutputAudioConfig
-from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
-from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
+from vocode_velocity.streaming.models.client_backend import OutputAudioConfig
+from vocode_velocity.streaming.output_device.abstract_output_device import AbstractOutputDevice
+from vocode_velocity.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
 
 from .audio import AudioEncoding, SamplingRate
 from .model import BaseModel, TypedModel

@@ -5,10 +5,10 @@ import typing
 from dotenv import load_dotenv
 from pydantic.v1 import BaseModel
 
-from vocode.streaming.action.abstract_factory import AbstractActionFactory
-from vocode.streaming.action.base_action import BaseAction
-from vocode.streaming.action.worker import ActionsWorker
-from vocode.streaming.models.actions import (
+from vocode_velocity.streaming.action.abstract_factory import AbstractActionFactory
+from vocode_velocity.streaming.action.base_action import BaseAction
+from vocode_velocity.streaming.action.worker import ActionsWorker
+from vocode_velocity.streaming.models.actions import (
     ActionConfig,
     ActionInput,
     ActionOutput,
@@ -17,24 +17,24 @@ from vocode.streaming.models.actions import (
     PhraseBasedActionTriggerConfig,
     PhraseTrigger,
 )
-from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.transcript import Transcript
-from vocode.streaming.utils.state_manager import AbstractConversationStateManager
-from vocode.streaming.utils.worker import InterruptibleAgentResponseEvent, QueueConsumer
+from vocode_velocity.streaming.models.agent import ChatGPTAgentConfig
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.transcript import Transcript
+from vocode_velocity.streaming.utils.state_manager import AbstractConversationStateManager
+from vocode_velocity.streaming.utils.worker import InterruptibleAgentResponseEvent, QueueConsumer
 
 load_dotenv()
 
-from vocode.streaming.agent import ChatGPTAgent
-from vocode.streaming.agent.base_agent import (
+from vocode_velocity.streaming.agent import ChatGPTAgent
+from vocode_velocity.streaming.agent.base_agent import (
     AgentResponse,
     AgentResponseMessage,
     AgentResponseType,
     BaseAgent,
     TranscriptionAgentInput,
 )
-from vocode.streaming.models.transcriber import Transcription
-from vocode.streaming.utils import create_conversation_id
+from vocode_velocity.streaming.models.transcriber import Transcription
+from vocode_velocity.streaming.utils import create_conversation_id
 
 BACKCHANNELS = ["Got it", "Sure", "Okay", "I understand"]
 

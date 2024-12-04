@@ -3,11 +3,11 @@ from typing import List, Optional
 
 from pydantic.v1 import validator
 
-import vocode.streaming.livekit.constants as LiveKitConstants
-from vocode.streaming.input_device.base_input_device import BaseInputDevice
-from vocode.streaming.models.client_backend import InputAudioConfig
-from vocode.streaming.models.model import BaseModel
-from vocode.streaming.telephony.constants import (
+import vocode_velocity.streaming.livekit.constants as LiveKitConstants
+from vocode_velocity.streaming.input_device.base_input_device import BaseInputDevice
+from vocode_velocity.streaming.models.client_backend import InputAudioConfig
+from vocode_velocity.streaming.models.model import BaseModel
+from vocode_velocity.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_SAMPLING_RATE,

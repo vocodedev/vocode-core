@@ -4,8 +4,8 @@ from loguru import logger
 from pydantic.v1 import BaseModel, parse_obj_as
 from redis.asyncio import Redis
 
-from vocode.streaming.utils.redis import initialize_redis
-from vocode.streaming.utils.singleton import Singleton
+from vocode_velocity.streaming.utils.redis import initialize_redis
+from vocode_velocity.streaming.utils.singleton import Singleton
 
 
 class RedisMessage(BaseModel):

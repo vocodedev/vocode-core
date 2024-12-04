@@ -4,15 +4,15 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 from loguru import logger
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
-from vocode.streaming.agent.token_utils import (
+from vocode_velocity.streaming.agent.token_utils import (
     get_chat_gpt_max_tokens,
     num_tokens_from_functions,
     num_tokens_from_messages,
 )
-from vocode.streaming.models.actions import FunctionFragment, PhraseBasedActionTrigger
-from vocode.streaming.models.agent import LLM_AGENT_DEFAULT_MAX_TOKENS
-from vocode.streaming.models.events import Sender
-from vocode.streaming.models.transcript import (
+from vocode_velocity.streaming.models.actions import FunctionFragment, PhraseBasedActionTrigger
+from vocode_velocity.streaming.models.agent import LLM_AGENT_DEFAULT_MAX_TOKENS
+from vocode_velocity.streaming.models.events import Sender
+from vocode_velocity.streaming.models.transcript import (
     ActionFinish,
     ActionStart,
     ConferenceEvent,

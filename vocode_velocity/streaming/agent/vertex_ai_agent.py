@@ -9,8 +9,8 @@ from langchain.schema import SystemMessage
 from langchain_community.chat_models import ChatVertexAI
 from loguru import logger
 
-from vocode.streaming.agent.base_agent import RespondAgent
-from vocode.streaming.models.agent import ChatVertexAIAgentConfig
+from vocode_velocity.streaming.agent.base_agent import RespondAgent
+from vocode_velocity.streaming.models.agent import ChatVertexAIAgentConfig
 
 
 class ChatVertexAIAgent(RespondAgent[ChatVertexAIAgentConfig]):

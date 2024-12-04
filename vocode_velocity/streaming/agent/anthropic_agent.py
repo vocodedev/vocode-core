@@ -6,16 +6,16 @@ from anthropic import AsyncAnthropic, AsyncStream
 from anthropic.types import MessageStreamEvent
 from loguru import logger
 
-from vocode.streaming.action.abstract_factory import AbstractActionFactory
-from vocode.streaming.action.default_factory import DefaultActionFactory
-from vocode.streaming.agent.anthropic_utils import format_anthropic_chat_messages_from_transcript
-from vocode.streaming.agent.base_agent import GeneratedResponse, RespondAgent, StreamedResponse
-from vocode.streaming.agent.streaming_utils import collate_response_async, stream_response_async
-from vocode.streaming.models.actions import FunctionFragment
-from vocode.streaming.models.agent import AnthropicAgentConfig
-from vocode.streaming.models.message import BaseMessage, LLMToken
-from vocode.streaming.vector_db.factory import VectorDBFactory
-from vocode.utils.sentry_utils import CustomSentrySpans, sentry_create_span
+from vocode_velocity.streaming.action.abstract_factory import AbstractActionFactory
+from vocode_velocity.streaming.action.default_factory import DefaultActionFactory
+from vocode_velocity.streaming.agent.anthropic_utils import format_anthropic_chat_messages_from_transcript
+from vocode_velocity.streaming.agent.base_agent import GeneratedResponse, RespondAgent, StreamedResponse
+from vocode_velocity.streaming.agent.streaming_utils import collate_response_async, stream_response_async
+from vocode_velocity.streaming.models.actions import FunctionFragment
+from vocode_velocity.streaming.models.agent import AnthropicAgentConfig
+from vocode_velocity.streaming.models.message import BaseMessage, LLMToken
+from vocode_velocity.streaming.vector_db.factory import VectorDBFactory
+from vocode_velocity.utils.sentry_utils import CustomSentrySpans, sentry_create_span
 
 
 class AnthropicAgent(RespondAgent[AnthropicAgentConfig]):

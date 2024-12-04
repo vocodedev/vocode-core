@@ -8,7 +8,7 @@ from sentry_sdk.tracing import Span, Transaction, _SpanRecorder
 from vocode import get_serialized_ctx_wrappers, sentry_transaction
 
 if TYPE_CHECKING:
-    from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+    from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer
 
 _SYNTHESIZER_NAMES = {
     "AzureSynthesizer": "azure",

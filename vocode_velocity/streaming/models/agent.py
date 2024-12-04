@@ -3,8 +3,8 @@ from typing import List, Literal, Optional, Union
 
 from pydantic.v1 import validator
 
-from vocode.streaming.models.actions import ActionConfig
-from vocode.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.actions import ActionConfig
+from vocode_velocity.streaming.models.message import BaseMessage
 
 from .model import BaseModel, TypedModel
 from .vector_db import VectorDBConfig

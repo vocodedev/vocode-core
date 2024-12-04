@@ -5,7 +5,7 @@ from pydub import AudioSegment
 from regex import D
 
 from vocode import getenv
-from vocode.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode_velocity.turn_based.synthesizer.base_synthesizer import BaseSynthesizer
 
 DEFAULT_SAMPLING_RATE = 22050
 DEFAULT_VOICE_NAME = "en-US-AriaNeural"

@@ -1,15 +1,15 @@
 import asyncio
 from typing import Any, Dict, Optional
 
-from vocode.streaming.action.base_action import ActionConfigType, BaseAction
-from vocode.streaming.models.actions import (
+from vocode_velocity.streaming.action.base_action import ActionConfigType, BaseAction
+from vocode_velocity.streaming.models.actions import (
     ActionInput,
     ParametersType,
     ResponseType,
     TwilioPhoneConversationActionInput,
     VonagePhoneConversationActionInput,
 )
-from vocode.streaming.utils.state_manager import (
+from vocode_velocity.streaming.utils.state_manager import (
     TwilioPhoneConversationStateManager,
     VonagePhoneConversationStateManager,
 )

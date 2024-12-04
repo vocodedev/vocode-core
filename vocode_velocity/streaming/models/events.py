@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
 
-from vocode.streaming.models.model import TypedModel
+from vocode_velocity.streaming.models.model import TypedModel
 
 
 class Sender(str, Enum):

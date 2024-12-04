@@ -4,30 +4,30 @@ from typing import Callable
 from fastapi import APIRouter, WebSocket
 from loguru import logger
 
-from vocode.streaming.agent.base_agent import BaseAgent
-from vocode.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
-from vocode.streaming.models.events import Event, EventType
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode.streaming.models.transcriber import (
+from vocode_velocity.streaming.agent.base_agent import BaseAgent
+from vocode_velocity.streaming.models.client_backend import InputAudioConfig, OutputAudioConfig
+from vocode_velocity.streaming.models.events import Event, EventType
+from vocode_velocity.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode_velocity.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
 )
-from vocode.streaming.models.transcript import TranscriptEvent
-from vocode.streaming.models.websocket import (
+from vocode_velocity.streaming.models.transcript import TranscriptEvent
+from vocode_velocity.streaming.models.websocket import (
     AudioConfigStartMessage,
     AudioMessage,
     ReadyMessage,
     WebSocketMessage,
     WebSocketMessageType,
 )
-from vocode.streaming.output_device.websocket_output_device import WebsocketOutputDevice
-from vocode.streaming.streaming_conversation import StreamingConversation
-from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer
-from vocode.streaming.transcriber.base_transcriber import BaseTranscriber
-from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
-from vocode.streaming.utils import events_manager
-from vocode.streaming.utils.base_router import BaseRouter
+from vocode_velocity.streaming.output_device.websocket_output_device import WebsocketOutputDevice
+from vocode_velocity.streaming.streaming_conversation import StreamingConversation
+from vocode_velocity.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from vocode_velocity.streaming.transcriber.base_transcriber import BaseTranscriber
+from vocode_velocity.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
+from vocode_velocity.streaming.utils import events_manager
+from vocode_velocity.streaming.utils.base_router import BaseRouter
 
 BASE_CONVERSATION_ENDPOINT = "/conversation"
 

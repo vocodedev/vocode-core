@@ -7,7 +7,7 @@ from redis.backoff import ExponentialBackoff, NoBackoff
 from redis.exceptions import ConnectionError, TimeoutError
 from redis.retry import Retry
 
-from vocode.streaming.utils.singleton import Singleton
+from vocode_velocity.streaming.utils.singleton import Singleton
 
 WorkerInputType = TypeVar("WorkerInputType")
 # Two separate factories for Redis clients so that the

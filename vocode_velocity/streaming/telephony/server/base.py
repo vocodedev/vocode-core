@@ -6,30 +6,30 @@ from fastapi import APIRouter, Form, Request, Response
 from loguru import logger
 from pydantic.v1 import BaseModel, Field
 
-from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
-from vocode.streaming.agent.default_factory import DefaultAgentFactory
-from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.events import RecordingEvent
-from vocode.streaming.models.synthesizer import SynthesizerConfig
-from vocode.streaming.models.telephony import (
+from vocode_velocity.streaming.agent.abstract_factory import AbstractAgentFactory
+from vocode_velocity.streaming.agent.default_factory import DefaultAgentFactory
+from vocode_velocity.streaming.models.agent import AgentConfig
+from vocode_velocity.streaming.models.events import RecordingEvent
+from vocode_velocity.streaming.models.synthesizer import SynthesizerConfig
+from vocode_velocity.streaming.models.telephony import (
     TwilioCallConfig,
     TwilioConfig,
     VonageCallConfig,
     VonageConfig,
 )
-from vocode.streaming.models.transcriber import TranscriberConfig
-from vocode.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
-from vocode.streaming.synthesizer.default_factory import DefaultSynthesizerFactory
-from vocode.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
-from vocode.streaming.telephony.client.twilio_client import TwilioClient
-from vocode.streaming.telephony.client.vonage_client import VonageClient
-from vocode.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
-from vocode.streaming.telephony.server.router.calls import CallsRouter
-from vocode.streaming.telephony.templater import get_connection_twiml
-from vocode.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
-from vocode.streaming.transcriber.default_factory import DefaultTranscriberFactory
-from vocode.streaming.utils import create_conversation_id
-from vocode.streaming.utils.events_manager import EventsManager
+from vocode_velocity.streaming.models.transcriber import TranscriberConfig
+from vocode_velocity.streaming.synthesizer.abstract_factory import AbstractSynthesizerFactory
+from vocode_velocity.streaming.synthesizer.default_factory import DefaultSynthesizerFactory
+from vocode_velocity.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
+from vocode_velocity.streaming.telephony.client.twilio_client import TwilioClient
+from vocode_velocity.streaming.telephony.client.vonage_client import VonageClient
+from vocode_velocity.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
+from vocode_velocity.streaming.telephony.server.router.calls import CallsRouter
+from vocode_velocity.streaming.telephony.templater import get_connection_twiml
+from vocode_velocity.streaming.transcriber.abstract_factory import AbstractTranscriberFactory
+from vocode_velocity.streaming.transcriber.default_factory import DefaultTranscriberFactory
+from vocode_velocity.streaming.utils import create_conversation_id
+from vocode_velocity.streaming.utils.events_manager import EventsManager
 
 
 class AbstractInboundCallConfig(BaseModel, abc.ABC):

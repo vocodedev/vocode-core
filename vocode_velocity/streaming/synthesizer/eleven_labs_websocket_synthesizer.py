@@ -8,12 +8,12 @@ import websockets
 from loguru import logger
 from pydantic import BaseModel, conint
 
-from vocode.streaming.models.audio import AudioEncoding, SamplingRate
-from vocode.streaming.models.message import BaseMessage, BotBackchannel, LLMToken
-from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
-from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
-from vocode.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
+from vocode_velocity.streaming.models.audio import AudioEncoding, SamplingRate
+from vocode_velocity.streaming.models.message import BaseMessage, BotBackchannel, LLMToken
+from vocode_velocity.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode_velocity.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
+from vocode_velocity.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
 
 NONCE = "071b5f21-3b24-4427-817e-62508007ae60"
 ELEVEN_LABS_BASE_URL = "wss://api.elevenlabs.io/v1/"

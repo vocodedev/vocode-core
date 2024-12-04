@@ -3,8 +3,8 @@ from typing import Optional, Tuple, cast
 import aiohttp
 from loguru import logger
 
-from vocode.streaming.agent.base_agent import RespondAgent
-from vocode.streaming.models.agent import (
+from vocode_velocity.streaming.agent.base_agent import RespondAgent
+from vocode_velocity.streaming.models.agent import (
     RESTfulAgentInput,
     RESTfulAgentOutput,
     RESTfulAgentOutputType,

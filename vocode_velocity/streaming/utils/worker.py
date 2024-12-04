@@ -8,7 +8,7 @@ from typing import Any, Dict, Generic, List, Optional, TypeVar
 import janus
 from loguru import logger
 
-from vocode.streaming.utils.create_task import asyncio_create_task
+from vocode_velocity.streaming.utils.create_task import asyncio_create_task
 
 WorkerInputType = TypeVar("WorkerInputType")
 

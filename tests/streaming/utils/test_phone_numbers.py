@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from vocode.streaming.utils.phone_numbers import NUMBER_PARSE_ERROR, sanitize_phone_number
+from vocode_velocity.streaming.utils.phone_numbers import NUMBER_PARSE_ERROR, sanitize_phone_number
 
 
 def test_sanitize_phone_number_valid_number_without_region():

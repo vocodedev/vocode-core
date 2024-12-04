@@ -8,22 +8,22 @@ from openai import DEFAULT_MAX_RETRIES as OPENAI_DEFAULT_MAX_RETRIES
 from openai import AsyncAzureOpenAI, AsyncOpenAI, NotFoundError, RateLimitError
 
 from vocode import sentry_span_tags
-from vocode.streaming.action.abstract_factory import AbstractActionFactory
-from vocode.streaming.action.default_factory import DefaultActionFactory
-from vocode.streaming.agent.base_agent import GeneratedResponse, RespondAgent, StreamedResponse
-from vocode.streaming.agent.openai_utils import (
+from vocode_velocity.streaming.action.abstract_factory import AbstractActionFactory
+from vocode_velocity.streaming.action.default_factory import DefaultActionFactory
+from vocode_velocity.streaming.agent.base_agent import GeneratedResponse, RespondAgent, StreamedResponse
+from vocode_velocity.streaming.agent.openai_utils import (
     format_openai_chat_messages_from_transcript,
     openai_get_tokens,
     vector_db_result_to_openai_chat_message,
 )
-from vocode.streaming.agent.streaming_utils import collate_response_async, stream_response_async
-from vocode.streaming.models.actions import FunctionCallActionTrigger
-from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.models.events import Sender
-from vocode.streaming.models.message import BaseMessage, BotBackchannel, LLMToken
-from vocode.streaming.models.transcript import Message
-from vocode.streaming.vector_db.factory import VectorDBFactory
-from vocode.utils.sentry_utils import CustomSentrySpans, sentry_create_span
+from vocode_velocity.streaming.agent.streaming_utils import collate_response_async, stream_response_async
+from vocode_velocity.streaming.models.actions import FunctionCallActionTrigger
+from vocode_velocity.streaming.models.agent import ChatGPTAgentConfig
+from vocode_velocity.streaming.models.events import Sender
+from vocode_velocity.streaming.models.message import BaseMessage, BotBackchannel, LLMToken
+from vocode_velocity.streaming.models.transcript import Message
+from vocode_velocity.streaming.vector_db.factory import VectorDBFactory
+from vocode_velocity.utils.sentry_utils import CustomSentrySpans, sentry_create_span
 
 ChatGPTAgentConfigType = TypeVar("ChatGPTAgentConfigType", bound=ChatGPTAgentConfig)
 

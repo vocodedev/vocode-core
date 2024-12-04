@@ -1,20 +1,20 @@
 from typing import TYPE_CHECKING, Optional
 
-from vocode.streaming.models.transcriber import EndpointingConfig
-from vocode.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
-from vocode.streaming.telephony.client.twilio_client import TwilioClient
-from vocode.streaming.telephony.client.vonage_client import VonageClient
-from vocode.streaming.utils.redis_conversation_message_queue import RedisConversationMessageQueue
+from vocode_velocity.streaming.models.transcriber import EndpointingConfig
+from vocode_velocity.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
+from vocode_velocity.streaming.telephony.client.twilio_client import TwilioClient
+from vocode_velocity.streaming.telephony.client.vonage_client import VonageClient
+from vocode_velocity.streaming.utils.redis_conversation_message_queue import RedisConversationMessageQueue
 
 if TYPE_CHECKING:
-    from vocode.streaming.streaming_conversation import StreamingConversation
-    from vocode.streaming.telephony.conversation.abstract_phone_conversation import (
+    from vocode_velocity.streaming.streaming_conversation import StreamingConversation
+    from vocode_velocity.streaming.telephony.conversation.abstract_phone_conversation import (
         AbstractPhoneConversation,
     )
-    from vocode.streaming.telephony.conversation.twilio_phone_conversation import (
+    from vocode_velocity.streaming.telephony.conversation.twilio_phone_conversation import (
         TwilioPhoneConversation,
     )
-    from vocode.streaming.telephony.conversation.vonage_phone_conversation import (
+    from vocode_velocity.streaming.telephony.conversation.vonage_phone_conversation import (
         VonagePhoneConversation,
     )
 

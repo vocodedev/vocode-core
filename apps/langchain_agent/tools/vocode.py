@@ -6,15 +6,15 @@ from call_transcript_utils import delete_transcript, get_transcript
 from dotenv import load_dotenv
 from langchain.agents import tool
 
-from vocode.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.message import BaseMessage
 
 load_dotenv()
 
 import time
 
-from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
-from vocode.streaming.telephony.conversation.outbound_call import OutboundCall
+from vocode_velocity.streaming.models.agent import ChatGPTAgentConfig
+from vocode_velocity.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
+from vocode_velocity.streaming.telephony.conversation.outbound_call import OutboundCall
 
 LOOP = asyncio.new_event_loop()
 asyncio.set_event_loop(LOOP)

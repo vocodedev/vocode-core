@@ -1,9 +1,9 @@
 import asyncio
 from abc import abstractmethod
 
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.output_device.audio_chunk import AudioChunk
-from vocode.streaming.utils.worker import AsyncWorker, InterruptibleEvent
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.output_device.audio_chunk import AudioChunk
+from vocode_velocity.streaming.utils.worker import AsyncWorker, InterruptibleEvent
 
 
 class AbstractOutputDevice(AsyncWorker[InterruptibleEvent[AudioChunk]]):

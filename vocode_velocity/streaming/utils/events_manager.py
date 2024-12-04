@@ -5,7 +5,7 @@ from typing import List
 
 from loguru import logger
 
-from vocode.streaming.models.events import Event, EventType
+from vocode_velocity.streaming.models.events import Event, EventType
 
 
 class EventsManager:

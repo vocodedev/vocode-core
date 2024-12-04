@@ -2,9 +2,9 @@ from typing import Type
 
 from pydantic.v1 import BaseModel
 
-from vocode.streaming.action.base_action import BaseAction
-from vocode.streaming.models.actions import ActionConfig as VocodeActionConfig
-from vocode.streaming.models.actions import ActionInput, ActionOutput
+from vocode_velocity.streaming.action.base_action import BaseAction
+from vocode_velocity.streaming.models.actions import ActionConfig as VocodeActionConfig
+from vocode_velocity.streaming.models.actions import ActionInput, ActionOutput
 
 
 class WaitVocodeActionConfig(VocodeActionConfig, type="action_wait"):  # type: ignore

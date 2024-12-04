@@ -6,11 +6,11 @@ from elevenlabs import Voice, VoiceSettings
 from elevenlabs.client import AsyncElevenLabs
 from loguru import logger
 
-from vocode.streaming.models.audio import AudioEncoding, SamplingRate
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
-from vocode.streaming.utils.create_task import asyncio_create_task
+from vocode_velocity.streaming.models.audio import AudioEncoding, SamplingRate
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode_velocity.streaming.utils.create_task import asyncio_create_task
 
 ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1/"
 STREAMED_CHUNK_SIZE = 16000 * 2 // 4  # 1/8 of a second of 16kHz audio with 16-bit samples

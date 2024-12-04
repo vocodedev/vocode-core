@@ -5,9 +5,9 @@ from typing import Any, Optional
 
 import boto3
 
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import PollySynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import (
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import PollySynthesizerConfig
+from vocode_velocity.streaming.synthesizer.base_synthesizer import (
     BaseSynthesizer,
     SynthesisResult,
     encode_as_wav,

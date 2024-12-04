@@ -6,9 +6,9 @@ import numpy as np
 from pydub import AudioSegment
 from TTS.api import TTS
 
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import CoquiTTSSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import CoquiTTSSynthesizerConfig
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
 
 
 class CoquiTTSSynthesizer(BaseSynthesizer[CoquiTTSSynthesizerConfig]):

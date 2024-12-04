@@ -7,16 +7,16 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables.base import Runnable
 from loguru import logger
 
-from vocode.streaming.action.abstract_factory import AbstractActionFactory
-from vocode.streaming.action.default_factory import DefaultActionFactory
-from vocode.streaming.agent.anthropic_utils import merge_bot_messages_for_langchain
-from vocode.streaming.agent.base_agent import GeneratedResponse, RespondAgent, StreamedResponse
-from vocode.streaming.agent.streaming_utils import collate_response_async, stream_response_async
-from vocode.streaming.models.agent import LangchainAgentConfig
-from vocode.streaming.models.events import Sender
-from vocode.streaming.models.message import BaseMessage, LLMToken
-from vocode.streaming.models.transcript import Message
-from vocode.utils.sentry_utils import CustomSentrySpans, sentry_create_span
+from vocode_velocity.streaming.action.abstract_factory import AbstractActionFactory
+from vocode_velocity.streaming.action.default_factory import DefaultActionFactory
+from vocode_velocity.streaming.agent.anthropic_utils import merge_bot_messages_for_langchain
+from vocode_velocity.streaming.agent.base_agent import GeneratedResponse, RespondAgent, StreamedResponse
+from vocode_velocity.streaming.agent.streaming_utils import collate_response_async, stream_response_async
+from vocode_velocity.streaming.models.agent import LangchainAgentConfig
+from vocode_velocity.streaming.models.events import Sender
+from vocode_velocity.streaming.models.message import BaseMessage, LLMToken
+from vocode_velocity.streaming.models.transcript import Message
+from vocode_velocity.utils.sentry_utils import CustomSentrySpans, sentry_create_span
 
 
 class LangchainAgent(RespondAgent[LangchainAgentConfig]):

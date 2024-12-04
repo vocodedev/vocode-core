@@ -1,8 +1,8 @@
 from typing import Optional, Tuple
 
-from vocode.streaming.agent.base_agent import RespondAgent
-from vocode.streaming.models.agent import GPT4AllAgentConfig
-from vocode.turn_based.agent.gpt4all_agent import GPT4AllAgent as TurnBasedGPT4AllAgent
+from vocode_velocity.streaming.agent.base_agent import RespondAgent
+from vocode_velocity.streaming.models.agent import GPT4AllAgentConfig
+from vocode_velocity.turn_based.agent.gpt4all_agent import GPT4AllAgent as TurnBasedGPT4AllAgent
 
 raise DeprecationWarning("This Agent is deprecated and will be removed in the future.")
 

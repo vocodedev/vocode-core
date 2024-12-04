@@ -5,14 +5,14 @@ import json
 import pytest
 from pytest_mock import MockerFixture
 
-from vocode.streaming.output_device.audio_chunk import AudioChunk, ChunkState
-from vocode.streaming.output_device.twilio_output_device import (
+from vocode_velocity.streaming.output_device.audio_chunk import AudioChunk, ChunkState
+from vocode_velocity.streaming.output_device.twilio_output_device import (
     ChunkFinishedMarkMessage,
     TwilioOutputDevice,
 )
-from vocode.streaming.utils.dtmf_utils import DTMFToneGenerator, KeypadEntry
-from vocode.streaming.utils.singleton import SingletonMeta
-from vocode.streaming.utils.worker import InterruptibleEvent
+from vocode_velocity.streaming.utils.dtmf_utils import DTMFToneGenerator, KeypadEntry
+from vocode_velocity.streaming.utils.singleton import SingletonMeta
+from vocode_velocity.streaming.utils.worker import InterruptibleEvent
 
 
 @pytest.fixture

@@ -5,13 +5,13 @@ import audioop
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Generic, Optional, TypeVar, Union
 
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.transcriber import TranscriberConfig, Transcription
-from vocode.streaming.utils.speed_manager import SpeedManager
-from vocode.streaming.utils.worker import AbstractWorker, AsyncWorker, ThreadAsyncWorker
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.transcriber import TranscriberConfig, Transcription
+from vocode_velocity.streaming.utils.speed_manager import SpeedManager
+from vocode_velocity.streaming.utils.worker import AbstractWorker, AsyncWorker, ThreadAsyncWorker
 
 if TYPE_CHECKING:
-    from vocode.streaming.streaming_conversation import StreamingConversation
+    from vocode_velocity.streaming.streaming_conversation import StreamingConversation
 
 TranscriberConfigType = TypeVar("TranscriberConfigType", bound=TranscriberConfig)
 

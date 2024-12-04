@@ -9,14 +9,14 @@ import aiohttp
 from loguru import logger
 
 from vocode import getenv
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import (
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import (
     RIME_DEFAULT_REDUCE_LATENCY,
     RIME_DEFAULT_SPEED_ALPHA,
     RimeSynthesizerConfig,
 )
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
 
 # TODO: [OSS] Remove call to internal library with Synthesizers refactor
 

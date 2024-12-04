@@ -2,11 +2,11 @@ import asyncio
 import time
 from abc import abstractmethod
 
-from vocode.streaming.constants import PER_CHUNK_ALLOWANCE_SECONDS
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
-from vocode.streaming.output_device.audio_chunk import ChunkState
-from vocode.streaming.utils import get_chunk_size_per_second
+from vocode_velocity.streaming.constants import PER_CHUNK_ALLOWANCE_SECONDS
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.output_device.abstract_output_device import AbstractOutputDevice
+from vocode_velocity.streaming.output_device.audio_chunk import ChunkState
+from vocode_velocity.streaming.utils import get_chunk_size_per_second
 
 
 class RateLimitInterruptionsOutputDevice(AbstractOutputDevice):

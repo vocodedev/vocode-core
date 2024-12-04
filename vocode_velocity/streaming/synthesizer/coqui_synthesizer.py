@@ -4,10 +4,10 @@ from typing import Dict, Tuple
 import aiohttp
 
 from vocode import getenv
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import CoquiSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
-from vocode.streaming.utils.async_requester import AsyncRequestor
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import CoquiSynthesizerConfig
+from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer, SynthesisResult
+from vocode_velocity.streaming.utils.async_requester import AsyncRequestor
 
 raise DeprecationWarning("This Synthesizer is deprecated and will be removed in the future.")
 

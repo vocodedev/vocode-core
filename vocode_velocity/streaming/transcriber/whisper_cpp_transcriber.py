@@ -7,11 +7,11 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 from pydub import AudioSegment
 
-from vocode.streaming.constants import SENTENCE_ENDINGS
-from vocode.streaming.models.transcriber import Transcription, WhisperCPPTranscriberConfig
-from vocode.streaming.transcriber.base_transcriber import BaseThreadAsyncTranscriber
-from vocode.utils.whisper_cpp.helpers import transcribe
-from vocode.utils.whisper_cpp.whisper_params import WhisperFullParams
+from vocode_velocity.streaming.constants import SENTENCE_ENDINGS
+from vocode_velocity.streaming.models.transcriber import Transcription, WhisperCPPTranscriberConfig
+from vocode_velocity.streaming.transcriber.base_transcriber import BaseThreadAsyncTranscriber
+from vocode_velocity.utils.whisper_cpp.helpers import transcribe
+from vocode_velocity.utils.whisper_cpp.whisper_params import WhisperFullParams
 
 WHISPER_CPP_SAMPLING_RATE = 16000
 

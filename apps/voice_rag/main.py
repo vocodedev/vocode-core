@@ -4,16 +4,16 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
-from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode.streaming.client_backend.conversation import ConversationRouter
-from vocode.streaming.models.agent import ChatGPTAgentConfig
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode.streaming.models.transcriber import DeepgramTranscriberConfig, TimeEndpointingConfig
-from vocode.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
-from vocode.streaming.vector_db.factory import VectorDBFactory
-from vocode.streaming.vector_db.pinecone import PineconeConfig
+from vocode_velocity.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode_velocity.streaming.client_backend.conversation import ConversationRouter
+from vocode_velocity.streaming.models.agent import ChatGPTAgentConfig
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import AzureSynthesizerConfig
+from vocode_velocity.streaming.models.transcriber import DeepgramTranscriberConfig, TimeEndpointingConfig
+from vocode_velocity.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
+from vocode_velocity.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
+from vocode_velocity.streaming.vector_db.factory import VectorDBFactory
+from vocode_velocity.streaming.vector_db.pinecone import PineconeConfig
 
 load_dotenv()
 

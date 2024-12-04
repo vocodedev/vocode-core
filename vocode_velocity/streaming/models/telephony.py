@@ -1,15 +1,15 @@
 from enum import Enum
 from typing import Any, Dict, Literal, Optional, Union
 
-from vocode.streaming.models.agent import AgentConfig
-from vocode.streaming.models.model import BaseModel, TypedModel
-from vocode.streaming.models.synthesizer import AzureSynthesizerConfig, SynthesizerConfig
-from vocode.streaming.models.transcriber import (
+from vocode_velocity.streaming.models.agent import AgentConfig
+from vocode_velocity.streaming.models.model import BaseModel, TypedModel
+from vocode_velocity.streaming.models.synthesizer import AzureSynthesizerConfig, SynthesizerConfig
+from vocode_velocity.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
     TranscriberConfig,
 )
-from vocode.streaming.telephony.constants import (
+from vocode_velocity.streaming.telephony.constants import (
     DEFAULT_AUDIO_ENCODING,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_SAMPLING_RATE,

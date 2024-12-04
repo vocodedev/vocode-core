@@ -9,16 +9,16 @@ from pyht import AsyncClient
 from pyht.client import CongestionCtrl, TTSOptions
 from pyht.protos import api_pb2
 
-from vocode.streaming.models.audio import AudioEncoding
-from vocode.streaming.models.message import BaseMessage
-from vocode.streaming.models.synthesizer import PlayHtSynthesizerConfig
-from vocode.streaming.synthesizer.base_synthesizer import SynthesisResult
-from vocode.streaming.synthesizer.play_ht_synthesizer import (
+from vocode_velocity.streaming.models.audio import AudioEncoding
+from vocode_velocity.streaming.models.message import BaseMessage
+from vocode_velocity.streaming.models.synthesizer import PlayHtSynthesizerConfig
+from vocode_velocity.streaming.synthesizer.base_synthesizer import SynthesisResult
+from vocode_velocity.streaming.synthesizer.play_ht_synthesizer import (
     PlayHtSynthesizer as VocodePlayHtSynthesizer,
 )
-from vocode.streaming.synthesizer.synthesizer_utils import split_text
-from vocode.streaming.utils import generate_from_async_iter_with_lookahead, generate_with_is_last
-from vocode.streaming.utils.create_task import asyncio_create_task
+from vocode_velocity.streaming.synthesizer.synthesizer_utils import split_text
+from vocode_velocity.streaming.utils import generate_from_async_iter_with_lookahead, generate_with_is_last
+from vocode_velocity.streaming.utils.create_task import asyncio_create_task
 
 PLAY_HT_ON_PREM_ADDR = os.environ.get("VOCODE_PLAYHT_ON_PREM_ADDR", None)
 PLAY_HT_V2_MAX_CHARS = 200
