@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "vocode-velocity"
+name = "vocode_velocity"
 version = "0.1.114a2"
 description = "The all-in-one voice SDK"
 authors = ["Ajay Raj <ajay@vocode.dev>"]
