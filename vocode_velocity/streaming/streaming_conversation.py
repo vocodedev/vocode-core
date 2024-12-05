@@ -44,7 +44,12 @@ from vocode_velocity.streaming.constants import (
 from vocode_velocity.streaming.models.actions import EndOfTurn
 from vocode_velocity.streaming.models.agent import FillerAudioConfig
 from vocode_velocity.streaming.models.events import Sender
-from vocode_velocity.streaming.models.message import BaseMessage, BotBackchannel, LLMToken, SilenceMessage
+from vocode_velocity.streaming.models.message import (
+    BaseMessage,
+    BotBackchannel,
+    LLMToken,
+    SilenceMessage,
+)
 from vocode_velocity.streaming.models.transcriber import TranscriberConfig, Transcription
 from vocode_velocity.streaming.models.transcript import Message, Transcript, TranscriptCompleteEvent
 from vocode_velocity.streaming.output_device.abstract_output_device import AbstractOutputDevice
@@ -54,7 +59,9 @@ from vocode_velocity.streaming.synthesizer.base_synthesizer import (
     FillerAudio,
     SynthesisResult,
 )
-from vocode_velocity.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
+from vocode_velocity.streaming.synthesizer.input_streaming_synthesizer import (
+    InputStreamingSynthesizer,
+)
 from vocode_velocity.streaming.transcriber.base_transcriber import BaseTranscriber
 from vocode_velocity.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 from vocode_velocity.streaming.utils import (
@@ -233,10 +240,8 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 return
             # ignore utterances during the initial message but still add them to the transcript
             initial_message_ongoing = not self.conversation.initial_message_tracker.is_set()
-            if initial_message_ongoing or self.should_ignore_utterance(transcription):
-                logger.info(
-                    f"Ignoring utterance: {transcription.message}. IMO: {initial_message_ongoing}"
-                )
+            if self.should_ignore_utterance(transcription):
+                logger.info(f"Ignoring utterance: {transcription.message}.")
                 self.has_associated_ignored_utterance = (
                     not transcription.is_final  # if it's final, we're done with this backchannel
                 )
