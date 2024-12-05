@@ -12,7 +12,9 @@ from vocode_velocity.streaming.models.telephony import (
     VonageConfig,
 )
 from vocode_velocity.streaming.models.transcriber import TranscriberConfig
-from vocode_velocity.streaming.telephony.client.abstract_telephony_client import AbstractTelephonyClient
+from vocode_velocity.streaming.telephony.client.abstract_telephony_client import (
+    AbstractTelephonyClient,
+)
 from vocode_velocity.streaming.telephony.client.twilio_client import TwilioClient
 from vocode_velocity.streaming.telephony.client.vonage_client import VonageClient
 from vocode_velocity.streaming.telephony.config_manager.base_config_manager import BaseConfigManager
@@ -127,6 +129,10 @@ class OutboundCall:
         else:
             raise ValueError("Unknown telephony client")
         await self.config_manager.save_config(self.conversation_id, call_config)
+        return {
+            "conversation_id": self.conversation_id,
+            "telephony_id": self.telephony_id,
+        }
 
     async def end(self):
         return await self.telephony_client.end_call(self.telephony_id)
