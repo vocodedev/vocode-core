@@ -84,7 +84,6 @@ from vocode.utils.sentry_utils import (
     synthesizer_base_name_if_should_report_to_sentry,
 )
 
-
 BACKCHANNEL_PATTERNS = [
     r"m+-?hm+",
     r"m+",
@@ -135,9 +134,9 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             self.conversation = conversation
 
         def create_interruptible_event(
-            self,
-            payload: Any,
-            is_interruptible: bool = True,
+                self,
+                payload: Any,
+                is_interruptible: bool = True,
         ) -> InterruptibleEvent[Any]:
             interruptible_event: InterruptibleEvent = super().create_interruptible_event(
                 payload,
@@ -147,10 +146,10 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             return interruptible_event
 
         def create_interruptible_agent_response_event(
-            self,
-            payload: Any,
-            is_interruptible: bool = True,
-            agent_response_tracker: Optional[asyncio.Event] = None,
+                self,
+                payload: Any,
+                is_interruptible: bool = True,
+                agent_response_tracker: Optional[asyncio.Event] = None,
         ) -> InterruptibleAgentResponseEvent:
             interruptible_event = super().create_interruptible_agent_response_event(
                 payload,
@@ -167,9 +166,9 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         consumer: AbstractWorker[InterruptibleEvent[Transcription]]
 
         def __init__(
-            self,
-            conversation: "StreamingConversation",
-            interruptible_event_factory: InterruptibleEventFactory,
+                self,
+                conversation: "StreamingConversation",
+                interruptible_event_factory: InterruptibleEventFactory,
         ):
             super().__init__()
             self.conversation = conversation
@@ -199,8 +198,8 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         def is_transcription_backchannel(self, transcription: Transcription):
             num_words = len(transcription.message.strip().split())
             if (
-                self.conversation.agent.get_agent_config().interrupt_sensitivity == "high"
-                and num_words >= 1
+                    self.conversation.agent.get_agent_config().interrupt_sensitivity == "high"
+                    and num_words >= 1
             ):
                 logger.info(f"High interrupt sensitivity; {num_words} word(s) not a backchannel")
                 return False
@@ -223,11 +222,11 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         def is_bot_in_medias_res(self):
             last_message = self.get_maybe_last_transcript_event_log()
             return (
-                last_message is not None
-                and not last_message.is_backchannel
-                and last_message.sender == Sender.BOT
-                and not last_message.is_final
-                and last_message.text.strip() != ""
+                    last_message is not None
+                    and not last_message.is_backchannel
+                    and last_message.sender == Sender.BOT
+                    and not last_message.is_final
+                    and last_message.text.strip() != ""
             )
 
         def is_bot_still_speaking(self):  # in_medias_res OR bot has more utterances
@@ -237,15 +236,15 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             )
 
             is_first_bot_message = (
-                second_to_last_message is None or second_to_last_message.sender == Sender.HUMAN
+                    second_to_last_message is None or second_to_last_message.sender == Sender.HUMAN
             )
 
             return (
-                last_message is not None
-                and not last_message.is_backchannel
-                and last_message.sender == Sender.BOT
-                and (not last_message.is_final or not last_message.is_end_of_turn)
-                and not (is_first_bot_message and last_message.text.strip() == "")
+                    last_message is not None
+                    and not last_message.is_backchannel
+                    and last_message.sender == Sender.BOT
+                    and (not last_message.is_final or not last_message.is_end_of_turn)
+                    and not (is_first_bot_message and last_message.text.strip() == "")
             )
 
         async def process(self, transcription: Transcription):
@@ -275,8 +274,8 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 return
             if transcription.is_final:
                 if (
-                    self.deepgram_transcriber is not None
-                    and self.deepgram_transcriber.is_first_transcription
+                        self.deepgram_transcriber is not None
+                        and self.deepgram_transcriber.is_first_transcription
                 ):
                     logger.debug(
                         "Switching to non-first transcription endpointing config if configured"
@@ -344,8 +343,8 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         """
 
         def __init__(
-            self,
-            conversation: "StreamingConversation",
+                self,
+                conversation: "StreamingConversation",
         ):
             super().__init__()
             self.conversation = conversation
@@ -359,8 +358,8 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 )
                 return
             if self.interruptible_event and isinstance(
-                self.interruptible_event,
-                InterruptibleAgentResponseEvent,
+                    self.interruptible_event,
+                    InterruptibleAgentResponseEvent,
             ):
                 await self.interruptible_event.agent_response_tracker.wait()
 
@@ -398,9 +397,9 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         ]
 
         def __init__(
-            self,
-            conversation: "StreamingConversation",
-            interruptible_event_factory: InterruptibleEventFactory,
+                self,
+                conversation: "StreamingConversation",
+                interruptible_event_factory: InterruptibleEventFactory,
         ):
             super().__init__()
             self.conversation = conversation
@@ -492,8 +491,8 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                         )
                 maybe_synthesis_result: Optional[SynthesisResult] = None
                 if isinstance(
-                    self.conversation.synthesizer,
-                    InputStreamingSynthesizer,
+                        self.conversation.synthesizer,
+                        InputStreamingSynthesizer,
                 ) and isinstance(agent_response_message.message, LLMToken):
                     logger.debug("Sending chunk to synthesizer")
                     await self.conversation.synthesizer.send_token_to_synthesizer(
@@ -547,8 +546,8 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         """Plays SynthesisResults from the output queue on the output device"""
 
         def __init__(
-            self,
-            conversation: "StreamingConversation",
+                self,
+                conversation: "StreamingConversation",
         ):
             super().__init__()
             self.conversation = conversation
@@ -556,10 +555,10 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
 
         @observe(as_type="span")
         async def process(
-            self,
-            item: InterruptibleAgentResponseEvent[
-                Tuple[Union[BaseMessage, EndOfTurn], Optional[SynthesisResult]]
-            ],
+                self,
+                item: InterruptibleAgentResponseEvent[
+                    Tuple[Union[BaseMessage, EndOfTurn], Optional[SynthesisResult]]
+                ],
         ):
             try:
                 message, synthesis_result = item.payload
@@ -606,14 +605,14 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 pass
 
     def __init__(
-        self,
-        output_device: OutputDeviceType,
-        transcriber: BaseTranscriber[TranscriberConfig],
-        agent: BaseAgent,
-        synthesizer: BaseSynthesizer,
-        speed_coefficient: float = 1.0,
-        conversation_id: Optional[str] = None,
-        events_manager: Optional[EventsManager] = None,
+            self,
+            output_device: OutputDeviceType,
+            transcriber: BaseTranscriber[TranscriberConfig],
+            agent: BaseAgent,
+            synthesizer: BaseSynthesizer,
+            speed_coefficient: float = 1.0,
+            conversation_id: Optional[str] = None,
+            events_manager: Optional[EventsManager] = None,
     ):
         self.id = conversation_id or create_conversation_id()
         ctx_conversation_id.set(self.id)
@@ -702,7 +701,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         self.end_time: Optional[float] = None
 
         self.idle_time_threshold = (
-            self.agent.get_agent_config().allowed_idle_time_seconds or ALLOWED_IDLE_TIME
+                self.agent.get_agent_config().allowed_idle_time_seconds or ALLOWED_IDLE_TIME
         )
 
         self.interrupt_lock = asyncio.Lock()
@@ -762,8 +761,8 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         self.check_for_idle_paused = paused
 
     async def send_initial_message(
-        self,
-        initial_message: BaseMessage,
+            self,
+            initial_message: BaseMessage,
     ):
         # TODO: configure if initial message is interruptible
         delay = self.agent.get_agent_config().initial_message_delay
@@ -805,9 +804,9 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             await asyncio.sleep(self.idle_time_threshold / 2)
 
     async def send_single_message(
-        self,
-        message: BaseMessage,
-        message_tracker: Optional[asyncio.Event] = None,
+            self,
+            message: BaseMessage,
+            message_tracker: Optional[asyncio.Event] = None,
     ):
         agent_response_event = (
             self.interruptible_event_factory.create_interruptible_agent_response_event(
@@ -868,7 +867,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
 
     def is_interrupt(self, transcription: Transcription):
         return transcription.confidence >= (
-            self.transcriber.get_transcriber_config().min_interrupt_confidence or 0
+                self.transcriber.get_transcriber_config().min_interrupt_confidence or 0
         )
 
     def _maybe_create_first_chunk_span(self, synthesis_result: SynthesisResult, message: str):
@@ -891,8 +890,8 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         complete_span_by_op(CustomSentrySpans.LATENCY_OF_CONVERSATION)
 
     def _get_synthesizer_chunk_size(
-        self,
-        seconds_per_chunk: float = TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
+            self,
+            seconds_per_chunk: float = TEXT_TO_SPEECH_CHUNK_SIZE_SECONDS,
     ):
         return int(
             seconds_per_chunk
@@ -904,13 +903,13 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
 
     @observe(as_type="span")
     async def send_speech_to_output(
-        self,
-        message: str,
-        synthesis_result: SynthesisResult,
-        stop_event: threading.Event,
-        seconds_per_chunk: float,
-        transcript_message: Optional[Message] = None,
-        started_event: Optional[threading.Event] = None,
+            self,
+            message: str,
+            synthesis_result: SynthesisResult,
+            stop_event: threading.Event,
+            seconds_per_chunk: float,
+            transcript_message: Optional[Message] = None,
+            started_event: Optional[threading.Event] = None,
     ):
         """
         - Sends the speech chunk by chunk to the output device
@@ -923,8 +922,8 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
         seconds_spoken = 0.0
 
         def create_on_play_callback(
-            chunk_idx: int,
-            processed_event: asyncio.Event,
+                chunk_idx: int,
+                processed_event: asyncio.Event,
         ):
             def _on_play():
                 if chunk_idx == 0:
@@ -940,14 +939,14 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
                 seconds_spoken += seconds_per_chunk
                 if transcript_message:
                     transcript_message.text = synthesis_result.get_message_up_to(seconds_spoken)
-                    logger.debug(f"Transcript message: {transcript_message.text}")
+                   # logger.debug(f"Transcript message: {transcript_message.text}")
 
                 processed_event.set()
 
             return _on_play
 
         def create_on_interrupt_callback(
-            processed_event: asyncio.Event,
+                processed_event: asyncio.Event,
         ):
             def _on_interrupt():
                 processed_event.set()
@@ -1005,10 +1004,10 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
             None,
         )
         cut_off = (
-            interrupted_before_all_chunks_sent or maybe_first_interrupted_audio_chunk is not None
+                interrupted_before_all_chunks_sent or maybe_first_interrupted_audio_chunk is not None
         )
         if (
-            transcript_message and not cut_off
+                transcript_message and not cut_off
         ):  # if the audio was not cut off, we can set the transcript message to the full message
             transcript_message.text = synthesis_result.get_message_up_to(None)
 
