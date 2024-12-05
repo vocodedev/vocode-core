@@ -10,80 +10,80 @@ homepage = "https://github.com/vocodedev/vocode-python"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-aiohttp = "^3.9.5"
-anthropic = "^0.28.0"
-azure-cognitiveservices-speech = "^1.38.0"
-elevenlabs = "^1.2.2"
-fastapi = "^0.115.5"
-janus = "^1.0.0"
+aiohttp = "^3.11.9"
+anthropic = "^0.40.0"
+azure-cognitiveservices-speech = "^1.41.1"
+elevenlabs = "^1.13.3"
+fastapi = "^0.115.6"
+janus = "^1.1.0"
 jinja2 = "^3.1.4"
-jsonschema = "^4.22.0"
+jsonschema = "^4.23.0"
 loguru = "^0.7.2"
-miniaudio = "^1.59.0"
+miniaudio = "^1.61.0"
 numpy = "^1.26.4"
-openai = "^1.30.5"
-opentelemetry-sdk = "^1.24.0"
-phonenumbers = "^8.13.37"
-pydantic = "^2.7.2"
-pydantic-settings = "^2.3.0"
+openai = "^1.56.2"
+opentelemetry-sdk = "^1.28.2"
+phonenumbers = "^8.13.51"
+pydantic = "^2.9.2"
+pydantic-settings = "^2.6.1"
 pydub = "^0.25.1"
-pyht = "^0.0.28"
-redis = "^5.0.4"
+pyht = "^0.1.8"
+redis = "^5.2.0"
 requests = "^2.32.3"
-sentry-sdk = { extras = ["fastapi"], version = "^2.3.1" }
-sounddevice = "^0.4.7"
-tiktoken = "^0.7.0"
-uvicorn = "^0.30.0"
-websockets = "^14.1"
+sentry-sdk = { extras = ["fastapi"], version = "^2.19.0" }
+sounddevice = "^0.5.1"
+tiktoken = "^0.8.0"
+uvicorn = "^0.32.1"
+websockets = "^13.1"
 nltk = "^3.9.1"
 
 # LLM Providers
-groq = { version = "^0.9.0", optional = true }
+groq = { version = "^0.13.0", optional = true }
 
 # Synthesizers
-google-cloud-texttospeech = { version = "^2.16.3", optional = true }
-pvkoala = { version = "^2.0.1", optional = true }
-cartesia = {version = "^1.1.0", optional = true}
+google-cloud-texttospeech = { version = "^2.21.1", optional = true }
+pvkoala = { version = "^2.0.2", optional = true }
+cartesia = {version = "^1.3.1", optional = true}
 
 # Transcribers
-google-cloud-speech = { version = "^2.26.0", optional = true }
+google-cloud-speech = { version = "^2.28.1", optional = true }
 
 # Telephony
-twilio = { version = "^9.1.0", optional = true }
-vonage = { version = "^3.14.0", optional = true }
+twilio = { version = "^9.3.7", optional = true }
+vonage = { version = "^4.1.1", optional = true }
 
 # Langchain
-langchain = { version = "^0.2.3", optional = true }
-langchain-community = { version = "^0.2.4", optional = true }
-langchain-openai = { version = "^0.1.8", optional = true }
-langchain-anthropic = { version = "^0.1.15", optional = true }
-langchain-google-vertexai = { version = "^1.0.5", optional = true }
+langchain = { version = "0.3.9", optional = true }
+langchain-community = { version = "^0.3.9", optional = true }
+langchain-openai = { version = "^0.2.11", optional = true }
+langchain-anthropic = { version = "^0.3.0", optional = true }
+langchain-google-vertexai = { version = "^2.0.8", optional = true }
 
 # LiveKit
-livekit = { version = "^0.11.1", optional = true }
+livekit = { version = "^0.18.1", optional = true }
 langfuse = "^2.55.0"
 python-multipart = "^0.0.19"
 
 [tool.poetry.group.lint.dependencies]
-black = "^24.4.2"
+black = "^24.10.0"
 isort = "^5.13.2"
 
 [tool.poetry.group.typing.dependencies]
-mypy = "^1.10.0"
-pydub-stubs = "^0.25.1.0"
-types-redis = "^4.6.0"
-types-regex = "^2024.5.15.20240519"
-types-requests = "^2.32.0.20240523"
+mypy = "^1.13.0"
+pydub-stubs = "^0.25.1.5"
+types-redis = "^4.6.0.20241004"
+types-regex = "^2024.11.6.20241108"
+types-requests = "^2.32.0.20241016"
 
 [tool.poetry.group.dev.dependencies]
-aioresponses = "^0.7.6"
-coverage = "^7.5.3"
-fakeredis = "^2.23.2"
-pytest = "^8.2.1"
-pytest-asyncio = "^0.23.7"
-pytest-cov = "^5.0.0"
-pytest-env = "^1.1.3"
-pytest-httpx = "^0.30.0"
+aioresponses = "^0.7.7"
+coverage = "^7.6.8"
+fakeredis = "^2.26.1"
+pytest = "^8.3.4"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.0.0"
+pytest-env = "^1.1.5"
+pytest-httpx = "^0.34.0"
 pytest-mock = "^3.14.0"
 
 [tool.poetry.extras]
