@@ -206,7 +206,7 @@ class StreamingConversation(AudioPipeline[OutputDeviceType]):
 
             if num_words <= LOW_INTERRUPT_SENSITIVITY_BACKCHANNEL_UTTERANCE_LENGTH_THRESHOLD:
                 return True
-            cleaned = re.sub("[^\w\s]", "", transcription.message).strip().lower()
+            cleaned = re.sub(r"[^\w\s]", "", transcription.message).strip().lower()
             return any(re.fullmatch(regex, cleaned) for regex in BACKCHANNEL_PATTERNS)
 
         def _most_recent_transcript_messages(self) -> Iterator[Message]:

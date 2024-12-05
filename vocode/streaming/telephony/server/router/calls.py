@@ -2,7 +2,7 @@ from typing import Optional
 
 import sentry_sdk
 from fastapi import APIRouter, HTTPException, WebSocket
-from langfuse.decorators import observe
+from langfuse.decorators import observe, langfuse_context
 from loguru import logger
 
 from vocode import sentry_transaction
@@ -118,7 +118,7 @@ class CallsRouter(BaseRouter):
                 synthesizer_factory=self.synthesizer_factory,
                 events_manager=self.events_manager,
             )
-
+            langfuse_context.update_current_trace(session_id=call_config.to_phone)
             await phone_conversation.attach_ws_and_start(websocket)
             logger.debug("Phone WS connection closed for chat {}".format(id))
 
