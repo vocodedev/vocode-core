@@ -1,14 +1,17 @@
 import base64
 import json
 import os
+import typing
 from enum import Enum
 from typing import Optional
 
 from fastapi import WebSocket
-from langfuse.decorators import observe
+from langfuse.decorators import observe, langfuse_context
+from langfuse.media import LangfuseMedia
 from loguru import logger
 
 from vocode.streaming.agent.abstract_factory import AbstractAgentFactory
+from vocode.streaming.client_backend.conversation import pcm_to_wav
 from vocode.streaming.models.agent import AgentConfig
 from vocode.streaming.models.events import PhoneCallConnectedEvent
 from vocode.streaming.models.synthesizer import SynthesizerConfig
@@ -56,6 +59,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
         record_call: bool = False,
         speed_coefficient: float = 1.0,
         noise_suppression: bool = False,  # is currently a no-op
+
     ):
         super().__init__(
             direction=direction,
@@ -84,12 +88,14 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
         )
         self.twilio_sid = twilio_sid
         self.record_call = record_call
+        self.recording = b""
 
     def create_state_manager(self) -> TwilioPhoneConversationStateManager:
         return TwilioPhoneConversationStateManager(self)
 
     @observe(as_type="span")
     async def attach_ws_and_start(self, ws: WebSocket):
+        logger.debug("ATTACHING WS")
         super().attach_ws(ws)
 
         await self._wait_for_twilio_start(ws)
@@ -108,6 +114,13 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
                 break
         await ws.close(code=1000, reason=None)
         await self.terminate()
+        logger.debug("RECORDING")
+        media = LangfuseMedia(content_type="audio/wav", content_bytes=pcm_to_wav(self.recording,
+                                                                                 sample_rate=16000,
+                                                                                 channels=1,
+                                                                                 sample_width=2
+                                                                            ))
+        langfuse_context.update_current_trace(metadata={"Recording of the User": media})
 
     async def _wait_for_twilio_start(self, ws: WebSocket):
         assert isinstance(self.output_device, TwilioOutputDevice)
@@ -130,6 +143,8 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
             media = data["media"]
             chunk = base64.b64decode(media["payload"])
             self.receive_audio(chunk)
+            logger.debug(f"Decoded chunk: {chunk[:100]}")
+            self.recording += chunk
         if data["event"] == "mark":
             chunk_id = data["mark"]["name"]
             self.output_device.enqueue_mark_message(ChunkFinishedMarkMessage(chunk_id=chunk_id))
