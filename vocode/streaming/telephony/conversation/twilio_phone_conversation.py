@@ -95,7 +95,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
 
     @observe(as_type="span")
     async def attach_ws_and_start(self, ws: WebSocket):
-        logger.info("ATTACHING WS")
+        logger.debug("ATTACHING WS")
         super().attach_ws(ws)
 
         await self._wait_for_twilio_start(ws)
@@ -114,9 +114,8 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
                 break
         await ws.close(code=1000, reason=None)
         await self.terminate()
-        logger.info("RECORDING")
-        media = LangfuseMedia(content_type="audio/wav", content_bytes=pcm_to_wav(pcm_data=self.recording,
-                                                                                 sample_rate=48000))
+        logger.debug("RECORDING")
+        media = LangfuseMedia(content_type="audio/wav", content_bytes=self.recording)
         langfuse_context.update_current_trace(metadata={"Recording of the User": media})
 
     async def _wait_for_twilio_start(self, ws: WebSocket):
@@ -140,6 +139,7 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
             media = data["media"]
             chunk = base64.b64decode(media["payload"])
             self.receive_audio(chunk)
+            logger.debug(f"Media payload: {media['payload'][:100]}")
             self.recording += media["payload"]
         if data["event"] == "mark":
             chunk_id = data["mark"]["name"]
