@@ -31,8 +31,8 @@ To use a synthesizer, you need to create a configuration object for the synthesi
 ### Example 1: Using Eleven Labs with a phone call
 
 ```python
-from vocode_velocity.streaming.telephony.hosted.inbound_call_server import InboundCallServer
-from vocode_velocity.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
+from svara.streaming.telephony.hosted.inbound_call_server import InboundCallServer
+from svara.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
 
 server = InboundCallServer(
     ...
@@ -52,8 +52,8 @@ The method hardcodes some values like the `sampling_rate` and `audio_encoding` f
 You can try out our experimental implementation of ElevenLabs' [input streaming API](https://elevenlabs.io/docs/api-reference/websockets) by passing in `experimental_websocket=True` into the config and using the `ElevenLabsWSSynthesizer`, like:
 
 ```python
-from vocode_velocity.streaming.synthesizer.eleven_labs_websocket_synthesizer import ElevenLabsWSSynthesizer
-from vocode_velocity.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
+from svara.streaming.synthesizer.eleven_labs_websocket_synthesizer import ElevenLabsWSSynthesizer
+from svara.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
 
 ...
 synthesizer_config=ElevenLabsSynthesizerConfig.from_telephone_output_device(
@@ -118,8 +118,8 @@ CartesiaSynthesizerConfig(
 ### Example 3: Using Azure in StreamingConversation locally
 
 ```python
-from vocode_velocity.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode_velocity.helpers import create_microphone_input_and_speaker_output
+from svara.streaming.models.synthesizer import AzureSynthesizerConfig
+from svara.helpers import create_microphone_input_and_speaker_output
 
 microphone_input, speaker_output = create_microphone_input_and_speaker_output(
         streaming=True, use_default_devices=False

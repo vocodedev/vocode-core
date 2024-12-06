@@ -1,13 +1,13 @@
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
-from vocode_velocity.logging import configure_pretty_logging
-from vocode_velocity.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode_velocity.streaming.client_backend.conversation import ConversationRouter
-from vocode_velocity.streaming.models.agent import ChatGPTAgentConfig
-from vocode_velocity.streaming.models.message import BaseMessage
-from vocode_velocity.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode_velocity.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
+from svara.logging import configure_pretty_logging
+from svara.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from svara.streaming.client_backend.conversation import ConversationRouter
+from svara.streaming.models.agent import ChatGPTAgentConfig
+from svara.streaming.models.message import BaseMessage
+from svara.streaming.models.synthesizer import AzureSynthesizerConfig
+from svara.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
 
 load_dotenv()
 

@@ -10,7 +10,7 @@ import pytest
 from httpx import Request, Response
 from pytest_httpx import HTTPXMock
 
-from vocode_velocity.streaming.action.external_actions_requester import ExternalActionsRequester
+from svara.streaming.action.external_actions_requester import ExternalActionsRequester
 
 JSON_SCHEMA = {
     "type": "object",

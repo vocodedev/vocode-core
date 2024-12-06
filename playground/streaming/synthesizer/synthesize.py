@@ -1,15 +1,15 @@
 import time
 
-from vocode_velocity.streaming.constants import PER_CHUNK_ALLOWANCE_SECONDS
-from vocode_velocity.streaming.models.message import BaseMessage
-from vocode_velocity.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode_velocity.streaming.output_device.abstract_output_device import AbstractOutputDevice
-from vocode_velocity.streaming.output_device.audio_chunk import AudioChunk
-from vocode_velocity.streaming.output_device.blocking_speaker_output import BlockingSpeakerOutput
-from vocode_velocity.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer
-from vocode_velocity.streaming.utils import get_chunk_size_per_second
-from vocode_velocity.streaming.utils.worker import InterruptibleEvent
+from svara.streaming.constants import PER_CHUNK_ALLOWANCE_SECONDS
+from svara.streaming.models.message import BaseMessage
+from svara.streaming.models.synthesizer import AzureSynthesizerConfig
+from svara.streaming.output_device.abstract_output_device import AbstractOutputDevice
+from svara.streaming.output_device.audio_chunk import AudioChunk
+from svara.streaming.output_device.blocking_speaker_output import BlockingSpeakerOutput
+from svara.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
+from svara.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from svara.streaming.utils import get_chunk_size_per_second
+from svara.streaming.utils.worker import InterruptibleEvent
 
 if __name__ == "__main__":
     import asyncio

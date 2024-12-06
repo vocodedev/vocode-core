@@ -79,9 +79,9 @@ from typing import Optional, Type
 from pydantic import Field
 from pydantic.v1 import BaseModel
 
-from vocode_velocity.streaming.action.base_action import BaseAction
-from vocode_velocity.streaming.models.actions import ActionConfig as VocodeActionConfig
-from vocode_velocity.streaming.models.actions import ActionInput, ActionOutput
+from svara.streaming.action.base_action import BaseAction
+from svara.streaming.models.actions import ActionConfig as VocodeActionConfig
+from svara.streaming.models.actions import ActionInput, ActionOutput
 
     
 _NYLAS_ACTION_DESCRIPTION = """Sends an email using Nylas API.
@@ -177,10 +177,10 @@ We will store the code above in `nylas_send_email.py` and make a factory that ca
 ```python
 from typing import Dict, Sequence, Type
 
-from vocode_velocity.streaming.action.abstract_factory import AbstractActionFactory
-from vocode_velocity.streaming.action.base_action import BaseAction
-from vocode_velocity.streaming.action.nylas_send_email import NylasSendEmail
-from vocode_velocity.streaming.models.actions import ActionConfig
+from svara.streaming.action.abstract_factory import AbstractActionFactory
+from svara.streaming.action.base_action import BaseAction
+from svara.streaming.action.nylas_send_email import NylasSendEmail
+from svara.streaming.models.actions import ActionConfig
 
 class MyCustomActionFactory(AbstractActionFactory):
     def create_action(self, action_config: ActionConfig):

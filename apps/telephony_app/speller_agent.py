@@ -1,9 +1,9 @@
 from typing import Optional, Tuple
 
-from vocode_velocity.streaming.agent.abstract_factory import AbstractAgentFactory
-from vocode_velocity.streaming.agent.base_agent import BaseAgent, RespondAgent
-from vocode_velocity.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode_velocity.streaming.models.agent import AgentConfig, AgentType, ChatGPTAgentConfig
+from svara.streaming.agent.abstract_factory import AbstractAgentFactory
+from svara.streaming.agent.base_agent import BaseAgent, RespondAgent
+from svara.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from svara.streaming.models.agent import AgentConfig, AgentType, ChatGPTAgentConfig
 
 
 class SpellerAgentConfig(AgentConfig, type="agent_speller"):

@@ -12,8 +12,8 @@ Agent factories specify which agents are available to your app. In order to conn
 First define your `AgentFactory`. In this example, we are creating a factory for a new type of agent called MyActionAgent:
 
 ```python
-from vocode_velocity.streaming.agent.abstract_factory import AbstractAgentFactory
-from vocode_velocity.streaming.action.my_action_factory import MyActionFactory
+from svara.streaming.agent.abstract_factory import AbstractAgentFactory
+from svara.streaming.action.my_action_factory import MyActionFactory
 
 class MyAgentFactory(AbstractAgentFactory):
     def __init__(self, action_factory: MyActionFactory):
@@ -36,9 +36,9 @@ class MyAgentFactory(AbstractAgentFactory):
 Then, in your app, you can connect the agent to the app:
 
 ```python
-from vocode_velocity.streaming.telephony.server.base import TelephonyServer
-from vocode_velocity.streaming.agent.my_agent_factory import MyAgentFactory
-from vocode_velocity.streaming.action.my_action_factory import MyActionFactory
+from svara.streaming.telephony.server.base import TelephonyServer
+from svara.streaming.agent.my_agent_factory import MyAgentFactory
+from svara.streaming.action.my_action_factory import MyActionFactory
 
 telephony_server = TelephonyServer(
     agent_factory=MyAgentFactory(action_factory=MyActionFactory())

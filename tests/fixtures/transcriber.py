@@ -1,7 +1,7 @@
 import asyncio
 
-from vocode_velocity.streaming.models.transcriber import TranscriberConfig
-from vocode_velocity.streaming.transcriber.base_transcriber import BaseAsyncTranscriber, Transcription
+from svara.streaming.models.transcriber import TranscriberConfig
+from svara.streaming.transcriber.base_transcriber import BaseAsyncTranscriber, Transcription
 
 
 class TestTranscriberConfig(TranscriberConfig, type="transcriber_test"):

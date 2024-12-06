@@ -26,7 +26,7 @@ To set up logging in your application, you can use the provided configuration fu
 To enable pretty printing locally, use the `configure_pretty_logging` function. This will set up Loguru to output logs with colored formatting, making them easier to read during development.
 
 ```python
-from vocode_velocity.logging import configure_pretty_logging
+from svara.logging import configure_pretty_logging
 
 configure_pretty_logging()
 ```
@@ -36,7 +36,7 @@ configure_pretty_logging()
 For production environments, you may want to log in JSON format for better integration with logging systems and easier parsing. Use the `configure_json_logging` function to set this up.
 
 ```python
-from vocode_velocity.logging import configure_json_logging
+from svara.logging import configure_json_logging
 
 configure_json_logging()
 ```
@@ -54,7 +54,7 @@ Here's an example of how you can set up logging in your application:
 
 ```python
 import os
-from vocode_velocity.logging import configure_pretty_logging, configure_json_logging
+from svara.logging import configure_pretty_logging, configure_json_logging
 
 DEPLOYED_ENVIRONMENTS = ["production", "staging"]
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")

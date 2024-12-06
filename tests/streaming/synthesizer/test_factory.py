@@ -4,9 +4,9 @@ from pyht import AsyncClient
 from pyht.client import CongestionCtrl
 from pytest_mock import MockerFixture
 
-from vocode_velocity.streaming.models.audio import AudioEncoding
-from vocode_velocity.streaming.models.synthesizer import PlayHtSynthesizerConfig
-from vocode_velocity.streaming.synthesizer.default_factory import DefaultSynthesizerFactory
+from svara.streaming.models.audio import AudioEncoding
+from svara.streaming.models.synthesizer import PlayHtSynthesizerConfig
+from svara.streaming.synthesizer.default_factory import DefaultSynthesizerFactory
 
 DEFAULT_PARAMS = {
     "sampling_rate": 16000,

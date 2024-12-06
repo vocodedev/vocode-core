@@ -2,8 +2,8 @@ import asyncio
 
 import pytest
 
-from vocode_velocity.streaming.models.events import EventType, PhoneCallEndedEvent
-from vocode_velocity.streaming.utils.events_manager import EventsManager
+from svara.streaming.models.events import EventType, PhoneCallEndedEvent
+from svara.streaming.utils.events_manager import EventsManager
 
 CONVERSATION_ID = "1"
 

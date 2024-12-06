@@ -8,21 +8,21 @@ from aioresponses import aioresponses
 from pytest_mock import MockerFixture
 
 from tests.fakedata.id import generate_uuid
-from vocode_velocity.streaming.action.transfer_call import (
+from svara.streaming.action.transfer_call import (
     TransferCallEmptyParameters,
     TransferCallVocodeActionConfig,
     TwilioTransferCall,
     VonageTransferCall,
 )
-from vocode_velocity.streaming.models.actions import (
+from svara.streaming.models.actions import (
     TwilioPhoneConversationActionInput,
     VonagePhoneConversationActionInput,
 )
-from vocode_velocity.streaming.models.events import Sender
-from vocode_velocity.streaming.models.telephony import TwilioConfig, VonageConfig
-from vocode_velocity.streaming.models.transcript import Message, Transcript
-from vocode_velocity.streaming.utils import create_conversation_id
-from vocode_velocity.streaming.utils.state_manager import (
+from svara.streaming.models.events import Sender
+from svara.streaming.models.telephony import TwilioConfig, VonageConfig
+from svara.streaming.models.transcript import Message, Transcript
+from svara.streaming.utils import create_conversation_id
+from svara.streaming.utils.state_manager import (
     TwilioPhoneConversationStateManager,
     VonagePhoneConversationStateManager,
 )

@@ -9,8 +9,8 @@ from tools.contacts import get_all_contacts
 from tools.vocode import call_phone_number
 from tools.word_of_the_day import word_of_the_day
 
-from vocode_velocity.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode_velocity.turn_based.synthesizer.gtts_synthesizer import GTTSSynthesizer
+from svara.turn_based.synthesizer.azure_synthesizer import AzureSynthesizer
+from svara.turn_based.synthesizer.gtts_synthesizer import GTTSSynthesizer
 
 load_dotenv()
 

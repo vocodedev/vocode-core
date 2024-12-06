@@ -12,7 +12,7 @@ Phrase triggers allow users to more explicitly control the behavior of their age
 You can create a phrase trigger as follows:
 
 ```python
-from vocode_velocity import (
+from svara import (
     PhraseBasedActionTrigger,
     PhraseBasedActionTriggerConfig,
     PhraseTrigger,
@@ -41,7 +41,7 @@ In this example, the action that this phrase trigger is attached to will fire on
 ## Configuring your action
 
 ```python
-from vocode_velocity import (
+from svara import (
     TransferCallActionParams,
     TransferCallConfig,
 )
@@ -66,7 +66,7 @@ Agent will decide when to use the action based on its prompting. Note that is is
 but for [External Actions](/external-actions), it is also dependent on the description field.
 
 ```python
-from vocode_velocity import FunctionCallActionTrigger
+from svara import FunctionCallActionTrigger
 
 function_trigger = FunctionCallActionTrigger(config={})
 vocode_client.agents.update_agent(

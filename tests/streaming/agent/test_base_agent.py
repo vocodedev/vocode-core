@@ -4,22 +4,22 @@ from typing import List, Optional
 import pytest
 from pytest_mock import MockerFixture
 
-from vocode_velocity.streaming.action.abstract_factory import AbstractActionFactory
-from vocode_velocity.streaming.agent.base_agent import (
+from svara.streaming.action.abstract_factory import AbstractActionFactory
+from svara.streaming.agent.base_agent import (
     AgentResponse,
     AgentResponseMessage,
     BaseAgent,
     GeneratedResponse,
     TranscriptionAgentInput,
 )
-from vocode_velocity.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode_velocity.streaming.models.actions import EndOfTurn
-from vocode_velocity.streaming.models.agent import ChatGPTAgentConfig
-from vocode_velocity.streaming.models.message import BaseMessage
-from vocode_velocity.streaming.models.transcriber import Transcription
-from vocode_velocity.streaming.models.transcript import Transcript
-from vocode_velocity.streaming.utils.state_manager import ConversationStateManager
-from vocode_velocity.streaming.utils.worker import (
+from svara.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from svara.streaming.models.actions import EndOfTurn
+from svara.streaming.models.agent import ChatGPTAgentConfig
+from svara.streaming.models.message import BaseMessage
+from svara.streaming.models.transcriber import Transcription
+from svara.streaming.models.transcript import Transcript
+from svara.streaming.utils.state_manager import ConversationStateManager
+from svara.streaming.utils.worker import (
     InterruptibleAgentResponseEvent,
     InterruptibleEvent,
     QueueConsumer,

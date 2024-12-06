@@ -12,8 +12,8 @@ from pydub import AudioSegment
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 
-from vocode_velocity.turn_based.agent import BaseAgent, ChatGPTAgent
-from vocode_velocity.turn_based.synthesizer import (
+from svara.turn_based.agent import BaseAgent, ChatGPTAgent
+from svara.turn_based.synthesizer import (
     AzureSynthesizer,
     BaseSynthesizer,
     CoquiSynthesizer,
@@ -23,7 +23,7 @@ from vocode_velocity.turn_based.synthesizer import (
     RimeSynthesizer,
     StreamElementsSynthesizer,
 )
-from vocode_velocity.turn_based.transcriber import BaseTranscriber, WhisperTranscriber
+from svara.turn_based.transcriber import BaseTranscriber, WhisperTranscriber
 
 load_dotenv()
 

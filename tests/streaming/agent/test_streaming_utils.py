@@ -4,9 +4,9 @@ import pytest
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from pydantic.v1 import BaseModel
 
-from vocode_velocity.streaming.agent.openai_utils import openai_get_tokens
-from vocode_velocity.streaming.agent.streaming_utils import collate_response_async
-from vocode_velocity.streaming.models.actions import FunctionCall
+from svara.streaming.agent.openai_utils import openai_get_tokens
+from svara.streaming.agent.streaming_utils import collate_response_async
+from svara.streaming.models.actions import FunctionCall
 
 
 async def _agen_from_chunk_list(

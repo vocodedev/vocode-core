@@ -1,16 +1,16 @@
 import pytest
 
 from tests.fakedata.id import generate_uuid
-from vocode_velocity.streaming.action.record_email import (
+from svara.streaming.action.record_email import (
     RecordEmail,
     RecordEmailParameters,
     RecordEmailVocodeActionConfig,
 )
-from vocode_velocity.streaming.models.actions import (
+from svara.streaming.models.actions import (
     TwilioPhoneConversationActionInput,
     VonagePhoneConversationActionInput,
 )
-from vocode_velocity.streaming.utils import create_conversation_id
+from svara.streaming.utils import create_conversation_id
 
 # id is just a description of the parameterized test case's input
 EMAIL_TEST_CASES = [

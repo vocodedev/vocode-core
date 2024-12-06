@@ -8,17 +8,17 @@ from pydantic.v1 import BaseModel
 from pytest_mock import MockerFixture
 
 from tests.fakedata.id import generate_uuid
-from vocode_velocity.streaming.action.end_conversation import (
+from svara.streaming.action.end_conversation import (
     EndConversation,
     EndConversationParameters,
     EndConversationVocodeActionConfig,
 )
-from vocode_velocity.streaming.models.actions import (
+from svara.streaming.models.actions import (
     TwilioPhoneConversationActionInput,
     VonagePhoneConversationActionInput,
 )
-from vocode_velocity.streaming.models.transcript import Transcript
-from vocode_velocity.streaming.utils import create_conversation_id
+from svara.streaming.models.transcript import Transcript
+from svara.streaming.utils import create_conversation_id
 
 
 class EndConversationActionTestCase(BaseModel):

@@ -2,16 +2,16 @@ import os
 
 from dotenv import load_dotenv
 
-from vocode_velocity.streaming.models.agent import ChatGPTAgentConfig
-from vocode_velocity.streaming.models.message import BaseMessage
-from vocode_velocity.streaming.models.telephony import TwilioConfig
+from svara.streaming.models.agent import ChatGPTAgentConfig
+from svara.streaming.models.message import BaseMessage
+from svara.streaming.models.telephony import TwilioConfig
 
 load_dotenv()
 
 from speller_agent import SpellerAgentConfig
 
-from vocode_velocity.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
-from vocode_velocity.streaming.telephony.conversation.outbound_call import OutboundCall
+from svara.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
+from svara.streaming.telephony.conversation.outbound_call import OutboundCall
 
 BASE_URL = os.environ["BASE_URL"]
 

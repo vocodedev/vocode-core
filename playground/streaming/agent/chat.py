@@ -5,10 +5,10 @@ import typing
 from dotenv import load_dotenv
 from pydantic.v1 import BaseModel
 
-from vocode_velocity.streaming.action.abstract_factory import AbstractActionFactory
-from vocode_velocity.streaming.action.base_action import BaseAction
-from vocode_velocity.streaming.action.worker import ActionsWorker
-from vocode_velocity.streaming.models.actions import (
+from svara.streaming.action.abstract_factory import AbstractActionFactory
+from svara.streaming.action.base_action import BaseAction
+from svara.streaming.action.worker import ActionsWorker
+from svara.streaming.models.actions import (
     ActionConfig,
     ActionInput,
     ActionOutput,
@@ -17,24 +17,24 @@ from vocode_velocity.streaming.models.actions import (
     PhraseBasedActionTriggerConfig,
     PhraseTrigger,
 )
-from vocode_velocity.streaming.models.agent import ChatGPTAgentConfig
-from vocode_velocity.streaming.models.message import BaseMessage
-from vocode_velocity.streaming.models.transcript import Transcript
-from vocode_velocity.streaming.utils.state_manager import AbstractConversationStateManager
-from vocode_velocity.streaming.utils.worker import InterruptibleAgentResponseEvent, QueueConsumer
+from svara.streaming.models.agent import ChatGPTAgentConfig
+from svara.streaming.models.message import BaseMessage
+from svara.streaming.models.transcript import Transcript
+from svara.streaming.utils.state_manager import AbstractConversationStateManager
+from svara.streaming.utils.worker import InterruptibleAgentResponseEvent, QueueConsumer
 
 load_dotenv()
 
-from vocode_velocity.streaming.agent import ChatGPTAgent
-from vocode_velocity.streaming.agent.base_agent import (
+from svara.streaming.agent import ChatGPTAgent
+from svara.streaming.agent.base_agent import (
     AgentResponse,
     AgentResponseMessage,
     AgentResponseType,
     BaseAgent,
     TranscriptionAgentInput,
 )
-from vocode_velocity.streaming.models.transcriber import Transcription
-from vocode_velocity.streaming.utils import create_conversation_id
+from svara.streaming.models.transcriber import Transcription
+from svara.streaming.utils import create_conversation_id
 
 BACKCHANNELS = ["Got it", "Sure", "Okay", "I understand"]
 

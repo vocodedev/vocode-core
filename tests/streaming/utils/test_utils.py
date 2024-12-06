@@ -1,6 +1,6 @@
 import pytest
 
-from vocode_velocity.streaming.utils import generate_from_async_iter_with_lookahead, generate_with_is_last
+from svara.streaming.utils import generate_from_async_iter_with_lookahead, generate_with_is_last
 
 
 @pytest.mark.asyncio

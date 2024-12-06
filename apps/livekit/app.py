@@ -5,25 +5,25 @@ from livekit.agents import JobContext, JobRequest, WorkerOptions, cli
 from loguru import logger
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from vocode_velocity.logging import configure_pretty_logging
-from vocode_velocity.streaming.action.end_conversation import EndConversationVocodeActionConfig
-from vocode_velocity.streaming.agent.chat_gpt_agent import ChatGPTAgent
-from vocode_velocity.streaming.livekit.livekit_conversation import LiveKitConversation
-from vocode_velocity.streaming.models.actions import (
+from svara.logging import configure_pretty_logging
+from svara.streaming.action.end_conversation import EndConversationVocodeActionConfig
+from svara.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from svara.streaming.livekit.livekit_conversation import LiveKitConversation
+from svara.streaming.models.actions import (
     PhraseBasedActionTrigger,
     PhraseBasedActionTriggerConfig,
     PhraseTrigger,
 )
-from vocode_velocity.streaming.models.agent import ChatGPTAgentConfig
-from vocode_velocity.streaming.models.message import BaseMessage
-from vocode_velocity.streaming.models.synthesizer import AzureSynthesizerConfig
-from vocode_velocity.streaming.models.transcriber import (
+from svara.streaming.models.agent import ChatGPTAgentConfig
+from svara.streaming.models.message import BaseMessage
+from svara.streaming.models.synthesizer import AzureSynthesizerConfig
+from svara.streaming.models.transcriber import (
     DeepgramTranscriberConfig,
     PunctuationEndpointingConfig,
 )
-from vocode_velocity.streaming.output_device.livekit_output_device import LiveKitOutputDevice
-from vocode_velocity.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
-from vocode_velocity.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
+from svara.streaming.output_device.livekit_output_device import LiveKitOutputDevice
+from svara.streaming.synthesizer.azure_synthesizer import AzureSynthesizer
+from svara.streaming.transcriber.deepgram_transcriber import DeepgramTranscriber
 
 
 class Settings(BaseSettings):

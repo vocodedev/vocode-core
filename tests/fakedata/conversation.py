@@ -3,20 +3,20 @@ from typing import Optional
 
 from pytest_mock import MockerFixture
 
-from vocode_velocity.streaming.agent.base_agent import BaseAgent
-from vocode_velocity.streaming.models.agent import AgentConfig, ChatGPTAgentConfig
-from vocode_velocity.streaming.models.audio import AudioEncoding
-from vocode_velocity.streaming.models.message import BaseMessage
-from vocode_velocity.streaming.models.synthesizer import PlayHtSynthesizerConfig, SynthesizerConfig
-from vocode_velocity.streaming.models.transcriber import DeepgramTranscriberConfig, TranscriberConfig
-from vocode_velocity.streaming.output_device.abstract_output_device import AbstractOutputDevice
-from vocode_velocity.streaming.output_device.audio_chunk import ChunkState
-from vocode_velocity.streaming.streaming_conversation import StreamingConversation
-from vocode_velocity.streaming.synthesizer.base_synthesizer import BaseSynthesizer
-from vocode_velocity.streaming.telephony.constants import DEFAULT_CHUNK_SIZE, DEFAULT_SAMPLING_RATE
-from vocode_velocity.streaming.transcriber.base_transcriber import BaseTranscriber
-from vocode_velocity.streaming.transcriber.deepgram_transcriber import DeepgramEndpointingConfig
-from vocode_velocity.streaming.utils.events_manager import EventsManager
+from svara.streaming.agent.base_agent import BaseAgent
+from svara.streaming.models.agent import AgentConfig, ChatGPTAgentConfig
+from svara.streaming.models.audio import AudioEncoding
+from svara.streaming.models.message import BaseMessage
+from svara.streaming.models.synthesizer import PlayHtSynthesizerConfig, SynthesizerConfig
+from svara.streaming.models.transcriber import DeepgramTranscriberConfig, TranscriberConfig
+from svara.streaming.output_device.abstract_output_device import AbstractOutputDevice
+from svara.streaming.output_device.audio_chunk import ChunkState
+from svara.streaming.streaming_conversation import StreamingConversation
+from svara.streaming.synthesizer.base_synthesizer import BaseSynthesizer
+from svara.streaming.telephony.constants import DEFAULT_CHUNK_SIZE, DEFAULT_SAMPLING_RATE
+from svara.streaming.transcriber.base_transcriber import BaseTranscriber
+from svara.streaming.transcriber.deepgram_transcriber import DeepgramEndpointingConfig
+from svara.streaming.utils.events_manager import EventsManager
 
 DEFAULT_DEEPGRAM_TRANSCRIBER_CONFIG = DeepgramTranscriberConfig(
     chunk_size=DEFAULT_CHUNK_SIZE,

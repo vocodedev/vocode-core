@@ -1,5 +1,5 @@
-from vocode_velocity.streaming.agent.openai_utils import format_openai_chat_messages_from_transcript
-from vocode_velocity.streaming.models.actions import (
+from svara.streaming.agent.openai_utils import format_openai_chat_messages_from_transcript
+from svara.streaming.models.actions import (
     ACTION_FINISHED_FORMAT_STRING,
     ActionConfig,
     ActionInput,
@@ -7,8 +7,8 @@ from vocode_velocity.streaming.models.actions import (
     PhraseBasedActionTrigger,
     PhraseBasedActionTriggerConfig,
 )
-from vocode_velocity.streaming.models.events import Sender
-from vocode_velocity.streaming.models.transcript import ActionFinish, ActionStart, Message, Transcript
+from svara.streaming.models.events import Sender
+from svara.streaming.models.transcript import ActionFinish, ActionStart, Message, Transcript
 
 
 class WeatherActionConfig(ActionConfig, type="weather"):

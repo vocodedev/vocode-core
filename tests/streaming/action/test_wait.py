@@ -1,8 +1,8 @@
 import pytest
 
-from vocode_velocity.streaming.action.wait import Wait, WaitParameters, WaitVocodeActionConfig
-from vocode_velocity.streaming.models.actions import ActionInput
-from vocode_velocity.streaming.utils import create_conversation_id
+from svara.streaming.action.wait import Wait, WaitParameters, WaitVocodeActionConfig
+from svara.streaming.models.actions import ActionInput
+from svara.streaming.utils import create_conversation_id
 
 
 @pytest.mark.asyncio
