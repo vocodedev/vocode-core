@@ -143,7 +143,6 @@ class TwilioPhoneConversation(AbstractPhoneConversation[TwilioOutputDevice]):
             media = data["media"]
             chunk = base64.b64decode(media["payload"])
             self.receive_audio(chunk)
-            logger.debug(f"Decoded chunk: {chunk[:100]}")
             self.recording += chunk
         if data["event"] == "mark":
             chunk_id = data["mark"]["name"]
