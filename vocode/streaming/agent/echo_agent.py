@@ -1,5 +1,5 @@
-from typing import AsyncGenerator, Generator, Optional, Tuple
-from vocode.streaming.agent.base_agent import BaseAgent, RespondAgent
+from typing import AsyncGenerator, Tuple
+from vocode.streaming.agent.base_agent import RespondAgent
 from vocode.streaming.models.agent import EchoAgentConfig
 
 
@@ -10,6 +10,7 @@ class EchoAgent(RespondAgent[EchoAgentConfig]):
         conversation_id: str,
         is_interrupt: bool = False,
     ) -> Tuple[str, bool]:
+
         return human_input, False
 
     async def generate_response(
@@ -21,4 +22,7 @@ class EchoAgent(RespondAgent[EchoAgentConfig]):
         yield human_input, True
 
     def update_last_bot_message_on_cut_off(self, message: str):
+        pass
+
+    def cancel_stream(self):  # stub to try fix streaming conversation for echo agent
         pass

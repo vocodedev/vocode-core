@@ -10,10 +10,13 @@ class BaseOutputDevice:
         pass
 
     def consume_nonblocking(self, chunk: bytes):
-        raise NotImplemented
-    
+        raise NotImplementedError
+
     def maybe_send_mark_nonblocking(self, message):
         pass
 
     def terminate(self):
         pass
+
+    def clear(self):
+        raise NotImplementedError
