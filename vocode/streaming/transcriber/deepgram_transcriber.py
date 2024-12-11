@@ -30,11 +30,13 @@ MAX_SILENCE_DURATION = 2.0
 NUM_RESTARTS = 5
 
 # Silero VAD setup
+
+
 model, utils = torch.hub.load(repo_or_dir="snakers4/silero-vad", model="silero_vad")
 (get_speech_timestamps, save_audio, read_audio, VADIterator, collect_chunks) = utils
 
 # Constants for Silero VAD
-USE_INT16 = False
+USE_INT16 = True
 SAMPLE_RATE = 16000 if USE_INT16 else 8000
 DTYPE = np.int16 if USE_INT16 else np.int8
 CHUNK = 512 if USE_INT16 else 256
@@ -45,6 +47,7 @@ GRACE_PERIOD_MS = 300  # Grace period before resetting speech detection
 
 
 class VADWorker(AsyncWorker):
+
     def __init__(
         self,
         input_queue: asyncio.Queue,
@@ -157,6 +160,7 @@ class VADWorker(AsyncWorker):
                 self.logger.warning(f"VAD error: {str(e)}", exc_info=True)
 
     def send_audio(self, chunk):
+        self.logger.info(f"vad send_audio {self.transcriber.is_muted=}")
         if not self.transcriber.is_muted:
             self.consume_nonblocking(chunk)
         else:
@@ -218,10 +222,14 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         return volume < self.VOLUME_THRESHOLD
 
     def send_audio(self, chunk):
+        self.logger.info(f"ds send_audio {chunk[:10]=}")
         if (
             self.transcriber_config.downsampling
             and self.transcriber_config.audio_encoding == AudioEncoding.LINEAR16
         ):
+            self.logger.info(
+                f"downsampling {self.transcriber_config.downsampling=} {self.transcriber_config.audio_encoding =}"
+            )
             chunk, _ = audioop.ratecv(
                 chunk,
                 2,
@@ -235,7 +243,8 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
             chunk = np.frombuffer(chunk, dtype=np.int16).astype(DTYPE).tobytes()
 
         is_silence = self.is_volume_low(chunk)
-
+        if is_silence:
+            self.logger.info(f"is_silence {is_silence=}")
         self.vad_worker.send_audio(
             {
                 "chunk": chunk,
@@ -334,13 +343,18 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
         while not self._ended:
             try:
                 data = await asyncio.wait_for(self.input_queue.get(), 20)
+                self.logger.info(f"sender {data[:10]}")
+                assert data is not None and len(data) > 0
+
                 self.audio_cursor += len(data) / (
                     self.transcriber_config.sampling_rate * 2
                 )
+                self.logger.info(f"sender after {data[:10]}")
                 await ws.send(data)
             except asyncio.exceptions.TimeoutError:
+                self.logger.error("Deepgram transcriber sender timeout")
                 break
-        self.logger.debug("Terminating Deepgram transcriber sender")
+        self.logger.error("Terminating Deepgram transcriber sender")
 
     async def receiver(self, ws: WebSocketClientProtocol):
         while not self._ended:
@@ -350,16 +364,19 @@ class DeepgramTranscriber(BaseAsyncTranscriber[DeepgramTranscriberConfig]):
                 if "is_final" not in data:
                     break
                 top_choice = data["channel"]["alternatives"][0]
-                self.output_queue.put_nowait(
-                    Transcription(
+                self.logger.error(
+                    transc := Transcription(
                         message=json.dumps(top_choice),
                         confidence=top_choice["confidence"],
                         is_final=data["is_final"],
                         time_silent=self.calculate_time_silent(data),
                     )
                 )
+
+                self.output_queue.put_nowait(transc)
                 try:
                     vad_result = self.vad_output_queue.get_nowait()
+                    self.logger.info(f"vad_result {vad_result[:10]}")
                     if vad_result:
                         self.output_queue.put_nowait(vad_result)
                 except asyncio.QueueEmpty:
