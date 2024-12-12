@@ -10,27 +10,27 @@ homepage = "https://github.com/vocodedev/vocode-python"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-aiohttp = "^3.11.9"
+aiohttp = "^3.11.10"
 anthropic = "^0.40.0"
 azure-cognitiveservices-speech = "^1.41.1"
-elevenlabs = "^1.13.3"
+elevenlabs = "^1.13.4"
 fastapi = "^0.115.6"
 janus = "^1.1.0"
 jinja2 = "^3.1.4"
 jsonschema = "^4.23.0"
-loguru = "^0.7.2"
+loguru = "^0.7.3"
 miniaudio = "^1.61.0"
 numpy = "^1.26.4"
-openai = "^1.56.2"
-opentelemetry-sdk = "^1.28.2"
+openai = "^1.57.2"
+opentelemetry-sdk = "^1.29.0"
 phonenumbers = "^8.13.51"
 pydantic = "^2.9.2"
 pydantic-settings = "^2.6.1"
 pydub = "^0.25.1"
 pyht = "^0.1.8"
-redis = "^5.2.0"
+redis = "^5.2.1"
 requests = "^2.32.3"
-sentry-sdk = { extras = ["fastapi"], version = "^2.19.0" }
+sentry-sdk = { extras = ["fastapi"], version = "^2.19.2" }
 sounddevice = "^0.5.1"
 tiktoken = "^0.8.0"
 uvicorn = "^0.32.1"
@@ -49,20 +49,21 @@ cartesia = {version = "^1.3.1", optional = true}
 google-cloud-speech = { version = "^2.28.1", optional = true }
 
 # Telephony
-twilio = { version = "^9.3.7", optional = true }
-vonage = { version = "^4.1.1", optional = true }
+twilio = { version = "^9.3.8", optional = true }
+vonage = { version = "^4.1.2", optional = true }
 
 # Langchain
-langchain = { version = "0.3.9", optional = true }
-langchain-community = { version = "^0.3.9", optional = true }
-langchain-openai = { version = "^0.2.11", optional = true }
+langchain = { version = "0.3.11", optional = true }
+langchain-community = { version = "^0.3.11", optional = true }
+langchain-openai = { version = "^0.2.12", optional = true }
 langchain-anthropic = { version = "^0.3.0", optional = true }
 langchain-google-vertexai = { version = "^2.0.8", optional = true }
 
 # LiveKit
-livekit = { version = "^0.18.1", optional = true }
-langfuse = "^2.55.0"
+livekit = { version = "^0.18.2", optional = true }
+langfuse = "^2.56.2"
 python-multipart = "^0.0.19"
+scipy = "^1.14.1"
 
 [tool.poetry.group.lint.dependencies]
 black = "^24.10.0"
@@ -77,7 +78,7 @@ types-requests = "^2.32.0.20241016"
 
 [tool.poetry.group.dev.dependencies]
 aioresponses = "^0.7.7"
-coverage = "^7.6.8"
+coverage = "^7.6.9"
 fakeredis = "^2.26.1"
 pytest = "^8.3.4"
 pytest-asyncio = "^0.24.0"
