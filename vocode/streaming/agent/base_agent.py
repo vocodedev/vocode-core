@@ -476,6 +476,7 @@ class RespondAgent(BaseAgent[AgentConfigType]):
         return None
 
     async def call_function(self, function_call: FunctionCall, agent_input: AgentInput):
+        logger.debug(f"FunctionCall: {function_call}")
         action_config = self._get_action_config(function_call.name)
         if action_config is None:
             logger.error(f"Function {function_call.name} not found in agent config, skipping")
