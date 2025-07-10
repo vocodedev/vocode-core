@@ -25,6 +25,7 @@ class SynthesizerType(str, Enum):
     BARK = "synthesizer_bark"
     POLLY = "synthesizer_polly"
     CARTESIA = "synthesizer_cartesia"
+    MURF = "synthesizer_murf"
 
 
 class SentimentConfig(BaseModel):
@@ -245,3 +246,38 @@ class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA
     model_id: str = DEFAULT_CARTESIA_MODEL_ID
     voice_id: str = DEFAULT_CARTESIA_VOICE_ID
     experimental_voice_controls: Optional[CartesiaVoiceControls] = None
+
+
+DEFAULT_MURF_VOICE_ID = "en-US-daniel"
+
+
+class MurfSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.MURF.value):  # type: ignore
+    api_key: Optional[str] = None
+    voice_id: str = DEFAULT_MURF_VOICE_ID
+    channel_type: Optional[str] = None
+    format: Optional[str] = None
+    style: Optional[str] = "Conversational"
+    sampling_rate: int = 16000
+    audio_encoding: AudioEncoding = AudioEncoding.LINEAR16
+    rate: Optional[int] = 0
+    pitch: Optional[int] = 0
+    variation: Optional[int] = 1
+    multi_native_locale: Optional[str] = None
+
+    @validator("rate")
+    def validate_rate(cls, v):
+        if v is not None and not (-50 <= v <= 50):
+            raise ValueError("Speech rate must be between -50 and 50")
+        return v
+
+    @validator("pitch")
+    def validate_pitch(cls, v):
+        if v is not None and not (-50 <= v <= 50):
+            raise ValueError("Speech pitch must be between -50 and 50")
+        return v
+
+    @validator("variation")
+    def validate_variation(cls, v):
+        if v is not None and not (0 <= v <= 5):
+            raise ValueError("Variation must be between 0 and 5")
+        return v

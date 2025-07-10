@@ -17,6 +17,7 @@ _SYNTHESIZER_NAMES = {
     "PlayHtSynthesizer": "play_ht",
     "PlayHtSynthesizerV2": "play_ht_v2",
     "RimeSynthesizer": "rime",
+    "MurfSynthesizer": "murf",
 }
 
 _FILTERED_SPANS = {"middleware.starlette.receive", "middleware.starlette.send", "Queue.get"}
