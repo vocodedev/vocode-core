@@ -25,6 +25,7 @@ class SynthesizerType(str, Enum):
     BARK = "synthesizer_bark"
     POLLY = "synthesizer_polly"
     CARTESIA = "synthesizer_cartesia"
+    CAMB_AI = "synthesizer_camb_ai"
 
 
 class SentimentConfig(BaseModel):
@@ -231,6 +232,20 @@ class PollySynthesizerConfig(SynthesizerConfig, type=SynthesizerType.POLLY.value
 
 DEFAULT_CARTESIA_MODEL_ID = "sonic-english"
 DEFAULT_CARTESIA_VOICE_ID = "f9836c6e-a0bd-460e-9d3c-f7299fa60f94"
+
+
+CAMB_AI_DEFAULT_VOICE_ID = 160937
+CAMB_AI_DEFAULT_MODEL = "mars-flash"
+
+
+class CambAISynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CAMB_AI.value):  # type: ignore
+    api_key: Optional[str] = None
+    voice_id: int = CAMB_AI_DEFAULT_VOICE_ID
+    model: str = CAMB_AI_DEFAULT_MODEL
+    language: str = "en-us"
+    base_url: str = "https://client.camb.ai/apis"
+    speed: Optional[float] = 1.0
+    user_instructions: Optional[str] = None
 
 
 class CartesiaVoiceControls(BaseModel):
