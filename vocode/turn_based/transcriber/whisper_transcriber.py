@@ -13,7 +13,7 @@ class WhisperTranscriber(BaseTranscriber):
         api_key = getenv("OPENAI_API_KEY", api_key)
         if not api_key:
             raise ValueError("OpenAI API key not provided")
-        self.client = openai.OpenAI(api_key=api_key)
+        self.client = openai.OpenAI(api_key=api_key, timeout=60.0, max_retries=3)
 
     def transcribe(self, audio_segment: AudioSegment) -> str:
         in_memory_wav = io.BytesIO()

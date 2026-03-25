@@ -35,10 +35,14 @@ class VectorDB:
                 azure_endpoint=azure_base,
                 api_key=os.getenv("AZURE_OPENAI_API_KEY_EAST_US"),
                 api_version=AZURE_OPENAI_DEFAULT_API_VERSION,
+                timeout=60.0,
+                max_retries=3,
             )
         else:
             self.openai_client = AsyncOpenAI(
                 api_key=os.getenv("OPENAI_API_KEY"),
+                timeout=60.0,
+                max_retries=3,
             )
 
     async def create_openai_embedding(

@@ -35,6 +35,7 @@ def instantiate_openai_client(agent_config: ChatGPTAgentConfig, model_fallback: 
             api_key=agent_config.azure_params.api_key,
             api_version=agent_config.azure_params.api_version,
             max_retries=0 if model_fallback else OPENAI_DEFAULT_MAX_RETRIES,
+            timeout=60.0,
         )
     else:
         if agent_config.openai_api_key is not None:
@@ -45,6 +46,7 @@ def instantiate_openai_client(agent_config: ChatGPTAgentConfig, model_fallback: 
             api_key=agent_config.openai_api_key or os.environ["OPENAI_API_KEY"],
             base_url=agent_config.base_url_override or "https://api.openai.com/v1",
             max_retries=0 if model_fallback else OPENAI_DEFAULT_MAX_RETRIES,
+            timeout=60.0,
         )
 
 

@@ -33,7 +33,7 @@ class AnthropicAgent(RespondAgent[AnthropicAgentConfig]):
             action_factory=action_factory,
             **kwargs,
         )
-        self.anthropic_client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        self.anthropic_client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"), timeout=60.0, max_retries=3)
 
     def get_chat_parameters(self, messages: list = [], use_functions: bool = True):
         assert self.transcript is not None
