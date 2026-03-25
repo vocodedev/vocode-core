@@ -20,7 +20,7 @@ class ChatGPTAgent(BaseAgent):
         api_key = getenv("OPENAI_API_KEY", api_key)
         if not api_key:
             raise ValueError("OpenAI API key not provided")
-        self.client = openai.OpenAI(api_key=api_key, timeout=60.0)
+        self.client = openai.OpenAI(api_key=api_key, timeout=60.0, max_retries=3)
         self.prompt = system_prompt
         self.model_name = model_name
         self.messages: List[Any] = [
