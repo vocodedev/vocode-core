@@ -25,6 +25,7 @@ class SynthesizerType(str, Enum):
     BARK = "synthesizer_bark"
     POLLY = "synthesizer_polly"
     CARTESIA = "synthesizer_cartesia"
+    SMALLEST_AI = "synthesizer_smallest_ai"
 
 
 class SentimentConfig(BaseModel):
@@ -245,3 +246,24 @@ class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA
     model_id: str = DEFAULT_CARTESIA_MODEL_ID
     voice_id: str = DEFAULT_CARTESIA_VOICE_ID
     experimental_voice_controls: Optional[CartesiaVoiceControls] = None
+
+
+SMALLEST_AI_DEFAULT_VOICE_ID = "emily"
+SMALLEST_AI_DEFAULT_MODEL = "lightning"
+SMALLEST_AI_DEFAULT_SPEED = 1.0
+SMALLEST_AI_DEFAULT_CONSISTENCY = 0.5
+SMALLEST_AI_DEFAULT_SIMILARITY = 0.0
+SmallestAIModelType = Literal["lightning", "lightning-large"]
+
+
+class SmallestAISynthesizerConfig(
+    SynthesizerConfig, type=SynthesizerType.SMALLEST_AI.value  # type: ignore
+):
+    api_key: Optional[str] = None
+    voice_id: str = SMALLEST_AI_DEFAULT_VOICE_ID
+    model: SmallestAIModelType = SMALLEST_AI_DEFAULT_MODEL
+    speed: float = SMALLEST_AI_DEFAULT_SPEED
+    # lightning-large only parameters
+    consistency: float = SMALLEST_AI_DEFAULT_CONSISTENCY
+    similarity: float = SMALLEST_AI_DEFAULT_SIMILARITY
+    enhancement: bool = False

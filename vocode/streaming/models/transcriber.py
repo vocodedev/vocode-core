@@ -29,6 +29,7 @@ class TranscriberType(str, Enum):
     REV_AI = "transcriber_rev_ai"
     AZURE = "transcriber_azure"
     GLADIA = "transcriber_gladia"
+    SMALLEST_AI = "transcriber_smallest_ai"
 
 
 class EndpointingType(str, Enum):
@@ -159,6 +160,16 @@ class WhisperCPPTranscriberConfig(
 
 class RevAITranscriberConfig(TranscriberConfig, type=TranscriberType.REV_AI.value):  # type: ignore
     pass
+
+
+SMALLEST_AI_DEFAULT_LANGUAGE = "en"
+
+
+class SmallestAITranscriberConfig(
+    TranscriberConfig, type=TranscriberType.SMALLEST_AI.value  # type: ignore
+):
+    api_key: Optional[str] = None
+    language: str = SMALLEST_AI_DEFAULT_LANGUAGE
 
 
 class Transcription(BaseModel):
