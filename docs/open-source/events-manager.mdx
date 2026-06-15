@@ -16,6 +16,7 @@ The current event types include:
 3. `ACTION`: Indicates that a Vocode action has begun or completed.
 4. `PHONE_CALL_CONNECTED`: Indicates a phone call has been connected (only gets sent during `PhoneConversation`s)
 5. `PHONE_CALL_ENDED`: Indicates a phone call has ended.
+6. `RECORDING`: Indicates that a call recording URL is available.
 
 ## Usage
 
@@ -62,3 +63,93 @@ server = TelephonyServer(
     events_manager=CustomEventsManager()
 )
 ```
+
+## Example: analyze completed call recordings with Resemble Detect
+
+`RecordingEvent` is useful for post-call analysis because it is emitted after a
+recording URL is available. The following manager submits that URL to Resemble
+Detect without adding latency to the live transcriber, agent, or synthesizer
+loop.
+
+```python
+import asyncio
+import os
+from typing import Any
+
+import aiohttp
+
+from vocode.streaming.models.events import Event, EventType, RecordingEvent
+from vocode.streaming.utils.events_manager import EventsManager
+
+
+class ResembleRecordingEventsManager(EventsManager):
+    def __init__(self):
+        super().__init__([EventType.RECORDING])
+        self._api_key = os.environ["RESEMBLE_API_KEY"]
+
+    async def handle_event(self, event: Event):
+        if not isinstance(event, RecordingEvent):
+            return
+
+        result = await self._run_detection(event.recording_url)
+        await self.handle_detection_result(
+            conversation_id=event.conversation_id,
+            recording_url=event.recording_url,
+            result=result,
+        )
+
+    async def _run_detection(self, recording_url: str) -> dict[str, Any]:
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "url": recording_url,
+            "intelligence": True,
+            "audio_source_tracing": True,
+            "zero_retention_mode": True,
+        }
+
+        api_base = "https://app.resemble.ai/api/v2"
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.post(f"{api_base}/detect", json=payload) as response:
+                response.raise_for_status()
+                job = await response.json()
+
+            detection_id = job["uuid"]
+            while True:
+                async with session.get(f"{api_base}/detect/{detection_id}") as response:
+                    response.raise_for_status()
+                    result = await response.json()
+
+                status = result.get("status")
+                if status in {"completed", "succeeded", "failed"}:
+                    return result
+
+                await asyncio.sleep(2)
+
+    async def handle_detection_result(
+        self,
+        *,
+        conversation_id: str,
+        recording_url: str,
+        result: dict[str, Any],
+    ) -> None:
+        # Persist, alert, or escalate according to your application policy.
+        print(conversation_id, recording_url, result)
+```
+
+Attach the manager to the telephony server the same way as any other events
+manager:
+
+```python
+server = TelephonyServer(
+    ...,
+    events_manager=ResembleRecordingEventsManager(),
+)
+```
+
+This pattern is post-call. If you need live caller-audio monitoring, run that as
+a separate background observer so the live conversation path remains
+non-blocking.
