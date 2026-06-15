@@ -64,12 +64,12 @@ server = TelephonyServer(
 )
 ```
 
-## Example: analyze completed call recordings with Resemble Detect
+## Example: analyze completed calls with Resemble Detect and Signal
 
 `RecordingEvent` is useful for post-call analysis because it is emitted after a
-recording URL is available. The following manager submits that URL to Resemble
-Detect without adding latency to the live transcriber, agent, or synthesizer
-loop.
+recording URL is available. `TranscriptCompleteEvent` can also be scored with
+Resemble Signal for fraud and scam intent. The following manager submits both
+without adding latency to the live transcriber, agent, or synthesizer loop.
 
 ```python
 import asyncio
@@ -79,24 +79,31 @@ from typing import Any
 import aiohttp
 
 from vocode.streaming.models.events import Event, EventType, RecordingEvent
+from vocode.streaming.models.transcript import TranscriptCompleteEvent
 from vocode.streaming.utils.events_manager import EventsManager
 
 
 class ResembleRecordingEventsManager(EventsManager):
     def __init__(self):
-        super().__init__([EventType.RECORDING])
+        super().__init__([EventType.RECORDING, EventType.TRANSCRIPT_COMPLETE])
         self._api_key = os.environ["RESEMBLE_API_KEY"]
 
     async def handle_event(self, event: Event):
-        if not isinstance(event, RecordingEvent):
+        if isinstance(event, RecordingEvent):
+            result = await self._run_detection(event.recording_url)
+            await self.handle_detection_result(
+                conversation_id=event.conversation_id,
+                recording_url=event.recording_url,
+                result=result,
+            )
             return
 
-        result = await self._run_detection(event.recording_url)
-        await self.handle_detection_result(
-            conversation_id=event.conversation_id,
-            recording_url=event.recording_url,
-            result=result,
-        )
+        if isinstance(event, TranscriptCompleteEvent):
+            result = await self._run_signal(event.transcript.to_string())
+            await self.handle_signal_result(
+                conversation_id=event.conversation_id,
+                result=result,
+            )
 
     async def _run_detection(self, recording_url: str) -> dict[str, Any]:
         headers = {
@@ -129,6 +136,20 @@ class ResembleRecordingEventsManager(EventsManager):
 
                 await asyncio.sleep(2)
 
+    async def _run_signal(self, transcript: str) -> dict[str, Any]:
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        payload = {"text": transcript}
+
+        api_base = "https://app.resemble.ai/api/v2"
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.post(f"{api_base}/signal", json=payload) as response:
+                response.raise_for_status()
+                return await response.json()
+
     async def handle_detection_result(
         self,
         *,
@@ -138,6 +159,15 @@ class ResembleRecordingEventsManager(EventsManager):
     ) -> None:
         # Persist, alert, or escalate according to your application policy.
         print(conversation_id, recording_url, result)
+
+    async def handle_signal_result(
+        self,
+        *,
+        conversation_id: str,
+        result: dict[str, Any],
+    ) -> None:
+        # Treat suspicious/fraud verdicts as an application risk signal.
+        print(conversation_id, result)
 ```
 
 Attach the manager to the telephony server the same way as any other events
@@ -152,4 +182,5 @@ server = TelephonyServer(
 
 This pattern is post-call. If you need live caller-audio monitoring, run that as
 a separate background observer so the live conversation path remains
-non-blocking.
+non-blocking. Use Detect for authenticity of media and Signal for fraud/scam
+intent in text, transcript, audio, video, or image content.
