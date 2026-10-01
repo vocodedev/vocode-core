@@ -6,6 +6,7 @@ from vocode.streaming.models.synthesizer import (
     ElevenLabsSynthesizerConfig,
     PlayHtSynthesizerConfig,
     RimeSynthesizerConfig,
+    SixtyDBSynthesizerConfig,
     StreamElementsSynthesizerConfig,
     SynthesizerConfig,
 )
@@ -18,6 +19,7 @@ from vocode.streaming.synthesizer.eleven_labs_websocket_synthesizer import Eleve
 from vocode.streaming.synthesizer.play_ht_synthesizer import PlayHtSynthesizer
 from vocode.streaming.synthesizer.play_ht_synthesizer_v2 import PlayHtSynthesizerV2
 from vocode.streaming.synthesizer.rime_synthesizer import RimeSynthesizer
+from vocode.streaming.synthesizer.sixty_db_synthesizer import SixtyDBSynthesizer
 from vocode.streaming.synthesizer.stream_elements_synthesizer import StreamElementsSynthesizer
 
 
@@ -40,6 +42,8 @@ class DefaultSynthesizerFactory(AbstractSynthesizerFactory):
                 return PlayHtSynthesizerV2(synthesizer_config)
             else:
                 return PlayHtSynthesizer(synthesizer_config)
+        elif isinstance(synthesizer_config, SixtyDBSynthesizerConfig):
+            return SixtyDBSynthesizer(synthesizer_config)
         elif isinstance(synthesizer_config, RimeSynthesizerConfig):
             return RimeSynthesizer(synthesizer_config)
         elif isinstance(synthesizer_config, StreamElementsSynthesizerConfig):
