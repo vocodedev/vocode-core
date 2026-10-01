@@ -21,6 +21,7 @@ Vocode currently supports the following synthesizers:
 8. Stream Elements
 9. Bark
 10. Amazon Polly
+11. 60db
 
 These synthesizers are defined using their respective configuration classes, which are subclasses of the `SynthesizerConfig` class.
 
@@ -136,3 +137,33 @@ conversation = StreamingConversation(
 
 In this example, the `AzureSynthesizerConfig.from_output_device()` method is used to create a configuration object for the Azure synthesizer.
 The method takes a `speaker_output` object as an argument, and extracts the `sampling_rate` and `audio_encoding` from the output device.
+
+
+### Using 60db
+
+Set `SIXTYDB_API_KEY` in your server environment and choose a voice ID from
+[your 60db workspace](https://docs.60db.ai/api-reference/voices/get-voices).
+An explicit `api_key` in the configuration takes precedence over the environment.
+
+```python
+import os
+from vocode.streaming.models.synthesizer import SixtyDBSynthesizerConfig
+from vocode.streaming.synthesizer.sixty_db_synthesizer import SixtyDBSynthesizer
+
+config = SixtyDBSynthesizerConfig.from_telephone_output_device(
+    voice_id=os.environ["SIXTYDB_VOICE_ID"],
+    model_id="60db-fast-v01",
+    speed=1.0,
+)
+synthesizer = SixtyDBSynthesizer(config)
+```
+
+Use `SixtyDBSynthesizerConfig.from_output_device(speaker_output, voice_id=...)`
+for speaker output. The default synthesizer factory also accepts this configuration.
+The adapter requests mono PCM16 at 24 kHz from the REST TTS endpoint, buffers each
+utterance, and converts it to the output device's sample rate and encoding using
+Vocode's existing converter. Telephone output is 8 kHz mu-law; LINEAR16 output may
+optionally wrap chunks in WAV. `speed` accepts 0.5–2.0 and each request accepts
+1–5000 characters. Cancellation closes the active HTTP response without starting
+background synthesis tasks. REST buffering adds first-audio latency compared with
+an input-streaming provider.

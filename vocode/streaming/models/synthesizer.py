@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from pydantic.v1 import validator
+from pydantic.v1 import root_validator, validator
 
 from vocode.streaming.models.client_backend import OutputAudioConfig
 from vocode.streaming.output_device.abstract_output_device import AbstractOutputDevice
@@ -17,6 +17,7 @@ class SynthesizerType(str, Enum):
     GOOGLE = "synthesizer_google"
     ELEVEN_LABS = "synthesizer_eleven_labs"
     RIME = "synthesizer_rime"
+    SIXTY_DB = "synthesizer_sixty_db"
     PLAY_HT = "synthesizer_play_ht"
     GTTS = "synthesizer_gtts"
     STREAM_ELEMENTS = "synthesizer_stream_elements"
@@ -135,6 +136,41 @@ class ElevenLabsSynthesizerConfig(
                 "backchannel_amplitude_factor must be between 0 (not inclusive) and 1."
             )
         return backchannel_amplitude_factor
+
+
+class SixtyDBSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.SIXTY_DB.value):  # type: ignore
+    voice_id: str
+    api_key: Optional[str] = None
+    model_id: str = "60db-fast-v01"
+    speed: float = 1.0
+    base_url: str = "https://api.60db.ai/tts-synthesize"
+
+    @validator("voice_id", "model_id", "base_url")
+    def require_nonempty(cls, value):
+        if not value.strip():
+            raise ValueError("must not be empty")
+        return value
+
+    @validator("speed")
+    def validate_speed(cls, value):
+        if not 0.5 <= value <= 2.0:
+            raise ValueError("speed must be between 0.5 and 2.0")
+        return value
+
+    @validator("sampling_rate")
+    def validate_sampling_rate(cls, value):
+        if value <= 0:
+            raise ValueError("sampling_rate must be positive")
+        return value
+
+    @root_validator(skip_on_failure=True)
+    def validate_audio_format(cls, values):
+        if values.get("audio_encoding") == AudioEncoding.MULAW:
+            if values.get("sampling_rate") != 8000:
+                raise ValueError("MuLaw encoding only supports 8kHz sampling rate")
+            if values.get("should_encode_as_wav"):
+                raise ValueError("WAV wrapping requires LINEAR16 audio")
+        return values
 
 
 RIME_DEFAULT_BASE_URL = "https://users.rime.ai/v1/rime-tts"
