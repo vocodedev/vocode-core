@@ -5,6 +5,7 @@ from vocode.streaming.action.base_action import BaseAction
 from vocode.streaming.action.dtmf import TwilioDTMF, VonageDTMF
 from vocode.streaming.action.end_conversation import EndConversation
 from vocode.streaming.action.execute_external_action import ExecuteExternalAction
+from vocode.streaming.action.parallel_search import ParallelFetch, ParallelSearch
 from vocode.streaming.action.phone_call_action import (
     TwilioPhoneConversationAction,
     VonagePhoneConversationAction,
@@ -19,6 +20,8 @@ CONVERSATION_ACTIONS: Dict[ActionType, Type[BaseAction]] = {
     ActionType.RECORD_EMAIL: RecordEmail,
     ActionType.WAIT: Wait,
     ActionType.EXECUTE_EXTERNAL_ACTION: ExecuteExternalAction,
+    ActionType.WEB_SEARCH: ParallelSearch,
+    ActionType.WEB_FETCH: ParallelFetch,
 }
 
 VONAGE_ACTIONS: Dict[ActionType, Type[VonagePhoneConversationAction]] = {

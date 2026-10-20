@@ -5,6 +5,43 @@ description: 'Empower agents to take actions during conversations.'
 
 ## Note: Support for actions is currently limited to `ChatGPTAgent`.
 
+## Web search and page fetching
+
+New `ChatGPTAgent` instances use [Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp)
+when `actions` is omitted and the built-in action factory is used. The agent can
+search for current information and fetch source pages during a conversation.
+Search uses Fast mode, with no Parallel account or API key required.
+
+```python
+from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode.streaming.models.agent import ChatGPTAgentConfig
+
+# Uses your existing OpenAI configuration for the model.
+agent = ChatGPTAgent(ChatGPTAgentConfig(prompt_preamble="Answer questions using current sources."))
+
+# Disable all actions explicitly, including web access.
+offline_agent = ChatGPTAgent(ChatGPTAgentConfig(prompt_preamble="Chat only.", actions=[]))
+```
+
+Explicit `actions=None`, an empty list, or an existing action list keeps that
+selection. Saved configurations that include `actions` also keep their selection;
+a configuration saved with that field omitted is treated as unconfigured.
+An explicitly supplied action factory, including `None`, keeps its existing behavior.
+Other agent types retain their defaults.
+
+To add web access alongside other actions, include `ParallelSearchVocodeActionConfig()`
+and `ParallelFetchVocodeActionConfig()` from `vocode.streaming.action.parallel_search`
+in the action list. The built-in factory supports both. Each config accepts
+`timeout_seconds` (20 by default, at most 120).
+
+The objective, queries and URLs selected for a web tool call are sent to Parallel, together
+with a random conversation identifier reused across related searches and fetches.
+Results include source URLs and excerpts for the agent to use as context. Page
+fetching accepts HTTP and HTTPS URLs. Responses are capped at 25,000 characters
+and identify truncation in the action result. Network errors, service limits, and timeouts
+return a failed action result; there is no fallback to another provider.
+Interrupting the action cancels its request. The anonymous endpoint has usage limits.
+
 ## What are actions?
 
 Actions refer to specific tools an agent can execute during the conversation. These actions can encompass various activities like writing an email,

@@ -58,6 +58,8 @@ class ActionType(str, Enum):
     RECORD_EMAIL = "action_record_email"
     END_CONVERSATION = "action_end_conversation"
     EXECUTE_EXTERNAL_ACTION = "action_external"
+    WEB_SEARCH = "action_web_search"
+    WEB_FETCH = "action_web_fetch"
 
     TRANSFER_CALL = "action_transfer_call"
     DTMF = "action_dtmf"
