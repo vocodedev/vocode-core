@@ -10,6 +10,10 @@ from openai import AsyncAzureOpenAI, AsyncOpenAI, NotFoundError, RateLimitError
 from vocode import sentry_span_tags
 from vocode.streaming.action.abstract_factory import AbstractActionFactory
 from vocode.streaming.action.default_factory import DefaultActionFactory
+from vocode.streaming.action.parallel_search import (
+    ParallelFetchVocodeActionConfig,
+    ParallelSearchVocodeActionConfig,
+)
 from vocode.streaming.agent.base_agent import GeneratedResponse, RespondAgent, StreamedResponse
 from vocode.streaming.agent.openai_utils import (
     format_openai_chat_messages_from_transcript,
@@ -26,6 +30,7 @@ from vocode.streaming.vector_db.factory import VectorDBFactory
 from vocode.utils.sentry_utils import CustomSentrySpans, sentry_create_span
 
 ChatGPTAgentConfigType = TypeVar("ChatGPTAgentConfigType", bound=ChatGPTAgentConfig)
+_DEFAULT_ACTION_FACTORY = DefaultActionFactory()
 
 
 def instantiate_openai_client(agent_config: ChatGPTAgentConfig, model_fallback: bool = False):
@@ -54,10 +59,24 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfigType]):
     def __init__(
         self,
         agent_config: ChatGPTAgentConfigType,
-        action_factory: AbstractActionFactory = DefaultActionFactory(),
+        action_factory: AbstractActionFactory = _DEFAULT_ACTION_FACTORY,
         vector_db_factory=VectorDBFactory(),
         **kwargs,
     ):
+        if action_factory is _DEFAULT_ACTION_FACTORY:
+            # An explicit action list (including None/[]) is a permission boundary.
+            # Normal saved configurations include actions, so retain their choices.
+            if "actions" not in agent_config.__fields_set__ and agent_config.actions is None:
+                agent_config = agent_config.copy(
+                    deep=True,
+                    update={
+                        "actions": [
+                            ParallelSearchVocodeActionConfig(),
+                            ParallelFetchVocodeActionConfig(),
+                        ]
+                    },
+                )
+            action_factory = DefaultActionFactory(agent_config.actions or [])
         super().__init__(
             agent_config=agent_config,
             action_factory=action_factory,

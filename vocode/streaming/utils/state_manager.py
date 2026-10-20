@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Optional
+from uuid import uuid4
 
 from vocode.streaming.models.transcriber import EndpointingConfig
 from vocode.streaming.synthesizer.input_streaming_synthesizer import InputStreamingSynthesizer
@@ -21,6 +22,12 @@ if TYPE_CHECKING:
 
 # TODO: make this a proper ABC
 class AbstractConversationStateManager:
+    def get_web_search_session_id(self) -> str:
+        """An opaque identifier owned by this conversation, shared by its web actions."""
+        if not hasattr(self, "_web_search_session_id"):
+            self._web_search_session_id = str(uuid4())
+        return self._web_search_session_id
+
     @property
     def logger(self):
         raise NotImplementedError
