@@ -104,7 +104,16 @@ class MCPServer:
                         "text": (
                             "Anonymous quota reached"
                             if self.mode == "quota"
-                            else "Source https://example.org/weather: sunny, 18 C."
+                            else json.dumps(
+                                {
+                                    "results": [
+                                        {
+                                            "url": "https://example.org/weather",
+                                            "excerpt": "sunny, 18 C.",
+                                        }
+                                    ]
+                                }
+                            )
                         ),
                     }
                 ],
@@ -175,7 +184,7 @@ async def dispatch(agent, name="action_web_search", params=None, conversation_id
     function_messages = [m for m in consumed[0]["messages"] if m["role"] == "function"]
     assert function_messages
     response = result.payload.action_output.response
-    assert (response.content or response.error) in function_messages[-1]["content"]
+    assert response.json() in function_messages[-1]["content"]
     return result.payload.action_output.response
 
 
